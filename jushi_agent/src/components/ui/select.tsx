@@ -25,6 +25,7 @@ interface SelectItemProps extends React.ButtonHTMLAttributes<HTMLButtonElement> 
 
 interface SelectValueProps {
   placeholder?: string
+  children?: React.ReactNode
 }
 
 const SelectContext = React.createContext<{
@@ -58,7 +59,7 @@ const SelectTrigger = React.forwardRef<HTMLButtonElement, SelectTriggerProps>(
         ref={ref}
         type="button"
         className={cn(
-          "flex h-10 w-full items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm ring-offset-background placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+          "flex h-10 w-full items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 ring-offset-background placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
           className
         )}
         onClick={() => setIsOpen(!isOpen)}
@@ -72,7 +73,7 @@ const SelectTrigger = React.forwardRef<HTMLButtonElement, SelectTriggerProps>(
 )
 SelectTrigger.displayName = "SelectTrigger"
 
-const SelectValue: React.FC<SelectValueProps> = ({ placeholder }) => {
+const SelectValue: React.FC<SelectValueProps> = ({ placeholder, children }) => {
   const { value } = React.useContext(SelectContext)
   const [displayValue, setDisplayValue] = React.useState<string>('')
 
@@ -87,8 +88,13 @@ const SelectValue: React.FC<SelectValueProps> = ({ placeholder }) => {
     }
   }, [value])
 
+  // 如果有children，优先使用children
+  if (children) {
+    return <span className="block truncate text-gray-900">{children}</span>
+  }
+
   return (
-    <span className="block truncate">
+    <span className="block truncate text-gray-900">
       {displayValue || placeholder}
     </span>
   )

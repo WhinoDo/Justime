@@ -1,96 +1,78 @@
 /**
  * 用户登录API
+ * 将请求转发到后端Python服务
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { AuthService } from '@/lib/auth/AuthService'
-import { withDatabase } from '@/lib/database/connection'
+import { API_CONFIG } from '@/lib/api/config'
+import { createErrorResponse, createSuccessResponse, validateRequiredFields } from '@/lib/api/proxy'
 
 /**
  * 用户登录
  * POST /api/auth/login
  */
-export const POST = withDatabase(async (request: NextRequest) => {
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { identifier, password, rememberMe } = body
 
     // 验证必填字段
-    if (!identifier || !password) {
-      return NextResponse.json({
-        success: false,
-        error: '用户名/邮箱和密码为必填项'
-      }, { status: 400 })
+    const validation = validateRequiredFields({ identifier, password }, ['identifier', 'password'])
+    if (!validation.valid) {
+      return createErrorResponse(`缺少必填字段: ${validation.missing.join(', ')}`, 'VALIDATION_ERROR', 400)
     }
 
-    // 获取客户端IP
-    const clientIP = request.headers.get('x-forwarded-for') || 
-                    request.headers.get('x-real-ip') || 
-                    'unknown'
-
-    // 执行登录
-    const result = await AuthService.login({
-      identifier,
-      password,
-      rememberMe
+    // 调用后端Python服务的登录API
+    const backendUrl = API_CONFIG.getFullUrl('/auth/login')
+    const response = await fetch(backendUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        identifier,
+        password,
+        rememberMe: rememberMe || false
+      })
     })
 
-    if (result.success) {
-      // 更新用户登录IP
-      if (result.user) {
-        result.user.lastLoginIP = clientIP
-        await result.user.save()
-      }
+    const data = await response.json()
 
-      // 设置HTTP-only cookie
-      const response = NextResponse.json({
-        success: true,
-        data: {
-          user: {
-            id: result.user!._id,
-            username: result.user!.username,
-            email: result.user!.email,
-            displayName: result.user!.displayName,
-            profile: result.user!.profile,
-            isEmailVerified: result.user!.isEmailVerified,
-            hasFeishuBinding: result.user!.hasFeishuBinding,
-            feishuBinding: result.user!.feishuBinding,
-            role: result.user!.role,
-            lastLoginAt: result.user!.lastLoginAt
-          }
-        }
-      })
+    if (!response.ok) {
+      return createErrorResponse(data.detail || data.error || '登录失败', 'LOGIN_ERROR', response.status)
+    }
 
-      // 设置认证cookie
-      const maxAge = rememberMe ? 30 * 24 * 60 * 60 : 7 * 24 * 60 * 60 // 记住我30天，否则7天
-      
-      response.cookies.set('auth-token', result.token!, {
+    // 设置HTTP-only cookie
+    const maxAge = rememberMe ? 30 * 24 * 60 * 60 : 7 * 24 * 60 * 60 // 记住我30天，否则7天
+    
+    const nextResponse = createSuccessResponse(data.data, data.message || '登录成功')
+    
+    if (data.success && data.data?.token) {
+      nextResponse.cookies.set('auth-token', data.data.token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         maxAge
       })
+    }
 
-      response.cookies.set('refresh-token', result.refreshToken!, {
+    if (data.success && data.data?.refreshToken) {
+      nextResponse.cookies.set('refresh-token', data.data.refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         maxAge: 30 * 24 * 60 * 60 // 30天
       })
-
-      return response
-    } else {
-      return NextResponse.json({
-        success: false,
-        error: result.error
-      }, { status: 401 })
     }
+
+    return nextResponse
 
   } catch (error) {
     console.error('❌ 登录API错误:', error)
-    return NextResponse.json({
-      success: false,
-      error: '服务器内部错误'
-    }, { status: 500 })
+    return createErrorResponse(
+      error instanceof Error ? error.message : '服务器内部错误',
+      'INTERNAL_ERROR',
+      500
+    )
   }
-})
+}

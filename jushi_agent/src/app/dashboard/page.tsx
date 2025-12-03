@@ -67,102 +67,94 @@ export default function DashboardPage() {
             </Link>
           </div>
 
-          {/* 飞书日程管理卡片 */}
+          {/* 日历管理卡片 */}
           <div className="task-card">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
                 📅
               </div>
-              <h2 className="text-lg font-semibold">飞书日程管理</h2>
+              <h2 className="text-lg font-semibold">日历管理</h2>
             </div>
             <p className="text-gray-600 mb-4">
-              管理您的飞书日程，查看今日安排和创建新事件
+              管理您的日程安排，查看今日任务和创建新事件
             </p>
-            <Link href="/feishu/calendar">
-              <Button variant="outline" className="w-full">
-                进入日程管理
+            <Link href="/calendar">
+              <Button className="w-full bg-orange-600 hover:bg-orange-700">
+                进入日历
               </Button>
             </Link>
           </div>
 
-          {/* 任务管理卡片 */}
-          <div className="task-card">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                ✅
-              </div>
-              <h2 className="text-lg font-semibold">任务管理</h2>
-            </div>
-            <p className="text-gray-600 mb-4">
-              管理您的任务和子任务，跟踪完成进度
-            </p>
-            <Button variant="outline" className="w-full" disabled>
-              即将推出
-            </Button>
-          </div>
-
-          {/* 情绪追踪卡片 */}
+          {/* 数据统计卡片 */}
           <div className="task-card">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
                 📊
               </div>
-              <h2 className="text-lg font-semibold">情绪分析</h2>
+              <h2 className="text-lg font-semibold">数据统计</h2>
             </div>
             <p className="text-gray-600 mb-4">
-              查看您的情绪趋势和成长数据
+              查看您的对话数据、情绪分析和学习统计
             </p>
-            <Button variant="outline" className="w-full" disabled>
-              即将推出
-            </Button>
+            <Link href="/database/dashboard">
+              <Button variant="outline" className="w-full">
+                查看数据
+              </Button>
+            </Link>
           </div>
 
-          {/* 番茄钟卡片 */}
+          {/* 聊天记录卡片 */}
           <div className="task-card">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                ⏰
-              </div>
-              <h2 className="text-lg font-semibold">专注计时</h2>
-            </div>
-            <p className="text-gray-600 mb-4">
-              使用番茄钟技术提升专注力
-            </p>
-            <Button variant="outline" className="w-full" disabled>
-              即将推出
-            </Button>
-          </div>
-
-          {/* 成长笔记卡片 */}
-          <div className="task-card">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
                 📝
               </div>
-              <h2 className="text-lg font-semibold">成长笔记</h2>
+              <h2 className="text-lg font-semibold">聊天记录</h2>
             </div>
             <p className="text-gray-600 mb-4">
-              记录学习心得和成长感悟
+              查看历史对话记录和消息
             </p>
-            <Button variant="outline" className="w-full" disabled>
-              即将推出
-            </Button>
+            <Link href="/chat/history">
+              <Button variant="outline" className="w-full">
+                查看记录
+              </Button>
+            </Link>
           </div>
 
-          {/* 设置卡片 */}
+          {/* 模型配置卡片 */}
+          <div className="task-card">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                🤖
+              </div>
+              <h2 className="text-lg font-semibold">模型配置</h2>
+            </div>
+            <p className="text-gray-600 mb-4">
+              配置AI模型参数和API设置
+            </p>
+            <Link href="/model-config">
+              <Button variant="outline" className="w-full">
+                配置模型
+              </Button>
+            </Link>
+          </div>
+
+          {/* 个人资料卡片 */}
           <div className="task-card">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                ⚙️
+                👤
               </div>
-              <h2 className="text-lg font-semibold">个人设置</h2>
+              <h2 className="text-lg font-semibold">个人资料</h2>
             </div>
             <p className="text-gray-600 mb-4">
-              配置您的偏好和高效时段
+              管理您的个人信息和账户设置
             </p>
-            <Button variant="outline" className="w-full" disabled>
-              即将推出
-            </Button>
+            <Link href="/profile">
+              <Button variant="outline" className="w-full">
+                查看资料
+              </Button>
+            </Link>
           </div>
         </div>
 

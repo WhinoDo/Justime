@@ -1,121 +1,61 @@
 /**
  * 用户注册API
+ * 现在将请求转发到后端Python服务
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { AuthService } from '@/lib/auth/AuthService'
-import { withDatabase } from '@/lib/database/connection'
+import { API_CONFIG } from '@/lib/api/config'
+import { createErrorResponse, createSuccessResponse } from '@/lib/api/proxy'
 
 /**
  * 用户注册
  * POST /api/auth/register
  */
-export const POST = withDatabase(async (request: NextRequest) => {
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { username, email, password, displayName, phone } = body
 
-    // 验证必填字段
-    if (!email || !password) {
-      return NextResponse.json({
-        success: false,
-        error: '邮箱和密码为必填项'
-      }, { status: 400 })
-    }
-
-    // 验证邮箱格式
-    const emailRegex = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/
-    if (!emailRegex.test(email)) {
-      return NextResponse.json({
-        success: false,
-        error: '请输入有效的邮箱地址'
-      }, { status: 400 })
-    }
-
-    // 验证密码长度
-    if (password.length < 6) {
-      return NextResponse.json({
-        success: false,
-        error: '密码至少需要6个字符'
-      }, { status: 400 })
-    }
-
-    // 验证用户名格式（如果提供）
-    if (username) {
-      const usernameRegex = /^[a-zA-Z0-9_-]+$/
-      if (!usernameRegex.test(username) || username.length < 3 || username.length > 30) {
-        return NextResponse.json({
-          success: false,
-          error: '用户名只能包含字母、数字、下划线和连字符，长度为3-30个字符'
-        }, { status: 400 })
-      }
-    }
-
-    // 验证手机号格式（如果提供）
-    if (phone) {
-      const phoneRegex = /^1[3-9]\d{9}$/
-      if (!phoneRegex.test(phone)) {
-        return NextResponse.json({
-          success: false,
-          error: '请输入有效的手机号码'
-        }, { status: 400 })
-      }
-    }
-
-    // 执行注册
-    const result = await AuthService.register({
-      username,
-      email,
-      password,
-      displayName,
-      phone
+    // 调用后端Python服务的注册API
+    const backendUrl = API_CONFIG.getFullUrl('/auth/register')
+    const response = await fetch(backendUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body)
     })
 
-    if (result.success) {
-      // 设置HTTP-only cookie
-      const response = NextResponse.json({
-        success: true,
-        data: {
-          user: {
-            id: result.user!._id,
-            username: result.user!.username,
-            email: result.user!.email,
-            displayName: result.user!.displayName,
-            profile: result.user!.profile,
-            isEmailVerified: result.user!.isEmailVerified,
-            needsVerification: result.needsVerification
-          }
-        }
-      })
+    const data = await response.json()
 
-      // 设置认证cookie
-      response.cookies.set('auth-token', result.token!, {
+    if (!response.ok) {
+      return createErrorResponse(data.detail || data.error || '注册失败', 'REGISTER_ERROR', response.status)
+    }
+
+    // 设置HTTP-only cookie
+    const nextResponse = createSuccessResponse(data.data ?? data, data.message || '注册成功')
+    
+    if (data.success && data.data?.token) {
+      nextResponse.cookies.set('auth-token', data.data.token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         maxAge: 7 * 24 * 60 * 60 // 7天
       })
+    }
 
-      response.cookies.set('refresh-token', result.refreshToken!, {
+    if (data.success && data.data?.refreshToken) {
+      nextResponse.cookies.set('refresh-token', data.data.refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         maxAge: 30 * 24 * 60 * 60 // 30天
       })
-
-      return response
-    } else {
-      return NextResponse.json({
-        success: false,
-        error: result.error
-      }, { status: 400 })
     }
+
+    return nextResponse
 
   } catch (error) {
     console.error('❌ 注册API错误:', error)
-    return NextResponse.json({
-      success: false,
-      error: '服务器内部错误'
-    }, { status: 500 })
+    return createErrorResponse(error instanceof Error ? error.message : '服务器内部错误', 'INTERNAL_ERROR', 500)
   }
-})
+}

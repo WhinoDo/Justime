@@ -24,6 +24,23 @@ class Settings(BaseSettings):
     FEISHU_CLIENT_SECRET: str = ""
     FEISHU_BASE_URL: str = "https://open.feishu.cn/open-apis"
     
+    # LLM配置
+    LLM_MODEL_ID: str = ""
+    LLM_API_KEY: str = ""
+    LLM_BASE_URL: str = ""
+    LLM_TIMEOUT: int = 60
+    
+    # MongoDB配置
+    MONGODB_URI: str = "mongodb://localhost:27017/jushi-agent"
+    MONGODB_DB_NAME: str = "jushi-agent"
+    
+    # JWT配置
+    JWT_SECRET: str = ""
+    JWT_REFRESH_SECRET: str = ""
+    JWT_ALGORITHM: str = "HS256"
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7天
+    JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 30  # 30天
+    
     # CORS配置
     ALLOWED_ORIGINS: List[str] = [
         "http://localhost:3000",

@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from app.core.config import settings
 from app.api.v1.api import api_router
 from app.core.exceptions import setup_exception_handlers
+from app.database import connect_to_mongo, close_mongo_connection
 
 # 加载环境变量
 load_dotenv()
@@ -32,6 +33,20 @@ def create_app() -> FastAPI:
     
     # 设置异常处理器
     setup_exception_handlers(app)
+    
+    # 添加启动和关闭事件
+    @app.on_event("startup")
+    async def startup_event():
+        """应用启动时连接数据库"""
+        try:
+            await connect_to_mongo()
+        except Exception as e:
+            print(f'⚠️ 数据库连接失败，某些功能可能不可用: {e}')
+    
+    @app.on_event("shutdown")
+    async def shutdown_event():
+        """应用关闭时断开数据库连接"""
+        await close_mongo_connection()
     
     return app
 

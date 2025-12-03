@@ -4,8 +4,17 @@
 """
 
 import requests
+import json
 from typing import Dict, Any, Optional
 from app.core.config import settings
+
+try:
+    import lark_oapi as lark
+    from lark_oapi.api.calendar.v4 import ListCalendarRequest, ListCalendarResponse
+    LARK_SDK_AVAILABLE = True
+except ImportError:
+    LARK_SDK_AVAILABLE = False
+    print('⚠️ lark_oapi SDK 未安装，将使用 HTTP 请求方式')
 
 class FeishuService:
     """飞书服务类"""
@@ -150,8 +159,92 @@ class FeishuService:
         page_token: Optional[str] = None,
         sync_token: Optional[str] = None
     ) -> Dict[str, Any]:
-        """获取日历列表"""
+        """
+        获取日历列表
+        优先使用官方SDK，如果SDK不可用则回退到HTTP请求
+        """
+        # 优先使用官方SDK
+        if LARK_SDK_AVAILABLE:
+            try:
+                print(f'📅 使用官方SDK获取飞书日历列表...')
+                
+                # 创建client（使用app_id和app_secret用于SDK初始化）
+                client = lark.Client.builder() \
+                    .app_id(self.client_id) \
+                    .app_secret(self.client_secret) \
+                    .log_level(lark.LogLevel.INFO) \
+                    .build()
+                
+                # 构造请求对象
+                request_builder = ListCalendarRequest.builder() \
+                    .page_size(page_size)
+                
+                if page_token:
+                    request_builder.page_token(page_token)
+                if sync_token:
+                    request_builder.sync_token(sync_token)
+                
+                request = request_builder.build()
+                
+                # 使用用户访问令牌发起请求
+                response: ListCalendarResponse = client.calendar.v4.calendar.list(
+                    request,
+                    lark.withUserAccessToken(user_access_token)
+                )
+                
+                # 处理失败返回
+                if not response.success():
+                    error_msg = f"获取日历列表失败，code: {response.code}, msg: {response.msg}, log_id: {response.get_log_id()}"
+                    print(f'❌ {error_msg}')
+                    if response.raw and response.raw.content:
+                        try:
+                            error_detail = json.loads(response.raw.content)
+                            print(f'📥 错误详情: {json.dumps(error_detail, indent=2, ensure_ascii=False)}')
+                        except:
+                            pass
+                    return {
+                        'success': False,
+                        'error': error_msg,
+                        'code': response.code
+                    }
+                
+                # 处理业务结果
+                data = response.data
+                calendars = data.items if data and data.items else []
+                
+                print(f'✅ 成功获取日历列表: {len(calendars)} 个日历')
+                
+                # 转换为标准格式
+                calendars_list = []
+                for calendar in calendars:
+                    calendars_list.append({
+                        'calendar_id': calendar.calendar_id,
+                        'id': calendar.calendar_id,  # 兼容字段
+                        'summary': calendar.summary,
+                        'description': calendar.description if hasattr(calendar, 'description') else None,
+                        'type': calendar.type if hasattr(calendar, 'type') else None,
+                        'permissions': calendar.permissions if hasattr(calendar, 'permissions') else None,
+                    })
+                
+                return {
+                    'success': True,
+                    'data': {
+                        'calendars': calendars_list,
+                        'has_more': data.has_more if data and hasattr(data, 'has_more') else False,
+                        'page_token': data.page_token if data and hasattr(data, 'page_token') else '',
+                        'sync_token': data.sync_token if data and hasattr(data, 'sync_token') else ''
+                    }
+                }
+                
+            except Exception as e:
+                print(f'⚠️ SDK调用失败，回退到HTTP请求方式: {e}')
+                import traceback
+                traceback.print_exc()
+                # 继续执行HTTP请求方式
+        
+        # 回退到HTTP请求方式
         try:
+            print(f'📅 使用HTTP请求获取飞书日历列表...')
             url = self._gen_url('/calendar/v4/calendars')
             
             params = {
@@ -168,7 +261,6 @@ class FeishuService:
                 'Content-Type': 'application/json; charset=utf-8'
             }
             
-            print(f'📅 获取飞书日历列表...')
             print(f'📤 请求URL: {url}')
             print(f'📤 请求参数: {params}')
             
@@ -183,11 +275,12 @@ class FeishuService:
             print(f'📥 飞书日历列表API响应: {data}')
             
             if data.get('code') == 0:
-                print('✅ 成功获取日历列表')
+                calendars = data.get('data', {}).get('calendars', [])
+                print(f'✅ 成功获取日历列表: {len(calendars)} 个日历')
                 return {
                     'success': True,
                     'data': {
-                        'calendars': data.get('data', {}).get('calendars', []),
+                        'calendars': calendars,
                         'has_more': data.get('data', {}).get('has_more', False),
                         'page_token': data.get('data', {}).get('page_token', ''),
                         'sync_token': data.get('data', {}).get('sync_token', '')
@@ -211,6 +304,8 @@ class FeishuService:
             }
         except Exception as e:
             print(f'❌ 获取日历列表异常: {e}')
+            import traceback
+            traceback.print_exc()
             return {
                 'success': False,
                 'error': f'系统错误: {e}',

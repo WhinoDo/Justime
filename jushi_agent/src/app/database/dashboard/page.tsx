@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
-import { useFeishuLogin } from '@/hooks/useFeishuLogin'
 import { chatDB } from '@/lib/database/ChatDatabaseIntegration'
 import { 
   Database, 
@@ -24,7 +23,8 @@ import {
 } from 'lucide-react'
 
 export default function DatabaseDashboardPage() {
-  const { isLoggedIn, userInfo } = useFeishuLogin()
+  const isLoggedIn = false // 飞书集成已移除
+  const userInfo = null
   const [loading, setLoading] = useState(false)
   const [userStats, setUserStats] = useState<any>(null)
   const [conversations, setConversations] = useState<any[]>([])

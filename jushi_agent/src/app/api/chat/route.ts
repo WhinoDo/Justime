@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { EmotionAnalyzer } from '@/lib/ai/emotion-analyzer'
-import { ChatGenerator } from '@/lib/ai/chat-generator'
-import { TaskExtractor } from '@/lib/ai/task-extractor'
-import { TaskDecomposer } from '@/lib/task/decomposer'
 import { APIResponse, ChatRequest, ChatResponse } from '@/types'
-import { TimeUtils } from '@/lib/utils/time'
+import { API_CONFIG } from '@/lib/api/config'
+import { createErrorResponse, createSuccessResponse } from '@/lib/api/proxy'
 
-const emotionAnalyzer = new EmotionAnalyzer()
-const chatGenerator = new ChatGenerator()
-const taskExtractor = new TaskExtractor()
-const taskDecomposer = new TaskDecomposer()
-
+/**
+ * 聊天API路由
+ * 现在将请求转发到后端Python服务
+ */
 export async function POST(request: NextRequest) {
   try {
     const body: ChatRequest = await request.json()
@@ -31,83 +27,56 @@ export async function POST(request: NextRequest) {
       throw new Error('消息内容不能为空')
     }
 
-    // 获取当前时间上下文
-    const timeContext = TimeUtils.getCurrentTimeContext()
-    const timeContextString = TimeUtils.getTimeContextForAI()
+    // 获取认证token（从cookie或Authorization header）
+    const authToken = request.cookies.get('auth-token')?.value || 
+                      request.headers.get('authorization')?.replace('Bearer ', '')
+    
+    // 构建请求头
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    }
+    
+    // 如果有token，添加到请求头
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`
+    }
 
-    console.log('Chat API: 收到消息:', {
+    console.log('Chat API: 转发请求到后端服务:', {
       message: cleanMessage.substring(0, 100),
       taskId,
       messageLength: cleanMessage.length,
-      timestamp: timeContext.iso,
-      currentTime: timeContext.formatted.datetime,
-      timeOfDay: timeContext.timeOfDay
+      backendUrl: API_CONFIG.BASE_URL,
+      hasAuthToken: !!authToken
     })
 
-    // 1. 分析情绪 - 添加错误处理
-    console.log('开始情绪分析...')
-    let emotionAnalysis
-    try {
-      emotionAnalysis = await emotionAnalyzer.analyzeEmotion(cleanMessage)
-      console.log('情绪分析结果:', emotionAnalysis)
-    } catch (error) {
-      console.error('情绪分析失败:', error)
-      // 使用默认值继续
-      emotionAnalysis = { score: 7, tags: ['neutral'], reasoning: '分析失败，使用默认值' }
+    // 调用后端Python服务的聊天API
+    const backendUrl = API_CONFIG.getFullUrl('/chat/chat')
+    const response = await fetch(backendUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        message: cleanMessage,
+        taskId: taskId
+      })
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: response.statusText }))
+      throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`)
     }
 
-    // 2. 提取任务信息 - 添加错误处理
-    console.log('开始任务提取...')
-    let taskExtraction
-    try {
-      taskExtraction = await taskExtractor.extractTask(cleanMessage)
-      console.log('任务提取结果:', taskExtraction)
-    } catch (error) {
-      console.error('任务提取失败:', error)
-      // 使用默认值继续
-      taskExtraction = { hasTask: false, reasoning: '提取失败，使用默认值' }
-    }
-
-    // 3. 生成AI回复 - 添加错误处理
-    console.log('开始生成AI回复...')
-    let aiResult: { response: string; taskResult?: any }
-    try {
-      aiResult = await chatGenerator.generateResponse(
-        cleanMessage,
-        emotionAnalysis.score,
-        emotionAnalysis.tags,
-        taskExtraction,
-        timeContextString
-      )
-      console.log('AI回复生成完成，长度:', aiResult.response.length)
-      if (aiResult.taskResult) {
-        console.log('检测到任务规划:', {
-          hasTasks: aiResult.taskResult.hasTasks,
-          taskCount: aiResult.taskResult.tasks?.length || 0
-        })
-      }
-    } catch (error) {
-      console.error('AI回复生成失败:', error)
-      throw error // 重新抛出以触发外层错误处理
-    }
+    const backendResponse = await response.json()
     
-    // 4. 构建响应
-    const response: APIResponse<ChatResponse> = {
-      success: true,
-      data: {
-        response: aiResult.response,
-        emotionScore: emotionAnalysis.score,
-        emotionTags: emotionAnalysis.tags,
-        needsEmotionInput: emotionAnalysis.score <= 6, // 中度以下焦虑需要确认
-        taskExtraction: taskExtraction,
-        taskResult: aiResult.taskResult, // 添加任务规划结果
-        suggestedActions: taskExtraction.hasTask ? ['task_decomposition'] : undefined
-      },
-      timestamp: new Date().toISOString()
+    // 转换后端响应格式为前端期望的格式
+    const frontendResponse: APIResponse<ChatResponse> = {
+      success: backendResponse.success,
+      data: backendResponse.data,
+      error: backendResponse.error,
+      timestamp: backendResponse.timestamp || new Date().toISOString()
     }
 
-    console.log('Chat API: 响应生成成功')
-    return NextResponse.json(response)
+    console.log('Chat API: 后端响应成功')
+    return NextResponse.json(frontendResponse)
     
   } catch (error) {
     console.error('Chat API Error详情:', {
@@ -131,4 +100,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(errorResponse, { status: 500 })
   }
 }
-

@@ -1,76 +1,67 @@
 /**
  * 刷新令牌API
+ * 现在将请求转发到后端Python服务
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { AuthService } from '@/lib/auth/AuthService'
-import { withDatabase } from '@/lib/database/connection'
+import { API_CONFIG } from '@/lib/api/config'
+import { createErrorResponse, createSuccessResponse } from '@/lib/api/proxy'
 
 /**
  * 刷新访问令牌
  * POST /api/auth/refresh
  */
-export const POST = withDatabase(async (request: NextRequest) => {
+export async function POST(request: NextRequest) {
   try {
-    // 从cookie中获取refresh token
+    // 从cookie中获取refresh token（后端会自动处理）
+    // 调用后端Python服务的刷新令牌API
+    const backendUrl = API_CONFIG.getFullUrl('/auth/refresh')
+    
+    // 获取cookie并传递给后端
     const refreshToken = request.cookies.get('refresh-token')?.value
+    
+    const response = await fetch(backendUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': refreshToken ? `refresh-token=${refreshToken}` : ''
+      },
+      body: JSON.stringify({
+        refreshToken: refreshToken || undefined
+      })
+    })
 
-    if (!refreshToken) {
-      return NextResponse.json({
-        success: false,
-        error: '未找到刷新令牌'
-      }, { status: 401 })
+    const data = await response.json()
+
+    if (!response.ok) {
+      return createErrorResponse(data.detail || data.error || '刷新令牌失败', 'REFRESH_ERROR', response.status)
     }
 
-    // 刷新访问令牌
-    const result = await AuthService.refreshAccessToken(refreshToken)
-
-    if (result.success) {
-      const response = NextResponse.json({
-        success: true,
-        data: {
-          user: {
-            id: result.user!._id,
-            username: result.user!.username,
-            email: result.user!.email,
-            displayName: result.user!.displayName,
-            profile: result.user!.profile,
-            isEmailVerified: result.user!.isEmailVerified,
-            hasFeishuBinding: result.user!.hasFeishuBinding,
-            feishuBinding: result.user!.feishuBinding,
-            role: result.user!.role
-          }
-        }
-      })
-
-      // 设置新的认证cookie
-      response.cookies.set('auth-token', result.token!, {
+    // 设置新的认证cookie
+    const nextResponse = createSuccessResponse(data.data ?? data, data.message || '刷新成功')
+    
+    if (data.success && data.data?.token) {
+      nextResponse.cookies.set('auth-token', data.data.token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         maxAge: 7 * 24 * 60 * 60 // 7天
       })
+    }
 
-      response.cookies.set('refresh-token', result.refreshToken!, {
+    if (data.success && data.data?.refreshToken) {
+      nextResponse.cookies.set('refresh-token', data.data.refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         maxAge: 30 * 24 * 60 * 60 // 30天
       })
-
-      return response
-    } else {
-      return NextResponse.json({
-        success: false,
-        error: result.error
-      }, { status: 401 })
     }
+
+    return nextResponse
 
   } catch (error) {
     console.error('❌ 刷新令牌API错误:', error)
-    return NextResponse.json({
-      success: false,
-      error: '服务器内部错误'
-    }, { status: 500 })
+    return createErrorResponse(error instanceof Error ? error.message : '服务器内部错误', 'INTERNAL_ERROR', 500)
   }
-})
+}

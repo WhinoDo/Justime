@@ -46,7 +46,9 @@ class DatabaseConnection {
 
       const mongoUri = process.env.MONGODB_URI
       if (!mongoUri) {
-        throw new Error('MONGODB_URI 环境变量未设置')
+        const errorMsg = 'MONGODB_URI 环境变量未设置。请在 .env.local 文件中添加: MONGODB_URI=mongodb://localhost:27017/jushi-agent'
+        console.error('❌', errorMsg)
+        throw new Error(errorMsg)
       }
 
       console.log('📊 开始连接MongoDB数据库...')
@@ -143,8 +145,17 @@ export async function ensureDbConnection(): Promise<void> {
   try {
     await dbConnection.connect()
   } catch (error) {
-    console.error('❌ 确保数据库连接失败:', error)
-    throw new Error('数据库连接失败，请稍后重试')
+    const errorMessage = error instanceof Error ? error.message : '未知错误'
+    console.error('❌ 确保数据库连接失败:', errorMessage)
+    
+    // 提供更详细的错误信息
+    if (errorMessage.includes('MONGODB_URI')) {
+      throw new Error('数据库配置错误：MONGODB_URI 环境变量未设置')
+    } else if (errorMessage.includes('ECONNREFUSED') || errorMessage.includes('timeout')) {
+      throw new Error('数据库连接失败：请确保 MongoDB 服务正在运行')
+    } else {
+      throw new Error(`数据库连接失败：${errorMessage}`)
+    }
   }
 }
 

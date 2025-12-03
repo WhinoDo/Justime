@@ -6,10 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Separator } from '@/components/ui/separator'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useAuth } from '@/hooks/useAuth'
-import { useFeishuLogin } from '@/hooks/useFeishuLogin'
 import { 
   Eye, 
   EyeOff, 
@@ -29,7 +27,6 @@ interface LoginFormProps {
 
 export function LoginForm({ onSuccess, onSwitchToRegister, redirectTo }: LoginFormProps) {
   const { login, isLoading } = useAuth()
-  const { loginWithQR } = useFeishuLogin()
   
   const [formData, setFormData] = useState({
     identifier: '',
@@ -88,27 +85,6 @@ export function LoginForm({ onSuccess, onSwitchToRegister, redirectTo }: LoginFo
       setError('登录时发生错误，请稍后重试')
     } finally {
       setIsSubmitting(false)
-    }
-  }
-
-  const handleFeishuLogin = async () => {
-    try {
-      const result = await loginWithQR()
-      if (result.success) {
-        setSuccess('飞书登录成功！')
-        onSuccess?.(result.userInfo)
-        
-        if (redirectTo) {
-          setTimeout(() => {
-            window.location.href = redirectTo
-          }, 1000)
-        }
-      } else {
-        setError(result.error || '飞书登录失败')
-      }
-    } catch (error) {
-      console.error('飞书登录错误:', error)
-      setError('飞书登录时发生错误')
     }
   }
 
@@ -217,33 +193,6 @@ export function LoginForm({ onSuccess, onSwitchToRegister, redirectTo }: LoginFo
             )}
           </Button>
         </form>
-
-        {/* 分隔线 */}
-        <div className="relative">
-          <Separator />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="bg-white px-2 text-sm text-gray-500">或</span>
-          </div>
-        </div>
-
-        {/* 飞书登录 */}
-        <Button
-          variant="outline"
-          className="w-full"
-          onClick={handleFeishuLogin}
-          disabled={isSubmitting || isLoading}
-        >
-          <img 
-            src="/feishu-icon.png" 
-            alt="飞书" 
-            className="h-4 w-4 mr-2"
-            onError={(e) => {
-              // 如果图标加载失败，使用文字
-              e.currentTarget.style.display = 'none'
-            }}
-          />
-          使用飞书账号登录
-        </Button>
 
         {/* 底部链接 */}
         <div className="text-center space-y-2">

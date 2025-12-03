@@ -8,7 +8,6 @@ import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Separator } from '@/components/ui/separator'
 import { useAuth } from '@/hooks/useAuth'
-import { useFeishuLogin } from '@/hooks/useFeishuLogin'
 import { 
   Eye, 
   EyeOff, 
@@ -30,7 +29,6 @@ interface RegisterFormProps {
 
 export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: RegisterFormProps) {
   const { register, isLoading } = useAuth()
-  const { loginWithQR } = useFeishuLogin()
   
   const [formData, setFormData] = useState({
     username: '',
@@ -146,26 +144,6 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
     }
   }
 
-  const handleFeishuLogin = async () => {
-    try {
-      const result = await loginWithQR()
-      if (result.success) {
-        setSuccess('飞书登录成功！')
-        onSuccess?.(result.userInfo)
-        
-        if (redirectTo) {
-          setTimeout(() => {
-            window.location.href = redirectTo
-          }, 1000)
-        }
-      } else {
-        setError(result.error || '飞书登录失败')
-      }
-    } catch (error) {
-      console.error('飞书登录错误:', error)
-      setError('飞书登录时发生错误')
-    }
-  }
 
   return (
     <Card className="w-full max-w-md mx-auto">
@@ -348,24 +326,6 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
             <span className="bg-white px-2 text-sm text-gray-500">或</span>
           </div>
         </div>
-
-        {/* 飞书登录 */}
-        <Button
-          variant="outline"
-          className="w-full"
-          onClick={handleFeishuLogin}
-          disabled={isSubmitting || isLoading}
-        >
-          <img 
-            src="/feishu-icon.png" 
-            alt="飞书" 
-            className="h-4 w-4 mr-2"
-            onError={(e) => {
-              e.currentTarget.style.display = 'none'
-            }}
-          />
-          使用飞书账号注册
-        </Button>
 
         {/* 底部链接 */}
         <div className="text-center">

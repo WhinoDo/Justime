@@ -1,27 +1,29 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { EmotionScoreInput } from './EmotionScoreInput'
 import { MessageBubble } from './MessageBubble'
 import { Message } from '@/types'
 import { generateId } from '@/lib/utils'
-import { Send, Trash2, Sparkles, MessageCircle, Sun, Moon, Monitor, Calendar, Clock, LogOut, AlertTriangle, Settings } from 'lucide-react'
+import { Send, Trash2, Sparkles, MessageCircle, Sun, Moon, Monitor, Clock, AlertTriangle, Settings, Bot, Calendar } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useEffect as useEffectTheme, useState as useStateTheme } from 'react'
 import Link from 'next/link'
-import { FeishuTokenManager } from '@/lib/feishu/token-manager'
-import { FeishuLoginRedirect } from '@/lib/feishu/login-redirect'
-import { LoginStatusListener } from '@/components/feishu/LoginStatusListener'
-import { CalendarIntegration } from './CalendarIntegration'
-import { TokenDebugger } from '../debug/TokenDebugger'
 import { TaskSelector } from './TaskSelector'
 import { TaskItem } from '@/lib/ai/task-planner'
 import { TimeAwareTaskInput } from './TimeAwareTaskInput'
 import { TimeUtils } from '@/lib/utils/time'
-import { useFeishuLogin } from '@/hooks/useFeishuLogin'
 import { chatDB } from '@/lib/database/ChatDatabaseIntegration'
 import { MessageType } from '@/types/auth'
+import { useAuth } from '@/hooks/useAuth'
+import {
+  Select,
+  SelectContent,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
 interface ChatInterfaceProps {
   initialMessages?: Message[]
@@ -43,18 +45,17 @@ export function ChatInterface({
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const { theme, setTheme } = useTheme()
-  const [mounted, setMounted] = useStateTheme(false)
-  const [isFeishuLoggedIn, setIsFeishuLoggedIn] = useStateTheme(false)
-  const [showDebugger, setShowDebugger] = useStateTheme(false)
+  const [mounted, setMounted] = useState(false)
   const [pendingTasks, setPendingTasks] = useState<TaskItem[]>([])
   const [taskMessageId, setTaskMessageId] = useState<string | null>(null)
   const [showTimeHelper, setShowTimeHelper] = useState(false)
   const [currentTime, setCurrentTime] = useState(TimeUtils.getCurrentTimeContext())
-  const { isLoggedIn, logout } = useFeishuLogin()
-  const [hasFeishuApp, setHasFeishuApp] = useState<boolean | null>(null)
-  const [showAppConfigPrompt, setShowAppConfigPrompt] = useState(false)
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true)
+  const { user: authUser } = useAuth()
+  const [selectedModel, setSelectedModel] = useState<string>('')
+  const [availableModels, setAvailableModels] = useState<Array<{id: string, name: string}>>([])
+  const [modelError, setModelError] = useState<string | null>(null)
 
   const scrollToBottom = () => {
     if (messagesEndRef.current && typeof messagesEndRef.current.scrollIntoView === 'function') {
@@ -89,22 +90,6 @@ export function ChatInterface({
     return () => clearInterval(interval)
   }, [])
 
-  const checkFeishuAppConfig = async (userId: string) => {
-    try {
-      // 动态导入服务以避免在客户端加载
-      const { FeishuAppService } = await import('@/lib/database/services/FeishuAppService')
-      const activeApp = await FeishuAppService.getActiveApp(userId)
-      setHasFeishuApp(!!activeApp)
-
-      // 如果用户已登录但没有飞书应用配置，显示提示
-      if (isLoggedIn && !activeApp) {
-        setShowAppConfigPrompt(true)
-      }
-    } catch (error) {
-      console.error('❌ 检查飞书应用配置失败:', error)
-      setHasFeishuApp(false)
-    }
-  }
 
   const initializeChatSession = async (userId: string) => {
     try {
@@ -152,6 +137,45 @@ export function ChatInterface({
     }
   }
 
+  // 加载用户的LLM配置
+  const loadLLMConfig = useCallback(async () => {
+    try {
+      const response = await fetch('/api/auth/llm-config', {
+        credentials: 'include'
+      })
+      const result = await response.json()
+      
+      if (result.success && result.data?.llmConfig) {
+        const config = result.data.llmConfig
+        if (config.modelId && config.apiKey && config.baseUrl) {
+          setSelectedModel(config.modelId)
+          // 根据baseUrl判断服务商
+          let provider = '自定义'
+          if (config.baseUrl.includes('openai.com')) {
+            provider = 'OpenAI'
+          } else if (config.baseUrl.includes('dashscope')) {
+            provider = '通义千问'
+          } else if (config.baseUrl.includes('baidu')) {
+            provider = '文心一言'
+          }
+          
+          setAvailableModels([{
+            id: config.modelId,
+            name: `${config.modelId} (${provider})`
+          }])
+          setModelError(null)
+        } else {
+          setModelError('请先配置LLM模型')
+        }
+      } else {
+        setModelError('未配置LLM模型')
+      }
+    } catch (err) {
+      console.error('加载LLM配置失败:', err)
+      setModelError('加载LLM配置失败')
+    }
+  }, [])
+
   useEffectTheme(() => {
     setMounted(true)
 
@@ -161,12 +185,13 @@ export function ChatInterface({
         const user = await chatDB.initializeUser()
         console.log('✅ 数据库用户会话已初始化')
 
-        // 检查用户是否有飞书应用配置
+        // 初始化聊天会话
         if (user) {
-          checkFeishuAppConfig(user.id)
-          // 初始化聊天会话
           await initializeChatSession(user.id)
         }
+
+        // 加载LLM配置
+        await loadLLMConfig()
       } catch (error) {
         console.error('❌ 数据库初始化失败:', error)
       }
@@ -174,45 +199,8 @@ export function ChatInterface({
 
     initializeDatabase()
 
-    // 延迟检查飞书登录状态，确保组件完全挂载
-    const timer = setTimeout(() => {
-      checkFeishuLoginStatus()
-    }, 100)
-
-    // 监听 localStorage 变化（跨标签页同步）
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'feishu_login_session' || e.key === 'feishu_token_info') {
-        console.log('🔄 检测到登录状态变化，重新检查...')
-        checkFeishuLoginStatus()
-      }
-    }
-
-    window.addEventListener('storage', handleStorageChange)
-
-    return () => {
-      clearTimeout(timer)
-      window.removeEventListener('storage', handleStorageChange)
-    }
   }, [])
 
-  const checkFeishuLoginStatus = () => {
-    if (typeof window !== 'undefined') {
-      try {
-        const isLoggedIn = FeishuTokenManager.isLoggedIn()
-        console.log('🔍 ChatInterface 登录状态检查:', isLoggedIn)
-        setIsFeishuLoggedIn(isLoggedIn)
-      } catch (error) {
-        console.error('❌ ChatInterface 登录状态检查失败:', error)
-        setIsFeishuLoggedIn(false)
-      }
-    }
-  }
-
-  const handleFeishuLogin = () => {
-    console.log('🔗 ChatInterface 发起飞书登录')
-    // 直接使用统一的登录跳转管理器
-    FeishuLoginRedirect.redirectToLogin(true)
-  }
 
   const getThemeIcon = () => {
     if (!mounted) return <Monitor className="w-4 h-4" />
@@ -288,29 +276,39 @@ export function ChatInterface({
       const data = await response.json()
       console.log('API响应成功:', { 
         success: data.success, 
-        hasResponse: !!data.data?.response 
+        hasResponse: !!data.data?.response,
+        fullData: data // 完整数据用于调试
       })
 
       if (data.success) {
         const processingTime = Date.now() - startTime
 
+        // 提取响应内容，支持多种可能的数据结构
+        const responseContent = data.data?.response || data.data?.message || data.response || ''
+        
+        console.log('提取的响应内容:', {
+          content: responseContent.substring(0, 100),
+          contentLength: responseContent.length,
+          dataStructure: Object.keys(data.data || {})
+        })
+
         const assistantMessage: Message = {
           id: generateId(),
           user_id: 'current-user',
           role: 'assistant',
-          content: data.data.response,
+          content: responseContent,
           task_id: currentTaskId,
-          emotion_score: data.data.emotionScore,
+          emotion_score: data.data?.emotionScore || data.data?.emotion_score,
           created_at: new Date().toISOString()
         }
 
         setMessages(prev => [...prev, assistantMessage])
 
         // 保存AI响应到数据库
-        await chatDB.addMessage('assistant', data.data.response, {
-          emotionAnalysis: data.data.emotionScore ? {
-            score: data.data.emotionScore,
-            tags: data.data.emotionTags || [],
+        await chatDB.addMessage('assistant', responseContent, {
+          emotionAnalysis: (data.data?.emotionScore || data.data?.emotion_score) ? {
+            score: data.data?.emotionScore || data.data?.emotion_score,
+            tags: data.data?.emotionTags || data.data?.emotion_tags || [],
             context: data.data.emotionContext
           } : undefined,
           taskData: data.data.taskResult,
@@ -319,8 +317,8 @@ export function ChatInterface({
         })
 
         // 保存AI响应到聊天记录
-        await saveChatMessage(MessageType.ASSISTANT, data.data.response, {
-          emotionAnalysis: data.data.emotionScore ? {
+        await saveChatMessage(MessageType.ASSISTANT, responseContent, {
+          emotionAnalysis: (data.data?.emotionScore || data.data?.emotion_score) ? {
             emotion: data.data.emotionTags?.[0] || 'neutral',
             confidence: data.data.emotionScore / 10,
             suggestions: data.data.emotionContext ? [data.data.emotionContext] : undefined
@@ -356,14 +354,31 @@ export function ChatInterface({
           setCurrentTaskId(data.data.task.id)
         }
       } else {
-        throw new Error(data.error?.message || '未知错误')
+        const errorDetail = data.error?.message || data.error?.detail || '未知错误'
+        const errorType = data.error?.type || 'unknown'
+        
+        // 更详细的错误信息
+        let errorMessage = `抱歉，发生了一些错误：${errorDetail}`
+        
+        if (errorType === 'connection' || errorDetail.includes('Connection') || errorDetail.includes('连接')) {
+          errorMessage = '连接失败：请检查您的网络连接和LLM配置是否正确。如果已配置模型，请前往"个人信息"页面检查配置。'
+        } else if (errorDetail.includes('API密钥') || errorDetail.includes('api key') || errorDetail.includes('API key')) {
+          errorMessage = 'API密钥错误：请检查您的LLM配置中的API密钥是否正确。'
+        } else if (errorDetail.includes('模型') || errorDetail.includes('model') || errorDetail.includes('Model')) {
+          errorMessage = '模型配置错误：请检查您的LLM配置中的模型ID是否正确。'
+        } else if (errorDetail.includes('未配置') || errorDetail.includes('未定义')) {
+          errorMessage = 'LLM未配置：请前往"个人信息"页面配置您的LLM模型和API密钥。'
+        }
+        
+        throw new Error(errorMessage)
       }
     } catch (error) {
+      console.error('聊天API错误:', error)
       const errorMessage: Message = {
         id: generateId(),
         user_id: 'current-user',
         role: 'assistant',
-        content: `抱歉，发生了一些错误：${error instanceof Error ? error.message : '请稍后重试'}`,
+        content: error instanceof Error ? error.message : '抱歉，发生了一些错误，请稍后重试',
         created_at: new Date().toISOString()
       }
       setMessages(prev => [...prev, errorMessage])
@@ -382,19 +397,12 @@ export function ChatInterface({
     }
   }
 
-  const handleTaskAdded = (taskId: string, success: boolean) => {
-    if (success) {
-      // 移除已成功添加的任务
-      setPendingTasks(prev => prev.filter(task => task.id !== taskId))
-
-      // 如果所有任务都已处理，清除任务消息关联
-      if (pendingTasks.length === 1) {
-        setTaskMessageId(null)
-      }
-
-      console.log(`任务 ${taskId} 已成功添加到飞书日历`)
-    } else {
-      console.error(`任务 ${taskId} 添加失败`)
+  const handleTaskAdded = (task: TaskItem) => {
+    // 移除已成功添加的任务
+    setPendingTasks(prev => prev.filter(t => t.title !== task.title))
+    // 如果所有任务都已处理，清除任务消息关联
+    if (pendingTasks.length === 1) {
+      setTaskMessageId(null)
     }
   }
 
@@ -444,29 +452,52 @@ export function ChatInterface({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {/* 日程管理按钮 */}
-            {isFeishuLoggedIn ? (
-              <Link href="/feishu/calendar">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors duration-200 text-blue-600 dark:text-blue-400"
-                  title="飞书日程管理"
-                >
-                  <Calendar className="w-4 h-4" />
-                </Button>
-              </Link>
-            ) : (
+            {/* 模型选择器 */}
+            {authUser && (
+              <div className="flex items-center gap-2">
+                {selectedModel ? (
+                  <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 dark:bg-blue-900/30 rounded-md border border-blue-200 dark:border-blue-800">
+                    <Bot className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                    <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                      {selectedModel}
+                    </span>
+                  </div>
+                ) : (
+                  <Link href="/model-config">
+                    <Alert className="border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20 py-1 px-2 cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-900/30">
+                      <AlertTriangle className="h-3 w-3 text-yellow-600 dark:text-yellow-400" />
+                      <AlertDescription className="text-xs text-yellow-800 dark:text-yellow-300 ml-1">
+                        未配置模型
+                      </AlertDescription>
+                    </Alert>
+                  </Link>
+                )}
+                <Link href="/model-config">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-xs hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors duration-200 text-blue-600 dark:text-blue-400"
+                    title="配置LLM模型"
+                  >
+                    <Settings className="w-3 h-3 mr-1" />
+                    配置
+                  </Button>
+                </Link>
+              </div>
+            )}
+
+
+            {/* 日历按钮 */}
+            <Link href="/calendar">
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={handleFeishuLogin}
                 className="hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors duration-200 text-orange-600 dark:text-orange-400"
-                title="登录飞书以使用日程管理"
+                title="日历管理"
               >
                 <Calendar className="w-4 h-4" />
               </Button>
-            )}
+            </Link>
 
             {/* 时间助手按钮 */}
             <Button
@@ -479,41 +510,17 @@ export function ChatInterface({
               <Clock className="w-4 h-4" />
             </Button>
 
-            {/* 聊天记录按钮 - 仅在已登录时显示 */}
-            {isLoggedIn && (
-              <Link href="/chat/history">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors duration-200 text-purple-600 dark:text-purple-400"
-                  title="查看聊天记录"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                </Button>
-              </Link>
-            )}
-
-            {/* 登出按钮 - 仅在已登录时显示 */}
-            {isLoggedIn && (
+            {/* 聊天记录按钮 */}
+            <Link href="/chat/history">
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => {
-                  if (confirm('确定要登出飞书账号吗？')) {
-                    logout()
-                    alert('已成功登出')
-                    // 刷新页面以确保状态完全更新
-                    setTimeout(() => {
-                      window.location.reload()
-                    }, 500)
-                  }
-                }}
-                className="hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors duration-200 text-red-600 dark:text-red-400"
-                title="登出飞书账号"
+                className="hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors duration-200 text-purple-600 dark:text-purple-400"
+                title="查看聊天记录"
               >
-                <LogOut className="w-4 h-4" />
+                <MessageCircle className="w-4 h-4" />
               </Button>
-            )}
+            </Link>
 
             <Button
               variant="ghost"
@@ -534,18 +541,6 @@ export function ChatInterface({
               清空对话
             </Button>
 
-            {/* 开发模式调试按钮 */}
-            {process.env.NODE_ENV === 'development' && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowDebugger(!showDebugger)}
-                className="hover:bg-yellow-100 dark:hover:bg-yellow-900/30 transition-colors duration-200 text-yellow-600 dark:text-yellow-400"
-                title="Token 调试器"
-              >
-                🔍
-              </Button>
-            )}
           </div>
         </div>
       </div>
@@ -575,52 +570,8 @@ export function ChatInterface({
               <span className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-sm">
                 智能陪伴
               </span>
-              {isFeishuLoggedIn && (
-                <Link href="/feishu/calendar">
-                  <span className="px-3 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 rounded-full text-sm hover:bg-orange-200 dark:hover:bg-orange-800/40 transition-colors cursor-pointer">
-                    📅 日程管理
-                  </span>
-                </Link>
-              )}
             </div>
 
-            {/* 飞书应用配置提示 */}
-            {showAppConfigPrompt && hasFeishuApp === false && (
-              <div className="max-w-md mx-auto">
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <div className="flex items-start gap-3">
-                    <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
-                    <div className="flex-1">
-                      <h4 className="font-medium text-yellow-800">需要配置飞书应用</h4>
-                      <p className="text-sm text-yellow-700 mt-1">
-                        要使用日程管理功能，请先配置您的飞书应用信息
-                      </p>
-                      <div className="flex gap-2 mt-3">
-                        <Link href="/feishu/app-config">
-                          <Button size="sm" className="bg-yellow-600 hover:bg-yellow-700">
-                            <Settings className="h-4 w-4 mr-1" />
-                            立即配置
-                          </Button>
-                        </Link>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setShowAppConfigPrompt(false)}
-                          className="text-yellow-700 hover:text-yellow-800"
-                        >
-                          稍后配置
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 日程管理组件 */}
-            <div className="max-w-md mx-auto">
-              <CalendarIntegration />
-            </div>
           </div>
         ) : (
           <>
@@ -661,12 +612,6 @@ export function ChatInterface({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Token 调试器 */}
-      {showDebugger && process.env.NODE_ENV === 'development' && (
-        <div className="p-4 border-t bg-yellow-50/50 dark:bg-yellow-900/10">
-          <TokenDebugger />
-        </div>
-      )}
 
       {/* 情绪输入区域 */}
       {showEmotionInput && (

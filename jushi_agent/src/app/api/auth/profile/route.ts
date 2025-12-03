@@ -1,175 +1,92 @@
 /**
  * 用户资料管理API
+ * 现在将请求转发到后端Python服务
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { AuthService } from '@/lib/auth/AuthService'
-import { User } from '@/lib/database/models/User'
-import { withDatabase } from '@/lib/database/connection'
+import { API_CONFIG } from '@/lib/api/config'
+import { createErrorResponse, createSuccessResponse } from '@/lib/api/proxy'
 
 /**
  * 获取用户资料
  * GET /api/auth/profile
  */
-export const GET = withDatabase(async (request: NextRequest) => {
+export async function GET(request: NextRequest) {
   try {
-    // 从cookie中获取token验证用户身份
+    // 从cookie中获取token
     const token = request.cookies.get('auth-token')?.value
 
     if (!token) {
-      return NextResponse.json({
-        success: false,
-        error: '请先登录'
-      }, { status: 401 })
+      return createErrorResponse('请先登录', 'AUTHENTICATION_ERROR', 401)
     }
 
-    // 验证token
-    const payload = AuthService.verifyToken(token)
-    if (!payload) {
-      return NextResponse.json({
-        success: false,
-        error: '无效的认证令牌'
-      }, { status: 401 })
-    }
-
-    // 获取用户信息
-    const user = await User.findById(payload.userId)
-    if (!user) {
-      return NextResponse.json({
-        success: false,
-        error: '用户不存在'
-      }, { status: 404 })
-    }
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        user: {
-          id: user._id,
-          username: user.username,
-          email: user.email,
-          displayName: user.displayName,
-          profile: user.profile,
-          hasFeishuBinding: user.hasFeishuBinding,
-          feishuBinding: user.feishuBinding,
-          isEmailVerified: user.isEmailVerified,
-          isPhoneVerified: user.isPhoneVerified,
-          role: user.role,
-          status: user.status,
-          statistics: user.statistics,
-          lastLoginAt: user.lastLoginAt,
-          createdAt: user.createdAt
-        }
+    // 调用后端Python服务的获取用户资料API
+    const backendUrl = API_CONFIG.getFullUrl('/auth/profile')
+    const response = await fetch(backendUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       }
     })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      return createErrorResponse(data.detail || data.error || '获取用户资料失败', 'FETCH_PROFILE_ERROR', response.status)
+    }
+
+    return createSuccessResponse(data.data ?? data, '获取用户资料成功')
 
   } catch (error) {
     console.error('❌ 获取用户资料失败:', error)
     return NextResponse.json({
       success: false,
-      error: '服务器内部错误'
+      error: error instanceof Error ? error.message : '服务器内部错误'
     }, { status: 500 })
   }
-})
+}
 
 /**
  * 更新用户资料
  * PUT /api/auth/profile
  */
-export const PUT = withDatabase(async (request: NextRequest) => {
+export async function PUT(request: NextRequest) {
   try {
-    // 从cookie中获取token验证用户身份
+    // 从cookie中获取token
     const token = request.cookies.get('auth-token')?.value
 
     if (!token) {
-      return NextResponse.json({
-        success: false,
-        error: '请先登录'
-      }, { status: 401 })
-    }
-
-    // 验证token
-    const payload = AuthService.verifyToken(token)
-    if (!payload) {
-      return NextResponse.json({
-        success: false,
-        error: '无效的认证令牌'
-      }, { status: 401 })
+      return createErrorResponse('请先登录', 'AUTHENTICATION_ERROR', 401)
     }
 
     const body = await request.json()
-    const { profile } = body
 
-    if (!profile) {
-      return NextResponse.json({
-        success: false,
-        error: '缺少资料数据'
-      }, { status: 400 })
+    if (!body.profile) {
+      return createErrorResponse('缺少资料数据', 'VALIDATION_ERROR', 400)
     }
 
-    // 获取用户
-    const user = await User.findById(payload.userId)
-    if (!user) {
-      return NextResponse.json({
-        success: false,
-        error: '用户不存在'
-      }, { status: 404 })
-    }
-
-    // 更新用户资料
-    const updatedUser = await User.findByIdAndUpdate(
-      payload.userId,
-      {
-        $set: {
-          'profile.displayName': profile.displayName,
-          'profile.bio': profile.bio,
-          'profile.phone': profile.phone,
-          'profile.location': profile.location,
-          'profile.website': profile.website,
-          'profile.jobTitle': profile.jobTitle,
-          'profile.department': profile.department,
-          updatedAt: new Date()
-        }
+    // 调用后端Python服务的更新用户资料API
+    const backendUrl = API_CONFIG.getFullUrl('/auth/profile')
+    const response = await fetch(backendUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       },
-      { new: true }
-    )
+      body: JSON.stringify(body)
+    })
 
-    if (!updatedUser) {
-      return NextResponse.json({
-        success: false,
-        error: '更新用户资料失败'
-      }, { status: 500 })
+    const data = await response.json()
+
+    if (!response.ok) {
+      return createErrorResponse(data.detail || data.error || '更新用户资料失败', 'UPDATE_PROFILE_ERROR', response.status)
     }
 
-    console.log('✅ 用户资料更新成功:', updatedUser.email)
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        user: {
-          id: updatedUser._id,
-          username: updatedUser.username,
-          email: updatedUser.email,
-          displayName: updatedUser.displayName,
-          profile: updatedUser.profile,
-          hasFeishuBinding: updatedUser.hasFeishuBinding,
-          feishuBinding: updatedUser.feishuBinding,
-          isEmailVerified: updatedUser.isEmailVerified,
-          isPhoneVerified: updatedUser.isPhoneVerified,
-          role: updatedUser.role,
-          status: updatedUser.status,
-          statistics: updatedUser.statistics,
-          lastLoginAt: updatedUser.lastLoginAt,
-          createdAt: updatedUser.createdAt
-        }
-      }
-    })
+    return createSuccessResponse(data.data ?? data, '更新用户资料成功')
 
   } catch (error) {
     console.error('❌ 更新用户资料失败:', error)
-    return NextResponse.json({
-      success: false,
-      error: '服务器内部错误'
-    }, { status: 500 })
+    return createErrorResponse(error instanceof Error ? error.message : '服务器内部错误', 'INTERNAL_ERROR', 500)
   }
-})
+}

@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { useFeishuLogin } from '@/hooks/useFeishuLogin'
 import { chatDB } from '@/lib/database/ChatDatabaseIntegration'
 import { ChatHistoryPanel } from '@/components/chat/ChatHistoryPanel'
 import { 
@@ -37,7 +36,8 @@ interface ChatSession {
 }
 
 export default function ChatHistoryPage() {
-  const { isLoggedIn, userInfo } = useFeishuLogin()
+  const isLoggedIn = false // 飞书集成已移除
+  const userInfo = null
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [selectedSession, setSelectedSession] = useState<ChatSession | null>(null)
   const [loading, setLoading] = useState(true)
