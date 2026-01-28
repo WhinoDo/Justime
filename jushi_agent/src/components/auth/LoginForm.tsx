@@ -89,9 +89,9 @@ export function LoginForm({ onSuccess, onSwitchToRegister, redirectTo }: LoginFo
   }
 
   return (
-    <Card className="w-full max-w-md mx-auto">
+    <Card className="w-full max-w-md mx-auto bg-white/95 text-gray-900 border border-orange-100 shadow-xl dark:bg-white dark:text-gray-900">
       <CardHeader>
-        <CardTitle className="text-center text-2xl font-bold">
+        <CardTitle className="text-center text-2xl font-bold text-gray-900">
           登录账户
         </CardTitle>
         <p className="text-center text-gray-600">
@@ -128,7 +128,7 @@ export function LoginForm({ onSuccess, onSwitchToRegister, redirectTo }: LoginFo
                 placeholder="请输入用户名或邮箱"
                 value={formData.identifier}
                 onChange={(e) => handleInputChange('identifier', e.target.value)}
-                className="pl-10"
+                className="pl-10 bg-white text-gray-900 placeholder:text-gray-400 border-gray-200 focus-visible:ring-orange-500"
                 disabled={isSubmitting}
               />
             </div>
@@ -145,7 +145,7 @@ export function LoginForm({ onSuccess, onSwitchToRegister, redirectTo }: LoginFo
                 placeholder="请输入密码"
                 value={formData.password}
                 onChange={(e) => handleInputChange('password', e.target.value)}
-                className="pl-10 pr-10"
+                className="pl-10 pr-10 bg-white text-gray-900 placeholder:text-gray-400 border-gray-200 focus-visible:ring-orange-500"
                 disabled={isSubmitting}
               />
               <Button

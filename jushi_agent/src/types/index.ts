@@ -140,6 +140,7 @@ export interface ChatRequest {
   message: string
   taskId?: string
   emotionScore?: number
+  sessionId?: string
 }
 
 export interface ChatResponse {
@@ -147,6 +148,7 @@ export interface ChatResponse {
   emotionScore: number
   emotionTags: string[]
   needsEmotionInput?: boolean
+  sessionId?: string
   suggestedActions?: string[]
   task?: Task
   taskExtraction?: TaskExtraction

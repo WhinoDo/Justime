@@ -44,11 +44,11 @@ export async function POST(request: NextRequest) {
 
     // 设置HTTP-only cookie
     const maxAge = rememberMe ? 30 * 24 * 60 * 60 : 7 * 24 * 60 * 60 // 记住我30天，否则7天
-    
+
     const nextResponse = createSuccessResponse(data.data, data.message || '登录成功')
-    
+
     if (data.success && data.data?.token) {
-      nextResponse.cookies.set('auth-token', data.data.token, {
+      nextResponse.cookies.set('access_token', data.data.token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',

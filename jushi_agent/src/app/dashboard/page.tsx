@@ -1,169 +1,189 @@
 'use client'
 
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
-import { Loader2, AlertCircle } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import {
+  Loader2,
+  AlertCircle,
+  MessageSquare,
+  Calendar,
+  History,
+  Settings,
+  User,
+  Database,
+  ArrowRight
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 export default function DashboardPage() {
   const { user, isLoading, isAuthenticated } = useAuth()
   const router = useRouter()
+  const [greeting, setGreeting] = useState('')
 
-  // 如果正在加载，显示加载状态
+  useEffect(() => {
+    const hour = new Date().getHours()
+    if (hour < 5) setGreeting('夜深了')
+    else if (hour < 11) setGreeting('早上好')
+    else if (hour < 13) setGreeting('中午好')
+    else if (hour < 18) setGreeting('下午好')
+    else setGreeting('晚上好')
+  }, [])
+
+  // 认证重定向逻辑
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push('/auth?mode=login&redirect=/dashboard')
+    }
+  }, [isLoading, isAuthenticated, router])
+
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
-          <p className="text-sm text-gray-500">正在检查登录状态...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     )
   }
 
-  // 如果未登录，重定向到登录页面
-  if (!isAuthenticated) {
-    useEffect(() => {
-      router.push('/auth?mode=login&redirect=/dashboard')
-    }, [router])
-    
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto" />
-          <p className="text-gray-600">正在重定向到登录页面...</p>
-        </div>
-      </div>
-    )
-  }
+  if (!isAuthenticated) return null
+
+  // 仪表盘功能卡片配置
+  const cards = [
+    {
+      title: "AI 助手对话",
+      description: "与聚时 AI 畅聊，获取即时帮助与情感支持",
+      icon: MessageSquare,
+      href: "/chat",
+      color: "text-blue-600",
+      bgColor: "bg-blue-100/50",
+      gradient: "from-blue-500/10 to-blue-600/10"
+    },
+    {
+      title: "日程管理",
+      description: "查看日历视图，规划您的时间与任务",
+      icon: Calendar,
+      href: "/calendar",
+      color: "text-orange-600",
+      bgColor: "bg-orange-100/50",
+      gradient: "from-orange-500/10 to-orange-600/10"
+    },
+    {
+      title: "聊天记录",
+      description: "回顾历史对话，查找过往的灵感与建议",
+      icon: History,
+      href: "/chat/history",
+      color: "text-purple-600",
+      bgColor: "bg-purple-100/50",
+      gradient: "from-purple-500/10 to-purple-600/10"
+    },
+    {
+      title: "知识库",
+      description: "管理个人文档，构建专属的知识体系",
+      icon: Database,
+      href: "/knowledge",
+      color: "text-indigo-600",
+      bgColor: "bg-indigo-100/50",
+      gradient: "from-indigo-500/10 to-indigo-600/10"
+    },
+    {
+      title: "模型配置",
+      description: "自定义 AI 模型参数与 API 设置",
+      icon: Settings,
+      href: "/model-config?from=/dashboard",
+      color: "text-green-600",
+      bgColor: "bg-green-100/50",
+      gradient: "from-green-500/10 to-green-600/10"
+    },
+    {
+      title: "个人中心",
+      description: "管理账户信息与个人偏好设置",
+      icon: User,
+      href: "/profile",
+      color: "text-gray-600",
+      bgColor: "bg-gray-100/50",
+      gradient: "from-gray-500/10 to-gray-600/10"
+    }
+  ]
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            聚时工作台
+    <div className="min-h-screen relative overflow-hidden bg-gray-50 dark:bg-gray-900 font-sans selection:bg-blue-100">
+
+      {/* Dynamic Background */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-blue-400/20 blur-[100px] animate-pulse-slow" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-400/20 blur-[100px] animate-pulse-slow delay-1000" />
+      </div>
+
+      <div className="relative z-10 container mx-auto px-6 py-12 max-w-6xl">
+
+        {/* Header Section */}
+        <div className="mb-12 space-y-2">
+          <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white">
+            {greeting}，{user?.username || '朋友'}
           </h1>
-          <p className="text-gray-600">
-            欢迎使用聚时，您的智能学习助手
+          <p className="text-lg text-gray-500 dark:text-gray-400 font-medium">
+            准备好开始高效的一天了吗？
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* AI对话卡片 */}
-          <div className="task-card">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                💬
-              </div>
-              <h2 className="text-lg font-semibold">AI助手对话</h2>
-            </div>
-            <p className="text-gray-600 mb-4">
-              与聚时AI助手聊天，获得情绪支持和任务指导
-            </p>
-            <Link href="/chat">
-              <Button className="w-full">开始对话</Button>
-            </Link>
-          </div>
+        {/* Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {cards.map((card, index) => (
+            <Link
+              key={index}
+              href={card.href}
+              className="group block relative"
+            >
+              <div className={cn(
+                "h-full p-6 rounded-2xl border border-white/20 shadow-xl",
+                "bg-white/40 dark:bg-gray-800/40 backdrop-blur-md",
+                "transition-all duration-300 ease-out",
+                "hover:scale-[1.02] hover:bg-white/60 dark:hover:bg-gray-800/60",
+                "hover:shadow-2xl hover:border-white/40",
+                "flex flex-col justify-between"
+              )}>
+                {/* Subtle Gradient Overlay on Hover */}
+                <div className={cn(
+                  "absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none bg-gradient-to-br",
+                  card.gradient
+                )} />
 
-          {/* 日历管理卡片 */}
-          <div className="task-card">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                📅
-              </div>
-              <h2 className="text-lg font-semibold">日历管理</h2>
-            </div>
-            <p className="text-gray-600 mb-4">
-              管理您的日程安排，查看今日任务和创建新事件
-            </p>
-            <Link href="/calendar">
-              <Button className="w-full bg-orange-600 hover:bg-orange-700">
-                进入日历
-              </Button>
-            </Link>
-          </div>
+                <div className="relative z-10">
+                  <div className={cn(
+                    "w-12 h-12 rounded-xl mb-4 flex items-center justify-center transition-transform group-hover:scale-110 duration-300",
+                    card.bgColor,
+                    card.color
+                  )}>
+                    <card.icon className="w-6 h-6" strokeWidth={2.5} />
+                  </div>
 
-          {/* 数据统计卡片 */}
-          <div className="task-card">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                📊
-              </div>
-              <h2 className="text-lg font-semibold">数据统计</h2>
-            </div>
-            <p className="text-gray-600 mb-4">
-              查看您的对话数据、情绪分析和学习统计
-            </p>
-            <Link href="/database/dashboard">
-              <Button variant="outline" className="w-full">
-                查看数据
-              </Button>
-            </Link>
-          </div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">
+                    {card.title}
+                  </h3>
 
-          {/* 聊天记录卡片 */}
-          <div className="task-card">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                📝
-              </div>
-              <h2 className="text-lg font-semibold">聊天记录</h2>
-            </div>
-            <p className="text-gray-600 mb-4">
-              查看历史对话记录和消息
-            </p>
-            <Link href="/chat/history">
-              <Button variant="outline" className="w-full">
-                查看记录
-              </Button>
-            </Link>
-          </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                    {card.description}
+                  </p>
+                </div>
 
-          {/* 模型配置卡片 */}
-          <div className="task-card">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                🤖
+                <div className="relative z-10 mt-6 flex items-center text-sm font-semibold text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
+                  <span>立即进入</span>
+                  <ArrowRight className="w-4 h-4 ml-1 transform transition-transform group-hover:translate-x-1" />
+                </div>
               </div>
-              <h2 className="text-lg font-semibold">模型配置</h2>
-            </div>
-            <p className="text-gray-600 mb-4">
-              配置AI模型参数和API设置
-            </p>
-            <Link href="/model-config">
-              <Button variant="outline" className="w-full">
-                配置模型
-              </Button>
             </Link>
-          </div>
-
-          {/* 个人资料卡片 */}
-          <div className="task-card">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                👤
-              </div>
-              <h2 className="text-lg font-semibold">个人资料</h2>
-            </div>
-            <p className="text-gray-600 mb-4">
-              管理您的个人信息和账户设置
-            </p>
-            <Link href="/profile">
-              <Button variant="outline" className="w-full">
-                查看资料
-              </Button>
-            </Link>
-          </div>
+          ))}
         </div>
 
-        <div className="mt-8 text-center">
-          <p className="text-sm text-gray-500">
-            🚀 这是聚时MVP版本，更多功能正在开发中...
+        {/* Footer */}
+        <div className="mt-16 text-center">
+          <p className="text-xs text-gray-400/60 font-mono">
+            JUSHI AGENT WORKBENCH v0.5.0
           </p>
         </div>
+
       </div>
     </div>
   )
-} 
+}

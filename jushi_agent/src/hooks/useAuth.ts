@@ -125,8 +125,8 @@ export function useAuth() {
           isLoading: false,
           isAuthenticated: true
         })
-        return { 
-          success: true, 
+        return {
+          success: true,
           user: result.data.user,
           needsVerification: result.data.user.needsVerification
         }
@@ -140,43 +140,7 @@ export function useAuth() {
     }
   }, [])
 
-  // 飞书登录
-  const loginWithFeishu = useCallback(async (feishuUserInfo: {
-    openId: string
-    unionId?: string
-    name: string
-    avatar?: string
-    email?: string
-    mobile?: string
-  }) => {
-    try {
-      const response = await fetch('/api/auth/feishu', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify(feishuUserInfo)
-      })
 
-      const result = await response.json()
-
-      if (result.success) {
-        setAuthState({
-          user: result.data.user,
-          isLoading: false,
-          isAuthenticated: true
-        })
-        return { success: true, user: result.data.user }
-      } else {
-        return { success: false, error: result.error }
-      }
-
-    } catch (error) {
-      console.error('飞书登录失败:', error)
-      return { success: false, error: '飞书登录时发生错误' }
-    }
-  }, [])
 
   // 登出
   const logout = useCallback(async () => {
@@ -224,11 +188,10 @@ export function useAuth() {
     user: authState.user,
     isLoading: authState.isLoading,
     isAuthenticated: authState.isAuthenticated,
-    
+
     // 方法
     login,
     register,
-    loginWithFeishu,
     logout,
     updateUser,
     refreshUser,

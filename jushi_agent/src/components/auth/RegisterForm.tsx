@@ -146,9 +146,9 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
 
 
   return (
-    <Card className="w-full max-w-md mx-auto">
+    <Card className="w-full max-w-md mx-auto bg-white/95 text-gray-900 border border-orange-100 shadow-xl dark:bg-white dark:text-gray-900">
       <CardHeader>
-        <CardTitle className="text-center text-2xl font-bold">
+        <CardTitle className="text-center text-2xl font-bold text-gray-900">
           创建账户
         </CardTitle>
         <p className="text-center text-gray-600">
@@ -185,7 +185,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
                 placeholder="请输入邮箱地址"
                 value={formData.email}
                 onChange={(e) => handleInputChange('email', e.target.value)}
-                className="pl-10"
+                className="pl-10 bg-white text-gray-900 placeholder:text-gray-400 border-gray-200 focus-visible:ring-orange-500"
                 disabled={isSubmitting}
               />
             </div>
@@ -202,7 +202,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
                 placeholder="请输入用户名"
                 value={formData.username}
                 onChange={(e) => handleInputChange('username', e.target.value)}
-                className="pl-10"
+                className="pl-10 bg-white text-gray-900 placeholder:text-gray-400 border-gray-200 focus-visible:ring-orange-500"
                 disabled={isSubmitting}
               />
             </div>
@@ -222,7 +222,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
                 placeholder="请输入显示名称"
                 value={formData.displayName}
                 onChange={(e) => handleInputChange('displayName', e.target.value)}
-                className="pl-10"
+                className="pl-10 bg-white text-gray-900 placeholder:text-gray-400 border-gray-200 focus-visible:ring-orange-500"
                 disabled={isSubmitting}
               />
             </div>
@@ -239,7 +239,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
                 placeholder="请输入手机号"
                 value={formData.phone}
                 onChange={(e) => handleInputChange('phone', e.target.value)}
-                className="pl-10"
+                className="pl-10 bg-white text-gray-900 placeholder:text-gray-400 border-gray-200 focus-visible:ring-orange-500"
                 disabled={isSubmitting}
               />
             </div>
@@ -256,7 +256,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
                 placeholder="请输入密码（至少6个字符）"
                 value={formData.password}
                 onChange={(e) => handleInputChange('password', e.target.value)}
-                className="pl-10 pr-10"
+                className="pl-10 pr-10 bg-white text-gray-900 placeholder:text-gray-400 border-gray-200 focus-visible:ring-orange-500"
                 disabled={isSubmitting}
               />
               <Button
@@ -283,7 +283,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
                 placeholder="请再次输入密码"
                 value={formData.confirmPassword}
                 onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                className="pl-10 pr-10"
+                className="pl-10 pr-10 bg-white text-gray-900 placeholder:text-gray-400 border-gray-200 focus-visible:ring-orange-500"
                 disabled={isSubmitting}
               />
               <Button

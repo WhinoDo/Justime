@@ -2,19 +2,22 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
-import { EmotionScoreInput } from './EmotionScoreInput'
+// EmotionScoreInput removed
 import { MessageBubble } from './MessageBubble'
 import { Message } from '@/types'
 import { generateId } from '@/lib/utils'
-import { Send, Trash2, Sparkles, MessageCircle, Sun, Moon, Monitor, Clock, AlertTriangle, Settings, Bot, Calendar } from 'lucide-react'
+import { Send, Trash2, Sparkles, MessageCircle, Sun, Moon, Monitor, Clock, AlertTriangle, Settings, Bot, Calendar, ChevronRight } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useEffect as useEffectTheme, useState as useStateTheme } from 'react'
 import Link from 'next/link'
 import { TaskSelector } from './TaskSelector'
+import { SuggestedEventCard, SuggestedCalendarEvent } from './SuggestedEventCard'
+import { EditableTaskPlan } from './EditableTaskPlan'
 import { TaskItem } from '@/lib/ai/task-planner'
 import { TimeAwareTaskInput } from './TimeAwareTaskInput'
 import { TimeUtils } from '@/lib/utils/time'
 import { chatDB } from '@/lib/database/ChatDatabaseIntegration'
+import { ThinkingLoader } from './ThinkingLoader'
 import { MessageType } from '@/types/auth'
 import { useAuth } from '@/hooks/useAuth'
 import {
@@ -28,19 +31,20 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 interface ChatInterfaceProps {
   initialMessages?: Message[]
   onTaskCreate?: (task: any) => void
-  onEmotionUpdate?: (score: number) => void
+  sessionId?: string | null
+  onSessionChange?: (sessionId: string) => void
 }
 
-export function ChatInterface({ 
-  initialMessages = [], 
-  onTaskCreate, 
-  onEmotionUpdate 
+export function ChatInterface({
+  initialMessages = [],
+  onTaskCreate,
+  sessionId,
+  onSessionChange
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [showEmotionInput, setShowEmotionInput] = useState(false)
-  const [suggestedEmotionScore, setSuggestedEmotionScore] = useState<number | undefined>()
+  // Emotion state removed
   const [currentTaskId, setCurrentTaskId] = useState<string | undefined>()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -50,12 +54,47 @@ export function ChatInterface({
   const [taskMessageId, setTaskMessageId] = useState<string | null>(null)
   const [showTimeHelper, setShowTimeHelper] = useState(false)
   const [currentTime, setCurrentTime] = useState(TimeUtils.getCurrentTimeContext())
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
-  const [autoSaveEnabled, setAutoSaveEnabled] = useState(true)
   const { user: authUser } = useAuth()
   const [selectedModel, setSelectedModel] = useState<string>('')
-  const [availableModels, setAvailableModels] = useState<Array<{id: string, name: string}>>([])
+  const [availableModels, setAvailableModels] = useState<Array<{ id: string, name: string }>>([])
   const [modelError, setModelError] = useState<string | null>(null)
+  const [suggestedEvents, setSuggestedEvents] = useState<SuggestedCalendarEvent[]>([])
+  const [eventMessageId, setEventMessageId] = useState<string | null>(null)
+  const [taskDecomposition, setTaskDecomposition] = useState<any>(null)
+  const [decompositionMessageId, setDecompositionMessageId] = useState<string | null>(null)
+
+  // 当 sessionId 改变时加载历史消息
+  useEffect(() => {
+    if (sessionId) {
+      const loadHistory = async () => {
+        try {
+          // 清空当前消息以避免闪烁
+          setMessages([])
+
+          const res = await fetch(`/api/chat/sessions/${sessionId}/messages`)
+          const data = await res.json()
+
+          if (data.messages && Array.isArray(data.messages)) {
+            // 转换消息格式
+            const formattedMessages: Message[] = data.messages.map((msg: any) => ({
+              id: msg._id,
+              user_id: msg.role === 'user' ? 'current-user' : 'ai',
+              role: msg.role === 'user' ? 'user' : 'assistant',
+              content: msg.content,
+              created_at: msg.timestamp
+            }))
+            setMessages(formattedMessages)
+          }
+        } catch (error) {
+          console.error('加载历史消息失败:', error)
+        }
+      }
+      loadHistory()
+    } else {
+      // 新会话，清空消息
+      setMessages([])
+    }
+  }, [sessionId])
 
   const scrollToBottom = () => {
     if (messagesEndRef.current && typeof messagesEndRef.current.scrollIntoView === 'function') {
@@ -91,52 +130,6 @@ export function ChatInterface({
   }, [])
 
 
-  const initializeChatSession = async (userId: string) => {
-    try {
-      if (!autoSaveEnabled) return
-
-      // 获取或创建活跃会话
-      const response = await fetch('/api/database/chat-history', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'get_or_create_active',
-          userId
-        })
-      })
-
-      const data = await response.json()
-      if (data.success) {
-        setCurrentSessionId(data.data.session.sessionId)
-        console.log('✅ 聊天会话已初始化:', data.data.session.sessionId)
-      }
-
-    } catch (error) {
-      console.error('❌ 初始化聊天会话失败:', error)
-    }
-  }
-
-  const saveChatMessage = async (type: MessageType, content: string, metadata?: any) => {
-    try {
-      if (!autoSaveEnabled || !currentSessionId) return
-
-      await fetch('/api/database/chat-history', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'add_message',
-          sessionId: currentSessionId,
-          type,
-          content,
-          options: metadata
-        })
-      })
-
-    } catch (error) {
-      console.error('❌ 保存聊天消息失败:', error)
-    }
-  }
-
   // 加载用户的LLM配置
   const loadLLMConfig = useCallback(async () => {
     try {
@@ -144,7 +137,7 @@ export function ChatInterface({
         credentials: 'include'
       })
       const result = await response.json()
-      
+
       if (result.success && result.data?.llmConfig) {
         const config = result.data.llmConfig
         if (config.modelId && config.apiKey && config.baseUrl) {
@@ -158,7 +151,7 @@ export function ChatInterface({
           } else if (config.baseUrl.includes('baidu')) {
             provider = '文心一言'
           }
-          
+
           setAvailableModels([{
             id: config.modelId,
             name: `${config.modelId} (${provider})`
@@ -184,11 +177,6 @@ export function ChatInterface({
       try {
         const user = await chatDB.initializeUser()
         console.log('✅ 数据库用户会话已初始化')
-
-        // 初始化聊天会话
-        if (user) {
-          await initializeChatSession(user.id)
-        }
 
         // 加载LLM配置
         await loadLLMConfig()
@@ -241,12 +229,9 @@ export function ChatInterface({
     }
 
     try {
-      // 保存用户消息到数据库
+      // 保存用户消息到数据库 (Client DB)
       const startTime = Date.now()
       await chatDB.addMessage('user', userMessage.content)
-
-      // 保存用户消息到聊天记录
-      await saveChatMessage(MessageType.USER, userMessage.content)
 
       console.log('发送聊天请求:', {
         message: userMessage.content.substring(0, 50),
@@ -261,31 +246,37 @@ export function ChatInterface({
         },
         body: JSON.stringify({
           message: userMessage.content,
-          taskId: currentTaskId
+          taskId: currentTaskId,
+          sessionId: sessionId // 传递当前会话ID
         })
       })
 
       if (!response.ok) {
-        console.error('API响应错误:', { 
-          status: response.status, 
-          statusText: response.statusText 
+        console.error('API响应错误:', {
+          status: response.status,
+          statusText: response.statusText
         })
         throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
 
       const data = await response.json()
-      console.log('API响应成功:', { 
-        success: data.success, 
+      console.log('API响应成功:', {
+        success: data.success,
         hasResponse: !!data.data?.response,
         fullData: data // 完整数据用于调试
       })
+
+      // 如果是新会话，API会返回新创建的 sessionId
+      if (data.data?.sessionId && data.data.sessionId !== sessionId) {
+        onSessionChange?.(data.data.sessionId)
+      }
 
       if (data.success) {
         const processingTime = Date.now() - startTime
 
         // 提取响应内容，支持多种可能的数据结构
         const responseContent = data.data?.response || data.data?.message || data.response || ''
-        
+
         console.log('提取的响应内容:', {
           content: responseContent.substring(0, 100),
           contentLength: responseContent.length,
@@ -304,37 +295,7 @@ export function ChatInterface({
 
         setMessages(prev => [...prev, assistantMessage])
 
-        // 保存AI响应到数据库
-        await chatDB.addMessage('assistant', responseContent, {
-          emotionAnalysis: (data.data?.emotionScore || data.data?.emotion_score) ? {
-            score: data.data?.emotionScore || data.data?.emotion_score,
-            tags: data.data?.emotionTags || data.data?.emotion_tags || [],
-            context: data.data.emotionContext
-          } : undefined,
-          taskData: data.data.taskResult,
-          processingTime,
-          model: 'gpt-3.5-turbo'
-        })
-
-        // 保存AI响应到聊天记录
-        await saveChatMessage(MessageType.ASSISTANT, responseContent, {
-          emotionAnalysis: (data.data?.emotionScore || data.data?.emotion_score) ? {
-            emotion: data.data.emotionTags?.[0] || 'neutral',
-            confidence: data.data.emotionScore / 10,
-            suggestions: data.data.emotionContext ? [data.data.emotionContext] : undefined
-          } : undefined,
-          taskExtraction: data.data.taskResult?.hasTasks ? {
-            tasks: data.data.taskResult.tasks.map((task: any) => ({
-              title: task.title,
-              description: task.description,
-              priority: task.priority || 'medium',
-              estimatedTime: task.estimatedTime
-            }))
-          } : undefined,
-          responseTime: processingTime,
-          tokenCount: data.data.tokenCount,
-          model: 'gpt-3.5-turbo'
-        })
+        // 移除 chatDB 和 saveChatMessage 的调用，改为完全依赖后端保存
 
         // 如果包含任务规划数据
         if (data.data.taskResult && data.data.taskResult.hasTasks) {
@@ -342,10 +303,18 @@ export function ChatInterface({
           setTaskMessageId(assistantMessage.id)
         }
 
-        // 如果需要情绪输入
-        if (data.data.needsEmotionInput || data.data.emotionScore <= 6) {
-          setShowEmotionInput(true)
-          setSuggestedEmotionScore(data.data.emotionScore)
+
+
+        // 如果包含AI建议的日程
+        if (data.data.suggestedEvents && data.data.suggestedEvents.length > 0) {
+          setSuggestedEvents(data.data.suggestedEvents)
+          setEventMessageId(assistantMessage.id)
+        }
+
+        // 如果包含任务分解方案
+        if (data.data.taskDecomposition) {
+          setTaskDecomposition(data.data.taskDecomposition)
+          setDecompositionMessageId(assistantMessage.id)
         }
 
         // 如果创建了新任务
@@ -356,10 +325,10 @@ export function ChatInterface({
       } else {
         const errorDetail = data.error?.message || data.error?.detail || '未知错误'
         const errorType = data.error?.type || 'unknown'
-        
+
         // 更详细的错误信息
         let errorMessage = `抱歉，发生了一些错误：${errorDetail}`
-        
+
         if (errorType === 'connection' || errorDetail.includes('Connection') || errorDetail.includes('连接')) {
           errorMessage = '连接失败：请检查您的网络连接和LLM配置是否正确。如果已配置模型，请前往"个人信息"页面检查配置。'
         } else if (errorDetail.includes('API密钥') || errorDetail.includes('api key') || errorDetail.includes('API key')) {
@@ -369,7 +338,7 @@ export function ChatInterface({
         } else if (errorDetail.includes('未配置') || errorDetail.includes('未定义')) {
           errorMessage = 'LLM未配置：请前往"个人信息"页面配置您的LLM模型和API密钥。'
         }
-        
+
         throw new Error(errorMessage)
       }
     } catch (error) {
@@ -387,15 +356,7 @@ export function ChatInterface({
     }
   }
 
-  const handleEmotionSubmit = (score: number) => {
-    setShowEmotionInput(false)
-    onEmotionUpdate?.(score)
 
-    // 可以在这里触发基于情绪评分的任务拆解
-    if (currentTaskId) {
-      // TODO: 调用任务拆解API
-    }
-  }
 
   const handleTaskAdded = (task: TaskItem) => {
     // 移除已成功添加的任务
@@ -404,6 +365,117 @@ export function ChatInterface({
     if (pendingTasks.length === 1) {
       setTaskMessageId(null)
     }
+  }
+
+  // 确认添加日程到日历
+  const handleConfirmEvent = async (event: SuggestedCalendarEvent) => {
+    if (!authUser?.id) {
+      throw new Error('请先登录')
+    }
+
+    const response = await fetch('/api/calendar/events', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        userId: authUser.id,
+        title: event.title,
+        description: event.description,
+        start: event.start,
+        end: event.end,
+        type: event.type || 'other',
+        priority: event.priority || 'medium',
+        location: event.location,
+        allDay: event.allDay || false,
+        aiGenerated: true
+      })
+    })
+
+    const result = await response.json()
+
+    if (!result.success) {
+      throw new Error(result.error || '添加日程失败')
+    }
+
+    return result.data.event
+  }
+
+  // 取消日程建议
+  const handleDismissEvent = (event: SuggestedCalendarEvent) => {
+    setSuggestedEvents(prev => prev.filter(e => e.title !== event.title))
+    if (suggestedEvents.length === 1) {
+      setEventMessageId(null)
+    }
+  }
+
+  // 确认任务分解方案，批量创建日程
+  const handleConfirmDecomposition = async (project: any, selectedTasks: any[]) => {
+    if (!authUser?.id) {
+      throw new Error('请先登录')
+    }
+
+    const startDate = project?.start_date ? new Date(project.start_date) : new Date()
+
+    // 按顺序安排子任务时间
+    let currentDate = new Date(startDate)
+    let currentHour = 9 // 从早上9点开始
+
+    for (const task of selectedTasks) {
+      const durationHours = task.duration_hours || 1
+
+      // 如果当天时间不够，移动到下一天
+      if (currentHour + durationHours > 18) {
+        currentDate.setDate(currentDate.getDate() + 1)
+        currentHour = 9
+      }
+
+      const startTime = new Date(currentDate)
+      startTime.setHours(currentHour, 0, 0, 0)
+
+      const endTime = new Date(startTime)
+      endTime.setHours(currentHour + durationHours, 0, 0, 0)
+
+      const response = await fetch('/api/calendar/events', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userId: authUser.id,
+          title: task.title,
+          description: task.description || `来自项目「${project?.name || '任务'}」`,
+          start: startTime.toISOString(),
+          end: endTime.toISOString(),
+          type: 'task',
+          priority: 'medium',
+          allDay: false,
+          aiGenerated: true
+        })
+      })
+
+      const result = await response.json()
+      if (!result.success) {
+        console.error('添加子任务失败:', result.error)
+      }
+
+      currentHour += durationHours
+    }
+
+    // 清空任务分解状态
+    setTaskDecomposition(null)
+    setDecompositionMessageId(null)
+
+    // 添加成功消息
+    setMessages(prev => [...prev, {
+      id: generateId(),
+      user_id: authUser.id,
+      role: 'assistant' as const,
+      type: 'assistant' as MessageType,
+      content: `已成功将 ${selectedTasks.length} 个子任务添加到日历！您可以在日历页面查看和管理这些任务。`,
+      timestamp: new Date(),
+      created_at: new Date().toISOString()
+    }])
   }
 
   const handleTimeAwareTaskCreate = (taskDescription: string) => {
@@ -421,7 +493,6 @@ export function ChatInterface({
   const handleClearChat = () => {
     setMessages([])
     setCurrentTaskId(undefined)
-    setShowEmotionInput(false)
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -439,6 +510,11 @@ export function ChatInterface({
       <div className="chat-header">
         <div className="chat-header-content">
           <div className="flex items-center gap-3">
+            <Link href="/dashboard">
+              <Button variant="ghost" size="icon" className="mr-1 text-gray-500 hover:text-gray-900">
+                <ChevronRight className="w-5 h-5 rotate-180" />
+              </Button>
+            </Link>
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
@@ -456,33 +532,24 @@ export function ChatInterface({
             {authUser && (
               <div className="flex items-center gap-2">
                 {selectedModel ? (
-                  <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 dark:bg-blue-900/30 rounded-md border border-blue-200 dark:border-blue-800">
-                    <Bot className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                    <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
-                      {selectedModel}
-                    </span>
-                  </div>
+                  <Link href="/model-config?from=/chat">
+                    <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 dark:bg-blue-900/30 rounded-md border border-blue-200 dark:border-blue-800 cursor-pointer hover:bg-blue-100 transition-colors">
+                      <Bot className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                      <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                        {selectedModel}
+                      </span>
+                    </div>
+                  </Link>
                 ) : (
-                  <Link href="/model-config">
-                    <Alert className="border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20 py-1 px-2 cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-900/30">
-                      <AlertTriangle className="h-3 w-3 text-yellow-600 dark:text-yellow-400" />
-                      <AlertDescription className="text-xs text-yellow-800 dark:text-yellow-300 ml-1">
+                  <Link href="/model-config?from=/chat">
+                    <div className="flex items-center gap-1 px-2 py-1 bg-yellow-50 dark:bg-yellow-900/20 rounded-md border border-yellow-200 dark:border-yellow-800 cursor-pointer hover:bg-yellow-100 transition-colors">
+                      <AlertTriangle className="w-3 h-3 text-yellow-600 dark:text-yellow-400" />
+                      <span className="text-xs font-medium text-yellow-700 dark:text-yellow-300">
                         未配置模型
-                      </AlertDescription>
-                    </Alert>
+                      </span>
+                    </div>
                   </Link>
                 )}
-                <Link href="/model-config">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 text-xs hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors duration-200 text-blue-600 dark:text-blue-400"
-                    title="配置LLM模型"
-                  >
-                    <Settings className="w-3 h-3 mr-1" />
-                    配置
-                  </Button>
-                </Link>
               </div>
             )}
 
@@ -588,40 +655,49 @@ export function ChatInterface({
                     onTaskAdded={handleTaskAdded}
                   />
                 )}
+                {/* 如果这条消息包含日程建议，显示日程卡片 */}
+                {/* 只有在没有任务分解方案时才显示建议卡片，避免重复显示 */}
+                {eventMessageId === message.id && suggestedEvents.length > 0 && (!taskDecomposition || decompositionMessageId !== message.id) && (
+                  <div className="ml-11 mt-2 space-y-2">
+                    {suggestedEvents.map((event, index) => (
+                      <SuggestedEventCard
+                        key={`${event.title}-${index}`}
+                        event={event}
+                        onConfirm={handleConfirmEvent}
+                        onDismiss={() => handleDismissEvent(event)}
+                      />
+                    ))}
+                  </div>
+                )}
+                {/* 如果这条消息包含任务分解方案，显示可编辑任务计划 */}
+                {decompositionMessageId === message.id && taskDecomposition && (
+                  <div className="ml-11 mt-2">
+                    <EditableTaskPlan
+                      decomposition={taskDecomposition}
+                      onConfirm={handleConfirmDecomposition}
+                      onCancel={() => {
+                        setTaskDecomposition(null)
+                        setDecompositionMessageId(null)
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             ))}
-            
+
             {isLoading && (
               <div className="flex gap-3 max-w-[85%] mr-auto animate-slide-in">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-md">
-                  <Sparkles className="w-4 h-4 text-white animate-pulse" />
-                </div>
-                <div className="typing-indicator">
-                  <span className="text-sm text-gray-600 dark:text-gray-300">AI正在思考</span>
-                  <div className="flex gap-1">
-                    <div className="typing-dot"></div>
-                    <div className="typing-dot"></div>
-                    <div className="typing-dot"></div>
-                  </div>
-                </div>
+                <ThinkingLoader input={messages[messages.length - 1]?.content || ''} />
               </div>
             )}
           </>
         )}
-        
+
         <div ref={messagesEndRef} />
       </div>
 
 
-      {/* 情绪输入区域 */}
-      {showEmotionInput && (
-        <div className="emotion-input-container">
-          <EmotionScoreInput
-            onSubmit={handleEmotionSubmit}
-            suggestedScore={suggestedEmotionScore}
-          />
-        </div>
-      )}
+      {/* Emotion input removed */}
 
       {/* 时间助手区域 */}
       {showTimeHelper && (
@@ -645,7 +721,7 @@ export function ChatInterface({
             disabled={isLoading}
             rows={1}
           />
-          <button 
+          <button
             onClick={handleSendMessage}
             disabled={isLoading || !input.trim()}
             className="send-button"

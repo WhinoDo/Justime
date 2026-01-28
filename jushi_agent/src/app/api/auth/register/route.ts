@@ -33,9 +33,9 @@ export async function POST(request: NextRequest) {
 
     // 设置HTTP-only cookie
     const nextResponse = createSuccessResponse(data.data ?? data, data.message || '注册成功')
-    
+
     if (data.success && data.data?.token) {
-      nextResponse.cookies.set('auth-token', data.data.token, {
+      nextResponse.cookies.set('access_token', data.data.token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',

@@ -21,8 +21,7 @@ export enum UserRole {
 // 登录方式枚举
 export enum LoginMethod {
   EMAIL = 'email',
-  USERNAME = 'username',
-  FEISHU = 'feishu'
+  USERNAME = 'username'
 }
 
 // 消息类型枚举
@@ -41,27 +40,7 @@ export enum MessageStatus {
   ERROR = 'error'
 }
 
-// 飞书绑定信息接口
-export interface FeishuBinding {
-  openId: string
-  unionId?: string
-  name: string
-  avatar?: string
-  email?: string
-  mobile?: string
-  employeeId?: string
-  department?: string
-  bindTime: Date
-  lastSyncTime: Date
-  isActive: boolean
-  integration: {
-    accessToken?: string
-    refreshToken?: string
-    tokenExpiresAt?: Date
-    calendarId?: string
-    isActive: boolean
-  }
-}
+
 
 // 用户资料接口
 export interface UserProfile {
@@ -85,7 +64,6 @@ export interface UserPreferences {
   notifications: {
     email: boolean
     push: boolean
-    feishu: boolean
   }
   privacy: {
     profileVisible: boolean
@@ -120,14 +98,13 @@ export interface SafeUser {
   profile: UserProfile
   isEmailVerified: boolean
   isPhoneVerified?: boolean
-  hasFeishuBinding: boolean
+  isPhoneVerified?: boolean
   role: UserRole
   status?: UserStatus
   preferences?: UserPreferences
   statistics?: UserStatistics
   lastLoginAt?: string
   createdAt?: string
-  feishuBinding?: FeishuBinding
 }
 
 // 认证结果接口

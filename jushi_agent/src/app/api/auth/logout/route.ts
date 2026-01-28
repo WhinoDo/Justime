@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     })
 
     // 清除认证cookie
-    response.cookies.set('auth-token', '', {
+    response.cookies.set('access_token', '', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',

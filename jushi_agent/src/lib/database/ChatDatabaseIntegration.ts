@@ -7,7 +7,7 @@ import type { EmotionAnalysis, TaskData } from './models/Conversation'
 
 export interface ChatUser {
   id: string
-  feishuOpenId: string
+
   name: string
   email?: string
   avatar?: string
@@ -38,7 +38,7 @@ class ChatDatabaseIntegration {
   private currentUser: ChatUser | null = null
   private currentConversation: ChatConversation | null = null
 
-  private constructor() {}
+  private constructor() { }
 
   static getInstance(): ChatDatabaseIntegration {
     if (!ChatDatabaseIntegration.instance) {
@@ -106,8 +106,8 @@ class ChatDatabaseIntegration {
   generateConversationTitle(firstMessage: string): string {
     const maxLength = 30
     const cleaned = firstMessage.trim().replace(/\n+/g, ' ')
-    return cleaned.length > maxLength 
-      ? cleaned.substring(0, maxLength) + '...' 
+    return cleaned.length > maxLength
+      ? cleaned.substring(0, maxLength) + '...'
       : cleaned
   }
 

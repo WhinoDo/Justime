@@ -1,4 +1,8 @@
-# API端点模块
-from app.api.v1.endpoints import health, feishu, llm, chat, database, auth
+"""API v1 endpoints package.
 
-__all__ = ["health", "feishu", "llm", "chat", "database", "auth"]
+只在这里声明实际存在的端点模块，避免循环导入和导入不存在的模块。
+"""
+
+from . import health, auth
+
+__all__ = ["health", "auth"]

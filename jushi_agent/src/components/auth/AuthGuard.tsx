@@ -15,8 +15,8 @@ interface AuthGuardProps {
   showLoginPrompt?: boolean
 }
 
-export function AuthGuard({ 
-  children, 
+export function AuthGuard({
+  children,
   fallback,
   redirectTo = '/auth?mode=login',
   requireAuth = true,
@@ -49,7 +49,7 @@ export function AuthGuard({
       useEffect(() => {
         router.push(redirectTo)
       }, [router, redirectTo])
-      
+
       return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
           <div className="text-center space-y-4">
@@ -72,33 +72,29 @@ export function AuthGuard({
                 此功能需要登录才能使用，这样可以保存您的数据和个性化设置。
               </p>
             </div>
-            
+
             <div className="space-y-3">
               <Link href="/auth?mode=login" className="block">
                 <Button className="w-full">
                   立即登录
                 </Button>
               </Link>
-              
+
               <Link href="/auth?mode=register" className="block">
                 <Button variant="outline" className="w-full">
                   注册账户
                 </Button>
               </Link>
-              
-              <Link href="/feishu/qr-login" className="block">
-                <Button variant="outline" className="w-full">
-                  📱 飞书扫码登录
-                </Button>
-              </Link>
-              
+
+
+
               <Link href="/" className="block">
                 <Button variant="ghost" className="w-full">
                   返回首页
                 </Button>
               </Link>
             </div>
-            
+
             <div className="text-xs text-gray-500">
               <p>或者您可以先体验其他功能</p>
             </div>

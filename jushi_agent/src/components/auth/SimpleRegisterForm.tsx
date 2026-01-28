@@ -102,9 +102,9 @@ export function SimpleRegisterForm({ onSuccess, redirectTo = '/' }: SimpleRegist
   }
 
   return (
-    <Card className="w-full max-w-md mx-auto">
+    <Card className="w-full max-w-md mx-auto bg-white/95 text-gray-900 border border-orange-100 shadow-xl dark:bg-white dark:text-gray-900">
       <CardHeader>
-        <CardTitle className="text-center text-2xl font-bold">
+        <CardTitle className="text-center text-2xl font-bold text-gray-900">
           创建账户
         </CardTitle>
         <p className="text-center text-gray-600">
@@ -146,6 +146,7 @@ export function SimpleRegisterForm({ onSuccess, redirectTo = '/' }: SimpleRegist
               }}
               disabled={isSubmitting}
               required
+              className="bg-white text-gray-900 placeholder:text-gray-400 border-gray-200 focus-visible:ring-orange-500"
             />
           </div>
 
@@ -161,6 +162,7 @@ export function SimpleRegisterForm({ onSuccess, redirectTo = '/' }: SimpleRegist
                 username: e.target.value
               }))}
               disabled={isSubmitting}
+              className="bg-white text-gray-900 placeholder:text-gray-400 border-gray-200 focus-visible:ring-orange-500"
             />
           </div>
 
@@ -176,6 +178,7 @@ export function SimpleRegisterForm({ onSuccess, redirectTo = '/' }: SimpleRegist
                 displayName: e.target.value
               }))}
               disabled={isSubmitting}
+              className="bg-white text-gray-900 placeholder:text-gray-400 border-gray-200 focus-visible:ring-orange-500"
             />
           </div>
 
@@ -192,6 +195,7 @@ export function SimpleRegisterForm({ onSuccess, redirectTo = '/' }: SimpleRegist
               }))}
               disabled={isSubmitting}
               required
+              className="bg-white text-gray-900 placeholder:text-gray-400 border-gray-200 focus-visible:ring-orange-500"
             />
           </div>
 
@@ -208,6 +212,7 @@ export function SimpleRegisterForm({ onSuccess, redirectTo = '/' }: SimpleRegist
               }))}
               disabled={isSubmitting}
               required
+              className="bg-white text-gray-900 placeholder:text-gray-400 border-gray-200 focus-visible:ring-orange-500"
             />
           </div>
 

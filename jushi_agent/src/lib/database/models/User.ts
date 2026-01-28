@@ -1,5 +1,5 @@
 /**
- * 用户数据模型 - 支持传统登录和飞书绑定
+ * 用户数据模型
  */
 
 import mongoose, { Document, Schema } from 'mongoose'
@@ -23,31 +23,7 @@ export enum UserRole {
 // 登录方式枚举
 export enum LoginMethod {
   EMAIL = 'email',
-  USERNAME = 'username',
-  FEISHU = 'feishu'
-}
-
-// 飞书绑定信息接口
-export interface IFeishuBinding {
-  openId: string          // 飞书用户OpenID
-  unionId?: string        // 飞书用户UnionID
-  name: string           // 飞书用户名
-  avatar?: string        // 飞书头像
-  email?: string         // 飞书邮箱
-  mobile?: string        // 飞书手机号
-  employeeId?: string    // 员工ID
-  department?: string    // 部门信息
-  bindTime: Date         // 绑定时间
-  lastSyncTime: Date     // 最后同步时间
-  isActive: boolean      // 绑定是否有效
-  // 飞书集成信息
-  integration: {
-    accessToken?: string
-    refreshToken?: string
-    tokenExpiresAt?: Date
-    calendarId?: string
-    isActive: boolean
-  }
+  USERNAME = 'username'
 }
 
 // 用户偏好设置接口
@@ -61,7 +37,7 @@ export interface UserPreferences {
   }
   notifications: {
     email: boolean
-    feishu: boolean
+    push: boolean
     taskReminders: boolean
   }
 }
@@ -97,10 +73,6 @@ export interface IUser extends Document {
   email?: string         // 邮箱（可选，用于传统登录）
   password?: string      // 密码（可选，用于传统登录）
 
-  // 兼容原有飞书字段
-  feishuOpenId?: string  // 保持向后兼容
-  feishuUserId?: string  // 保持向后兼容
-
   // 用户资料
   profile: {
     name: string
@@ -121,23 +93,12 @@ export interface IUser extends Document {
   isEmailVerified: boolean
   isPhoneVerified: boolean
 
-  // 飞书绑定信息
-  feishuBinding?: IFeishuBinding
-
-  // 兼容原有飞书集成字段
-  feishuIntegration: {
-    accessToken?: string
-    refreshToken?: string
-    tokenExpiresAt?: Date
-    calendarId?: string
-    isActive: boolean
-  }
-
   // 安全信息
   lastLoginAt?: Date
   lastLoginIP?: string
   loginAttempts: number
   lockUntil?: Date
+  isLocked?: boolean
   loginMethod: LoginMethod  // 最后使用的登录方式
 
   // 验证信息
@@ -151,6 +112,14 @@ export interface IUser extends Document {
 
   createdAt: Date
   updatedAt: Date
+
+  // Methods
+  comparePassword(candidatePassword: string): Promise<boolean>
+  incLoginAttempts(): Promise<any>
+  resetLoginAttempts(): Promise<any>
+  updateLastActive(): Promise<any>
+  incrementMessageCount(): Promise<any>
+  updateEmotionStats(emotionScore: number, tags: string[]): Promise<any>
 }
 
 // 用户Schema定义
@@ -178,18 +147,7 @@ const userSchema = new Schema<IUser>({
     minlength: [6, '密码至少需要6个字符']
   },
 
-  // 兼容原有飞书字段
-  feishuOpenId: {
-    type: String,
-    unique: true,
-    sparse: true,
-    index: true
-  },
-  feishuUserId: {
-    type: String,
-    unique: true,
-    sparse: true
-  },
+  // 用户资料
   profile: {
     name: {
       type: String,
@@ -264,28 +222,6 @@ const userSchema = new Schema<IUser>({
     default: false
   },
 
-  // 飞书绑定信息
-  feishuBinding: {
-    openId: { type: String, unique: true, sparse: true },
-    unionId: { type: String, sparse: true },
-    name: String,
-    avatar: String,
-    email: String,
-    mobile: String,
-    employeeId: String,
-    department: String,
-    bindTime: Date,
-    lastSyncTime: Date,
-    isActive: { type: Boolean, default: true },
-    integration: {
-      accessToken: String,
-      refreshToken: String,
-      tokenExpiresAt: Date,
-      calendarId: String,
-      isActive: { type: Boolean, default: false }
-    }
-  },
-
   // 安全信息
   lastLoginAt: Date,
   lastLoginIP: String,
@@ -336,7 +272,7 @@ const userSchema = new Schema<IUser>({
     },
     notifications: {
       email: { type: Boolean, default: true },
-      feishu: { type: Boolean, default: true },
+      push: { type: Boolean, default: true },
       taskReminders: { type: Boolean, default: true }
     }
   },
@@ -357,14 +293,7 @@ const userSchema = new Schema<IUser>({
       monthlyTrend: [{ type: Number, min: 0, max: 10 }],
       mostCommonTags: [String]
     }
-  },
-  feishuIntegration: {
-    accessToken: String,
-    refreshToken: String,
-    tokenExpiresAt: Date,
-    calendarId: String,
-    isActive: { type: Boolean, default: false }
-  },
+  }
 }, {
   timestamps: true,
   collection: 'users'
@@ -374,9 +303,6 @@ const userSchema = new Schema<IUser>({
 if (typeof window === 'undefined') {
   userSchema.index({ username: 1 }, { sparse: true })
   userSchema.index({ email: 1 }, { sparse: true })
-  userSchema.index({ feishuOpenId: 1 }, { sparse: true })
-  userSchema.index({ feishuUserId: 1 }, { sparse: true })
-  userSchema.index({ 'feishuBinding.openId': 1 }, { sparse: true })
   userSchema.index({ 'profile.email': 1 })
   userSchema.index({ status: 1, role: 1 })
   userSchema.index({ 'statistics.lastActiveAt': -1 })
@@ -385,32 +311,21 @@ if (typeof window === 'undefined') {
 }
 
 // 虚拟字段
-userSchema.virtual('isLocked').get(function() {
+userSchema.virtual('isLocked').get(function () {
   return !!(this.lockUntil && this.lockUntil > Date.now())
 })
 
-userSchema.virtual('hasFeishuBinding').get(function() {
-  return !!(this.feishuBinding && this.feishuBinding.isActive)
-})
-
-userSchema.virtual('displayName').get(function() {
-  return this.profile.displayName || this.profile.name || this.username || this.feishuUserId
-})
-
-userSchema.virtual('isFeishuConnected').get(function() {
-  return this.feishuIntegration.isActive &&
-         this.feishuIntegration.accessToken &&
-         this.feishuIntegration.tokenExpiresAt &&
-         this.feishuIntegration.tokenExpiresAt > new Date()
+userSchema.virtual('displayName').get(function () {
+  return this.profile.displayName || this.profile.name || this.username
 })
 
 // 实例方法
-userSchema.methods.comparePassword = async function(candidatePassword: string): Promise<boolean> {
+userSchema.methods.comparePassword = async function (candidatePassword: string): Promise<boolean> {
   if (!this.password) return false
   return bcrypt.compare(candidatePassword, this.password)
 }
 
-userSchema.methods.incLoginAttempts = function() {
+userSchema.methods.incLoginAttempts = function () {
   // 如果之前有锁定且已过期，重置尝试次数
   if (this.lockUntil && this.lockUntil < Date.now()) {
     return this.updateOne({
@@ -429,25 +344,25 @@ userSchema.methods.incLoginAttempts = function() {
   return this.updateOne(updates)
 }
 
-userSchema.methods.resetLoginAttempts = function() {
+userSchema.methods.resetLoginAttempts = function () {
   return this.updateOne({
     $unset: { loginAttempts: 1, lockUntil: 1 }
   })
 }
 
-userSchema.methods.updateLastActive = function() {
+userSchema.methods.updateLastActive = function () {
   this.statistics.lastActiveAt = new Date()
   this.lastLoginAt = new Date()
   return this.save()
 }
 
-userSchema.methods.incrementMessageCount = function() {
+userSchema.methods.incrementMessageCount = function () {
   this.statistics.totalMessages += 1
   this.statistics.lastActiveAt = new Date()
   return this.save()
 }
 
-userSchema.methods.updateEmotionStats = function(emotionScore: number, tags: string[]) {
+userSchema.methods.updateEmotionStats = function (emotionScore: number, tags: string[]) {
   // 更新平均情绪分数
   if (this.statistics.avgEmotionScore) {
     this.statistics.avgEmotionScore = (this.statistics.avgEmotionScore + emotionScore) / 2
@@ -470,34 +385,8 @@ userSchema.methods.updateEmotionStats = function(emotionScore: number, tags: str
   return this.save()
 }
 
-userSchema.methods.bindFeishu = function(feishuInfo: Omit<IFeishuBinding, 'bindTime' | 'lastSyncTime' | 'isActive' | 'integration'>) {
-  this.feishuBinding = {
-    ...feishuInfo,
-    bindTime: new Date(),
-    lastSyncTime: new Date(),
-    isActive: true,
-    integration: {
-      isActive: false
-    }
-  }
-
-  // 如果飞书有邮箱且用户邮箱未验证，自动验证
-  if (feishuInfo.email && feishuInfo.email === this.email && !this.isEmailVerified) {
-    this.isEmailVerified = true
-  }
-
-  return this.save()
-}
-
-userSchema.methods.unbindFeishu = function() {
-  if (this.feishuBinding) {
-    this.feishuBinding.isActive = false
-  }
-  return this.save()
-}
-
 // 静态方法
-userSchema.statics.findByEmail = function(email: string) {
+userSchema.statics.findByEmail = function (email: string) {
   return this.findOne({
     $or: [
       { email: email.toLowerCase() },
@@ -507,38 +396,21 @@ userSchema.statics.findByEmail = function(email: string) {
   })
 }
 
-userSchema.statics.findByUsername = function(username: string) {
+userSchema.statics.findByUsername = function (username: string) {
   return this.findOne({
     username,
     status: { $ne: UserStatus.DELETED }
   })
 }
 
-userSchema.statics.findByFeishuId = function(feishuOpenId: string) {
-  return this.findOne({
-    $or: [
-      { feishuOpenId, status: { $ne: UserStatus.DELETED } },
-      { 'feishuBinding.openId': feishuOpenId, 'feishuBinding.isActive': true, status: { $ne: UserStatus.DELETED } }
-    ]
-  })
-}
-
-userSchema.statics.findByFeishuOpenId = function(openId: string) {
-  return this.findOne({
-    'feishuBinding.openId': openId,
-    'feishuBinding.isActive': true,
-    status: { $ne: UserStatus.DELETED }
-  })
-}
-
-userSchema.statics.getActiveUsers = function(limit = 100) {
+userSchema.statics.getActiveUsers = function (limit = 100) {
   return this.find({ status: UserStatus.ACTIVE })
     .sort({ 'statistics.lastActiveAt': -1 })
     .limit(limit)
 }
 
 // 中间件
-userSchema.pre('save', async function(next) {
+userSchema.pre('save', async function (next) {
   // 密码加密
   if (this.isModified('password') && this.password) {
     const salt = await bcrypt.genSalt(12)

@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
+import Link from 'next/link'
+import { FileText } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -105,7 +107,7 @@ export function EventDialog({
 
   const handleDelete = async () => {
     if (!event?._id || !onDelete) return
-    
+
     if (confirm('确定要删除这个事件吗？')) {
       setLoading(true)
       try {
@@ -242,23 +244,35 @@ export function EventDialog({
             </div>
           </div>
 
-          <DialogFooter>
-            {event && onDelete && (
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={loading}
-              >
-                删除
+          <DialogFooter className="sm:justify-between">
+            <div className="flex gap-2">
+              {event && onDelete && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={handleDelete}
+                  disabled={loading}
+                >
+                  删除
+                </Button>
+              )}
+              {event && event._id && (
+                <Link href={`/schedule/${event._id}/document`} passHref>
+                  <Button type="button" variant="secondary" className="gap-2">
+                    <FileText className="w-4 h-4" />
+                    编写工作文档
+                  </Button>
+                </Link>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                取消
               </Button>
-            )}
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              取消
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? '保存中...' : '保存'}
-            </Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? '保存中...' : '保存'}
+              </Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>

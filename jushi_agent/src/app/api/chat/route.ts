@@ -10,13 +10,13 @@ import { createErrorResponse, createSuccessResponse } from '@/lib/api/proxy'
 export async function POST(request: NextRequest) {
   try {
     const body: ChatRequest = await request.json()
-    const { message, taskId } = body
+    const { message, taskId, sessionId } = body
 
     // 输入验证
     if (!message || typeof message !== 'string') {
       throw new Error('消息内容无效')
     }
-    
+
     if (message.length > 1000) {
       throw new Error('消息内容过长，请缩短到1000字符以内')
     }
@@ -27,18 +27,21 @@ export async function POST(request: NextRequest) {
       throw new Error('消息内容不能为空')
     }
 
-    // 获取认证token（从cookie或Authorization header）
-    const authToken = request.cookies.get('auth-token')?.value || 
-                      request.headers.get('authorization')?.replace('Bearer ', '')
-    
+    // 获取认证token (从cookie或Authorization header)
+    // 后端使用的是 'access_token'
+    const authToken = request.cookies.get('access_token')?.value ||
+      request.headers.get('authorization')?.replace('Bearer ', '')
+
     // 构建请求头
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
     }
-    
-    // 如果有token，添加到请求头
+
+    // 如果有token，添加到请求头 (后端期待 Bearer <token>)
     if (authToken) {
-      headers['Authorization'] = `Bearer ${authToken}`
+      // 兼容可能已经带有 Bearer 的情况
+      const tokenValue = authToken.startsWith('Bearer ') ? authToken : `Bearer ${authToken}`
+      headers['Authorization'] = tokenValue
     }
 
     console.log('Chat API: 转发请求到后端服务:', {
@@ -50,23 +53,28 @@ export async function POST(request: NextRequest) {
     })
 
     // 调用后端Python服务的聊天API
-    const backendUrl = API_CONFIG.getFullUrl('/chat/chat')
+    // 后端路由是 /api/v1/chat/
+    const backendUrl = API_CONFIG.getFullUrl('/chat/')
+    console.log('Chat API: 实际调用的后端地址:', backendUrl)
+
     const response = await fetch(backendUrl, {
       method: 'POST',
       headers,
       body: JSON.stringify({
         message: cleanMessage,
-        taskId: taskId
+        taskId: taskId,
+        sessionId: body.sessionId
       })
     })
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ detail: response.statusText }))
-      throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`)
+      console.error('Chat API: 后端返回错误:', response.status, errorData)
+      throw new Error(errorData.detail || errorData.error || `HTTP ${response.status}: ${response.statusText}`)
     }
 
     const backendResponse = await response.json()
-    
+
     // 转换后端响应格式为前端期望的格式
     const frontendResponse: APIResponse<ChatResponse> = {
       success: backendResponse.success,
@@ -77,7 +85,7 @@ export async function POST(request: NextRequest) {
 
     console.log('Chat API: 后端响应成功')
     return NextResponse.json(frontendResponse)
-    
+
   } catch (error) {
     console.error('Chat API Error详情:', {
       error: error instanceof Error ? error.message : String(error),
@@ -85,14 +93,14 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString(),
       environment: process.env.NODE_ENV
     })
-    
+
     const errorResponse: APIResponse<ChatResponse> = {
       success: false,
       error: {
         code: 'CHAT_ERROR',
         message: '抱歉，我现在遇到了一些技术问题。请稍后再试，或者描述一下您遇到的具体情况。',
-        details: process.env.NODE_ENV === 'development' ? String(error) : 
-                 `Error: ${error instanceof Error ? error.message : String(error)}`
+        details: process.env.NODE_ENV === 'development' ? String(error) :
+          `Error: ${error instanceof Error ? error.message : String(error)}`
       },
       timestamp: new Date().toISOString()
     }

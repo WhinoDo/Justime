@@ -101,8 +101,7 @@ export class AuthService {
           theme: 'system',
           notifications: {
             email: true,
-            push: true,
-            feishu: false
+            push: true
           },
           privacy: {
             profileVisible: true,
@@ -121,9 +120,7 @@ export class AuthService {
             emotionHistory: []
           }
         },
-        feishuIntegration: {
-          isActive: false
-        }
+
       })
 
       await user.save()
@@ -159,7 +156,7 @@ export class AuthService {
     try {
       // 查找用户（支持用户名或邮箱登录）
       let user: IUser | null = null
-      
+
       if (data.identifier.includes('@')) {
         user = await User.findByEmail(data.identifier)
       } else {
@@ -251,120 +248,7 @@ export class AuthService {
     }
   }
 
-  /**
-   * 飞书登录/绑定
-   */
-  static async loginWithFeishu(feishuUserInfo: {
-    openId: string
-    unionId?: string
-    name: string
-    avatar?: string
-    email?: string
-    mobile?: string
-  }): Promise<AuthResult> {
-    await ensureDbConnection()
 
-    try {
-      // 查找是否已有绑定的用户
-      let user = await User.findByFeishuOpenId(feishuUserInfo.openId)
-
-      if (user) {
-        // 用户已存在，更新飞书信息
-        if (user.feishuBinding) {
-          user.feishuBinding.name = feishuUserInfo.name
-          user.feishuBinding.avatar = feishuUserInfo.avatar
-          user.feishuBinding.email = feishuUserInfo.email
-          user.feishuBinding.mobile = feishuUserInfo.mobile
-          user.feishuBinding.lastSyncTime = new Date()
-        }
-
-        user.lastLoginAt = new Date()
-        user.loginMethod = LoginMethod.FEISHU
-        await user.updateLastActive()
-
-        console.log('✅ 飞书用户登录成功:', feishuUserInfo.openId)
-      } else {
-        // 新用户，创建账户
-        user = new User({
-          feishuOpenId: feishuUserInfo.openId, // 保持向后兼容
-          profile: {
-            name: feishuUserInfo.name,
-            displayName: feishuUserInfo.name,
-            email: feishuUserInfo.email,
-            avatar: feishuUserInfo.avatar
-          },
-          status: UserStatus.ACTIVE,
-          role: UserRole.USER,
-          loginMethod: LoginMethod.FEISHU,
-          isEmailVerified: !!feishuUserInfo.email,
-          feishuBinding: {
-            openId: feishuUserInfo.openId,
-            unionId: feishuUserInfo.unionId,
-            name: feishuUserInfo.name,
-            avatar: feishuUserInfo.avatar,
-            email: feishuUserInfo.email,
-            mobile: feishuUserInfo.mobile,
-            bindTime: new Date(),
-            lastSyncTime: new Date(),
-            isActive: true,
-            integration: {
-              isActive: false
-            }
-          },
-          preferences: {
-            language: 'zh-CN',
-            timezone: 'Asia/Shanghai',
-            theme: 'system',
-            notifications: {
-              email: true,
-              push: true,
-              feishu: true
-            },
-            privacy: {
-              profileVisible: true,
-              activityVisible: true
-            }
-          },
-          statistics: {
-            totalSessions: 0,
-            totalMessages: 0,
-            totalTokens: 0,
-            joinedAt: new Date(),
-            lastActiveAt: new Date(),
-            avgEmotionScore: 0,
-            emotionStats: {
-              mostCommonTags: [],
-              emotionHistory: []
-            }
-          },
-          feishuIntegration: {
-            isActive: false
-          }
-        })
-
-        await user.save()
-        console.log('✅ 飞书新用户注册成功:', feishuUserInfo.openId)
-      }
-
-      // 生成JWT令牌
-      const token = this.generateToken(user)
-      const refreshToken = this.generateRefreshToken(user)
-
-      return {
-        success: true,
-        user,
-        token,
-        refreshToken
-      }
-
-    } catch (error) {
-      console.error('❌ 飞书登录失败:', error)
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : '飞书登录失败'
-      }
-    }
-  }
 
   /**
    * 生成JWT令牌
@@ -390,8 +274,8 @@ export class AuthService {
       type: 'refresh'
     }
 
-    return jwt.sign(payload, this.JWT_REFRESH_SECRET, { 
-      expiresIn: this.JWT_REFRESH_EXPIRES_IN 
+    return jwt.sign(payload, this.JWT_REFRESH_SECRET, {
+      expiresIn: this.JWT_REFRESH_EXPIRES_IN
     })
   }
 

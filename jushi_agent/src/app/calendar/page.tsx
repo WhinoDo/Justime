@@ -4,10 +4,12 @@ import { useState, useEffect, useCallback } from 'react'
 import { BigCalendar, CalendarEventData } from '@/components/calendar/BigCalendar'
 import { EventDialog } from '@/components/calendar/EventDialog'
 import { Button } from '@/components/ui/button'
-import { Plus, ArrowLeft, RefreshCw } from 'lucide-react'
+import { Plus, ArrowLeft, RefreshCw, MessageCircle } from 'lucide-react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
-import { SlotInfo } from 'react-big-calendar'
+import { SlotInfo, View } from 'react-big-calendar'
+import { DaySchedulePanel } from '@/components/calendar/DaySchedulePanel'
+import { isSameDay, differenceInMinutes, addDays } from 'date-fns'
 
 export default function CalendarPage() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth()
@@ -16,6 +18,8 @@ export default function CalendarPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<CalendarEventData | null>(null)
   const [selectedSlot, setSelectedSlot] = useState<{ start: Date; end: Date } | null>(null)
+  const [view, setView] = useState<View>('month')
+  const [selectedDay, setSelectedDay] = useState<Date | null>(null)
 
   // 获取用户ID
   const getUserId = () => {
@@ -70,6 +74,16 @@ export default function CalendarPage() {
 
   // 处理时间槽选择
   const handleSelectSlot = (slotInfo: SlotInfo) => {
+    // Check if it's month view and single day click
+    if (view === 'month') {
+      const daysDiff = Math.abs(slotInfo.end.getTime() - slotInfo.start.getTime()) / (1000 * 60 * 60 * 24)
+
+      if (daysDiff <= 1) {
+        setSelectedDay(slotInfo.start)
+        return
+      }
+    }
+
     setSelectedEvent(null)
     setSelectedSlot({
       start: slotInfo.start,
@@ -208,22 +222,29 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      <div className="container mx-auto p-4 md:p-6 max-w-7xl">
+    <div className="min-h-screen relative overflow-hidden bg-gray-50 dark:bg-gray-900 font-sans selection:bg-blue-100">
+
+      {/* Dynamic Background */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-blue-400/20 blur-[100px] animate-pulse-slow" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-400/20 blur-[100px] animate-pulse-slow delay-1000" />
+      </div>
+
+      <div className="relative z-10 container mx-auto p-4 md:p-6 max-w-7xl">
         {/* 页面头部 */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <Link href="/dashboard">
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" className="hover:bg-white/50">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 返回工作台
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <h1 className="text-3xl font-extrabold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 我的日历
               </h1>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 font-medium">
                 {user.username ? `${user.username}的日程` : '管理你的日程和任务'}
               </p>
             </div>
@@ -235,11 +256,13 @@ export default function CalendarPage() {
               size="sm"
               onClick={loadEvents}
               disabled={loading}
+              className="bg-white/50 backdrop-blur-sm border-white/20 hover:bg-white/80"
             >
               <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
               刷新
             </Button>
             <Button
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90 transition-opacity text-white border-0"
               onClick={() => {
                 setSelectedEvent(null)
                 setSelectedSlot({
@@ -252,6 +275,13 @@ export default function CalendarPage() {
               <Plus className="w-4 h-4 mr-2" />
               新建事件
             </Button>
+
+            <Link href="/chat">
+              <Button variant="outline" title="进入对话" className="bg-white/50 backdrop-blur-sm border-white/20 hover:bg-white/80">
+                <MessageCircle className="w-4 h-4 mr-2" />
+                进入对话
+              </Button>
+            </Link>
           </div>
         </div>
 
@@ -259,14 +289,16 @@ export default function CalendarPage() {
         <div className="h-[calc(100vh-200px)] min-h-[600px]">
           {loading && events.length === 0 ? (
             <div className="flex items-center justify-center h-full">
-              <div className="text-center">
+              <div className="text-center p-8 rounded-2xl bg-white/30 backdrop-blur-md border border-white/20 shadow-lg">
                 <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
-                <p className="text-gray-600 dark:text-gray-400">加载中...</p>
+                <p className="text-gray-600 dark:text-gray-400 font-medium">加载中...</p>
               </div>
             </div>
           ) : (
             <BigCalendar
               events={events}
+              view={view}
+              onViewChange={setView}
               onSelectEvent={handleSelectEvent}
               onSelectSlot={handleSelectSlot}
               onEventDrop={handleEventDrop}
@@ -275,7 +307,7 @@ export default function CalendarPage() {
           )}
         </div>
 
-        {/* 事件对话框 */}
+        {/* ... dialogs ... */}
         <EventDialog
           open={dialogOpen}
           onOpenChange={setDialogOpen}
@@ -284,6 +316,24 @@ export default function CalendarPage() {
           defaultEnd={selectedSlot?.end}
           onSave={handleSaveEvent}
           onDelete={handleDeleteEvent}
+        />
+
+        <DaySchedulePanel
+          date={selectedDay}
+          events={events}
+          onClose={() => setSelectedDay(null)}
+          onAddEvent={(start) => {
+            // Open add dialog with pre-filled start time
+            setSelectedEvent(null)
+            setSelectedSlot({
+              start: start,
+              end: new Date(start.getTime() + 60 * 60 * 1000) // 1 hour default
+            })
+            setDialogOpen(true)
+          }}
+          onEditEvent={(event) => {
+            handleSelectEvent(event)
+          }}
         />
       </div>
     </div>

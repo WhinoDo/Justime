@@ -35,7 +35,7 @@ const SelectContext = React.createContext<{
   setIsOpen: (open: boolean) => void
 }>({
   isOpen: false,
-  setIsOpen: () => {}
+  setIsOpen: () => { }
 })
 
 const Select: React.FC<SelectProps> = ({ value, onValueChange, children }) => {
@@ -59,7 +59,7 @@ const SelectTrigger = React.forwardRef<HTMLButtonElement, SelectTriggerProps>(
         ref={ref}
         type="button"
         className={cn(
-          "flex h-10 w-full items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 ring-offset-background placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+          "flex h-10 w-full items-center justify-between rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 ring-offset-background placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
           className
         )}
         onClick={() => setIsOpen(!isOpen)}
@@ -90,11 +90,11 @@ const SelectValue: React.FC<SelectValueProps> = ({ placeholder, children }) => {
 
   // 如果有children，优先使用children
   if (children) {
-    return <span className="block truncate text-gray-900">{children}</span>
+    return <span className="block truncate text-gray-900 dark:text-gray-100">{children}</span>
   }
 
   return (
-    <span className="block truncate text-gray-900">
+    <span className="block truncate text-gray-900 dark:text-gray-100">
       {displayValue || placeholder}
     </span>
   )
@@ -125,7 +125,7 @@ const SelectContent: React.FC<SelectContentProps> = ({ children }) => {
   return (
     <div
       ref={contentRef}
-      className="absolute top-full left-0 right-0 z-50 mt-1 max-h-96 overflow-auto rounded-md border border-gray-200 bg-white shadow-lg"
+      className="absolute top-full left-0 right-0 z-50 mt-1 max-h-96 overflow-auto rounded-md border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-lg"
     >
       <div className="p-1">
         {children}
@@ -142,8 +142,8 @@ const SelectItem: React.FC<SelectItemProps> = ({ value, children, className, ...
     <button
       type="button"
       className={cn(
-        "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-2 pr-2 text-sm outline-none hover:bg-gray-100 focus:bg-gray-100",
-        isSelected && "bg-blue-50 text-blue-900",
+        "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-2 pr-2 text-sm text-gray-900 dark:text-gray-100 outline-none hover:bg-gray-100 dark:hover:bg-gray-700 focus:bg-gray-100 dark:focus:bg-gray-700",
+        isSelected && "bg-blue-50 dark:bg-blue-900/30 text-blue-900 dark:text-blue-300",
         className
       )}
       onClick={() => {
@@ -160,9 +160,9 @@ const SelectItem: React.FC<SelectItemProps> = ({ value, children, className, ...
 // 简化的导出，保持兼容性
 const SelectGroup = ({ children }: { children: React.ReactNode }) => <>{children}</>
 const SelectLabel = ({ children }: { children: React.ReactNode }) => (
-  <div className="py-1.5 pl-2 pr-2 text-sm font-semibold text-gray-900">{children}</div>
+  <div className="py-1.5 pl-2 pr-2 text-sm font-semibold text-gray-900 dark:text-gray-100">{children}</div>
 )
-const SelectSeparator = () => <div className="-mx-1 my-1 h-px bg-gray-200" />
+const SelectSeparator = () => <div className="-mx-1 my-1 h-px bg-gray-200 dark:bg-gray-600" />
 
 export {
   Select,

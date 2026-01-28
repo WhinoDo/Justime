@@ -14,8 +14,8 @@ import { createErrorResponse, createSuccessResponse } from '@/lib/api/proxy'
 export async function GET(request: NextRequest) {
   try {
     // 验证用户身份
-    const authToken = request.cookies.get('auth-token')?.value
-    
+    const authToken = request.cookies.get('access_token')?.value
+
     if (!authToken) {
       return createErrorResponse('请先登录', 'AUTHENTICATION_ERROR', 401)
     }
@@ -25,14 +25,13 @@ export async function GET(request: NextRequest) {
     const response = await fetch(backendUrl, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${authToken}`,
-        'Cookie': `auth-token=${authToken}`
+        'Authorization': authToken.startsWith('Bearer ') ? authToken : `Bearer ${authToken}`
       },
       credentials: 'include'
     })
 
     const result = await response.json()
-    
+
     if (!response.ok) {
       return createErrorResponse(result.detail || '获取配置失败', 'FETCH_ERROR', response.status)
     }
@@ -54,8 +53,8 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     // 验证用户身份
-    const authToken = request.cookies.get('auth-token')?.value
-    
+    const authToken = request.cookies.get('access_token')?.value
+
     if (!authToken) {
       return createErrorResponse('请先登录', 'AUTHENTICATION_ERROR', 401)
     }
@@ -68,15 +67,14 @@ export async function PUT(request: NextRequest) {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`,
-        'Cookie': `auth-token=${authToken}`
+        'Authorization': authToken.startsWith('Bearer ') ? authToken : `Bearer ${authToken}`
       },
       credentials: 'include',
       body: JSON.stringify(body)
     })
 
     const result = await response.json()
-    
+
     if (!response.ok) {
       return createErrorResponse(result.detail || '更新配置失败', 'UPDATE_ERROR', response.status)
     }

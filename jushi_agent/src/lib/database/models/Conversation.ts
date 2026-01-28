@@ -29,14 +29,7 @@ export interface TaskData {
   }>
 }
 
-// 飞书同步数据接口
-export interface FeishuSyncData {
-  calendarEventIds?: string[]
-  documentIds?: string[]
-  syncStatus: 'pending' | 'synced' | 'failed' | 'partial'
-  syncedAt?: Date
-  errorMessage?: string
-}
+
 
 // 消息接口
 export interface IMessage {
@@ -44,16 +37,13 @@ export interface IMessage {
   role: 'user' | 'assistant'
   content: string
   timestamp: Date
-  
+
   // 用户消息的情绪分析
   emotionAnalysis?: EmotionAnalysis
-  
+
   // AI响应的任务数据
   taskData?: TaskData
-  
-  // 飞书集成数据
-  feishuSync?: FeishuSyncData
-  
+
   // 消息元数据
   metadata?: {
     wordCount?: number
@@ -73,7 +63,7 @@ export interface ConversationMetadata {
   completedTaskCount: number
   categories: string[] // 对话主题分类
   lastActivity: Date
-  
+
   // 学习分析
   learningMetrics?: {
     studyTopics: string[]
@@ -81,7 +71,7 @@ export interface ConversationMetadata {
     learningGoals: string[]
     progressIndicators: number[]
   }
-  
+
   // 性能指标
   performance?: {
     avgResponseTime: number // 平均响应时间
@@ -97,23 +87,23 @@ export interface IConversation extends Document {
   title: string
   messages: IMessage[]
   metadata: ConversationMetadata
-  
+
   // 对话状态
   status: 'active' | 'archived' | 'deleted'
-  
+
   // 对话类型
   type: 'general' | 'task_planning' | 'emotion_support' | 'learning' | 'mixed'
-  
+
   // 标签和分类
   tags: string[]
-  
+
   // 共享设置
   sharing?: {
     isShared: boolean
     sharedWith?: string[] // 用户ID列表
     sharePermissions: 'read' | 'comment' | 'edit'
   }
-  
+
   createdAt: Date
   updatedAt: Date
 }
@@ -139,7 +129,7 @@ const messageSchema = new Schema<IMessage>({
     type: Date,
     default: Date.now
   },
-  
+
   // 情绪分析数据
   emotionAnalysis: {
     score: {
@@ -155,7 +145,7 @@ const messageSchema = new Schema<IMessage>({
       max: 1
     }
   },
-  
+
   // 任务数据
   taskData: {
     hasTasks: {
@@ -183,20 +173,7 @@ const messageSchema = new Schema<IMessage>({
       }
     }]
   },
-  
-  // 飞书同步数据
-  feishuSync: {
-    calendarEventIds: [String],
-    documentIds: [String],
-    syncStatus: {
-      type: String,
-      enum: ['pending', 'synced', 'failed', 'partial'],
-      default: 'pending'
-    },
-    syncedAt: Date,
-    errorMessage: String
-  },
-  
+
   // 消息元数据
   metadata: {
     wordCount: Number,
@@ -220,7 +197,7 @@ const conversationSchema = new Schema<IConversation>({
     maxlength: 200
   },
   messages: [messageSchema],
-  
+
   metadata: {
     totalMessages: { type: Number, default: 0 },
     avgEmotionScore: { type: Number, min: 1, max: 10 },
@@ -230,7 +207,7 @@ const conversationSchema = new Schema<IConversation>({
     completedTaskCount: { type: Number, default: 0 },
     categories: [String],
     lastActivity: { type: Date, default: Date.now },
-    
+
     learningMetrics: {
       studyTopics: [String],
       difficultyLevel: {
@@ -240,28 +217,28 @@ const conversationSchema = new Schema<IConversation>({
       learningGoals: [String],
       progressIndicators: [Number]
     },
-    
+
     performance: {
       avgResponseTime: Number,
       userSatisfaction: { type: Number, min: 1, max: 5 },
       taskCompletionRate: { type: Number, min: 0, max: 100 }
     }
   },
-  
+
   status: {
     type: String,
     enum: ['active', 'archived', 'deleted'],
     default: 'active'
   },
-  
+
   type: {
     type: String,
     enum: ['general', 'task_planning', 'emotion_support', 'learning', 'mixed'],
     default: 'general'
   },
-  
+
   tags: [String],
-  
+
   sharing: {
     isShared: { type: Boolean, default: false },
     sharedWith: [String],
@@ -287,9 +264,9 @@ if (typeof window === 'undefined') {
 }
 
 // 实例方法
-conversationSchema.methods.addMessage = function(messageData: Partial<IMessage>) {
+conversationSchema.methods.addMessage = function (messageData: Partial<IMessage>) {
   const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-  
+
   const message: IMessage = {
     messageId,
     role: messageData.role!,
@@ -297,11 +274,11 @@ conversationSchema.methods.addMessage = function(messageData: Partial<IMessage>)
     timestamp: new Date(),
     ...messageData
   }
-  
+
   this.messages.push(message)
   this.metadata.totalMessages = this.messages.length
   this.metadata.lastActivity = new Date()
-  
+
   // 更新情绪趋势
   if (message.emotionAnalysis?.score) {
     this.metadata.emotionTrend.push(message.emotionAnalysis.score)
@@ -309,22 +286,22 @@ conversationSchema.methods.addMessage = function(messageData: Partial<IMessage>)
     if (this.metadata.emotionTrend.length > 20) {
       this.metadata.emotionTrend = this.metadata.emotionTrend.slice(-20)
     }
-    
+
     // 更新平均情绪分数
     const emotionScores = this.metadata.emotionTrend
     this.metadata.avgEmotionScore = emotionScores.reduce((a, b) => a + b, 0) / emotionScores.length
   }
-  
+
   // 更新任务统计
   if (message.taskData?.hasTasks) {
     this.metadata.hasTaskPlanning = true
     this.metadata.taskCount += message.taskData.tasks.length
   }
-  
+
   return this
 }
 
-conversationSchema.methods.updateTaskStatus = function(taskId: string, status: string) {
+conversationSchema.methods.updateTaskStatus = function (taskId: string, status: string) {
   for (const message of this.messages) {
     if (message.taskData?.tasks) {
       const task = message.taskData.tasks.find(t => t.id === taskId)
@@ -341,11 +318,11 @@ conversationSchema.methods.updateTaskStatus = function(taskId: string, status: s
 }
 
 // 静态方法
-conversationSchema.statics.findByUserId = function(userId: string, status = 'active') {
+conversationSchema.statics.findByUserId = function (userId: string, status = 'active') {
   return this.find({ userId, status }).sort({ 'metadata.lastActivity': -1 })
 }
 
-conversationSchema.statics.searchConversations = function(userId: string, query: string) {
+conversationSchema.statics.searchConversations = function (userId: string, query: string) {
   return this.find({
     userId,
     status: 'active',

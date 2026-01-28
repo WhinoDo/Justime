@@ -14,7 +14,7 @@ import { createErrorResponse, createSuccessResponse } from '@/lib/api/proxy'
 export async function GET(request: NextRequest) {
   try {
     // 从cookie中获取token
-    const token = request.cookies.get('auth-token')?.value
+    const token = request.cookies.get('access_token')?.value
 
     if (!token) {
       return createErrorResponse('未登录', 'AUTHENTICATION_ERROR', 401)
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Authorization': token.startsWith('Bearer ') ? token : `Bearer ${token}`
       }
     })
 

@@ -37,11 +37,28 @@ export async function proxyToBackend(
     if (requireAuth) {
       const authHeader = request.headers.get('authorization');
       const cookieHeader = request.headers.get('cookie');
-      
+
       if (authHeader) {
         requestHeaders['Authorization'] = authHeader;
+      } else if (cookieHeader) {
+        // 如果没有 Authorizaton 头但有 Cookie，尝试从 Cookie 提取 access_token
+        const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
+          const [key, value] = cookie.trim().split('=');
+          if (key && value) acc[key] = value;
+          return acc;
+        }, {} as Record<string, string>);
+
+        const accessToken = cookies['access_token'];
+        if (accessToken) {
+          // 确保 token 格式正确
+          const tokenValue = accessToken.startsWith('Bearer%20')
+            ? accessToken.replace('Bearer%20', 'Bearer ')
+            : `Bearer ${accessToken}`;
+
+          requestHeaders['Authorization'] = tokenValue;
+        }
       }
-      
+
       if (cookieHeader) {
         requestHeaders['Cookie'] = cookieHeader;
       }
@@ -59,9 +76,9 @@ export async function proxyToBackend(
 
     // 构建完整的后端URL
     const backendUrl = API_CONFIG.getFullUrl(endpoint);
-    
+
     console.log(`🔀 代理请求: ${method} ${backendUrl}`);
-    
+
     // 发送请求到后端
     const response = await fetch(backendUrl, {
       method,
@@ -74,7 +91,7 @@ export async function proxyToBackend(
     // 获取响应数据
     const responseData = await response.text();
     let data: any;
-    
+
     try {
       data = JSON.parse(responseData);
     } catch {
@@ -86,7 +103,7 @@ export async function proxyToBackend(
     // 创建响应
     const nextResponse = NextResponse.json(
       data,
-      { 
+      {
         status: response.status,
         headers: {
           'Content-Type': response.headers.get('content-type') || 'application/json'
@@ -104,7 +121,7 @@ export async function proxyToBackend(
 
   } catch (error) {
     console.error('❌ 代理请求失败:', error);
-    
+
     return NextResponse.json(
       {
         success: false,
@@ -165,7 +182,7 @@ export function validateRequiredFields(
   requiredFields: string[]
 ): { valid: boolean; missing: string[] } {
   const missing = requiredFields.filter(field => !data[field]);
-  
+
   return {
     valid: missing.length === 0,
     missing

@@ -14,7 +14,7 @@ import { createErrorResponse, createSuccessResponse } from '@/lib/api/proxy'
 export async function GET(request: NextRequest) {
   try {
     // 从cookie中获取token
-    const token = request.cookies.get('auth-token')?.value
+    const token = request.cookies.get('access_token')?.value
 
     if (!token) {
       return createErrorResponse('请先登录', 'AUTHENTICATION_ERROR', 401)
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Authorization': token.startsWith('Bearer ') ? token : `Bearer ${token}`
       }
     })
 
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     // 从cookie中获取token
-    const token = request.cookies.get('auth-token')?.value
+    const token = request.cookies.get('access_token')?.value
 
     if (!token) {
       return createErrorResponse('请先登录', 'AUTHENTICATION_ERROR', 401)
@@ -72,7 +72,7 @@ export async function PUT(request: NextRequest) {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Authorization': token.startsWith('Bearer ') ? token : `Bearer ${token}`
       },
       body: JSON.stringify(body)
     })

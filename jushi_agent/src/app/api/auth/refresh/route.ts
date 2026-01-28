@@ -16,10 +16,10 @@ export async function POST(request: NextRequest) {
     // 从cookie中获取refresh token（后端会自动处理）
     // 调用后端Python服务的刷新令牌API
     const backendUrl = API_CONFIG.getFullUrl('/auth/refresh')
-    
+
     // 获取cookie并传递给后端
     const refreshToken = request.cookies.get('refresh-token')?.value
-    
+
     const response = await fetch(backendUrl, {
       method: 'POST',
       headers: {
@@ -39,9 +39,9 @@ export async function POST(request: NextRequest) {
 
     // 设置新的认证cookie
     const nextResponse = createSuccessResponse(data.data ?? data, data.message || '刷新成功')
-    
+
     if (data.success && data.data?.token) {
-      nextResponse.cookies.set('auth-token', data.data.token, {
+      nextResponse.cookies.set('access_token', data.data.token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',

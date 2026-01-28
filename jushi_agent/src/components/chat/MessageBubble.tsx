@@ -20,7 +20,7 @@ export function MessageBubble({ message, onTaskCreate }: MessageBubbleProps) {
   const isUser = message.role === 'user'
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
   const { theme } = useTheme()
-  
+
   const handleCopyCode = async (code: string) => {
     try {
       await navigator.clipboard.writeText(code)
@@ -44,7 +44,7 @@ export function MessageBubble({ message, onTaskCreate }: MessageBubbleProps) {
     if (score <= 6) return '中度焦虑'
     return '状态良好'
   }
-  
+
   return (
     <div className={cn(
       "group flex gap-3 max-w-[85%] animate-in slide-in-from-bottom-1 duration-300",
@@ -53,8 +53,8 @@ export function MessageBubble({ message, onTaskCreate }: MessageBubbleProps) {
       {/* 头像 */}
       <div className={cn(
         "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center shadow-md",
-        isUser 
-          ? "bg-gradient-to-br from-blue-500 to-purple-600 text-white" 
+        isUser
+          ? "bg-gradient-to-br from-blue-500 to-purple-600 text-white"
           : "bg-gradient-to-br from-emerald-500 to-teal-600 text-white"
       )}>
         {isUser ? <User size={16} /> : <Bot size={16} />}
@@ -69,14 +69,14 @@ export function MessageBubble({ message, onTaskCreate }: MessageBubbleProps) {
         <div className={cn(
           "relative rounded-2xl px-4 py-3 shadow-sm border max-w-full",
           "transition-all duration-200 hover:shadow-md",
-          isUser 
-            ? "bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-br-md" 
+          isUser
+            ? "bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-br-md"
             : "bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-bl-md border-gray-200 dark:border-gray-700"
         )}>
           {/* Markdown 渲染 */}
           <div className={cn(
             "prose prose-sm max-w-none",
-            isUser 
+            isUser
               ? "prose-invert prose-headings:text-white prose-p:text-white prose-strong:text-white prose-em:text-white prose-code:text-blue-100 prose-code:bg-blue-600/30"
               : "prose-gray dark:prose-invert prose-headings:text-gray-800 dark:prose-headings:text-gray-100"
           )}>
@@ -88,7 +88,7 @@ export function MessageBubble({ message, onTaskCreate }: MessageBubbleProps) {
                   const language = match ? match[1] : ''
                   const codeString = String(children).replace(/\n$/, '')
                   const inline = !language
-                  
+
                   if (!inline && language) {
                     return (
                       <div className="relative group/code">
@@ -123,13 +123,13 @@ export function MessageBubble({ message, onTaskCreate }: MessageBubbleProps) {
                       </div>
                     )
                   }
-                  
+
                   return (
-                    <code 
+                    <code
                       className={cn(
                         "px-1.5 py-0.5 rounded text-sm font-mono",
-                        isUser 
-                          ? "bg-blue-600/30 text-blue-100" 
+                        isUser
+                          ? "bg-blue-600/30 text-blue-100"
                           : "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200"
                       )}
                       {...props}
@@ -141,8 +141,8 @@ export function MessageBubble({ message, onTaskCreate }: MessageBubbleProps) {
                 blockquote: ({ children }: any) => (
                   <blockquote className={cn(
                     "border-l-4 pl-4 py-2 my-2 italic",
-                    isUser 
-                      ? "border-blue-300 text-blue-100" 
+                    isUser
+                      ? "border-blue-300 text-blue-100"
                       : "border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400"
                   )}>
                     {children}
@@ -168,8 +168,8 @@ export function MessageBubble({ message, onTaskCreate }: MessageBubbleProps) {
                 th: ({ children }: any) => (
                   <th className={cn(
                     "border border-gray-300 dark:border-gray-600 px-3 py-2 font-semibold text-left",
-                    isUser 
-                      ? "bg-blue-600/20 text-white" 
+                    isUser
+                      ? "bg-blue-600/20 text-white"
                       : "bg-gray-50 dark:bg-gray-700"
                   )}>
                     {children}
@@ -196,19 +196,9 @@ export function MessageBubble({ message, onTaskCreate }: MessageBubbleProps) {
           <span className="text-gray-500 dark:text-gray-400">
             {formatTime(message.created_at)}
           </span>
-          
+
           {/* 情绪评分 */}
-          {message.emotion_score && (
-            <div className={cn(
-              "flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
-              "bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
-            )}>
-              <Brain size={12} className={getEmotionColor(message.emotion_score)} />
-              <span className={getEmotionColor(message.emotion_score)}>
-                {getEmotionLabel(message.emotion_score)} ({message.emotion_score}/10)
-              </span>
-            </div>
-          )}
+          {/* Emotion score display removed */}
         </div>
       </div>
     </div>
