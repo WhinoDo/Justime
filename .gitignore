@@ -1,0 +1,29 @@
+# System files
+.DS_Store
+
+# Environments
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# Node
+node_modules/
+.next/
+dist/
+build/
+.agent/
+.cursor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
