@@ -1,15 +1,17 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { BigCalendar, CalendarEventData } from '@/components/calendar/BigCalendar'
+// import { BigCalendar, CalendarEventData } from '@/components/calendar/BigCalendar'
+import { BigCalendar } from '@/components/calendar/BigCalendar'
+import type { CalendarEventData } from '@/components/calendar/BigCalendar' // Assuming type export needs adjustment or use import type
 import { EventDialog } from '@/components/calendar/EventDialog'
 import { Button } from '@/components/ui/button'
-import { Plus, ArrowLeft, RefreshCw, MessageCircle } from 'lucide-react'
+import { Plus, ArrowLeft, RefreshCw, MessageCircle, Calendar as CalendarIcon, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { SlotInfo, View } from 'react-big-calendar'
 import { DaySchedulePanel } from '@/components/calendar/DaySchedulePanel'
-import { isSameDay, differenceInMinutes, addDays } from 'date-fns'
+import { JushiBackground } from '@/components/ui/JushiBackground'
 
 export default function CalendarPage() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth()
@@ -31,14 +33,12 @@ export default function CalendarPage() {
   const loadEvents = useCallback(async () => {
     const userId = getUserId()
     if (!userId) {
-      console.log('用户未登录，跳过加载日程')
       setLoading(false)
       return
     }
 
     try {
       setLoading(true)
-      console.log('正在加载用户日程，userId:', userId)
       const response = await fetch(`/api/calendar/events?userId=${userId}`)
       const data = await response.json()
 
@@ -49,7 +49,6 @@ export default function CalendarPage() {
           start: new Date(event.start),
           end: new Date(event.end),
         }))
-        console.log(`成功加载 ${formattedEvents.length} 条日程`)
         setEvents(formattedEvents)
       } else {
         console.error('加载事件失败:', data.error)
@@ -187,10 +186,11 @@ export default function CalendarPage() {
   // 认证加载中
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
-          <p className="text-sm text-gray-500">正在加载...</p>
+      <div className="min-h-screen relative flex items-center justify-center overflow-hidden">
+        <JushiBackground blur="xl" />
+        <div className="relative z-10 flex flex-col items-center gap-3">
+          <RefreshCw className="h-8 w-8 animate-spin text-white/50" />
+          <p className="text-white/60 text-sm font-light tracking-widest uppercase">Syncing Calendar</p>
         </div>
       </div>
     )
@@ -199,21 +199,24 @@ export default function CalendarPage() {
   // 未登录提示
   if (!isAuthenticated || !user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
-        <div className="max-w-md mx-auto text-center space-y-6 p-6">
-          <div className="space-y-2">
-            <div className="text-6xl">📅</div>
-            <h2 className="text-xl font-semibold text-gray-900">需要登录</h2>
-            <p className="text-gray-600">
-              请先登录以查看和管理您的日程
+      <div className="min-h-screen relative flex items-center justify-center overflow-hidden">
+        <JushiBackground blur="lg" opacity={0.6} />
+        <div className="relative z-10 w-full max-w-md mx-auto text-center space-y-6 p-8 bg-white/10 backdrop-blur-2xl border border-white/20 rounded-3xl shadow-2xl">
+          <div className="space-y-4">
+            <div className="h-20 w-20 mx-auto rounded-full bg-blue-500/20 flex items-center justify-center ring-1 ring-blue-500/40">
+              <CalendarIcon className="h-10 w-10 text-blue-300" />
+            </div>
+            <h2 className="text-xl font-bold text-white">Login Required</h2>
+            <p className="text-white/70">
+              Please login to view and manage your schedule.
             </p>
           </div>
           <div className="space-y-3">
             <Link href="/auth?mode=login&redirect=/calendar" className="block">
-              <Button className="w-full">立即登录</Button>
+              <Button className="w-full h-11 bg-white text-gray-900 border-0 hover:bg-white/90 font-medium rounded-xl">Login Now</Button>
             </Link>
             <Link href="/dashboard" className="block">
-              <Button variant="outline" className="w-full">返回工作台</Button>
+              <Button variant="ghost" className="w-full text-white/50 hover:text-white hover:bg-white/5">Back to Dashboard</Button>
             </Link>
           </div>
         </div>
@@ -222,31 +225,23 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-gray-50 dark:bg-gray-900 font-sans selection:bg-blue-100">
+    <div className="min-h-screen relative overflow-hidden font-sans">
+      <JushiBackground blur="md" opacity={0.4} />
 
-      {/* Dynamic Background */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-blue-400/20 blur-[100px] animate-pulse-slow" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-400/20 blur-[100px] animate-pulse-slow delay-1000" />
-      </div>
-
-      <div className="relative z-10 container mx-auto p-4 md:p-6 max-w-7xl">
+      <div className="relative z-10 container mx-auto p-4 md:p-6 max-w-7xl h-screen flex flex-col">
         {/* 页面头部 */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4 flex-shrink-0 bg-white/10 backdrop-blur-xl p-4 rounded-2xl border border-white/10 shadow-lg">
           <div className="flex items-center gap-4">
             <Link href="/dashboard">
-              <Button variant="ghost" size="sm" className="hover:bg-white/50">
+              <Button variant="ghost" size="sm" className="text-white/70 hover:bg-white/10 hover:text-white">
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                返回工作台
+                Back
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-extrabold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                我的日历
+              <h1 className="text-2xl font-bold text-white tracking-tight">
+                My Calendar
               </h1>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 font-medium">
-                {user.username ? `${user.username}的日程` : '管理你的日程和任务'}
-              </p>
             </div>
           </div>
 
@@ -256,13 +251,13 @@ export default function CalendarPage() {
               size="sm"
               onClick={loadEvents}
               disabled={loading}
-              className="bg-white/50 backdrop-blur-sm border-white/20 hover:bg-white/80"
+              className="bg-white/5 border-white/10 text-white hover:bg-white/10"
             >
               <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              刷新
+              Refresh
             </Button>
             <Button
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90 transition-opacity text-white border-0"
+              className="bg-indigo-600 hover:bg-indigo-500 text-white border-0 shadow-lg shadow-indigo-500/20"
               onClick={() => {
                 setSelectedEvent(null)
                 setSelectedSlot({
@@ -273,25 +268,25 @@ export default function CalendarPage() {
               }}
             >
               <Plus className="w-4 h-4 mr-2" />
-              新建事件
+              New Event
             </Button>
 
             <Link href="/chat">
-              <Button variant="outline" title="进入对话" className="bg-white/50 backdrop-blur-sm border-white/20 hover:bg-white/80">
+              <Button variant="outline" title="Chat Assistant" className="bg-white/5 border-white/10 text-white hover:bg-white/10">
                 <MessageCircle className="w-4 h-4 mr-2" />
-                进入对话
+                Chat
               </Button>
             </Link>
           </div>
         </div>
 
         {/* 日历主体 */}
-        <div className="h-[calc(100vh-200px)] min-h-[600px]">
+        <div className="flex-1 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl overflow-hidden p-1">
           {loading && events.length === 0 ? (
             <div className="flex items-center justify-center h-full">
-              <div className="text-center p-8 rounded-2xl bg-white/30 backdrop-blur-md border border-white/20 shadow-lg">
-                <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
-                <p className="text-gray-600 dark:text-gray-400 font-medium">加载中...</p>
+              <div className="text-center p-8">
+                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-indigo-500" />
+                <p className="text-gray-500 font-medium">Loading Schedule...</p>
               </div>
             </div>
           ) : (
@@ -307,7 +302,7 @@ export default function CalendarPage() {
           )}
         </div>
 
-        {/* ... dialogs ... */}
+        {/* Dialogs */}
         <EventDialog
           open={dialogOpen}
           onOpenChange={setDialogOpen}
@@ -323,17 +318,14 @@ export default function CalendarPage() {
           events={events}
           onClose={() => setSelectedDay(null)}
           onAddEvent={(start) => {
-            // Open add dialog with pre-filled start time
             setSelectedEvent(null)
             setSelectedSlot({
               start: start,
-              end: new Date(start.getTime() + 60 * 60 * 1000) // 1 hour default
+              end: new Date(start.getTime() + 60 * 60 * 1000)
             })
             setDialogOpen(true)
           }}
-          onEditEvent={(event) => {
-            handleSelectEvent(event)
-          }}
+          onEditEvent={handleSelectEvent}
         />
       </div>
     </div>

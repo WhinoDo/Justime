@@ -15,6 +15,7 @@ from app.models.auth import (
 from datetime import timedelta, datetime
 from app.services.security_service import SecurityService
 from app.services.encryption_service import encryption_service
+from app.core.exceptions import UserNotFoundError, PasswordIncorrectError
 
 class AuthBusiness:
     @staticmethod
@@ -105,6 +106,12 @@ class AuthBusiness:
                     token=access_token
                 )
             )
+        except UserNotFoundError:
+             print(f"❌ Login failed: User {payload.identifier} not found")
+             return AuthResponse(success=False, message="账号不存在")
+        except PasswordIncorrectError:
+             print(f"❌ Login failed: Password incorrect for {payload.identifier}")
+             return AuthResponse(success=False, message="密码错误")
         except Exception as e:
             print(f"❌ Login error: {type(e).__name__}: {e}")
             import traceback

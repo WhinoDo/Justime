@@ -1,12 +1,11 @@
 'use client'
 
 import { useState, useCallback, useMemo } from 'react'
-import { Calendar, dateFnsLocalizer, View, SlotInfo } from 'react-big-calendar'
+import { Calendar, dateFnsLocalizer, View, SlotInfo, Components } from 'react-big-calendar'
 import { format, parse, startOfWeek, getDay, addHours } from 'date-fns'
 import { zhCN } from 'date-fns/locale/zh-CN'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
-import { Button } from '@/components/ui/button'
-import { Plus, Calendar as CalendarIcon } from 'lucide-react'
+import { CustomEvent, CustomToolbar, CustomDateHeader } from './CalendarComponents'
 
 // 配置中文本地化
 const locales = {
@@ -83,24 +82,8 @@ export function BigCalendar({
     yesterday: '昨天',
     tomorrow: '明天',
     noEventsInRange: '该时间范围内没有事件',
-    showMore: (total: number) => `+${total} 更多`,
+    showMore: (total: number) => `+${total} more`,
   }), [])
-
-  // 事件样式
-  const eventStyleGetter = useCallback((event: CalendarEventData) => {
-    const backgroundColor = event.color || '#3b82f6'
-    const style = {
-      backgroundColor,
-      borderRadius: '6px',
-      opacity: 0.9,
-      color: 'white',
-      border: '0px',
-      display: 'block',
-      fontSize: '13px',
-      padding: '4px 8px',
-    }
-    return { style }
-  }, [])
 
   // 处理视图变化
   const handleViewChange = useCallback((newView: View) => {
@@ -142,25 +125,20 @@ export function BigCalendar({
     })
   }, [onEventResize])
 
-  return (
-    <div className="h-full flex flex-col rounded-2xl border border-white/20 shadow-xl bg-white/40 dark:bg-gray-800/40 backdrop-blur-md transition-all duration-300 hover:shadow-2xl">
-      {/* 日历头部 */}
-      <div className="flex items-center justify-between p-4 border-b border-white/10 dark:border-white/5 bg-white/30 dark:bg-black/20 rounded-t-2xl">
-        <div className="flex items-center gap-2">
-          <CalendarIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-          <h2 className="text-xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 dark:from-gray-100 dark:to-gray-300 bg-clip-text text-transparent">
-            我的日历
-          </h2>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-600 dark:text-gray-300 bg-white/50 dark:bg-black/30 px-3 py-1 rounded-full border border-white/20">
-            {format(date, 'yyyy年MM月', { locale: zhCN })}
-          </span>
-        </div>
-      </div>
+  // Custom Components Registration
+  const components: Components<CalendarEventData, object> = useMemo(() => ({
+    event: CustomEvent,
+    toolbar: CustomToolbar,
+    month: {
+      header: CustomDateHeader
+    }
+  }), [])
 
-      {/* 日历主体 */}
-      <div className="flex-1 p-4 calendar-container">
+  return (
+    <div className="h-full flex flex-col calendar-theme-glass">
+
+      {/* Calendar Body */}
+      <div className="flex-1">
         <Calendar
           localizer={localizer}
           events={events}
@@ -182,193 +160,144 @@ export function BigCalendar({
           selectable
           resizable
           popup
-          eventPropGetter={eventStyleGetter}
+          //   eventPropGetter={eventStyleGetter} // We use CustomEvent component instead
           views={['month', 'week', 'day', 'agenda']}
           step={30}
           showMultiDayTimes
           defaultDate={new Date()}
-          components={{
-            toolbar: CustomToolbar,
-          }}
+          components={components}
         />
       </div>
 
-      {/* 自定义样式 */}
+      {/* Advanced Glassmorphic CSS Overrides */}
       <style jsx global>{`
-        .calendar-container .rbc-calendar {
+        /* Core Reset */
+        .calendar-theme-glass .rbc-calendar {
           font-family: inherit;
-        }
-        
-        /* Header */
-        .calendar-container .rbc-header {
-          padding: 12px 4px;
-          font-weight: 600;
-          color: #4b5563; /* gray-600 */
-          background-color: rgba(255, 255, 255, 0.3);
-          border-bottom: 2px solid rgba(255, 255, 255, 0.2);
-          backdrop-filter: blur(4px);
-        }
-        
-        .dark .calendar-container .rbc-header {
-          color: #e5e7eb;
-          background-color: rgba(0, 0, 0, 0.2);
-          border-bottom-color: rgba(255, 255, 255, 0.1);
-        }
-        
-        /* Today cell */
-        .calendar-container .rbc-today {
-          background-color: rgba(59, 130, 246, 0.15); /* blue-500/15 */
-        }
-        
-        .dark .calendar-container .rbc-today {
-          background-color: rgba(59, 130, 246, 0.2);
-        }
-        
-        /* Event styles */
-        .calendar-container .rbc-event {
-          cursor: pointer;
-          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          backdrop-filter: blur(4px);
-        }
-        
-        .calendar-container .rbc-event:hover {
-          opacity: 1 !important;
-          transform: translateY(-2px) scale(1.02);
-          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
-          z-index: 50;
-        }
-        
-        .calendar-container .rbc-selected {
-          background-color: rgba(37, 99, 235, 0.9) !important; /* blue-600/90 */
-        }
-        
-        /* Off-range cells */
-        .calendar-container .rbc-off-range-bg {
-          background-color: rgba(0, 0, 0, 0.05);
-        }
-        
-        .dark .calendar-container .rbc-off-range-bg {
-          background-color: rgba(0, 0, 0, 0.3);
-        }
-        
-        /* Grid lines */
-        .calendar-container .rbc-time-slot,
-        .calendar-container .rbc-month-row,
-        .calendar-container .rbc-day-bg {
-          border-color: rgba(209, 213, 219, 0.4); /* gray-300/40 */
-        }
-        
-        .dark .calendar-container .rbc-time-slot,
-        .dark .calendar-container .rbc-month-row,
-        .dark .calendar-container .rbc-day-bg {
-          border-color: rgba(75, 85, 99, 0.4); /* gray-600/40 */
+          color: rgba(255, 255, 255, 0.9);
         }
 
-        .calendar-container .rbc-time-content {
-            border-top: 1px solid rgba(209, 213, 219, 0.4);
-        }
-        .dark .calendar-container .rbc-time-content {
-            border-top: 1px solid rgba(75, 85, 99, 0.4);
-        }
-        
-        /* Buttons in Toolbar */
-        .calendar-container .rbc-toolbar button {
-            color: inherit;
+        /* Transparent Backgrounds */
+        .calendar-theme-glass .rbc-month-view, 
+        .calendar-theme-glass .rbc-time-view, 
+        .calendar-theme-glass .rbc-agenda-view {
+            background: transparent;
+            border: none;
         }
 
-        /* Popup Overlay */
+        /* Headers with subtle borders */
+        .calendar-theme-glass .rbc-header {
+            padding: 12px 0;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.6);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        /* Grid Lines - Ultra subtle */
+        .calendar-theme-glass .rbc-month-row,
+        .calendar-theme-glass .rbc-day-bg,
+        .calendar-theme-glass .rbc-time-content,
+        .calendar-theme-glass .rbc-time-header-content {
+             border-color: rgba(255, 255, 255, 0.05) !important;
+        }
+        
+        .calendar-theme-glass .rbc-day-bg + .rbc-day-bg {
+             border-left: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Today Highlight - Soft glow */
+        .calendar-theme-glass .rbc-today {
+            background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.05), transparent);
+        }
+
+        /* Off-range dates - Dimmed */
+        .calendar-theme-glass .rbc-off-range-bg {
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        /* Time Gutter - Minimalist */
+        .calendar-theme-glass .rbc-timeslot-group {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03) !important;
+        }
+        .calendar-theme-glass .rbc-time-gutter .rbc-timeslot-group {
+            border-color: rgba(255, 255, 255, 0.05);
+        }
+        .calendar-theme-glass .rbc-label {
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.75rem;
+        }
+
+        /* Current Time Indicator */
+        .calendar-theme-glass .rbc-current-time-indicator {
+            background-color: #60a5fa; /* blue-400 */
+            height: 2px;
+        }
+
+        /* Events - Reset default properties to let CustomEvent take over */
+        .calendar-theme-glass .rbc-event {
+            background: transparent !important;
+            border: none !important;
+            padding: 0 !important;
+            box-shadow: none !important;
+        }
+
+        /* Selected Slot */
+        .calendar-theme-glass .rbc-slot-selection {
+            background-color: rgba(96, 165, 250, 0.2);
+            border: 1px solid rgba(96, 165, 250, 0.4);
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        /* Scrollbars */
+        .calendar-theme-glass ::-webkit-scrollbar {
+          width: 6px;
+          height: 6px;
+        }
+        .calendar-theme-glass ::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .calendar-theme-glass ::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 99px;
+        }
+        .calendar-theme-glass ::-webkit-scrollbar-thumb:hover {
+          background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Popup Override */
         .rbc-overlay {
-            z-index: 100 !important;
-            background-color: rgba(255, 255, 255, 0.95);
+            background: rgba(20, 20, 24, 0.95) !important;
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255,255,255,0.1);
             border-radius: 12px;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-            border: 1px solid rgba(0,0,0,0.1);
-            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            padding: 8px;
+            z-index: 100;
         }
-        .dark .rbc-overlay {
-            background-color: rgba(30, 41, 59, 0.95);
-            border-color: rgba(255,255,255,0.1);
-        }
+        
         .rbc-overlay-header {
-            padding: 8px 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            color: rgba(255,255,255,0.9);
             font-weight: 600;
-            border-bottom: 1px solid rgba(0,0,0,0.05);
+            padding: 8px;
+            margin-bottom: 8px;
         }
-        .dark .rbc-overlay-header {
-            border-bottom-color: rgba(255,255,255,0.05);
+
+        /* Week/Day View Specifics */
+        .calendar-theme-glass .rbc-time-header.rbc-overflowing {
+            border-right: 1px solid rgba(255,255,255,0.1);
         }
+        .calendar-theme-glass .rbc-header + .rbc-header {
+            border-left: 1px solid rgba(255,255,255,0.05);
+        }
+        
       `}</style>
     </div>
   )
 }
 
-// 自定义工具栏
-function CustomToolbar({ label, onNavigate, onView, view }: any) {
-  return (
-    <div className="flex items-center justify-between mb-4 pb-4 border-b dark:border-gray-700">
-      <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onNavigate('PREV')}
-          className="hover:bg-gray-100 dark:hover:bg-gray-800"
-        >
-          上一页
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onNavigate('TODAY')}
-          className="hover:bg-blue-50 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400"
-        >
-          今天
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onNavigate('NEXT')}
-          className="hover:bg-gray-100 dark:hover:bg-gray-800"
-        >
-          下一页
-        </Button>
-      </div>
-
-      <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
-        {label}
-      </h3>
-
-      <div className="flex items-center gap-2">
-        <Button
-          variant={view === 'month' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => onView('month')}
-        >
-          月
-        </Button>
-        <Button
-          variant={view === 'week' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => onView('week')}
-        >
-          周
-        </Button>
-        <Button
-          variant={view === 'day' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => onView('day')}
-        >
-          日
-        </Button>
-        <Button
-          variant={view === 'agenda' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => onView('agenda')}
-        >
-          议程
-        </Button>
-      </div>
-    </div>
-  )
-}
+// Remove previously internal CustomToolbar if it exists in the same file to avoid conflicts
+// or keep it if it was not exported, but since we are replacing the whole file, it's fine.

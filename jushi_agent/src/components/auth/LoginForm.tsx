@@ -8,12 +8,12 @@ import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useAuth } from '@/hooks/useAuth'
-import { 
-  Eye, 
-  EyeOff, 
-  Mail, 
-  Lock, 
-  User, 
+import {
+  Eye,
+  EyeOff,
+  Mail,
+  Lock,
+  User,
   AlertCircle,
   CheckCircle,
   RefreshCw
@@ -27,13 +27,13 @@ interface LoginFormProps {
 
 export function LoginForm({ onSuccess, onSwitchToRegister, redirectTo }: LoginFormProps) {
   const { login, isLoading } = useAuth()
-  
+
   const [formData, setFormData] = useState({
     identifier: '',
     password: '',
     rememberMe: false
   })
-  
+
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -50,7 +50,7 @@ export function LoginForm({ onSuccess, onSwitchToRegister, redirectTo }: LoginFo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!formData.identifier.trim() || !formData.password.trim()) {
       setError('请填写用户名/邮箱和密码')
       return
@@ -69,7 +69,7 @@ export function LoginForm({ onSuccess, onSwitchToRegister, redirectTo }: LoginFo
       if (result.success) {
         setSuccess('登录成功！')
         onSuccess?.(result.user)
-        
+
         // 如果有重定向地址，跳转到指定页面
         if (redirectTo) {
           setTimeout(() => {
@@ -89,29 +89,29 @@ export function LoginForm({ onSuccess, onSwitchToRegister, redirectTo }: LoginFo
   }
 
   return (
-    <Card className="w-full max-w-md mx-auto bg-white/95 text-gray-900 border border-orange-100 shadow-xl dark:bg-white dark:text-gray-900">
+    <Card className="w-full max-w-md mx-auto bg-transparent border-none shadow-none text-gray-100">
       <CardHeader>
-        <CardTitle className="text-center text-2xl font-bold text-gray-900">
+        <CardTitle className="text-center text-2xl font-bold text-white">
           登录账户
         </CardTitle>
-        <p className="text-center text-gray-600">
+        <p className="text-center text-gray-200">
           欢迎回来，请登录您的账户
         </p>
       </CardHeader>
-      
+
       <CardContent className="space-y-4">
         {/* 错误和成功提示 */}
         {error && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
+          <Alert variant="destructive" className="bg-red-500/20 border-red-500/50 text-white">
+            <AlertCircle className="h-4 w-4 text-red-200" />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
 
         {success && (
-          <Alert className="border-green-200 bg-green-50">
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-green-800">{success}</AlertDescription>
+          <Alert className="border-green-500/50 bg-green-500/20 text-white">
+            <CheckCircle className="h-4 w-4 text-green-200" />
+            <AlertDescription className="text-green-100">{success}</AlertDescription>
           </Alert>
         )}
 
@@ -119,16 +119,16 @@ export function LoginForm({ onSuccess, onSwitchToRegister, redirectTo }: LoginFo
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* 用户名/邮箱 */}
           <div className="space-y-2">
-            <Label htmlFor="identifier">用户名或邮箱 *</Label>
+            <Label htmlFor="identifier" className="text-gray-100">用户名或邮箱 *</Label>
             <div className="relative">
-              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
               <Input
                 id="identifier"
                 type="text"
                 placeholder="请输入用户名或邮箱"
                 value={formData.identifier}
                 onChange={(e) => handleInputChange('identifier', e.target.value)}
-                className="pl-10 bg-white text-gray-900 placeholder:text-gray-400 border-gray-200 focus-visible:ring-orange-500"
+                className="pl-10 bg-white/80 backdrop-blur-sm text-gray-900 placeholder:text-gray-500 border-white/30 focus-visible:ring-orange-400"
                 disabled={isSubmitting}
               />
             </div>
@@ -136,16 +136,16 @@ export function LoginForm({ onSuccess, onSwitchToRegister, redirectTo }: LoginFo
 
           {/* 密码 */}
           <div className="space-y-2">
-            <Label htmlFor="password">密码 *</Label>
+            <Label htmlFor="password" className="text-gray-100">密码 *</Label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
               <Input
                 id="password"
                 type={showPassword ? 'text' : 'password'}
                 placeholder="请输入密码"
                 value={formData.password}
                 onChange={(e) => handleInputChange('password', e.target.value)}
-                className="pl-10 pr-10 bg-white text-gray-900 placeholder:text-gray-400 border-gray-200 focus-visible:ring-orange-500"
+                className="pl-10 pr-10 bg-white/80 backdrop-blur-sm text-gray-900 placeholder:text-gray-500 border-white/30 focus-visible:ring-orange-400"
                 disabled={isSubmitting}
               />
               <Button
@@ -168,8 +168,9 @@ export function LoginForm({ onSuccess, onSwitchToRegister, redirectTo }: LoginFo
               checked={formData.rememberMe}
               onCheckedChange={(checked) => handleInputChange('rememberMe', checked)}
               disabled={isSubmitting}
+              className="border-white/50 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500"
             />
-            <Label htmlFor="rememberMe" className="text-sm">
+            <Label htmlFor="rememberMe" className="text-sm text-gray-200">
               记住我（30天内免登录）
             </Label>
           </div>
@@ -177,7 +178,7 @@ export function LoginForm({ onSuccess, onSwitchToRegister, redirectTo }: LoginFo
           {/* 登录按钮 */}
           <Button
             type="submit"
-            className="w-full"
+            className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white border-0"
             disabled={isSubmitting || isLoading}
           >
             {isSubmitting ? (
@@ -199,7 +200,7 @@ export function LoginForm({ onSuccess, onSwitchToRegister, redirectTo }: LoginFo
           <div className="text-sm">
             <Button
               variant="link"
-              className="p-0 h-auto text-blue-600 hover:text-blue-800"
+              className="p-0 h-auto text-orange-300 hover:text-orange-200"
               onClick={() => {
                 // TODO: 实现忘记密码功能
                 alert('忘记密码功能即将上线')
@@ -208,12 +209,12 @@ export function LoginForm({ onSuccess, onSwitchToRegister, redirectTo }: LoginFo
               忘记密码？
             </Button>
           </div>
-          
-          <div className="text-sm text-gray-600">
+
+          <div className="text-sm text-gray-200">
             还没有账户？
             <Button
               variant="link"
-              className="p-0 h-auto ml-1 text-blue-600 hover:text-blue-800"
+              className="p-0 h-auto ml-1 text-orange-300 hover:text-orange-200"
               onClick={onSwitchToRegister}
             >
               立即注册

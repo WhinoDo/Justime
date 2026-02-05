@@ -88,7 +88,7 @@ export function useAuth() {
 
       const result = await response.json()
 
-      if (result.success) {
+      if (result.success && result.data) {
         setAuthState({
           user: result.data.user,
           isLoading: false,
@@ -96,7 +96,7 @@ export function useAuth() {
         })
         return { success: true, user: result.data.user }
       } else {
-        return { success: false, error: result.error }
+        return { success: false, error: result.message || result.error || '登录失败' }
       }
 
     } catch (error) {
@@ -119,7 +119,7 @@ export function useAuth() {
 
       const result = await response.json()
 
-      if (result.success) {
+      if (result.success && result.data) {
         setAuthState({
           user: result.data.user,
           isLoading: false,
@@ -131,7 +131,7 @@ export function useAuth() {
           needsVerification: result.data.user.needsVerification
         }
       } else {
-        return { success: false, error: result.error }
+        return { success: false, error: result.message || result.error || '注册失败' }
       }
 
     } catch (error) {

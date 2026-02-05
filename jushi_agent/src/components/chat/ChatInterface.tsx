@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { MessageBubble } from './MessageBubble'
 import { Message } from '@/types'
 import { generateId } from '@/lib/utils'
-import { Send, Trash2, Sparkles, MessageCircle, Sun, Moon, Monitor, Clock, AlertTriangle, Settings, Bot, Calendar, ChevronRight } from 'lucide-react'
+import { Send, Trash2, Sparkles, MessageCircle, Sun, Moon, Monitor, Clock, AlertTriangle, Settings, Bot, Calendar, ChevronRight, Globe, Brain } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useEffect as useEffectTheme, useState as useStateTheme } from 'react'
 import Link from 'next/link'
@@ -62,6 +62,8 @@ export function ChatInterface({
   const [eventMessageId, setEventMessageId] = useState<string | null>(null)
   const [taskDecomposition, setTaskDecomposition] = useState<any>(null)
   const [decompositionMessageId, setDecompositionMessageId] = useState<string | null>(null)
+  const [multiTaskDecompositions, setMultiTaskDecompositions] = useState<any[] | null>(null)
+  const [useWebSearch, setUseWebSearch] = useState(false)
 
   // 当 sessionId 改变时加载历史消息
   useEffect(() => {
@@ -247,7 +249,8 @@ export function ChatInterface({
         body: JSON.stringify({
           message: userMessage.content,
           taskId: currentTaskId,
-          sessionId: sessionId // 传递当前会话ID
+          sessionId: sessionId, // 传递当前会话ID
+          useWebSearch: useWebSearch // 是否启用网页搜索
         })
       })
 
@@ -311,9 +314,9 @@ export function ChatInterface({
           setEventMessageId(assistantMessage.id)
         }
 
-        // 如果包含任务分解方案
         if (data.data.taskDecomposition) {
           setTaskDecomposition(data.data.taskDecomposition)
+          setMultiTaskDecompositions(data.data.multiTaskDecompositions || null)
           setDecompositionMessageId(assistantMessage.id)
         }
 
@@ -577,6 +580,17 @@ export function ChatInterface({
               <Clock className="w-4 h-4" />
             </Button>
 
+            {/* 搜索开关 */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setUseWebSearch(!useWebSearch)}
+              className={`transition-colors duration-200 ${useWebSearch ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500'}`}
+              title={useWebSearch ? "已开启网页搜索" : "点击开启网页搜索"}
+            >
+              <Globe className="w-4 h-4" />
+            </Button>
+
             {/* 聊天记录按钮 */}
             <Link href="/chat/history">
               <Button
@@ -642,8 +656,8 @@ export function ChatInterface({
           </div>
         ) : (
           <>
-            {messages.map(message => (
-              <div key={message.id}>
+            {messages.map((message, index) => (
+              <div key={message.id || `msg-${index}`}>
                 <MessageBubble
                   message={message}
                   onTaskCreate={onTaskCreate}
@@ -674,9 +688,11 @@ export function ChatInterface({
                   <div className="ml-11 mt-2">
                     <EditableTaskPlan
                       decomposition={taskDecomposition}
+                      alternatives={multiTaskDecompositions || undefined}
                       onConfirm={handleConfirmDecomposition}
                       onCancel={() => {
                         setTaskDecomposition(null)
+                        setMultiTaskDecompositions(null)
                         setDecompositionMessageId(null)
                       }}
                     />
@@ -708,27 +724,54 @@ export function ChatInterface({
         </div>
       )}
 
-      {/* 输入区域 */}
-      <div className="input-form">
-        <div className="input-container">
+      {/* 悬浮输入区域 */}
+      <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 w-full max-w-3xl px-4 z-50">
+        <div className="relative bg-black/80 dark:bg-gray-900/90 backdrop-blur-xl border border-gray-700/50 rounded-3xl shadow-2xl overflow-hidden transition-all duration-300 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500/30">
+
+          {/* 输入框 */}
           <textarea
             ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder={`告诉我你现在的任务或感受... (当前时间: ${currentTime.formatted.time})`}
-            className="input-textarea"
+            placeholder={`输入 "@" 唤起常用语，或粘贴代码快速提问`}
+            className="w-full min-h-[56px] max-h-[200px] px-6 py-4 bg-transparent text-gray-200 placeholder:text-gray-500 text-base resize-none focus:outline-none scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent"
             disabled={isLoading}
             rows={1}
           />
-          <button
-            onClick={handleSendMessage}
-            disabled={isLoading || !input.trim()}
-            className="send-button"
-          >
-            <Send className="w-4 h-4" />
-            发送
-          </button>
+
+          {/* 底部工具栏 */}
+          <div className="flex items-center justify-between px-4 pb-3 pt-1">
+            <div className="flex items-center gap-1">
+              {/* 深度思考 (Toggle) */}
+              <button
+                onClick={() => setUseWebSearch(!useWebSearch)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${useWebSearch ? 'text-blue-400 bg-blue-500/10' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/30'}`}
+                title="启用深度思考"
+              >
+                <Brain className="w-4 h-4" />
+                <span>深度思考</span>
+              </button>
+            </div>
+
+            {/* 发送按钮 */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleSendMessage}
+                disabled={isLoading || !input.trim()}
+                className={`p-2 rounded-full transition-all duration-200 ${input.trim()
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 hover:bg-blue-500 hover:scale-105'
+                    : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                  }`}
+              >
+                {isLoading ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <Send className="w-5 h-5" />
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

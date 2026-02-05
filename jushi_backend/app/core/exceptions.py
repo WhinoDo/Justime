@@ -9,6 +9,18 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+class AuthenticationError(Exception):
+    """Base authentication error"""
+    pass
+
+class UserNotFoundError(AuthenticationError):
+    """User not found during authentication"""
+    pass
+
+class PasswordIncorrectError(AuthenticationError):
+    """Password incorrect during authentication"""
+    pass
+
 def setup_exception_handlers(app: FastAPI):
     """设置全局异常处理器"""
     

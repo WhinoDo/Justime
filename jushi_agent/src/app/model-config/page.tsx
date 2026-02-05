@@ -1,587 +1,265 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
-import {
-  Bot,
-  ArrowLeft,
-  Save,
-  CheckCircle,
-  AlertTriangle,
-  Eye,
-  EyeOff,
-  Sparkles,
-  Loader2,
-  HelpCircle,
-  Plus,
-  Trash2,
-  Edit2,
-  MoreVertical,
-  Check
-} from 'lucide-react'
-import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuth } from '@/hooks/useAuth'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-
-interface LLMConfig {
-  id?: string
-  name?: string
-  modelId: string
-  apiKey: string
-  baseUrl: string
-  timeout?: number
-  isActive?: boolean
-}
-
-// 预设模型配置
-interface ModelPreset {
-  id: string
-  name: string
-  modelId: string
-  baseUrl: string
-  description: string
-}
+import { useLLMConfig } from '@/hooks/useLLMConfig'
+import { Bot, Save, Loader2, RotateCcw, CheckCircle, AlertCircle, ChevronLeft } from 'lucide-react'
+import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
+import { JushiBackground } from '@/components/ui/JushiBackground'
 
 export default function ModelConfigPage() {
-  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
-  const router = useRouter()
+  const { isAuthenticated, isLoading: authLoading } = useAuth()
+  const { config, updateConfig, resetConfig, isLoading: configLoading, error: configError } = useLLMConfig()
   const searchParams = useSearchParams()
-  const fromPath = searchParams.get('from')
-  const backHref = fromPath || '/profile'
 
-  // State for List View
-  const [configs, setConfigs] = useState<LLMConfig[]>([])
-  const [loading, setLoading] = useState(false)
-  const [globalError, setGlobalError] = useState<string | null>(null)
+  // Local state for form fields
+  const [apiKey, setApiKey] = useState('')
+  const [modelName, setModelName] = useState('')
+  const [baseUrl, setBaseUrl] = useState('')
+  const [temperature, setTemperature] = useState(0.7)
 
-  // State for Edit/Add Dialog
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [editingConfig, setEditingConfig] = useState<LLMConfig>({
-    name: '',
-    modelId: '',
-    apiKey: '',
-    baseUrl: '',
-    timeout: 60
-  })
-  const [selectedPreset, setSelectedPreset] = useState<string>('')
-  const [showApiKey, setShowApiKey] = useState(false)
-  const [dialogLoading, setDialogLoading] = useState(false)
-  const [testing, setTesting] = useState(false)
-  const [dialogError, setDialogError] = useState<string | null>(null)
-  const [dialogSuccess, setDialogSuccess] = useState<string | null>(null)
+  // Status states
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveSuccess, setSaveSuccess] = useState(false)
+  const [validationError, setValidationError] = useState<string | null>(null)
 
-  const [presetModels, setPresetModels] = useState<ModelPreset[]>([])
-  const [showHelp, setShowHelp] = useState(false)
+  // Determines the back link based on where the user came from
+  const fromPath = searchParams.get('from') || '/dashboard'
 
-  // 加载模型预设
+  // Load initial values when config loads
   useEffect(() => {
-    const loadPresets = async () => {
-      try {
-        const response = await fetch('/api/auth/llm-presets')
-        const result = await response.json()
-        if (result.success && Array.isArray(result.data)) {
-          setPresetModels(result.data)
-        }
-      } catch (err) {
-        console.error('加载模型预设失败:', err)
-      }
-    }
-    loadPresets()
-  }, [])
-
-  // 加载用户的配置列表
-  const loadConfigs = useCallback(async () => {
-    try {
-      setLoading(true)
-      const response = await fetch('/api/auth/llm-configs', {
-        credentials: 'include',
-        cache: 'no-store',
-        headers: {
-          'Pragma': 'no-cache',
-          'Cache-Control': 'no-cache'
-        }
-      })
-      const result = await response.json()
-
-      if (result.success && result.data?.configs) {
-        setConfigs(result.data.configs)
-      } else {
-        setConfigs([])
-      }
-    } catch (err) {
-      console.error('加载配置失败:', err)
-      setGlobalError('加载配置失败，请稍后重试')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      loadConfigs()
-    }
-  }, [isAuthenticated, loadConfigs])
-
-  // 打开添加/编辑对话框
-  const openDialog = (config?: LLMConfig) => {
     if (config) {
-      setEditingConfig({ ...config, apiKey: '' }) // Clear API key for security unless we want to show placeholder
-      // Check if matches preset
-      const match = presetModels.find(p => p.modelId === config.modelId && p.baseUrl === config.baseUrl)
-      setSelectedPreset(match ? match.id : 'custom')
-    } else {
-      setEditingConfig({
-        name: '新模型配置',
-        modelId: '',
-        apiKey: '',
-        baseUrl: '',
-        timeout: 60
-      })
-      setSelectedPreset('')
+      setApiKey(config.apiKey)
+      setModelName(config.modelName)
+      setBaseUrl(config.baseUrl)
+      setTemperature(config.temperature)
     }
-    setDialogError(null)
-    setDialogSuccess(null)
-    setShowApiKey(false)
-    setIsDialogOpen(true)
-  }
+  }, [config])
 
-  // 处理预设模型选择
-  const handlePresetChange = (presetId: string) => {
-    setSelectedPreset(presetId)
-
-    if (presetId === 'custom') {
-      setEditingConfig(prev => ({
-        ...prev,
-        modelId: '',
-        baseUrl: ''
-      }))
-    } else {
-      const preset = presetModels.find(p => p.id === presetId)
-      if (preset) {
-        setEditingConfig(prev => ({
-          ...prev,
-          name: prev.name === '新模型配置' ? preset.name : prev.name,
-          modelId: preset.modelId,
-          baseUrl: preset.baseUrl
-        }))
-      }
+  // Hide success message after 3 seconds
+  useEffect(() => {
+    if (saveSuccess) {
+      const timer = setTimeout(() => setSaveSuccess(false), 3000)
+      return () => clearTimeout(timer)
     }
-  }
+  }, [saveSuccess])
 
-  // 保存配置 (新建或更新)
-  const handleSave = async () => {
-    if (!editingConfig.modelId || !editingConfig.baseUrl) {
-      setDialogError('请填写完整配置信息')
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setValidationError(null)
+    setSaveSuccess(false)
+
+    // Basic validation
+    if (!apiKey.trim()) {
+      setValidationError('API Key 不能为空')
+      return
+    }
+    if (!modelName.trim()) {
+      setValidationError('模型名称不能为空')
       return
     }
 
-    // For new config, API key is required
-    if (!editingConfig.id && !editingConfig.apiKey) {
-      setDialogError('新建配置必须填写 API 密钥')
-      return
-    }
-
-    setDialogLoading(true)
-    setDialogError(null)
-
+    setIsSaving(true)
     try {
-      let response
-      if (editingConfig.id) {
-        // Update
-        response = await fetch(`/api/auth/llm-configs/${editingConfig.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(editingConfig)
-        })
-      } else {
-        // Create
-        response = await fetch('/api/auth/llm-configs', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(editingConfig)
-        })
-      }
-
-      const result = await response.json()
-      if (result.success) {
-        setDialogSuccess('保存成功')
-        setTimeout(() => {
-          setIsDialogOpen(false)
-          loadConfigs()
-        }, 1000)
-      } else {
-        setDialogError(result.message || '保存失败')
-      }
+      await updateConfig({
+        apiKey,
+        modelName,
+        baseUrl,
+        temperature
+      })
+      setSaveSuccess(true)
     } catch (err) {
-      setDialogError('保存请求失败')
+      // Error handling is managed by useLLMConfig hook
     } finally {
-      setDialogLoading(false)
+      setIsSaving(false)
     }
   }
 
-  // 删除配置
-  const handleDelete = async (id: string) => {
-    if (!confirm('确定要删除此配置吗？')) return
-
-    try {
-      const response = await fetch(`/api/auth/llm-configs/${id}`, {
-        method: 'DELETE'
-      })
-      const result = await response.json()
-      if (result.success) {
-        loadConfigs()
-      } else {
-        setGlobalError(result.message)
+  const handleReset = async () => {
+    if (window.confirm('确定要重置为默认配置吗？这将覆盖您当前的设置。')) {
+      setIsSaving(true)
+      try {
+        await resetConfig()
+        setSaveSuccess(true)
+      } finally {
+        setIsSaving(false)
       }
-    } catch (err) {
-      setGlobalError('删除请求失败')
     }
   }
 
-  // 设为激活
-  const handleSetActive = async (id: string) => {
-    try {
-      // Optimistic update
-      setConfigs(prev => prev.map(c => ({ ...c, isActive: c.id === id })))
-
-      const response = await fetch(`/api/auth/llm-configs/${id}/active`, {
-        method: 'PUT'
-      })
-      const result = await response.json()
-      if (!result.success) {
-        setGlobalError(result.message)
-        loadConfigs() // Revert on fail
-      }
-    } catch (err) {
-      setGlobalError('设置激活失败')
-      loadConfigs()
-    }
-  }
-
-  // 测试连接
-  const handleTest = async () => {
-    if (!editingConfig.modelId || !editingConfig.baseUrl) {
-      setDialogError('请先填写完整的配置信息')
-      return
-    }
-
-    // If editing existing and no key provided, we can't test easily unless backend supports it
-    // But for security, let's require key input for test if it's empty in form (meaning masked)
-    // Actually backend test endpoint supports masked key usage if user owns it.
-
-    setTesting(true)
-    setDialogError(null)
-    setDialogSuccess(null)
-
-    try {
-      const response = await fetch('/api/chat/test', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          modelId: editingConfig.modelId,
-          apiKey: editingConfig.apiKey || '******', // Identify as mask check
-          baseUrl: editingConfig.baseUrl,
-          timeout: editingConfig.timeout || 60
-        })
-      })
-      const result = await response.json()
-
-      if (result.success) {
-        setDialogSuccess(`连接成功! 响应延迟: ${result.responseLength}字符`)
-      } else {
-        setDialogError(`连接失败: ${result.error || result.message}`)
-      }
-    } catch (err) {
-      setDialogError('测试请求失败')
-    } finally {
-      setTesting(false)
-    }
-  }
-
-  if (authLoading) {
+  if (authLoading || configLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="min-h-screen relative flex items-center justify-center overflow-hidden">
+        <JushiBackground blur="xl" />
+        <div className="relative z-10 flex flex-col items-center gap-3 animate-pulse">
+          <Bot className="h-10 w-10 text-white/50" />
+          <p className="text-white/60 text-sm font-light tracking-widest uppercase">Loading Configuration</p>
+        </div>
       </div>
     )
   }
 
-  if (!isAuthenticated) return null // Should redirect in middleware/wrapper
+  if (!isAuthenticated) return null // Auth check handled by hook/layout
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-8">
-      <div className="max-w-5xl mx-auto space-y-6">
+    <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden font-sans">
+      <JushiBackground blur="lg" opacity={0.6} />
 
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <Link href={backHref}>
-              <Button variant="ghost" size="icon">
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-            </Link>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <Bot className="h-6 w-6 text-blue-600" />
-                模型配置
-              </h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                管理您的大语言模型配置，支持多模型切换
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => setShowHelp(true)}>
-              <HelpCircle className="h-4 w-4 mr-2" />
-              帮助
+      <div className="relative z-10 w-full max-w-2xl animate-in fade-in zoom-in-95 duration-700">
+        {/* Header Navigation */}
+        <div className="flex items-center justify-between mb-6">
+          <Link href={fromPath}>
+            <Button variant="ghost" className="text-white/70 hover:text-white hover:bg-white/10 transition-colors gap-2 pl-2">
+              <ChevronLeft className="h-4 w-4" />
+              <span className="tracking-wide">Back</span>
             </Button>
-            <Button onClick={() => openDialog()}>
-              <Plus className="h-4 w-4 mr-2" />
-              添加新模型
-            </Button>
-          </div>
+          </Link>
         </div>
 
-        {globalError && (
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>{globalError}</AlertDescription>
-          </Alert>
-        )}
-
-        {/* Config List */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {configs.map((conf) => (
-            <Card key={conf.id} className={`relative transition-all hover:shadow-md ${conf.isActive ? 'border-2 border-blue-500 bg-blue-50/10' : ''}`}>
-              <CardHeader className="pb-3">
-                <div className="flex justify-between items-start">
-                  <div className="flex items-center gap-2">
-                    <div className={`p-2 rounded-lg ${conf.isActive ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'}`}>
-                      <Bot className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-base font-semibold">{conf.name || '未命名'}</CardTitle>
-                      <CardDescription className="text-xs truncate max-w-[150px]" title={conf.modelId}>
-                        {conf.modelId}
-                      </CardDescription>
-                    </div>
-                  </div>
-                  {conf.isActive && (
-                    <Badge variant="default" className="bg-blue-600 hover:bg-blue-600">
-                      使用中
-                    </Badge>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-xs text-gray-500 mb-4 space-y-1">
-                  <p className="truncate" title={conf.baseUrl}>API: {conf.baseUrl}</p>
-                  <p>KEY: {conf.apiKey ? '已配置 ******' : '未配置'}</p>
-                </div>
-
-                <div className="flex items-center justify-end gap-2 border-t pt-3">
-                  {!conf.isActive && (
-                    <Button variant="ghost" size="sm" className="text-gray-600 h-8" onClick={() => handleSetActive(conf.id!)}>
-                      <Check className="h-3 w-3 mr-1" />
-                      启用
-                    </Button>
-                  )}
-
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleSetActive(conf.id!)}>
-                        设为默认
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => openDialog(conf)}>
-                        <div className="flex items-center">
-                          <Edit2 className="h-3 w-3 mr-2" /> 编辑
-                        </div>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(conf.id!)}>
-                        <div className="flex items-center">
-                          <Trash2 className="h-3 w-3 mr-2" /> 删除
-                        </div>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-
-          {configs.length === 0 && !loading && (
-            <div className="col-span-full py-12 text-center text-gray-500 bg-white dark:bg-gray-800 rounded-xl border border-dashed">
-              <Bot className="h-10 w-10 mx-auto text-gray-300 mb-3" />
-              <p>还没有配置任何模型</p>
-              <Button variant="link" onClick={() => openDialog()}>点击添加第一个模型</Button>
-            </div>
-          )}
-        </div>
-
-        {/* Edit/Add Dialog */}
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>{editingConfig.id ? '编辑配置' : '添加新模型'}</DialogTitle>
-              <DialogDescription>
-                配置兼容 OpenAI 接口的模型服务
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>配置名称</Label>
-                <Input
-                  value={editingConfig.name}
-                  onChange={e => setEditingConfig(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="给这个配置起个名字"
-                />
+        <div className="bg-white/10 backdrop-blur-2xl border border-white/20 shadow-2xl rounded-3xl overflow-hidden">
+          {/* Card Header */}
+          <div className="p-8 pb-6 border-b border-white/10 bg-black/10">
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-2xl bg-indigo-500/20 flex items-center justify-center text-indigo-300 ring-1 ring-indigo-500/30 shadow-lg">
+                <Bot className="h-6 w-6" />
               </div>
-
-              <div className="space-y-2">
-                <Label>预设模板</Label>
-                <Select value={selectedPreset} onValueChange={handlePresetChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="选择预设（可选）" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="custom">自定义</SelectItem>
-                    {presetModels.map(p => (
-                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>模型 ID (Model ID)</Label>
-                  <Input
-                    value={editingConfig.modelId}
-                    onChange={e => setEditingConfig(prev => ({ ...prev, modelId: e.target.value }))}
-                    placeholder="e.g. gpt-4"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>超时时间 (秒)</Label>
-                  <Input
-                    type="number"
-                    value={editingConfig.timeout}
-                    onChange={e => setEditingConfig(prev => ({ ...prev, timeout: parseInt(e.target.value) }))}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>服务地址 (Base URL)</Label>
-                <Input
-                  value={editingConfig.baseUrl}
-                  onChange={e => setEditingConfig(prev => ({ ...prev, baseUrl: e.target.value }))}
-                  placeholder="https://api.openai.com/v1"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>API Key</Label>
-                <div className="relative">
-                  <Input
-                    type={showApiKey ? "text" : "password"}
-                    value={editingConfig.apiKey}
-                    onChange={e => setEditingConfig(prev => ({ ...prev, apiKey: e.target.value }))}
-                    placeholder={editingConfig.id ? "若不修改请留空" : "sk-..."}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3"
-                    onClick={() => setShowApiKey(!showApiKey)}
-                  >
-                    {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
-                </div>
-              </div>
-
-              {dialogError && (
-                <Alert variant="destructive" className="py-2">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription>{dialogError}</AlertDescription>
-                </Alert>
-              )}
-              {dialogSuccess && (
-                <Alert className="py-2 border-green-200 bg-green-50 text-green-800">
-                  <CheckCircle className="h-4 w-4" />
-                  <AlertDescription>{dialogSuccess}</AlertDescription>
-                </Alert>
-              )}
-            </div>
-
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button type="button" variant="outline" onClick={handleTest} disabled={dialogLoading || testing}>
-                {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
-                测试连接
-              </Button>
-              <Button type="submit" onClick={handleSave} disabled={dialogLoading || testing}>
-                {dialogLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                保存
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Help Dialog (kept mostly same) */}
-        <Dialog open={showHelp} onOpenChange={setShowHelp}>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>配置说明</DialogTitle>
-              <DialogDescription>
-                如何配置 LLM 模型参数
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 text-sm text-gray-700">
               <div>
-                <h4 className="font-semibold text-gray-900 mb-2">关于多模型配置：</h4>
-                <ul className="list-disc list-inside space-y-1 ml-2">
-                  <li>您可以配置多个不同的模型服务（如 OpenAI, DeepSeek, 本地 Ollama 等）。</li>
-                  <li>点击卡片上的"启用"按钮即可快速切换当前使用的模型。</li>
-                  <li>所有配置的 API Key 都会被加密存储。</li>
-                </ul>
+                <h1 className="text-2xl font-bold text-white tracking-tight">LLM Configuration</h1>
+                <p className="text-white/60 text-sm mt-1">Manage your AI model settings and API keys</p>
               </div>
-              {/* ... existing help content ... */}
             </div>
-          </DialogContent>
-        </Dialog>
+          </div>
+
+          {/* Card Content */}
+          <div className="p-8">
+            <form onSubmit={handleSave} className="space-y-6">
+
+              {/* Validation / Status Messages */}
+              {validationError && (
+                <Alert variant="destructive" className="bg-rose-500/10 border-rose-500/20 text-rose-200">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{validationError}</AlertDescription>
+                </Alert>
+              )}
+
+              {saveSuccess && (
+                <Alert className="bg-emerald-500/10 border-emerald-500/20 text-emerald-200">
+                  <CheckCircle className="h-4 w-4" />
+                  <AlertDescription>Configuration saved successfully</AlertDescription>
+                </Alert>
+              )}
+
+              {/* Base URL */}
+              <div className="space-y-2">
+                <Label htmlFor="baseUrl" className="text-white/80">API Base URL</Label>
+                <Input
+                  id="baseUrl"
+                  placeholder="https://api.openai.com/v1"
+                  value={baseUrl}
+                  onChange={(e) => setBaseUrl(e.target.value)}
+                  className="bg-black/20 border-white/10 text-white placeholder:text-white/30 focus:border-indigo-500/50 focus:ring-indigo-500/20 rounded-xl h-11"
+                />
+                <p className="text-xs text-white/40">Optional. Only needed for proxies or custom endpoints.</p>
+              </div>
+
+              {/* API Key */}
+              <div className="space-y-2">
+                <Label htmlFor="apiKey" className="text-white/80">API Key <span className="text-rose-400">*</span></Label>
+                <Input
+                  id="apiKey"
+                  type="password"
+                  placeholder="sk-..."
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  className="bg-black/20 border-white/10 text-white placeholder:text-white/30 focus:border-indigo-500/50 focus:ring-indigo-500/20 rounded-xl h-11"
+                />
+              </div>
+
+              {/* Model Name */}
+              <div className="space-y-2">
+                <Label htmlFor="modelName" className="text-white/80">Model Name <span className="text-rose-400">*</span></Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {['gpt-3.5-turbo', 'gpt-4', 'deepseek-chat'].map(rec => (
+                    <div
+                      key={rec}
+                      onClick={() => setModelName(rec)}
+                      className={`cursor-pointer px-3 py-2 rounded-lg text-xs font-medium text-center transition-all border ${modelName === rec ? 'bg-indigo-500/30 border-indigo-500/50 text-white' : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'}`}
+                    >
+                      {rec}
+                    </div>
+                  ))}
+                </div>
+                <Input
+                  id="modelName"
+                  placeholder="e.g. gpt-4-turbo"
+                  value={modelName}
+                  onChange={(e) => setModelName(e.target.value)}
+                  className="bg-black/20 border-white/10 text-white placeholder:text-white/30 focus:border-indigo-500/50 focus:ring-indigo-500/20 rounded-xl h-11 mt-2"
+                />
+              </div>
+
+              {/* Temperature (Simple Slider) */}
+              <div className="space-y-4 pt-2">
+                <div className="flex justify-between items-center">
+                  <Label htmlFor="temperature" className="text-white/80">Creativity (Temperature)</Label>
+                  <span className="text-sm font-mono text-white/60 bg-white/10 px-2 py-0.5 rounded">{temperature}</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="2"
+                  step="0.1"
+                  value={temperature}
+                  onChange={(e) => setTemperature(parseFloat(e.target.value))}
+                  className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                />
+                <div className="flex justify-between text-xs text-white/40 px-1">
+                  <span>Precise (0.0)</span>
+                  <span>Creative (1.0)</span>
+                  <span>Wild (2.0)</span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-6 flex items-center justify-between gap-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleReset}
+                  className="flex-1 bg-white/5 border-white/10 text-white/80 hover:bg-white/10 hover:text-white h-12 rounded-xl"
+                >
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Default
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSaving}
+                  className="flex-[2] bg-indigo-600 hover:bg-indigo-500 text-white border-0 shadow-lg shadow-indigo-500/20 h-12 rounded-xl"
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Save Configuration
+                    </>
+                  )}
+                </Button>
+              </div>
+
+            </form>
+          </div>
+        </div>
       </div>
     </div>
   )

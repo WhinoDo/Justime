@@ -4,7 +4,7 @@ from bson import ObjectId
 from app.services.llm_service import llm_service
 from app.services.agent_service import agent_service
 from app.core.config import settings, LLMConfig
-from app.models.chat import ChatRequest, ChatResponse, LLMTestRequest
+from app.models.chat import ChatRequest, ChatResponse, LLMTestRequest, ChatResponseData
 from app.models.history import ChatSession, ChatMessage
 from app.database import db
 
@@ -26,6 +26,12 @@ COMPLEX_TASK_KEYWORDS = [
     "网站", "应用", "App", "软件", "平台", "程序",
     "帮我做", "帮我制定", "怎么安排", "如何完成",
     "分解", "拆分", "步骤", "阶段", "里程碑"
+]
+
+SEARCH_KEYWORDS = [
+    "搜索", "查找", "查询", "百度", "谷歌", "Google", "search", "find", 
+    "查一下", "搜一下", "who is", "what is", "when is", "latest", "news",
+    "最新", "新闻"
 ]
 
 
@@ -82,7 +88,7 @@ class ChatBusiness:
 
     # ... (rest of methods) ...
 
-    def _build_enhanced_task(self, user_message: str) -> str:
+    def _build_enhanced_task(self, user_message: str, use_web_search: bool = False) -> str:
         # ... (same as before) ...
         """构建增强任务提示，帮助 AI 识别日历需求和复杂任务"""
         # 获取当前时间信息
@@ -94,6 +100,8 @@ class ChatBusiness:
         has_complex_task = any(kw in user_message for kw in COMPLEX_TASK_KEYWORDS)
         # 检测是否包含日历关键词
         has_calendar_intent = any(kw in user_message for kw in CALENDAR_KEYWORDS)
+        # 检测是否包含搜索关键词
+        has_search_intent = use_web_search or any(kw in user_message for kw in SEARCH_KEYWORDS)
         
         if has_complex_task:
             # 复杂任务 - 使用任务分解工具
@@ -116,8 +124,9 @@ class ChatBusiness:
 
 【思考路径】
 1. 分析用户目标的"输入"与"输出"。
-2. 按照项目生命周期（启动 -> 规划 -> 执行 -> 收尾）或 逻辑依赖关系 进行拆解。
-3. **关键**：严格遵守 `suggest_task_decomposition` 的参数格式要求，特别是 `subtasks` 必须是合法的 JSON 字符串。
+2. **资源准备**: 如果任务需要特定的学习资源、官方文档或工具平台，请先使用搜索工具获取准确的 URL地址。
+3. 按照项目生命周期（启动 -> 规划 -> 执行 -> 收尾）或 逻辑依赖关系 进行拆解。
+4. **关键**：严格遵守 `suggest_task_decomposition` 的参数格式要求，特别是 `subtasks` 必须是合法的 JSON 字符串。
 
 【工具调用要求】
 请务必调用 `suggest_task_decomposition` 工具，参数如下：
@@ -125,7 +134,7 @@ class ChatBusiness:
 - `start_date`: 开始日期（默认为 "{now.strftime('%Y-%m-%d')}"，除非用户指定）
 - `total_days`: 根据子任务总时长合理估算（假设每天工作 6-8 小时）
 - `subtasks`: **JSON 字符串**，包含 3-8 个步骤。
-    - 格式示例：'[{{"title":"需求调研","duration_hours":4,"order":1,"description":"..."}}]'
+    - 格式示例：'[{{"title":"需求调研","duration_hours":4,"order":1,"description":"... (如有相关资源请附带链接)"}}]'
 
 请立即开始思考并调用工具！"""
 
@@ -140,23 +149,41 @@ class ChatBusiness:
 
 【执行步骤】
 1. **时间获取**: 如果涉及相对时间（如"下周五"），请优先调用 `get_current_datetime` 确认准确日期。
-2. **需求分析**: 识别事件的 5W1H (What, When, Where, Who, Why)。
-3. **工具调用**: 使用 `suggest_calendar_event` 创建日程建议。
+2. **资源检索**: 如果任务涉及专业知识、特定网站或平台（如"学习React"、"在Coursera上课"），请主动使用搜索工具查找相关的官方/专业网站 URL。
+3. **需求分析**: 识别事件的 5W1H (What, When, Where, Who, Why)。
+4. **工具调用**: 使用 `suggest_calendar_event` 创建日程建议。
 
 【工具参数规范】
 - `start_time` / `end_time`: 必须是 ISO 8601 格式（如 "2026-01-27T14:00:00"）。
 - `end_time`: 如未指定，默认设置为开始后 1 小时。
 - `event_type`: 根据内容准确分类 ("meeting", "task", "reminder", "deadline")。
 - `priority`: 根据紧急程度判断 ("low", "medium", "high", "urgent")。
+- `description`: 必须包含事件详情。如果搜索到了相关的一方网站或资源 URL，请务必将其添加到描述中 (格式: 详情... \n\n相关资源: [链接名称](URL))。
 
 请务必调用工具为用户创建日程！"""
+        elif has_search_intent:
+            # 搜索相关请求
+            enhanced_task = f"""当前时间：{current_time_str}
+            
+用户请求：{user_message}
+
+【角色设定】
+你是一位知识渊博的智能助手，拥有实时访问互联网的能力。你的职责是利用搜索工具为用户提供准确、实时的信息。
+
+【执行步骤】
+1. **分析需求**: 理解用户问题的核心，确定需要搜索的关键信息。
+2. **搜索工具**: 积极使用 `DuckDuckGoSearchTool` (web_search) 获取最新信息。不要编造事实。
+3. **整合回答**: 基于搜索结果，综合整理出简洁、准确的回答，并注明信息来源。
+
+请务必在需要时使用搜索工具！"""
+
         else:
             # 普通对话请求
             enhanced_task = f"""当前时间：{current_time_str}
 
 用户请求：{user_message}
 
-请用简洁友好的方式回复用户。如果用户后续提到时间安排相关的需求，可以使用日历工具帮助他们。"""
+请用简洁友好的方式回复用户。如果用户后续提到时间安排相关的需求，可以使用日历工具帮助他们。同时，你也可以使用搜索工具来回答需要实时信息的问题。"""
         
         return enhanced_task
 
@@ -224,13 +251,13 @@ class ChatBusiness:
         if not config_dict["api_key"] or not config_dict["base_url"]:
             return ChatResponse(
                 success=True,
-                data={
-                    "response": "你好！我是聚时智能助手。我注意到你还没有配置 LLM 模型。请前往系统设置配置 API Key。",
-                    "emotionScore": 5, 
-                    "emotionTags": ["neutral"],
-                    "needsEmotionInput": False,
-                    "sessionId": session_id
-                }
+                data=ChatResponseData(
+                    response="你好！我是聚时智能助手。我注意到你还没有配置 LLM 模型。请前往系统设置配置 API Key。",
+                    emotionScore=5, 
+                    emotionTags=["neutral"],
+                    needsEmotionInput=False,
+                    sessionId=session_id
+                ).dict()
             )
 
         try:
@@ -245,17 +272,88 @@ class ChatBusiness:
 
             # 使用 AgentService 运行任务 (支持 Smolagents + LiteLLM)
             # 增强用户消息，添加日历工具使用提示
-            enhanced_task = self._build_enhanced_task(request.message)
+            enhanced_task = self._build_enhanced_task(request.message, request.useWebSearch)
             
-            task_result = await agent_service.run_task(
-                task=enhanced_task,
-                llm_config=llm_config
-            )
+            # 检测是否为复杂任务，如果是且用户有多个模型配置，则并行执行 (Ensemble Mode)
+            all_configs_data = await UserService.get_user_llm_configs_data(user_id)
+            user_configs_list = all_configs_data.get("configs", [])
+            has_complex_task = any(kw in request.message for kw in COMPLEX_TASK_KEYWORDS)
             
-            if not task_result["success"]:
-                 raise Exception(task_result.get("error", "Agent execution failed"))
+            task_result = None
+            multi_task_decompositions = []
             
-            # 解析 Agent 返回结果
+            if has_complex_task and len(user_configs_list) > 1:
+                print(f"🌟 Detected complex task with {len(user_configs_list)} available models. Triggering parallel execution.")
+                
+                # 构造所有可用的 LLMConfig
+                parallel_llm_configs = []
+                for conf in user_configs_list:
+                    # 解密 key
+                    enc_key = conf.get("api_key", "")
+                    pl_key = encryption_service.decrypt(enc_key) if enc_key else ""
+                    if not pl_key: continue
+                    
+                    parallel_llm_configs.append(LLMConfig(
+                        name=conf.get("name", "unknown"),
+                        model_id=conf.get("model_id"),
+                        api_key=pl_key,
+                        api_base=conf.get("base_url"),
+                        timeout=int(conf.get("timeout", 60))
+                    ))
+                
+                # 并行执行
+                parallel_results = await agent_service.run_parallel_task(
+                    task=enhanced_task,
+                    llm_configs=parallel_llm_configs
+                )
+                
+                # 处理结果
+                if parallel_results["success"]:
+                    # 选取第一个成功的结果作为主结果 (通常是 active model，如果我们在列表中置顶它的话)
+                    # 这里为了简单，我们还是重新运行一次主模型，或者从结果中找到主模型的结果
+                    # 为了逻辑简单，我们假设 id 匹配
+                    
+                    # 提取所有的 task decomposition
+                    for res in parallel_results["results"]:
+                        if not isinstance(res, dict) or not res.get("success"): continue
+                        
+                        steps = res.get("tool_outputs", [])
+                        for output in steps:
+                            observation = output.get("observation")
+                            if isinstance(observation, dict) and observation.get("type") == "task_decomposition_suggestion":
+                                decomp = observation.copy()
+                                decomp["model_name"] = res.get("model", "Unknown") # 标记这是哪个模型生成的
+                                multi_task_decompositions.append(decomp)
+                    
+                    # 尝试找到当前 active config 对应的结果作为主 task_result
+                    active_id = all_configs_data.get("active_id")
+                    target_res = None
+                    
+                    if active_id:
+                         # 找到对应 model_id
+                         active_conf_item = next((c for c in user_configs_list if c.get("id") == active_id), None)
+                         if active_conf_item:
+                             target_model_id = active_conf_item.get("model_id")
+                             target_res = next((r for r in parallel_results["results"] if isinstance(r, dict) and r.get("model") == target_model_id), None)
+                    
+                    if not target_res:
+                        # 没找到，取第一个成功的
+                        target_res = next((r for r in parallel_results["results"] if isinstance(r, dict) and r.get("success")), None)
+                        
+                    task_result = target_res
+                
+            
+            if not task_result:
+                # 默认单模型执行
+                task_result = await agent_service.run_task(
+                    task=enhanced_task,
+                    llm_config=llm_config
+                )
+            
+            if not task_result or not task_result.get("success"):
+                 raise Exception(task_result.get("error", "Agent execution failed") if task_result else "Unknown error")
+            
+            # 解析 Agent 返回结果 (Main Result)
             agent_result = task_result["result"]
             steps = task_result.get("steps", [])
             tool_outputs = task_result.get("tool_outputs", [])
@@ -379,7 +477,8 @@ class ChatBusiness:
                     "hasTasks": len(suggested_events) > 0,
                     "tasks": []
                 },
-                "sessionId": session_id
+                "sessionId": session_id,
+                "multiTaskDecompositions": multi_task_decompositions if multi_task_decompositions else None
             }
             
             # 添加任务分解数据
@@ -399,7 +498,10 @@ class ChatBusiness:
             print(f"Chat Error: {e}")
             return ChatResponse(
                 success=False,
-                data={},
+                data=ChatResponseData(
+                     response="抱歉，发生了一些错误。",
+                     sessionId=session_id
+                ).dict(),
                 error={
                     "message": f"处理请求错误: {str(e)}",
                     "type": "unknown"

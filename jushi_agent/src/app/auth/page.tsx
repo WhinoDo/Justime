@@ -14,7 +14,7 @@ import { useAuth } from '@/hooks/useAuth'
 export default function AuthPage() {
   const searchParams = useSearchParams()
   const { isAuthenticated, isLoading } = useAuth()
-  
+
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [redirectTo, setRedirectTo] = useState<string>('/')
 
@@ -22,11 +22,11 @@ export default function AuthPage() {
     // 从URL参数获取模式和重定向地址
     const modeParam = searchParams.get('mode')
     const redirectParam = searchParams.get('redirect')
-    
+
     if (modeParam === 'register') {
       setMode('register')
     }
-    
+
     if (redirectParam) {
       setRedirectTo(decodeURIComponent(redirectParam))
     }
@@ -77,49 +77,68 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* 顶部导航 */}
-      <div className="absolute top-4 left-4">
-        <Link href="/">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            返回首页
-          </Button>
-        </Link>
+    <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden">
+      {/* 全屏背景图 */}
+      <div className="absolute inset-0 z-0">
+        <img
+          src="/images/jushi_login_bg.png"
+          alt="Jushi Background"
+          className="w-full h-full object-cover"
+        />
+        {/* 黑色遮罩，确保文字可读性 */}
+        <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px]"></div>
       </div>
 
-      {/* 主要内容 */}
-      <div className="flex items-center justify-center min-h-screen p-4">
-        <div className="w-full max-w-md">
+      {/* 磨砂玻璃容器 - 增强版 */}
+      <div className="relative z-10 w-full max-w-md animate-slide-in">
+        <div className="bg-white/10 backdrop-blur-2xl border border-white/20 shadow-2xl rounded-3xl p-8 space-y-6 text-white transform hover:scale-[1.01] transition-all duration-500">
+
+          {/* 返回按钮 */}
+          <div className="flex justify-start">
+            <Link href="/">
+              <Button variant="ghost" size="sm" className="flex items-center gap-2 text-white hover:bg-white/20 hover:text-white">
+                <ArrowLeft className="h-4 w-4" />
+                返回首页
+              </Button>
+            </Link>
+          </div>
+
           {/* 品牌标识 */}
-          <div className="text-center mb-8">
-            <div className="flex items-center justify-center mb-4">
-              <Sparkles className="h-8 w-8 text-blue-600 mr-2" />
-              <h1 className="text-2xl font-bold text-gray-900">聚时AI助手</h1>
+          <div className="text-center">
+            <div className="flex items-center justify-center mb-6">
+              <div className="w-20 h-20 bg-gradient-to-br from-orange-400/90 to-yellow-600/90 rounded-2xl shadow-xl flex items-center justify-center transform hover:rotate-6 transition-all duration-300 border border-white/30 backdrop-blur-md">
+                <Sparkles className="h-10 w-10 text-white animate-pulse" />
+              </div>
             </div>
-            <p className="text-gray-600">
-              智能对话 · 情绪分析 · 任务规划 · 日程管理
+            <h1 className="text-3xl font-bold text-white mb-2 drop-shadow-md tracking-wide">
+              {mode === 'login' ? '登录到聚时' : '加入聚时'}
+            </h1>
+            <p className="text-gray-100 font-medium tracking-wide opacity-90">
+              智能对话 · 情绪分析 · 任务规划
             </p>
           </div>
 
-          {/* 认证表单 */}
-          {mode === 'login' ? (
-            <LoginForm
-              onSuccess={handleAuthSuccess}
-              onSwitchToRegister={() => setMode('register')}
-              redirectTo={redirectTo}
-            />
-          ) : (
-            <RegisterForm
-              onSuccess={handleAuthSuccess}
-              onSwitchToLogin={() => setMode('login')}
-              redirectTo={redirectTo}
-            />
-          )}
+          {/* 认证表单容器 */}
+          <div className="bg-white/90 backdrop-blur-xl rounded-2xl p-1 shadow-inner text-gray-900">
+            {mode === 'login' ? (
+              <LoginForm
+                onSuccess={handleAuthSuccess}
+                onSwitchToRegister={() => setMode('register')}
+                redirectTo={redirectTo}
+              />
+            ) : (
+              <RegisterForm
+                onSuccess={handleAuthSuccess}
+                onSwitchToLogin={() => setMode('login')}
+                redirectTo={redirectTo}
+              />
+            )}
+          </div>
 
-          <div className="text-center mt-4">
+          <div className="text-center mt-2">
             <Button
               variant="link"
+              className="text-white hover:text-orange-200"
               onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
             >
               {mode === 'login' ? '没有账户？点击注册' : '已有账户？点击登录'}
@@ -127,27 +146,10 @@ export default function AuthPage() {
           </div>
 
           {/* 底部信息 */}
-          <div className="text-center mt-8 text-sm text-gray-500">
+          <div className="text-center mt-4 text-xs text-gray-200 drop-shadow">
             <p>© 2024 聚时AI助手. 保留所有权利.</p>
-            <div className="flex justify-center space-x-4 mt-2">
-              <Button variant="link" className="p-0 h-auto text-xs text-gray-500 hover:text-gray-700">
-                服务条款
-              </Button>
-              <Button variant="link" className="p-0 h-auto text-xs text-gray-500 hover:text-gray-700">
-                隐私政策
-              </Button>
-              <Button variant="link" className="p-0 h-auto text-xs text-gray-500 hover:text-gray-700">
-                帮助中心
-              </Button>
-            </div>
           </div>
         </div>
-      </div>
-
-      {/* 背景装饰 */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-200 rounded-full opacity-20 animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-200 rounded-full opacity-20 animate-pulse delay-1000"></div>
       </div>
     </div>
   )

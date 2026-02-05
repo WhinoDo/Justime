@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea'
 import {
     Calendar, Clock, Plus, Trash2, GripVertical,
     ChevronDown, ChevronUp, Sparkles, Edit3, Save, X,
-    CheckCircle
+    CheckCircle, Bot
 } from 'lucide-react'
 
 interface EditableSubtask {
@@ -48,33 +48,50 @@ interface TaskDecomposition {
 
 interface EditableTaskPlanProps {
     decomposition: TaskDecomposition
+    alternatives?: TaskDecomposition[]
     onConfirm: (project: EditableProject, selectedTasks: EditableSubtask[]) => void
     onCancel: () => void
 }
 
 export function EditableTaskPlan({
     decomposition,
+    alternatives,
     onConfirm,
     onCancel
 }: EditableTaskPlanProps) {
+    const allPlans = alternatives && alternatives.length > 0 ? alternatives : [decomposition]
+    const [activeIndex, setActiveIndex] = useState(0)
+    const currentPlan = allPlans[activeIndex]
+
     const [project, setProject] = useState<EditableProject>({
-        name: decomposition.project.name,
-        description: decomposition.project.description || '',
-        total_days: decomposition.project.total_days,
-        start_date: decomposition.project.start_date
+        name: currentPlan.project.name,
+        description: currentPlan.project.description || '',
+        total_days: currentPlan.project.total_days,
+        start_date: currentPlan.project.start_date
     })
 
-    const [subtasks, setSubtasks] = useState<EditableSubtask[]>(
-        decomposition.subtasks.map((task, index) => ({
-            id: `task-${index}`,
+    const [subtasks, setSubtasks] = useState<EditableSubtask[]>([])
+
+    // Update state when active plan changes
+    useEffect(() => {
+        const plan = allPlans[activeIndex]
+        setProject({
+            name: plan.project.name,
+            description: plan.project.description || '',
+            total_days: plan.project.total_days,
+            start_date: plan.project.start_date
+        })
+        setSubtasks(plan.subtasks.map((task, index) => ({
+            id: `task-${activeIndex}-${index}`,
             title: task.title,
             duration_hours: task.duration_hours,
             order: task.order,
             description: task.description || '',
             selected: true,
             isEditing: false
-        }))
-    )
+        })))
+    }, [activeIndex, allPlans])
+
 
     const [expanded, setExpanded] = useState(true)
     const [loading, setLoading] = useState(false)
@@ -170,6 +187,26 @@ export function EditableTaskPlan({
 
     return (
         <div className="bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-xl border border-purple-200 dark:border-purple-800 p-4 mt-3 shadow-sm">
+            {/* Model Switcher Tabs */}
+            {allPlans.length > 1 && (
+                <div className="flex gap-2 mb-4 overflow-x-auto pb-2 scrollbar-thin">
+                    {allPlans.map((plan, index) => (
+                        <button
+                            key={`plan-tab-${index}`}
+                            onClick={() => setActiveIndex(index)}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm border transition-all whitespace-nowrap ${activeIndex === index
+                                ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                                : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750'
+                                }`}
+                        >
+                            <Bot className={`w-3.5 h-3.5 ${activeIndex === index ? 'text-white' : 'text-purple-500'}`} />
+                            <span>方案 {index + 1}</span>
+                            {plan.project.name && <span className="text-xs opacity-75">({plan.project.name})</span>}
+                        </button>
+                    ))}
+                </div>
+            )}
+
             {/* 项目头部 */}
             <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3 flex-1">
@@ -278,8 +315,8 @@ export function EditableTaskPlan({
                             <div
                                 key={task.id}
                                 className={`rounded-lg transition-all ${task.selected
-                                        ? 'bg-white dark:bg-gray-800 border border-purple-300 dark:border-purple-600 shadow-sm'
-                                        : 'bg-gray-100 dark:bg-gray-700/50 border border-transparent opacity-60'
+                                    ? 'bg-white dark:bg-gray-800 border border-purple-300 dark:border-purple-600 shadow-sm'
+                                    : 'bg-gray-100 dark:bg-gray-700/50 border border-transparent opacity-60'
                                     }`}
                             >
                                 {task.isEditing ? (
@@ -354,9 +391,40 @@ export function EditableTaskPlan({
                                                 </div>
                                             </div>
                                             {task.description && (
-                                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                                    {task.description}
-                                                </p>
+                                                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 whitespace-pre-wrap break-words">
+                                                    {task.description.split(/(\[.*?\]\(.*?\)|https?:\/\/\S+)/g).map((part, i) => {
+                                                        const linkMatch = part.match(/^\[(.*?)\]\((.*?)\)$/)
+                                                        if (linkMatch) {
+                                                            return (
+                                                                <a
+                                                                    key={i}
+                                                                    href={linkMatch[2]}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                    className="text-purple-600 hover:underline"
+                                                                >
+                                                                    {linkMatch[1]}
+                                                                </a>
+                                                            )
+                                                        }
+                                                        if (part.match(/^https?:\/\//)) {
+                                                            return (
+                                                                <a
+                                                                    key={i}
+                                                                    href={part}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                    className="text-purple-600 hover:underline"
+                                                                >
+                                                                    {part}
+                                                                </a>
+                                                            )
+                                                        }
+                                                        return <span key={i}>{part}</span>
+                                                    })}
+                                                </div>
                                             )}
                                         </div>
                                     </div>

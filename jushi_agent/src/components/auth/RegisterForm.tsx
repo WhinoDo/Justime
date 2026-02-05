@@ -8,12 +8,12 @@ import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Separator } from '@/components/ui/separator'
 import { useAuth } from '@/hooks/useAuth'
-import { 
-  Eye, 
-  EyeOff, 
-  Mail, 
-  Lock, 
-  User, 
+import {
+  Eye,
+  EyeOff,
+  Mail,
+  Lock,
+  User,
   Phone,
   AlertCircle,
   CheckCircle,
@@ -29,7 +29,7 @@ interface RegisterFormProps {
 
 export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: RegisterFormProps) {
   const { register, isLoading } = useAuth()
-  
+
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -38,7 +38,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
     displayName: '',
     phone: ''
   })
-  
+
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -105,7 +105,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!validateForm()) {
       return
     }
@@ -125,7 +125,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
       if (result.success) {
         setSuccess('注册成功！' + (result.needsVerification ? ' 请查收邮箱验证邮件。' : ''))
         onSuccess?.(result.user)
-        
+
         // 如果有重定向地址，跳转到指定页面
         if (redirectTo) {
           setTimeout(() => {
@@ -146,29 +146,29 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
 
 
   return (
-    <Card className="w-full max-w-md mx-auto bg-white/95 text-gray-900 border border-orange-100 shadow-xl dark:bg-white dark:text-gray-900">
+    <Card className="w-full max-w-md mx-auto bg-transparent border-none shadow-none text-gray-100">
       <CardHeader>
-        <CardTitle className="text-center text-2xl font-bold text-gray-900">
+        <CardTitle className="text-center text-2xl font-bold text-white">
           创建账户
         </CardTitle>
-        <p className="text-center text-gray-600">
+        <p className="text-center text-gray-200">
           注册新账户，开始使用聚时AI助手
         </p>
       </CardHeader>
-      
+
       <CardContent className="space-y-4">
         {/* 错误和成功提示 */}
         {error && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
+          <Alert variant="destructive" className="bg-red-500/20 border-red-500/50 text-white">
+            <AlertCircle className="h-4 w-4 text-red-200" />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
 
         {success && (
-          <Alert className="border-green-200 bg-green-50">
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-green-800">{success}</AlertDescription>
+          <Alert className="border-green-500/50 bg-green-500/20 text-white">
+            <CheckCircle className="h-4 w-4 text-green-200" />
+            <AlertDescription className="text-green-100">{success}</AlertDescription>
           </Alert>
         )}
 
@@ -176,16 +176,16 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* 邮箱 */}
           <div className="space-y-2">
-            <Label htmlFor="email">邮箱地址 *</Label>
+            <Label htmlFor="email" className="text-gray-100">邮箱地址 *</Label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
               <Input
                 id="email"
                 type="email"
                 placeholder="请输入邮箱地址"
                 value={formData.email}
                 onChange={(e) => handleInputChange('email', e.target.value)}
-                className="pl-10 bg-white text-gray-900 placeholder:text-gray-400 border-gray-200 focus-visible:ring-orange-500"
+                className="pl-10 bg-white/80 backdrop-blur-sm text-gray-900 placeholder:text-gray-500 border-white/30 focus-visible:ring-orange-400"
                 disabled={isSubmitting}
               />
             </div>
@@ -193,36 +193,36 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
 
           {/* 用户名 */}
           <div className="space-y-2">
-            <Label htmlFor="username">用户名（可选）</Label>
+            <Label htmlFor="username" className="text-gray-100">用户名（可选）</Label>
             <div className="relative">
-              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
               <Input
                 id="username"
                 type="text"
                 placeholder="请输入用户名"
                 value={formData.username}
                 onChange={(e) => handleInputChange('username', e.target.value)}
-                className="pl-10 bg-white text-gray-900 placeholder:text-gray-400 border-gray-200 focus-visible:ring-orange-500"
+                className="pl-10 bg-white/80 backdrop-blur-sm text-gray-900 placeholder:text-gray-500 border-white/30 focus-visible:ring-orange-400"
                 disabled={isSubmitting}
               />
             </div>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-300">
               用户名可用于登录，只能包含字母、数字、下划线和连字符
             </p>
           </div>
 
           {/* 显示名称 */}
           <div className="space-y-2">
-            <Label htmlFor="displayName">显示名称（可选）</Label>
+            <Label htmlFor="displayName" className="text-gray-100">显示名称（可选）</Label>
             <div className="relative">
-              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
               <Input
                 id="displayName"
                 type="text"
                 placeholder="请输入显示名称"
                 value={formData.displayName}
                 onChange={(e) => handleInputChange('displayName', e.target.value)}
-                className="pl-10 bg-white text-gray-900 placeholder:text-gray-400 border-gray-200 focus-visible:ring-orange-500"
+                className="pl-10 bg-white/80 backdrop-blur-sm text-gray-900 placeholder:text-gray-500 border-white/30 focus-visible:ring-orange-400"
                 disabled={isSubmitting}
               />
             </div>
@@ -230,16 +230,16 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
 
           {/* 手机号 */}
           <div className="space-y-2">
-            <Label htmlFor="phone">手机号（可选）</Label>
+            <Label htmlFor="phone" className="text-gray-100">手机号（可选）</Label>
             <div className="relative">
-              <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
               <Input
                 id="phone"
                 type="tel"
                 placeholder="请输入手机号"
                 value={formData.phone}
                 onChange={(e) => handleInputChange('phone', e.target.value)}
-                className="pl-10 bg-white text-gray-900 placeholder:text-gray-400 border-gray-200 focus-visible:ring-orange-500"
+                className="pl-10 bg-white/80 backdrop-blur-sm text-gray-900 placeholder:text-gray-500 border-white/30 focus-visible:ring-orange-400"
                 disabled={isSubmitting}
               />
             </div>
@@ -247,54 +247,54 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
 
           {/* 密码 */}
           <div className="space-y-2">
-            <Label htmlFor="password">密码 *</Label>
+            <Label htmlFor="password" className="text-gray-100">密码 *</Label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
               <Input
                 id="password"
                 type={showPassword ? 'text' : 'password'}
                 placeholder="请输入密码（至少6个字符）"
                 value={formData.password}
                 onChange={(e) => handleInputChange('password', e.target.value)}
-                className="pl-10 pr-10 bg-white text-gray-900 placeholder:text-gray-400 border-gray-200 focus-visible:ring-orange-500"
+                className="pl-10 pr-10 bg-white/80 backdrop-blur-sm text-gray-900 placeholder:text-gray-500 border-white/30 focus-visible:ring-orange-400"
                 disabled={isSubmitting}
               />
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="absolute right-2 top-1/2 transform -translate-y-1/2"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 hover:bg-transparent"
                 onClick={() => setShowPassword(!showPassword)}
                 disabled={isSubmitting}
               >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {showPassword ? <EyeOff className="h-4 w-4 text-gray-600" /> : <Eye className="h-4 w-4 text-gray-600" />}
               </Button>
             </div>
           </div>
 
           {/* 确认密码 */}
           <div className="space-y-2">
-            <Label htmlFor="confirmPassword">确认密码 *</Label>
+            <Label htmlFor="confirmPassword" className="text-gray-100">确认密码 *</Label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
               <Input
                 id="confirmPassword"
                 type={showConfirmPassword ? 'text' : 'password'}
                 placeholder="请再次输入密码"
                 value={formData.confirmPassword}
                 onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                className="pl-10 pr-10 bg-white text-gray-900 placeholder:text-gray-400 border-gray-200 focus-visible:ring-orange-500"
+                className="pl-10 pr-10 bg-white/80 backdrop-blur-sm text-gray-900 placeholder:text-gray-500 border-white/30 focus-visible:ring-orange-400"
                 disabled={isSubmitting}
               />
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="absolute right-2 top-1/2 transform -translate-y-1/2"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 hover:bg-transparent"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 disabled={isSubmitting}
               >
-                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {showConfirmPassword ? <EyeOff className="h-4 w-4 text-gray-600" /> : <Eye className="h-4 w-4 text-gray-600" />}
               </Button>
             </div>
           </div>
@@ -302,7 +302,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
           {/* 注册按钮 */}
           <Button
             type="submit"
-            className="w-full"
+            className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white border-0"
             disabled={isSubmitting || isLoading}
           >
             {isSubmitting ? (
@@ -321,19 +321,19 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
 
         {/* 分隔线 */}
         <div className="relative">
-          <Separator />
+          <Separator className="bg-white/20" />
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="bg-white px-2 text-sm text-gray-500">或</span>
+            <span className="bg-transparent px-2 text-sm text-gray-300">或</span>
           </div>
         </div>
 
         {/* 底部链接 */}
         <div className="text-center">
-          <div className="text-sm text-gray-600">
+          <div className="text-sm text-gray-200">
             已有账户？
             <Button
               variant="link"
-              className="p-0 h-auto ml-1 text-blue-600 hover:text-blue-800"
+              className="p-0 h-auto ml-1 text-orange-300 hover:text-orange-200"
               onClick={onSwitchToLogin}
             >
               立即登录
@@ -342,13 +342,13 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
         </div>
 
         {/* 服务条款 */}
-        <div className="text-xs text-gray-500 text-center">
+        <div className="text-xs text-gray-300 text-center">
           注册即表示您同意我们的
-          <Button variant="link" className="p-0 h-auto text-xs text-blue-600 hover:text-blue-800">
+          <Button variant="link" className="p-0 h-auto text-xs text-orange-300 hover:text-orange-200 ml-1">
             服务条款
           </Button>
           和
-          <Button variant="link" className="p-0 h-auto text-xs text-blue-600 hover:text-blue-800">
+          <Button variant="link" className="p-0 h-auto text-xs text-orange-300 hover:text-orange-200 ml-1">
             隐私政策
           </Button>
         </div>

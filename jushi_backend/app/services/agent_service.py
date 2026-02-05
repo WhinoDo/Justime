@@ -330,7 +330,50 @@ class AgentService:
                 "success": False,
                 "error": str(e)
             }
+    async def run_parallel_task(
+        self,
+        task: str,
+        llm_configs: List[LLMConfig],
+        tools: Optional[List] = None
+    ) -> Dict[str, Any]:
+        """
+        并行执行 Agent 任务
+        """
+        if not llm_configs:
+            return {"success": False, "error": "No LLM configs provided"}
 
+        print(f"🚀 Starting parallel execution on {len(llm_configs)} models...")
+        
+        # Create coroutines for each config
+        coroutines = [
+            self.run_task(task, tools=tools, llm_config=config, provider=config.model_id)
+            for config in llm_configs
+        ]
+        
+        # Run in parallel
+        results = await asyncio.gather(*coroutines, return_exceptions=True)
+        
+        # Process results
+        processed_results = []
+        for i, res in enumerate(results):
+            config = llm_configs[i]
+            if isinstance(res, Exception):
+                processed_results.append({
+                    "success": False,
+                    "model": config.model_id,
+                    "error": str(res)
+                })
+            else:
+                # Inject model info into result if successful
+                if isinstance(res, dict):
+                    res["model"] = config.model_id
+                    res["config_name"] = config.name
+                processed_results.append(res)
+                
+        return {
+            "success": True,
+            "results": processed_results
+        }
 
 # 创建全局服务实例
 agent_service = AgentService()

@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 import {
@@ -12,25 +11,20 @@ import {
     CheckCircle,
     X,
     Loader2,
-    AlertCircle,
+    Sparkles,
+    ArrowRightLeft,
+    AlertTriangle,
     FileText
 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
-// 事件类型映射
-const EVENT_TYPE_LABELS: Record<string, { label: string; color: string }> = {
-    task: { label: '任务', color: 'bg-blue-100 text-blue-800' },
-    meeting: { label: '会议', color: 'bg-purple-100 text-purple-800' },
-    reminder: { label: '提醒', color: 'bg-yellow-100 text-yellow-800' },
-    deadline: { label: '截止日期', color: 'bg-red-100 text-red-800' },
-    other: { label: '其他', color: 'bg-gray-100 text-gray-800' }
-}
-
-// 优先级映射
-const PRIORITY_LABELS: Record<string, { label: string; color: string }> = {
-    low: { label: '低', color: 'text-gray-500' },
-    medium: { label: '中', color: 'text-blue-500' },
-    high: { label: '高', color: 'text-orange-500' },
-    urgent: { label: '紧急', color: 'text-red-500' }
+// 事件类型映射 - 视觉升级
+const EVENT_TYPE_STYLES: Record<string, { label: string; className: string; icon?: any }> = {
+    task: { label: '任务', className: 'bg-blue-500/10 text-blue-600 dark:text-blue-300 border-blue-500/20' },
+    meeting: { label: '会议', className: 'bg-purple-500/10 text-purple-600 dark:text-purple-300 border-purple-500/20' },
+    reminder: { label: '提醒', className: 'bg-amber-500/10 text-amber-600 dark:text-amber-300 border-amber-500/20' },
+    deadline: { label: '截止', className: 'bg-rose-500/10 text-rose-600 dark:text-rose-300 border-rose-500/20' },
+    other: { label: '事项', className: 'bg-slate-500/10 text-slate-600 dark:text-slate-300 border-slate-500/20' }
 }
 
 export interface SuggestedCalendarEvent {
@@ -44,7 +38,7 @@ export interface SuggestedCalendarEvent {
     location?: string
     allDay?: boolean
     aiGenerated?: boolean
-    conflicts?: any[] // Conflicting events from DB
+    conflicts?: any[]
 }
 
 interface SuggestedEventCardProps {
@@ -59,35 +53,28 @@ export function SuggestedEventCard({ event, onConfirm, onDismiss }: SuggestedEve
     const [isConfirmed, setIsConfirmed] = useState(false)
     const [savedEventId, setSavedEventId] = useState<string | null>(null)
 
-    const eventType = EVENT_TYPE_LABELS[event.type || 'other'] || EVENT_TYPE_LABELS.other
-    const priority = PRIORITY_LABELS[event.priority || 'medium'] || PRIORITY_LABELS.medium
+    const typeStyle = EVENT_TYPE_STYLES[event.type || 'other'] || EVENT_TYPE_STYLES.other
 
-    // 格式化时间显示
+    // 格式化逻辑保持不变...
     const formatDateTime = (isoString: string) => {
         try {
             const date = new Date(isoString)
             return date.toLocaleString('zh-CN', {
-                month: 'long',
+                month: 'short',
                 day: 'numeric',
                 weekday: 'short',
                 hour: '2-digit',
                 minute: '2-digit'
             })
-        } catch {
-            return isoString
-        }
+        } catch { return isoString }
     }
 
     const formatTimeOnly = (isoString: string) => {
         try {
-            const date = new Date(isoString)
-            return date.toLocaleTimeString('zh-CN', {
-                hour: '2-digit',
-                minute: '2-digit'
+            return new Date(isoString).toLocaleTimeString('zh-CN', {
+                hour: '2-digit', minute: '2-digit'
             })
-        } catch {
-            return isoString
-        }
+        } catch { return isoString }
     }
 
     const handleConfirm = async () => {
@@ -95,9 +82,7 @@ export function SuggestedEventCard({ event, onConfirm, onDismiss }: SuggestedEve
         setError(null)
         try {
             const savedEvent = await onConfirm(event)
-            if (savedEvent && savedEvent._id) {
-                setSavedEventId(savedEvent._id)
-            }
+            if (savedEvent && savedEvent._id) setSavedEventId(savedEvent._id)
             setIsConfirmed(true)
         } catch (err) {
             setError(err instanceof Error ? err.message : '添加失败')
@@ -106,176 +91,178 @@ export function SuggestedEventCard({ event, onConfirm, onDismiss }: SuggestedEve
         }
     }
 
+    // Success State - Minimalist Glass
     if (isConfirmed) {
         return (
-            <Card className="border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800">
-                <CardContent className="p-4">
-                    <div className="flex items-center gap-2 text-green-700 dark:text-green-400 mb-2">
-                        <CheckCircle className="h-5 w-5" />
-                        <span className="font-medium">日程已添加到日历</span>
+            <div className="relative overflow-hidden rounded-2xl border border-emerald-500/20 bg-emerald-50/30 dark:bg-emerald-900/10 p-6 backdrop-blur-md transition-all duration-500 animate-in fade-in zoom-in-95">
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent pointer-events-none" />
+                <div className="relative flex flex-col items-center justify-center text-center space-y-3">
+                    <div className="h-12 w-12 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                        <CheckCircle className="h-6 w-6" />
                     </div>
-                    <p className="text-sm text-green-600 dark:text-green-500 mb-3">
-                        「{event.title}」已成功添加
-                    </p>
+                    <div>
+                        <h4 className="font-semibold text-emerald-900 dark:text-emerald-100">已加入日程</h4>
+                        <p className="text-sm text-emerald-700/80 dark:text-emerald-300/80 mt-1">
+                            {event.title}
+                        </p>
+                    </div>
                     {savedEventId && (
-                        <Link href={`/schedule/${savedEventId}/document`} className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
-                            <FileText className="h-4 w-4" />
-                            编写工作文档
+                        <Link
+                            href={`/schedule/${savedEventId}/document`}
+                            className="mt-2 text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-100/50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200/50 transition-colors"
+                        >
+                            <FileText className="h-3.5 w-3.5" />
+                            <span>创建关联文档</span>
                         </Link>
                     )}
-                </CardContent>
-            </Card>
+                </div>
+            </div>
         )
     }
 
+    const hasConflicts = event.conflicts && event.conflicts.length > 0
+
     return (
-        <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 dark:border-blue-800 shadow-sm hover:shadow-md transition-shadow">
-            <CardContent className="p-4">
-                {/* 头部 */}
-                <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                        <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                        <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                            AI 日程建议
-                        </span>
+        <div className="group relative w-full overflow-hidden rounded-3xl border border-white/40 dark:border-white/10 bg-white/40 dark:bg-gray-900/40 shadow-xl backdrop-blur-xl transition-all duration-300 hover:shadow-2xl hover:bg-white/50 dark:hover:bg-gray-900/50">
+            {/* Top Gradient Accent */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 opacity-70" />
+
+            <div className="p-5 space-y-5">
+                {/* Header: AI & Badge */}
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs font-medium text-indigo-600 dark:text-indigo-300 px-2 py-1 rounded-full bg-indigo-50/50 dark:bg-indigo-900/20 border border-indigo-100/50 dark:border-indigo-800/30">
+                        <Sparkles className="h-3.5 w-3.5" />
+                        <span className="tracking-wide uppercase">AI Insight</span>
                     </div>
-                    <Badge className={eventType.color}>
-                        {eventType.label}
+                    <Badge variant="outline" className={cn("text-xs font-normal backdrop-blur-sm", typeStyle.className)}>
+                        {typeStyle.label}
                     </Badge>
                 </div>
 
-                {/* 标题 */}
-                <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                    {event.title}
-                </h4>
-
-                {/* 描述 */}
-                {event.description && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                        {event.description}
-                    </p>
-                )}
-
-                {/* 时间信息 */}
-                <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 mb-2">
-                    <Clock className="h-4 w-4" />
-                    <span>
-                        {formatDateTime(event.start)} - {formatTimeOnly(event.end)}
-                    </span>
+                {/* Main Content */}
+                <div className="space-y-1">
+                    <h3 className="font-display text-lg font-semibold text-gray-900 dark:text-white leading-tight tracking-tight">
+                        {event.title}
+                    </h3>
+                    <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 font-mono">
+                        <Clock className="h-4 w-4 text-gray-400" />
+                        <span>{formatDateTime(event.start)} - {formatTimeOnly(event.end)}</span>
+                    </div>
+                    {event.location && (
+                        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-500 pt-1">
+                            <MapPin className="h-3.5 w-3.5" />
+                            {event.location}
+                        </div>
+                    )}
                 </div>
 
-                {/* 地点 */}
-                {event.location && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-2">
-                        <MapPin className="h-4 w-4" />
-                        <span>{event.location}</span>
+                {/* Description with Link Parsing */}
+                {event.description && (
+                    <div className="text-sm text-gray-600 dark:text-gray-300/90 leading-relaxed bg-white/30 dark:bg-black/10 p-3 rounded-xl border border-white/20 dark:border-white/5">
+                        {event.description.split(/(\[.*?\]\(.*?\)|https?:\/\/\S+)/g).map((part, i) => {
+                            const linkMatch = part.match(/^\[(.*?)\]\((.*?)\)$/)
+                            if (linkMatch) return <a key={i} href={linkMatch[2]} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">{linkMatch[1]}</a>
+                            if (part.match(/^https?:\/\//)) return <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">{part}</a>
+                            return <span key={i}>{part}</span>
+                        })}
                     </div>
                 )}
 
-                {/* 优先级 */}
-                <div className="flex items-center gap-2 text-sm mb-4">
-                    <span className="text-gray-500">优先级:</span>
-                    <span className={priority.color}>{priority.label}</span>
-                </div>
-
-                {/* 冲突提示 */}
-                {event.conflicts && event.conflicts.length > 0 && !isConfirmed && (
-                    <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                        <div className="flex items-center gap-2 text-red-700 dark:text-red-400 font-medium mb-2">
-                            <AlertCircle className="h-4 w-4" />
-                            <span>发现 {event.conflicts.length} 个时间冲突</span>
-                        </div>
-                        <div className="space-y-2 mb-3">
-                            {event.conflicts.map((conflict: any) => (
-                                <div key={conflict._id} className="text-sm bg-white dark:bg-gray-800 p-2 rounded border border-red-100 dark:border-red-900/50 flex justify-between items-center">
-                                    <span className="truncate flex-1 font-medium text-gray-700 dark:text-gray-300">
-                                        {conflict.title}
-                                    </span>
-                                    <span className="text-xs text-gray-500 whitespace-nowrap ml-2">
-                                        {formatTimeOnly(conflict.start)} - {formatTimeOnly(conflict.end)}
-                                    </span>
+                {/* Timeline Divergence (Conflicts) */}
+                {hasConflicts && (
+                    <div className="relative overflow-hidden rounded-xl border border-amber-200/50 dark:border-amber-800/30 bg-amber-50/40 dark:bg-amber-900/10 p-4">
+                        <div className="flex items-start gap-3">
+                            <div className="p-1.5 rounded-full bg-amber-100/80 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 mt-0.5">
+                                <ArrowRightLeft className="h-4 w-4" />
+                            </div>
+                            <div className="flex-1 space-y-2">
+                                <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                                    时间冲突 (Timeline Divergence)
+                                </p>
+                                <div className="space-y-1.5 text-xs text-amber-800/80 dark:text-amber-300/80">
+                                    {event.conflicts!.map((c: any) => (
+                                        <div key={c._id} className="flex items-center justify-between pl-2 border-l-2 border-amber-300/50">
+                                            <span className="truncate max-w-[120px]">{c.title}</span>
+                                            <span className="font-mono text-[10px] opacity-80">
+                                                {formatTimeOnly(c.start)}-{formatTimeOnly(c.end)}
+                                            </span>
+                                        </div>
+                                    ))}
                                 </div>
-                            ))}
+                            </div>
                         </div>
-                        <div className="text-xs text-red-600 dark:text-red-400 mb-2">
-                            您希望如何处理？
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
+
+                        {/* Conflict Actions */}
+                        <div className="mt-4 grid grid-cols-2 gap-3">
                             <Button
                                 size="sm"
                                 variant="outline"
-                                className="border-red-200 hover:bg-red-100 hover:text-red-700 dark:border-red-800 dark:hover:bg-red-900/30"
+                                className="h-8 text-xs border-amber-200/50 hover:bg-amber-100/50 hover:text-amber-700 dark:border-amber-800/30 dark:hover:bg-amber-900/30 text-amber-600"
                                 onClick={async () => {
-                                    if (!confirm('确定要删除原有日程并替换为新日程吗？此操作无法撤销。')) return;
+                                    if (!confirm('确定要覆盖原有日程吗？')) return;
                                     setIsLoading(true);
                                     try {
-                                        // Delete conflicting events
                                         await Promise.all(event.conflicts!.map((c: any) =>
                                             fetch(`/api/calendar/events/${c._id}`, { method: 'DELETE' })
                                         ));
-                                        // Add new event
                                         await handleConfirm();
                                     } catch (err) {
-                                        setError('替换失败: ' + (err instanceof Error ? err.message : String(err)));
+                                        setError('替换失败');
                                         setIsLoading(false);
                                     }
                                 }}
                                 disabled={isLoading}
                             >
-                                替换原日程
+                                替换原有
                             </Button>
                             <Button
                                 size="sm"
-                                className="bg-red-600 hover:bg-red-700 text-white"
+                                className="h-8 text-xs bg-amber-500 hover:bg-amber-600 text-white border-0 shadow-lg shadow-amber-500/20"
                                 onClick={handleConfirm}
                                 disabled={isLoading}
                             >
-                                <CheckCircle className="h-3 w-3 mr-1" />
-                                强制添加
+                                强制并存
                             </Button>
                         </div>
                     </div>
                 )}
 
-                {/* 错误信息 */}
+                {/* Error Display */}
                 {error && (
-                    <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 mb-3">
-                        <AlertCircle className="h-4 w-4" />
+                    <div className="flex items-center gap-2 text-xs text-rose-600 dark:text-rose-400 bg-rose-50/50 dark:bg-rose-900/20 p-2 rounded-lg">
+                        <AlertTriangle className="h-3.5 w-3.5" />
                         <span>{error}</span>
                     </div>
                 )}
 
-                {/* 操作按钮 (无冲突时显示) */}
-                {(!event.conflicts || event.conflicts.length === 0) && (
-                    <div className="flex gap-2">
-                        <Button
-                            onClick={handleConfirm}
-                            disabled={isLoading}
-                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-                        >
-                            {isLoading ? (
-                                <>
-                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                    添加中...
-                                </>
-                            ) : (
-                                <>
-                                    <CheckCircle className="h-4 w-4 mr-2" />
-                                    确认添加
-                                </>
-                            )}
-                        </Button>
+                {/* Main Actions (No Conflict) */}
+                {!hasConflicts && (
+                    <div className="grid grid-cols-4 gap-3 pt-1">
                         <Button
                             variant="outline"
                             onClick={onDismiss}
                             disabled={isLoading}
-                            className="px-4"
+                            className="col-span-1 h-10 border-gray-200/50 dark:border-gray-700/50 hover:bg-gray-100/50 dark:hover:bg-gray-800/50 text-gray-500"
                         >
                             <X className="h-4 w-4" />
                         </Button>
+                        <Button
+                            onClick={handleConfirm}
+                            disabled={isLoading}
+                            className="col-span-3 h-10 bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 shadow-lg shadow-gray-200/50 dark:shadow-none border-0 transition-all active:scale-[0.98]"
+                        >
+                            {isLoading ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <span className="flex items-center gap-2">
+                                    <CheckCircle className="h-4 w-4" />
+                                    <span className="font-medium">确认添加</span>
+                                </span>
+                            )}
+                        </Button>
                     </div>
                 )}
-            </CardContent>
-        </Card>
+            </div>
+        </div>
     )
 }

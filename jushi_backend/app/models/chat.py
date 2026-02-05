@@ -24,6 +24,7 @@ class ChatRequest(BaseModel):
     message: str = Field(..., description="用户消息")
     taskId: Optional[str] = Field(None, description="任务 ID")
     sessionId: Optional[str] = Field(None, description="会话 ID")
+    useWebSearch: bool = Field(False, description="是否启用网页搜索")
 
 
 class ChatResponseData(BaseModel):
@@ -34,6 +35,8 @@ class ChatResponseData(BaseModel):
     needsEmotionInput: bool = Field(False, description="是否需要情绪输入")
     suggestedEvents: List[SuggestedCalendarEvent] = Field(default_factory=list, description="AI 建议的日程")
     taskResult: Optional[Dict[str, Any]] = Field(None, description="任务结果")
+    taskDecomposition: Optional[Dict[str, Any]] = Field(None, description="单个任务分解 (Legacy)")
+    multiTaskDecompositions: Optional[List[Dict[str, Any]]] = Field(None, description="多模型任务分解结果")
 
 
 class ChatResponse(BaseModel):

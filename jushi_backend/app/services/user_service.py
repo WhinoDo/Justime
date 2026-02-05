@@ -3,6 +3,7 @@ from typing import Optional, Dict, Any
 from passlib.context import CryptContext
 from app.database import db
 from bson import ObjectId
+from app.core.exceptions import UserNotFoundError, PasswordIncorrectError
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -75,7 +76,7 @@ class UserService:
             
         if not user:
             print(f"❌ User not found: {identifier}")
-            return None
+            raise UserNotFoundError(f"User {identifier} not found")
         
         print(f"  Found user: {user.get('email', 'N/A')}, role: {user.get('role', 'N/A')}")
             
@@ -89,10 +90,12 @@ class UserService:
                     return user
                 else:
                     print(f"❌ Password mismatch")
-                    return None
+                    raise PasswordIncorrectError("Password verification failed")
+            except AuthenticationError:
+                raise
             except Exception as e:
                 print(f"❌ Password verification error: {type(e).__name__}: {e}")
-                return None
+                raise PasswordIncorrectError("Password verification error")
         else:
             print(f"⚠️ No hashed_password field found for user")
         
@@ -112,8 +115,10 @@ class UserService:
                 return user
             else:
                 print(f"❌ Plain text password mismatch")
+                raise PasswordIncorrectError("Legacy password verification failed")
         else:
             print(f"❌ No password field found at all")
+            raise PasswordIncorrectError("User has no password set")
             
         return None
 
