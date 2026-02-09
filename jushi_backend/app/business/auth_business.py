@@ -149,7 +149,8 @@ class AuthBusiness:
             config = LLMConfig(
                 modelId=target_config.get("model_id"),
                 baseUrl=target_config.get("base_url"),
-                apiKey="******" if plain_key else None
+                apiKey="******" if plain_key else None,
+                temperature=target_config.get("temperature", 0.7)
             )
             return AuthResponse(success=True, message="获取用户配置成功", data=AuthData(llmConfig=config))
             
@@ -157,7 +158,8 @@ class AuthBusiness:
         config = LLMConfig(
             modelId=settings.LLM_MODEL_ID,
             baseUrl=settings.LLM_BASE_URL,
-            apiKey=None
+            apiKey=None,
+            temperature=0.7
         )
         return AuthResponse(success=True, message="获取系统默认配置", data=AuthData(llmConfig=config))
 
@@ -180,7 +182,8 @@ class AuthBusiness:
             new_config = {
                 "model_id": config.modelId,
                 "base_url": config.baseUrl,
-                "api_key": final_encrypted_key
+                "api_key": final_encrypted_key,
+                "temperature": config.temperature
             }
             
             # 4. 更新数据库

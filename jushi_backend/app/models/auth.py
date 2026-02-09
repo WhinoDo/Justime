@@ -43,6 +43,7 @@ class LLMConfig(BaseModel):
     modelId: Optional[str] = None
     baseUrl: Optional[str] = None
     apiKey: Optional[str] = None
+    temperature: Optional[float] = 0.7
 
 
 class AuthData(BaseModel):
