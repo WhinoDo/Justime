@@ -2,7 +2,7 @@
 认证相关数据模型
 """
 
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, EmailStr, Field
 
 
@@ -25,11 +25,22 @@ class LoginRequest(BaseModel):
 class UserProfile(BaseModel):
     """用户资料"""
     name: str
+    displayName: Optional[str] = None
+    email: Optional[str] = None
+    avatar: Optional[str] = None
+    department: Optional[str] = None
+    jobTitle: Optional[str] = None
+    bio: Optional[str] = None
+    phone: Optional[str] = None
+    location: Optional[str] = None
+    website: Optional[str] = None
+    habits: Optional[Dict[str, Any]] = None
 
 
 class SafeUser(BaseModel):
     """安全的用户信息（不含密码）"""
     id: str
+    username: Optional[str] = None
     email: str
     displayName: str
     profile: UserProfile
@@ -60,3 +71,8 @@ class AuthResponse(BaseModel):
     success: bool
     message: str
     data: Optional[AuthData] = None
+
+
+class ProfileUpdateRequest(BaseModel):
+    """用户资料更新请求"""
+    profile: Dict[str, Any] = Field(..., description="用户资料对象")

@@ -17,7 +17,7 @@ class DatabaseConnection {
     isConnecting: false
   }
 
-  private constructor() {}
+  private constructor() { }
 
   static getInstance(): DatabaseConnection {
     if (!DatabaseConnection.instance) {
@@ -125,6 +125,9 @@ class DatabaseConnection {
         return false
       }
 
+      if (!mongoose.connection.db) {
+        return false
+      }
       // 执行简单的ping操作
       await mongoose.connection.db.admin().ping()
       return true
@@ -147,7 +150,7 @@ export async function ensureDbConnection(): Promise<void> {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : '未知错误'
     console.error('❌ 确保数据库连接失败:', errorMessage)
-    
+
     // 提供更详细的错误信息
     if (errorMessage.includes('MONGODB_URI')) {
       throw new Error('数据库配置错误：MONGODB_URI 环境变量未设置')

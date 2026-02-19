@@ -1,8 +1,14 @@
+import asyncio
 from datetime import datetime, timezone
+from time import perf_counter
+import re
 from typing import Dict, Any, List, Optional
 from bson import ObjectId
 from app.services.llm_service import llm_service
 from app.services.agent_service import agent_service
+from app.services.task_timing_service import task_timing_service
+from app.services.task_classifier_service import task_classifier_service
+from app.services.model_router_service import model_router_service
 from app.core.config import settings, LLMConfig
 from app.models.chat import ChatRequest, ChatResponse, LLMTestRequest, ChatResponseData
 from app.models.history import ChatSession, ChatMessage
@@ -34,6 +40,13 @@ SEARCH_KEYWORDS = [
     "最新", "新闻"
 ]
 
+LEARNING_PLAN_KEYWORDS = [
+    "学习", "复习", "备考", "刷题", "课程", "训练计划", "学习计划", "路线图",
+    "我要学", "想学", "怎么学", "如何学", "学会", "入门"
+]
+
+DECOMPOSITION_TOOL_RETRY_LIMIT = 2
+
 
 class ChatBusiness:
     async def create_session(self, user_id: str, title: str) -> str:
@@ -47,7 +60,7 @@ class ChatBusiness:
         result = await db.db["chat_sessions"].insert_one(session_doc)
         return str(result.inserted_id)
 
-    async def save_message(self, session_id: str, role: str, content: str):
+    async def save_message(self, session_id: str, role: str, content: str, **kwargs) -> str:
         """保存消息"""
         message_doc = {
             "sessionId": session_id,
@@ -55,7 +68,20 @@ class ChatBusiness:
             "content": content,
             "timestamp": datetime.now()
         }
-        await db.db["chat_messages"].insert_one(message_doc)
+        
+        # Add optional fields if present
+        if kwargs.get("taskDecomposition"):
+            message_doc["taskDecomposition"] = kwargs["taskDecomposition"]
+        if kwargs.get("multiTaskDecompositions"):
+            message_doc["multiTaskDecompositions"] = kwargs["multiTaskDecompositions"]
+        if kwargs.get("suggestedEvents"):
+            message_doc["suggestedEvents"] = kwargs["suggestedEvents"]
+        if kwargs.get("timingStrategy"):
+            message_doc["timingStrategy"] = kwargs["timingStrategy"]
+        if kwargs.get("taskAnalysis"):
+            message_doc["taskAnalysis"] = kwargs["taskAnalysis"]
+            
+        result = await db.db["chat_messages"].insert_one(message_doc)
         
         # 更新会话最后更新时间和预览
         await db.db["chat_sessions"].update_one(
@@ -67,6 +93,26 @@ class ChatBusiness:
                 }
             }
         )
+        return str(result.inserted_id)
+
+    async def update_message_interactive_state(self, message_id: str, updates: Dict[str, Any]):
+        """更新消息的交互状态（如清除任务分解数据）"""
+        if not message_id:
+            return
+            
+        update_fields = {}
+        # Only allow updating specific interactive fields to prevent abuse
+        allowed_fields = ["taskDecomposition", "multiTaskDecompositions", "suggestedEvents"]
+        
+        for field in allowed_fields:
+            if field in updates:
+                update_fields[field] = updates[field]
+                
+        if update_fields:
+            await db.db["chat_messages"].update_one(
+                {"_id": ObjectId(message_id)},
+                {"$set": update_fields}
+            )
 
     async def get_user_sessions(self, user_id: str) -> List[dict]:
         """获取用户会话列表"""
@@ -86,6 +132,253 @@ class ChatBusiness:
             m["_id"] = str(m["_id"])
         return messages
 
+    async def _record_usage_event(
+        self,
+        user_id: str,
+        session_id: str,
+        config_id: str,
+        model_id: str,
+        config_name: str,
+        path_type: str,
+        is_primary: bool,
+        usage: Optional[Dict[str, Any]],
+        message_id: Optional[str] = None
+    ) -> None:
+        """记录真实 usage 事件；若 usage 缺失则仅记录缺失计数。"""
+        if not isinstance(usage, dict):
+            return
+
+        try:
+            prompt_tokens = max(0, int(usage.get("promptTokens", 0) or 0))
+            completion_tokens = max(0, int(usage.get("completionTokens", 0) or 0))
+            request_count = max(
+                1,
+                int(
+                    usage.get("totalRequests")
+                    or usage.get("requestsWithUsage")
+                    or usage.get("requestCount")
+                    or 1
+                ),
+            )
+            missing_usage_requests = int(
+                usage.get("missingUsageRequests", 0)
+                or (1 if usage.get("usageMissing") else 0)
+            )
+            usage_missing = bool(usage.get("usageMissing")) or (
+                (prompt_tokens + completion_tokens) <= 0 and missing_usage_requests > 0
+            )
+            if (prompt_tokens + completion_tokens) <= 0 and not usage_missing and missing_usage_requests <= 0:
+                return
+
+            await UserService.record_llm_usage_event(
+                user_id=user_id,
+                session_id=session_id,
+                config_id=config_id,
+                model_id=model_id,
+                config_name=config_name,
+                path_type=path_type,
+                is_primary=is_primary,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                usage_missing=usage_missing,
+                request_count=request_count,
+                missing_usage_requests=missing_usage_requests,
+                provider_request_ids=usage.get("providerRequestIds") if isinstance(usage.get("providerRequestIds"), list) else [],
+                message_id=message_id,
+                usage_raw=usage.get("usageRaw") if isinstance(usage.get("usageRaw"), dict) else None
+            )
+        except Exception as exc:
+            print(f"⚠️ 记录模型 token 使用量失败: {exc}")
+
+    async def _build_recent_context(self, session_id: str, window_size: int) -> str:
+        """按窗口读取最近会话上下文，用于思考类任务的长上下文输入"""
+        if not session_id or window_size <= 0:
+            return ""
+        try:
+            cursor = db.db["chat_messages"].find({"sessionId": session_id}).sort("timestamp", -1)
+            recent_messages = await cursor.to_list(length=window_size)
+            if not recent_messages:
+                return ""
+
+            recent_messages.reverse()
+            rendered = []
+            for msg in recent_messages:
+                role = "用户" if msg.get("role") == "user" else "助手"
+                content = (msg.get("content") or "").strip().replace("\n", " ")
+                if len(content) > 240:
+                    content = content[:240] + "..."
+                rendered.append(f"{role}: {content}")
+            return "\n".join(rendered)
+        except Exception as e:
+            print(f"⚠️ 读取会话上下文失败: {e}")
+            return ""
+
+    def _wrap_task_with_timing(
+        self,
+        enhanced_task: str,
+        strategy: Dict[str, Any],
+        context_text: str,
+        user_habits_context: str = ""
+    ) -> str:
+        """将任务调度策略注入到实际执行提示词中，形成可执行约束"""
+        task_type = strategy.get("taskType", "general")
+        duration_sec = strategy.get("interactionDurationSeconds", 300)
+        interval_sec = strategy.get("intervalSeconds", 21600)
+        max_steps = strategy.get("maxSteps", 10)
+        timeout_sec = strategy.get("timeoutSeconds", 290)
+        difficulty = strategy.get("difficultyLevel", 3)
+        urgency = strategy.get("urgency", "medium")
+        analysis_meta = strategy.get("analysisMeta") if isinstance(strategy.get("analysisMeta"), dict) else None
+
+        if task_type == "recitation":
+            mode_instruction = (
+                "当前任务是背诵/记忆型任务，目标是短时高频。"
+                "请快速给出可执行的记忆训练结果，并保持回复简洁。"
+            )
+        elif task_type == "thinking":
+            mode_instruction = (
+                "当前任务是思考/分析型任务，目标是长时低频。"
+                "请进行结构化分析，允许更充分推理，再给出结论。"
+            )
+        else:
+            mode_instruction = (
+                "当前任务是通用任务，平衡效率与完整性，输出明确可执行答案。"
+            )
+
+        sections = [
+            enhanced_task,
+            "",
+            "【任务调度约束】",
+            mode_instruction,
+            f"- task_type: {task_type}",
+            f"- difficulty_level: {difficulty}",
+            f"- urgency: {urgency}",
+            f"- expected_interaction_duration_seconds: {duration_sec}",
+            f"- next_interval_seconds: {interval_sec}",
+            f"- execution_max_steps: {max_steps}",
+            f"- execution_timeout_seconds: {timeout_sec}",
+        ]
+        if analysis_meta:
+            sections.extend([
+                f"- classifier_source: {analysis_meta.get('source', 'unknown')}",
+                f"- classifier_confidence: {analysis_meta.get('confidence', 0)}",
+                f"- classifier_reason: {analysis_meta.get('reason', '')}"
+            ])
+
+        if user_habits_context:
+            sections.extend([
+                "",
+                "【用户工作与学习习惯】",
+                user_habits_context,
+                "",
+                "【排程要求】",
+                "- 创建日程或拆解任务时优先使用用户高效时段。",
+                "- 避开低效时段和不可用时间段。",
+                "- 单次专注时长优先贴合 preferred_focus_minutes；需要更长任务时拆分并安排休息。",
+                "- 每日深度任务数量不要超过 max_focus_sessions_per_day。"
+            ])
+
+        if context_text:
+            sections.extend([
+                "",
+                "【最近上下文（按调度窗口裁剪）】",
+                context_text
+            ])
+
+        return "\n".join(sections)
+
+    def _build_user_habits_context(self, profile: Dict[str, Any]) -> str:
+        """格式化用户习惯画像为提示词上下文"""
+        if not isinstance(profile, dict):
+            return ""
+
+        habits = profile.get("habits")
+        if not isinstance(habits, dict) or not habits:
+            return ""
+
+        lines = []
+        if habits.get("occupation"):
+            lines.append(f"- occupation: {habits.get('occupation')}")
+        if habits.get("currentStudyFocus"):
+            lines.append(f"- current_study_focus: {habits.get('currentStudyFocus')}")
+
+        high_eff = habits.get("highEfficiencyPeriods")
+        if isinstance(high_eff, list) and high_eff:
+            lines.append(f"- high_efficiency_periods: {', '.join([str(x) for x in high_eff[:6]])}")
+
+        low_eff = habits.get("lowEfficiencyPeriods")
+        if isinstance(low_eff, list) and low_eff:
+            lines.append(f"- low_efficiency_periods: {', '.join([str(x) for x in low_eff[:6]])}")
+
+        unavailable = habits.get("weeklyUnavailableSlots")
+        if isinstance(unavailable, list) and unavailable:
+            lines.append(f"- weekly_unavailable_slots: {', '.join([str(x) for x in unavailable[:6]])}")
+
+        if habits.get("preferredFocusMinutes") is not None:
+            lines.append(f"- preferred_focus_minutes: {habits.get('preferredFocusMinutes')}")
+        if habits.get("preferredBreakMinutes") is not None:
+            lines.append(f"- preferred_break_minutes: {habits.get('preferredBreakMinutes')}")
+        if habits.get("maxFocusSessionsPerDay") is not None:
+            lines.append(f"- max_focus_sessions_per_day: {habits.get('maxFocusSessionsPerDay')}")
+
+        if habits.get("planningPreference"):
+            lines.append(f"- planning_preference: {habits.get('planningPreference')}")
+        if habits.get("notes"):
+            lines.append(f"- notes: {str(habits.get('notes'))[:160]}")
+
+        return "\n".join(lines)
+
+    def _detect_schedule_component_intent(self, user_message: str) -> Dict[str, bool]:
+        """识别是否应强制返回日程/任务分解组件。"""
+        text = (user_message or "").strip()
+        lowered = text.lower()
+
+        has_calendar_intent = any(kw in text for kw in CALENDAR_KEYWORDS)
+        has_complex_task = any(kw in text for kw in COMPLEX_TASK_KEYWORDS)
+        has_learning_plan = any(kw in text for kw in LEARNING_PLAN_KEYWORDS)
+        has_short_learn_pattern = bool(re.search(r"(我要|我想|想要|打算)?学[\u4e00-\u9fa5A-Za-z0-9]{1,12}", text))
+
+        is_schedule_related = has_calendar_intent or has_complex_task or has_learning_plan or has_short_learn_pattern
+        prefer_decomposition = has_complex_task or has_learning_plan or has_short_learn_pattern
+        prefer_calendar_event = has_calendar_intent and not prefer_decomposition
+
+        # 英文简单补充，避免 “study calculus” 一类漏检
+        if not is_schedule_related and any(x in lowered for x in ["study plan", "learning plan", "schedule", "deadline"]):
+            is_schedule_related = True
+            prefer_decomposition = "plan" in lowered or "study" in lowered
+            prefer_calendar_event = not prefer_decomposition
+
+        return {
+            "is_schedule_related": is_schedule_related,
+            "prefer_decomposition": prefer_decomposition,
+            "prefer_calendar_event": prefer_calendar_event,
+        }
+
+    def _has_real_task_decomposition_output(self, task_result: Optional[Dict[str, Any]]) -> bool:
+        """判断是否产生了真实的任务分解工具输出。"""
+        if not isinstance(task_result, dict):
+            return False
+
+        tool_outputs = task_result.get("tool_outputs", [])
+        if not isinstance(tool_outputs, list):
+            return False
+
+        for output in tool_outputs:
+            if not isinstance(output, dict):
+                continue
+            observation = output.get("observation")
+            if not isinstance(observation, dict):
+                continue
+            if observation.get("type") != "task_decomposition_suggestion":
+                continue
+            if observation.get("success") is False:
+                continue
+            subtasks = observation.get("subtasks")
+            if isinstance(subtasks, list) and len(subtasks) > 0:
+                return True
+
+        return False
+
     # ... (rest of methods) ...
 
     def _build_enhanced_task(self, user_message: str, use_web_search: bool = False) -> str:
@@ -96,10 +389,9 @@ class ChatBusiness:
         weekdays = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
         current_time_str = f"{now.strftime('%Y年%m月%d日')} {weekdays[now.weekday()]} {now.strftime('%H:%M')}"
         
-        # 检测是否包含复杂任务关键词
-        has_complex_task = any(kw in user_message for kw in COMPLEX_TASK_KEYWORDS)
-        # 检测是否包含日历关键词
-        has_calendar_intent = any(kw in user_message for kw in CALENDAR_KEYWORDS)
+        intent_info = self._detect_schedule_component_intent(user_message)
+        has_complex_task = intent_info["prefer_decomposition"]
+        has_calendar_intent = intent_info["prefer_calendar_event"]
         # 检测是否包含搜索关键词
         has_search_intent = use_web_search or any(kw in user_message for kw in SEARCH_KEYWORDS)
         
@@ -128,15 +420,25 @@ class ChatBusiness:
 3. 按照项目生命周期（启动 -> 规划 -> 执行 -> 收尾）或 逻辑依赖关系 进行拆解。
 4. **关键**：严格遵守 `suggest_task_decomposition` 的参数格式要求，特别是 `subtasks` 必须是合法的 JSON 字符串。
 
+【严禁事项】
+- **严禁**直接在回复中用文字或Markdown列表列出计划。
+- **严禁**询问用户"是否需要我为您生成..."，直接生成！
+- **必须**编写 Python 代码调用 `suggest_task_decomposition` 工具。
+
 【工具调用要求】
 请务必调用 `suggest_task_decomposition` 工具，参数如下：
 - `project_name`: 项目名称（专业、简洁）
 - `start_date`: 开始日期（默认为 "{now.strftime('%Y-%m-%d')}"，除非用户指定）
 - `total_days`: 根据子任务总时长合理估算（假设每天工作 6-8 小时）
-- `subtasks`: **JSON 字符串**，包含 3-8 个步骤。
-    - 格式示例：'[{{"title":"需求调研","duration_hours":4,"order":1,"description":"... (如有相关资源请附带链接)"}}]'
+- `subtasks`: **JSON 字符串**。
+    - 格式示例：`[{{ "title":"调研","duration_hours":4,"order":1,"resources":[{{ "title":"Google","url":"https://google.com" }}] }}]`
+    - **注意**：请确保 JSON 格式正确，使用双引号。如果包含 URL，请放入 `resources` 数组。
 
-请立即开始思考并调用工具！"""
+【语言要求】
+- 默认使用中文回复和生成任务内容。
+- 仅当用户明确要求使用英文或其他语言时，才使用对应语言。
+
+请立即编写代码调用工具！"""
 
         elif has_calendar_intent:
             # 日历相关请求 - 提供明确的工具使用指导
@@ -158,7 +460,13 @@ class ChatBusiness:
 - `end_time`: 如未指定，默认设置为开始后 1 小时。
 - `event_type`: 根据内容准确分类 ("meeting", "task", "reminder", "deadline")。
 - `priority`: 根据紧急程度判断 ("low", "medium", "high", "urgent")。
-- `description`: 必须包含事件详情。如果搜索到了相关的一方网站或资源 URL，请务必将其添加到描述中 (格式: 详情... \n\n相关资源: [链接名称](URL))。
+- `description`: 事件的具体描述（**严禁包含 URL**）。
+- `resources`: 相关资源列表（数组），格式为 `[{{ "title": "资源名称", "url": "URL地址" }}]`。
+    - **关键**：所有涉及的网址、链接、文档地址 **必须** 提取到 `resources` 字段中。
+    - **严禁** 将 URL 直接写在 `description` 中。
+
+【语言要求】
+- 默认使用中文回复。仅当用户明确要求使用其他语言时才切换。
 
 请务必调用工具为用户创建日程！"""
         elif has_search_intent:
@@ -175,6 +483,9 @@ class ChatBusiness:
 2. **搜索工具**: 积极使用 `DuckDuckGoSearchTool` (web_search) 获取最新信息。不要编造事实。
 3. **整合回答**: 基于搜索结果，综合整理出简洁、准确的回答，并注明信息来源。
 
+【语言要求】
+- 默认使用中文回复。仅当用户明确要求使用其他语言时才切换。
+
 请务必在需要时使用搜索工具！"""
 
         else:
@@ -183,7 +494,7 @@ class ChatBusiness:
 
 用户请求：{user_message}
 
-请用简洁友好的方式回复用户。如果用户后续提到时间安排相关的需求，可以使用日历工具帮助他们。同时，你也可以使用搜索工具来回答需要实时信息的问题。"""
+请用简洁友好的中文回复用户。仅当用户明确要求使用英文或其他语言时，才切换到对应语言。如果用户后续提到时间安排相关的需求，可以使用日历工具帮助他们。同时，你也可以使用搜索工具来回答需要实时信息的问题。"""
         
         return enhanced_task
 
@@ -214,6 +525,8 @@ class ChatBusiness:
         if not target_config:
             # 回退到系统默认
             return {
+                "config_id": "system-default",
+                "config_name": "系统默认配置",
                 "model_id": settings.LLM_MODEL_ID,
                 "api_key": settings.LLM_API_KEY,
                 "base_url": settings.LLM_BASE_URL,
@@ -225,134 +538,463 @@ class ChatBusiness:
         plain_key = encryption_service.decrypt(encrypted_key) if encrypted_key else ""
         
         return {
+            "config_id": target_config.get("id") or "legacy-default",
+            "config_name": target_config.get("name") or "默认配置",
             "model_id": target_config.get("model_id"),
             "api_key": plain_key,
             "base_url": target_config.get("base_url"),
             "timeout": int(target_config.get("timeout", 60))
         }
 
+    def _normalize_capabilities(self, raw: Any) -> List[str]:
+        if not isinstance(raw, list):
+            return []
+        caps: List[str] = []
+        for item in raw:
+            if not isinstance(item, str):
+                continue
+            normalized = item.strip().lower()
+            if normalized and normalized not in caps:
+                caps.append(normalized)
+        return caps
+
+    def _normalize_route_mode(self, route_mode: Optional[str]) -> str:
+        value = (route_mode or "auto").strip().lower()
+        if value in {"auto", "fast", "balanced", "reasoning"}:
+            return value
+        return "auto"
+
+    def _normalize_enabled_flag(self, raw: Any) -> bool:
+        if isinstance(raw, bool):
+            return raw
+        if raw is None:
+            return True
+        if isinstance(raw, str):
+            value = raw.strip().lower()
+            if value in {"false", "0", "no", "n"}:
+                return False
+            if value in {"true", "1", "yes", "y"}:
+                return True
+        return bool(raw)
+
+    def _runtime_to_llm_config(self, runtime_config: Dict[str, Any], timeout_override: Optional[float] = None) -> LLMConfig:
+        timeout_value = int(timeout_override) if timeout_override is not None else int(runtime_config.get("timeout", 60))
+        timeout_value = max(1, timeout_value)
+        return LLMConfig(
+            name=runtime_config.get("config_name") or "未命名配置",
+            model_id=runtime_config.get("model_id") or "gpt-3.5-turbo",
+            api_key=runtime_config.get("api_key") or "",
+            api_base=runtime_config.get("base_url"),
+            timeout=timeout_value
+        )
+
+    def _build_runtime_model_candidates(
+        self,
+        all_configs_data: Dict[str, Any],
+        active_config: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
+        configs = all_configs_data.get("configs", []) if isinstance(all_configs_data, dict) else []
+        active_id = all_configs_data.get("active_id") if isinstance(all_configs_data, dict) else None
+        runtime_configs: List[Dict[str, Any]] = []
+
+        for conf in configs:
+            if not isinstance(conf, dict):
+                continue
+            encrypted_key = conf.get("api_key", "")
+            plain_key = encryption_service.decrypt(encrypted_key) if encrypted_key else ""
+            model_id = conf.get("model_id")
+            base_url = conf.get("base_url")
+            if not plain_key or not model_id or not base_url:
+                continue
+            runtime_configs.append({
+                "config_id": conf.get("id") or "unknown",
+                "config_name": conf.get("name") or "未命名配置",
+                "model_id": model_id,
+                "api_key": plain_key,
+                "base_url": base_url,
+                "timeout": int(conf.get("timeout", 60)),
+                "priority": conf.get("priority", 100),
+                "enabled": self._normalize_enabled_flag(conf.get("enabled", True)),
+                "capabilities": self._normalize_capabilities(conf.get("capabilities")),
+                "is_active": bool(conf.get("id") and conf.get("id") == active_id),
+            })
+
+        # 保证激活配置/旧配置至少可用一条
+        if active_config.get("api_key") and active_config.get("base_url") and active_config.get("model_id"):
+            active_runtime_id = active_config.get("config_id") or "legacy-default"
+            exists = any(item.get("config_id") == active_runtime_id for item in runtime_configs)
+            if not exists:
+                runtime_configs.append({
+                    "config_id": active_runtime_id,
+                    "config_name": active_config.get("config_name") or "默认配置",
+                    "model_id": active_config.get("model_id"),
+                    "api_key": active_config.get("api_key"),
+                    "base_url": active_config.get("base_url"),
+                    "timeout": int(active_config.get("timeout", 60)),
+                    "priority": 100,
+                    "enabled": True,
+                    "capabilities": [],
+                    "is_active": True,
+                })
+
+        return runtime_configs
+
+    async def _run_shadow_ensemble(
+        self,
+        user_id: str,
+        session_id: str,
+        timed_task: str,
+        runtime_configs: List[Dict[str, Any]],
+        skip_config_id: Optional[str],
+        max_steps: int,
+        timeout_seconds: float
+    ) -> None:
+        """后台并行执行，不阻塞主响应，仅用于观测和统计。"""
+        try:
+            shadow_candidates = [
+                c for c in runtime_configs
+                if c.get("config_id") != skip_config_id and c.get("enabled", True)
+            ][:3]
+            if len(shadow_candidates) < 1:
+                return
+
+            llm_configs = [self._runtime_to_llm_config(c, timeout_override=timeout_seconds) for c in shadow_candidates]
+            shadow_result = await agent_service.run_parallel_task(
+                task=timed_task,
+                llm_configs=llm_configs,
+                max_steps=max_steps,
+                timeout_seconds=timeout_seconds
+            )
+            if not isinstance(shadow_result, dict) or not shadow_result.get("success"):
+                return
+
+            for idx, res in enumerate(shadow_result.get("results", [])):
+                if not isinstance(res, dict) or not res.get("success"):
+                    continue
+                conf = shadow_candidates[idx] if idx < len(shadow_candidates) else {}
+                await self._record_usage_event(
+                    user_id=user_id,
+                    session_id=session_id,
+                    config_id=conf.get("config_id", "unknown"),
+                    model_id=conf.get("model_id") or res.get("model") or "",
+                    config_name=conf.get("config_name", "未命名配置"),
+                    path_type="shadow",
+                    is_primary=False,
+                    usage=res.get("usage")
+                )
+            print(f"🧪 Shadow ensemble completed with {len(shadow_candidates)} models.")
+        except Exception as exc:
+            print(f"⚠️ Shadow ensemble failed: {exc}")
+
     async def process_chat(self, request: ChatRequest, user_id: str) -> ChatResponse:
+        started_at = datetime.now(timezone.utc)
+        timing_strategy: Dict[str, Any] = {}
+        routing_meta: Dict[str, Any] = {
+            "routeMode": self._normalize_route_mode(request.routeMode),
+            "routerEnabled": bool(settings.ROUTER_ENABLED),
+            "classifierModel": None,
+            "mainModel": None,
+            "fallbackModel": None,
+            "fallbackUsed": False,
+            "routeReason": "",
+            "retryCount": 0,
+            "timing": {}
+        }
+
         config_dict = await self._get_user_llm_config(user_id)
-        
+        all_configs_data = await UserService.get_user_llm_configs_data(user_id)
+        active_id = all_configs_data.get("active_id") if isinstance(all_configs_data, dict) else None
+        runtime_configs = self._build_runtime_model_candidates(all_configs_data, config_dict)
+
         # 1. 处理会话 (创建或使用现有)
         session_id = request.sessionId
         if not session_id:
-            # 使用消息前20个字作为标题
             title = request.message[:20]
             session_id = await self.create_session(user_id, title)
-            
+
         # 2. 保存用户消息
         try:
             await self.save_message(session_id, "user", request.message)
         except Exception as e:
             print(f"Failed to save user message: {e}")
 
-        # 检查基础配置
-        if not config_dict["api_key"] or not config_dict["base_url"]:
+        has_explicit_profile = (
+            bool(request.taskType) or
+            request.difficultyLevel is not None or
+            bool(request.urgency)
+        )
+
+        if not runtime_configs:
+            timing_strategy = await task_timing_service.resolve_strategy(
+                user_id=user_id,
+                message=request.message,
+                session_id=session_id,
+                task_id=request.taskId,
+                use_web_search=request.useWebSearch,
+                task_type=request.taskType,
+                difficulty_level=request.difficultyLevel,
+                urgency=request.urgency,
+                strategy_source="explicit" if has_explicit_profile else "heuristic"
+            )
             return ChatResponse(
                 success=True,
                 data=ChatResponseData(
                     response="你好！我是聚时智能助手。我注意到你还没有配置 LLM 模型。请前往系统设置配置 API Key。",
-                    emotionScore=5, 
+                    emotionScore=5,
                     emotionTags=["neutral"],
                     needsEmotionInput=False,
-                    sessionId=session_id
+                    sessionId=session_id,
+                    timingStrategy=timing_strategy,
+                    taskAnalysis=timing_strategy.get("analysisMeta") if timing_strategy else None,
+                    routingMeta=routing_meta if settings.ENABLE_ROUTING_META else None
                 ).dict()
             )
 
         try:
-            # 构造 LLMConfig 对象
-            llm_config = LLMConfig(
-                name="user_custom",
-                model_id=config_dict["model_id"] or "gpt-3.5-turbo",
-                api_key=config_dict["api_key"],
-                api_base=config_dict["base_url"],
-                timeout=int(config_dict["timeout"])
+            route_mode = self._normalize_route_mode(request.routeMode)
+            allow_reasoning_fallback = True if request.allowReasoningFallback is None else bool(request.allowReasoningFallback)
+
+            # 3. 自动分析任务类型/难度/紧急度（低置信度回退启发式）
+            classifier_started = perf_counter()
+            classifier_runtime = None
+            if settings.ROUTER_ENABLED:
+                classifier_runtime = model_router_service.pick_classifier_config(runtime_configs, active_id)
+            if not classifier_runtime:
+                classifier_runtime = next((c for c in runtime_configs if c.get("is_active")), runtime_configs[0])
+
+            classifier_timeout = max(1, int(settings.ROUTER_CLASSIFIER_TIMEOUT_SECONDS))
+            classifier_llm_config = self._runtime_to_llm_config(classifier_runtime, timeout_override=classifier_timeout)
+            routing_meta["classifierModel"] = classifier_llm_config.model_id
+
+            task_analysis = await task_classifier_service.classify_task(
+                message=request.message,
+                use_web_search=request.useWebSearch,
+                llm_config=classifier_llm_config
+            )
+            routing_meta["timing"]["classifierMs"] = int((perf_counter() - classifier_started) * 1000)
+
+            classifier_usage_payload = None
+            if isinstance(task_analysis, dict) and (
+                isinstance(task_analysis.get("usage"), dict) or "usageMissing" in task_analysis
+            ):
+                classifier_usage_payload = {
+                    "promptTokens": int((task_analysis.get("usage") or {}).get("promptTokens", 0))
+                    if isinstance(task_analysis.get("usage"), dict) else 0,
+                    "completionTokens": int((task_analysis.get("usage") or {}).get("completionTokens", 0))
+                    if isinstance(task_analysis.get("usage"), dict) else 0,
+                    "totalTokens": int((task_analysis.get("usage") or {}).get("totalTokens", 0))
+                    if isinstance(task_analysis.get("usage"), dict) else 0,
+                    "requestCount": int(task_analysis.get("requestCount", 1) or 1),
+                    "missingUsageRequests": int(task_analysis.get("missingUsageRequests", 0) or 0),
+                    "usageMissing": bool(task_analysis.get("usageMissing", False)),
+                }
+            await self._record_usage_event(
+                user_id=user_id,
+                session_id=session_id,
+                config_id=classifier_runtime.get("config_id") or "legacy-default",
+                model_id=classifier_llm_config.model_id,
+                config_name=classifier_runtime.get("config_name") or "默认配置",
+                path_type="classifier",
+                is_primary=True,
+                usage=classifier_usage_payload,
             )
 
-            # 使用 AgentService 运行任务 (支持 Smolagents + LiteLLM)
-            # 增强用户消息，添加日历工具使用提示
+            classifier_confidence = float(task_analysis.get("confidence") or 0.0)
+            use_classifier = (task_analysis.get("source") == "llm") and classifier_confidence >= 0.55
+
+            inferred_task_type = task_analysis.get("taskType") if use_classifier else None
+            inferred_difficulty = task_analysis.get("difficultyLevel") if use_classifier else None
+            inferred_urgency = task_analysis.get("urgency") if use_classifier else None
+
+            if has_explicit_profile:
+                strategy_source = "explicit"
+            elif use_classifier:
+                strategy_source = "llm_classifier"
+            else:
+                strategy_source = "heuristic_fallback"
+
+            timing_strategy = await task_timing_service.resolve_strategy(
+                user_id=user_id,
+                message=request.message,
+                session_id=session_id,
+                task_id=request.taskId,
+                use_web_search=request.useWebSearch,
+                task_type=request.taskType or inferred_task_type,
+                difficulty_level=request.difficultyLevel if request.difficultyLevel is not None else inferred_difficulty,
+                urgency=request.urgency or inferred_urgency,
+                strategy_source=strategy_source,
+                analysis_meta=task_analysis
+            )
+
+            # 构造任务提示
+            user_profile = await UserService.get_user_profile(user_id)
+            user_habits_context = self._build_user_habits_context(user_profile)
             enhanced_task = self._build_enhanced_task(request.message, request.useWebSearch)
-            
-            # 检测是否为复杂任务，如果是且用户有多个模型配置，则并行执行 (Ensemble Mode)
-            all_configs_data = await UserService.get_user_llm_configs_data(user_id)
-            user_configs_list = all_configs_data.get("configs", [])
-            has_complex_task = any(kw in request.message for kw in COMPLEX_TASK_KEYWORDS)
-            
+            context_window = int(timing_strategy.get("contextWindowMessages", 8))
+            recent_context = await self._build_recent_context(session_id, context_window)
+            timed_task = self._wrap_task_with_timing(
+                enhanced_task,
+                timing_strategy,
+                recent_context,
+                user_habits_context=user_habits_context
+            )
+
+            task_type = timing_strategy.get("taskType")
+            difficulty_level = int(timing_strategy.get("difficultyLevel", 3))
+            agent_max_steps = int(timing_strategy.get("maxSteps", 10))
+            base_timeout = float(timing_strategy.get("timeoutSeconds", 290))
+            main_timeout = float(min(base_timeout, max(1, int(settings.ROUTER_MAIN_TIMEOUT_SECONDS))))
+            fallback_timeout = float(min(base_timeout, max(1, int(settings.ROUTER_FALLBACK_TIMEOUT_SECONDS))))
+            intent_info = self._detect_schedule_component_intent(request.message)
+            require_real_decomposition_call = bool(intent_info.get("prefer_decomposition"))
+
+            # 路由选择主模型和回退模型
+            if settings.ROUTER_ENABLED:
+                main_runtime = model_router_service.pick_main_config(
+                    task_type=task_type,
+                    difficulty_level=difficulty_level,
+                    route_mode=route_mode,
+                    configs=runtime_configs,
+                    active_id=active_id
+                )
+            else:
+                main_runtime = next((c for c in runtime_configs if c.get("is_active")), runtime_configs[0])
+
+            if not main_runtime:
+                raise Exception("无可用主模型配置")
+
+            fallback_runtime = None
+            if allow_reasoning_fallback and settings.ROUTER_ENABLED:
+                fallback_runtime = model_router_service.pick_fallback_config(
+                    main_config=main_runtime,
+                    configs=runtime_configs,
+                    prefer_reasoning=True
+                )
+
+            routing_meta["mainModel"] = main_runtime.get("model_id")
+            routing_meta["fallbackModel"] = fallback_runtime.get("model_id") if fallback_runtime else None
+            routing_meta["routeReason"] = f"mode={route_mode}, taskType={task_type}, difficulty={difficulty_level}"
+
+            # 可选后台并行观测，不阻塞主流程
+            has_complex_task = (
+                any(kw in request.message for kw in COMPLEX_TASK_KEYWORDS) or
+                (task_type == "thinking" and difficulty_level >= 4)
+            )
+            if settings.ENABLE_PARALLEL_ENSEMBLE and has_complex_task and len(runtime_configs) > 1:
+                asyncio.create_task(
+                    self._run_shadow_ensemble(
+                        user_id=user_id,
+                        session_id=session_id,
+                        timed_task=timed_task,
+                        runtime_configs=runtime_configs,
+                        skip_config_id=main_runtime.get("config_id"),
+                        max_steps=agent_max_steps,
+                        timeout_seconds=main_timeout
+                    )
+                )
+
             task_result = None
-            multi_task_decompositions = []
-            
-            if has_complex_task and len(user_configs_list) > 1:
-                print(f"🌟 Detected complex task with {len(user_configs_list)} available models. Triggering parallel execution.")
-                
-                # 构造所有可用的 LLMConfig
-                parallel_llm_configs = []
-                for conf in user_configs_list:
-                    # 解密 key
-                    enc_key = conf.get("api_key", "")
-                    pl_key = encryption_service.decrypt(enc_key) if enc_key else ""
-                    if not pl_key: continue
-                    
-                    parallel_llm_configs.append(LLMConfig(
-                        name=conf.get("name", "unknown"),
-                        model_id=conf.get("model_id"),
-                        api_key=pl_key,
-                        api_base=conf.get("base_url"),
-                        timeout=int(conf.get("timeout", 60))
-                    ))
-                
-                # 并行执行
-                parallel_results = await agent_service.run_parallel_task(
-                    task=enhanced_task,
-                    llm_configs=parallel_llm_configs
-                )
-                
-                # 处理结果
-                if parallel_results["success"]:
-                    # 选取第一个成功的结果作为主结果 (通常是 active model，如果我们在列表中置顶它的话)
-                    # 这里为了简单，我们还是重新运行一次主模型，或者从结果中找到主模型的结果
-                    # 为了逻辑简单，我们假设 id 匹配
-                    
-                    # 提取所有的 task decomposition
-                    for res in parallel_results["results"]:
-                        if not isinstance(res, dict) or not res.get("success"): continue
-                        
-                        steps = res.get("tool_outputs", [])
-                        for output in steps:
-                            observation = output.get("observation")
-                            if isinstance(observation, dict) and observation.get("type") == "task_decomposition_suggestion":
-                                decomp = observation.copy()
-                                decomp["model_name"] = res.get("model", "Unknown") # 标记这是哪个模型生成的
-                                multi_task_decompositions.append(decomp)
-                    
-                    # 尝试找到当前 active config 对应的结果作为主 task_result
-                    active_id = all_configs_data.get("active_id")
-                    target_res = None
-                    
-                    if active_id:
-                         # 找到对应 model_id
-                         active_conf_item = next((c for c in user_configs_list if c.get("id") == active_id), None)
-                         if active_conf_item:
-                             target_model_id = active_conf_item.get("model_id")
-                             target_res = next((r for r in parallel_results["results"] if isinstance(r, dict) and r.get("model") == target_model_id), None)
-                    
-                    if not target_res:
-                        # 没找到，取第一个成功的
-                        target_res = next((r for r in parallel_results["results"] if isinstance(r, dict) and r.get("success")), None)
-                        
-                    task_result = target_res
-                
-            
-            if not task_result:
-                # 默认单模型执行
-                task_result = await agent_service.run_task(
-                    task=enhanced_task,
-                    llm_config=llm_config
-                )
-            
+            multi_task_decompositions: List[Dict[str, Any]] = []
+            used_runtime = main_runtime
+
+            # 主模型执行
+            main_started = perf_counter()
+            task_result = await agent_service.run_task(
+                task=timed_task,
+                llm_config=self._runtime_to_llm_config(main_runtime, timeout_override=main_timeout),
+                max_steps=agent_max_steps,
+                timeout_seconds=main_timeout
+            )
+            routing_meta["timing"]["mainMs"] = int((perf_counter() - main_started) * 1000)
+            await self._record_usage_event(
+                user_id=user_id,
+                session_id=session_id,
+                config_id=main_runtime.get("config_id") or "legacy-default",
+                model_id=main_runtime.get("model_id") or "",
+                config_name=main_runtime.get("config_name") or "默认配置",
+                path_type="main",
+                is_primary=True,
+                usage=task_result.get("usage") if isinstance(task_result, dict) else None,
+            )
+
             if not task_result or not task_result.get("success"):
-                 raise Exception(task_result.get("error", "Agent execution failed") if task_result else "Unknown error")
-            
+                if fallback_runtime:
+                    fallback_started = perf_counter()
+                    fallback_result = await agent_service.run_task(
+                        task=timed_task,
+                        llm_config=self._runtime_to_llm_config(fallback_runtime, timeout_override=fallback_timeout),
+                        max_steps=agent_max_steps,
+                        timeout_seconds=fallback_timeout
+                    )
+                    routing_meta["timing"]["fallbackMs"] = int((perf_counter() - fallback_started) * 1000)
+                    await self._record_usage_event(
+                        user_id=user_id,
+                        session_id=session_id,
+                        config_id=fallback_runtime.get("config_id") or "legacy-default",
+                        model_id=fallback_runtime.get("model_id") or "",
+                        config_name=fallback_runtime.get("config_name") or "默认配置",
+                        path_type="fallback",
+                        is_primary=True,
+                        usage=fallback_result.get("usage") if isinstance(fallback_result, dict) else None,
+                    )
+                    if fallback_result and fallback_result.get("success"):
+                        task_result = fallback_result
+                        used_runtime = fallback_runtime
+                        routing_meta["fallbackUsed"] = True
+                if not task_result or not task_result.get("success"):
+                    raise Exception(task_result.get("error", "Agent execution failed") if task_result else "Unknown error")
+
+            # 强约束：任务分解意图必须有真实工具调用；若未调用则自动重试，不做伪兜底
+            if require_real_decomposition_call and not self._has_real_task_decomposition_output(task_result):
+                print("⚠️ 首轮未检测到 suggest_task_decomposition 真实输出，开始自动重试。")
+                retry_task = (
+                    f"{timed_task}\n\n"
+                    "【硬性约束（必须遵守）】\n"
+                    "你上一次没有成功调用 suggest_task_decomposition。\n"
+                    "本次必须编写 Python 代码并实际调用 suggest_task_decomposition 工具。\n"
+                    "禁止只输出文字计划；subtasks 必须是合法 JSON 字符串。\n"
+                    "若不调用工具则视为失败。"
+                )
+                for retry_idx in range(DECOMPOSITION_TOOL_RETRY_LIMIT):
+                    retry_runtime = used_runtime
+                    if (
+                        retry_idx >= 1 and
+                        fallback_runtime and
+                        used_runtime.get("config_id") != fallback_runtime.get("config_id")
+                    ):
+                        retry_runtime = fallback_runtime
+                        routing_meta["fallbackUsed"] = True
+
+                    retry_timeout = fallback_timeout if retry_runtime.get("config_id") == (fallback_runtime or {}).get("config_id") else main_timeout
+                    retry_result = await agent_service.run_task(
+                        task=retry_task,
+                        llm_config=self._runtime_to_llm_config(retry_runtime, timeout_override=retry_timeout),
+                        max_steps=agent_max_steps,
+                        timeout_seconds=retry_timeout
+                    )
+                    await self._record_usage_event(
+                        user_id=user_id,
+                        session_id=session_id,
+                        config_id=retry_runtime.get("config_id") or "legacy-default",
+                        model_id=retry_runtime.get("model_id") or "",
+                        config_name=retry_runtime.get("config_name") or "默认配置",
+                        path_type="fallback" if fallback_runtime and retry_runtime.get("config_id") == fallback_runtime.get("config_id") else "main",
+                        is_primary=True,
+                        usage=retry_result.get("usage") if isinstance(retry_result, dict) else None,
+                    )
+                    routing_meta["retryCount"] = retry_idx + 1
+                    if not retry_result or not retry_result.get("success"):
+                        print(f"⚠️ 任务分解工具调用重试第 {retry_idx + 1} 次失败。")
+                        continue
+                    task_result = retry_result
+                    used_runtime = retry_runtime
+                    if self._has_real_task_decomposition_output(task_result):
+                        print(f"✅ 任务分解工具调用在第 {retry_idx + 1} 次重试成功。")
+                        break
+
+                if not self._has_real_task_decomposition_output(task_result):
+                    raise Exception("任务分解请求未成功调用 suggest_task_decomposition 工具，请重试。")
+
             # 解析 Agent 返回结果 (Main Result)
             agent_result = task_result["result"]
             steps = task_result.get("steps", [])
@@ -361,115 +1003,102 @@ class ChatBusiness:
             suggested_events = []
             task_decomposition = None
             batch_events = None
-            
-            # 从 tool_outputs 获取工具执行结果
+
             for output in tool_outputs:
                 suggestion = output.get("observation")
                 if not isinstance(suggestion, dict):
                     continue
-                    
+
                 suggestion_type = suggestion.get("type")
-                
                 if suggestion_type == "calendar_event_suggestion":
                     event_data = suggestion.get("event", {})
                     if event_data:
                         suggested_events.append(event_data)
                         ai_content = suggestion.get("message", ai_content)
-                        
                 elif suggestion_type == "task_decomposition_suggestion":
                     task_decomposition = suggestion
                     ai_content = suggestion.get("message", ai_content)
-                    
                 elif suggestion_type == "batch_calendar_events":
                     batch_events = suggestion
-                    # 批量事件也添加到 suggested_events
                     for event in suggestion.get("events", []):
                         suggested_events.append(event)
                     ai_content = suggestion.get("message", ai_content)
-            
-            # --- Conflict Detection Logic ---
+
             if suggested_events:
                 try:
-                    # Query existing events for conflict check
-                    # We need to check each suggested event against the database
                     for event in suggested_events:
                         start_str = event.get("start")
                         end_str = event.get("end")
                         if not start_str or not end_str:
                             continue
-                            
-                        # Convert to datetime for query
                         try:
-                            # Handle different ISO formats (with or without Z)
                             start_dt = datetime.fromisoformat(start_str.replace("Z", "+00:00"))
                             end_dt = datetime.fromisoformat(end_str.replace("Z", "+00:00"))
-                            
-                            # Ensure UTC awareness
                             if start_dt.tzinfo is None:
-                                # Start is naive, assume Server Local Time -> Convert to UTC
                                 start_dt = start_dt.astimezone().astimezone(timezone.utc)
                             else:
-                                # Start is aware, convert to UTC
                                 start_dt = start_dt.astimezone(timezone.utc)
-                                
                             if end_dt.tzinfo is None:
                                 end_dt = end_dt.astimezone().astimezone(timezone.utc)
                             else:
                                 end_dt = end_dt.astimezone(timezone.utc)
-
                         except ValueError:
                             continue
-                            
-                        # Query overlapping events: (StartA < EndB) and (EndA > StartB)
-                        # And ensure they belong to the same user
+
                         query = {
                             "userId": user_id,
-                            "status": {"$ne": "cancelled"}, # Ignore cancelled events
+                            "status": {"$ne": "cancelled"},
                             "$or": [
-                                {"start": {"$lt": end_dt}, "end": {"$gt": start_dt}}, # Standard overlap
+                                {"start": {"$lt": end_dt}, "end": {"$gt": start_dt}},
                             ]
                         }
 
                         conflicts_cursor = db.db["calendar_events"].find(query)
-                        
                         conflicting_events = []
                         async for conflict in conflicts_cursor:
-                            # Convert ObjectId to str
                             conflict["_id"] = str(conflict["_id"])
-                            # Format dates to string for frontend
                             if isinstance(conflict.get("start"), datetime):
                                 conflict["start"] = conflict["start"].isoformat()
                             if isinstance(conflict.get("end"), datetime):
                                 conflict["end"] = conflict["end"].isoformat()
-                            
-                            # Add conflict to list
                             conflicting_events.append(conflict)
-                            
+
                         if conflicting_events:
                             event["conflicts"] = conflicting_events
                             print(f"⚠️ Found {len(conflicting_events)} conflicts for event '{event.get('title')}'")
-                            
                 except Exception as e:
                     print(f"❌ Conflict check failed: {e}")
-            # --------------------------------
 
-            # 如果没有工具输出，保留 agent 的原始文本回复
             if not suggested_events and not task_decomposition and agent_result:
                 ai_content = str(agent_result)
-            
-            # 3. 保存 AI 回复
+
+            ai_message_id = None
             try:
-                await self.save_message(session_id, "ai", ai_content)
+                save_kwargs = {}
+                if task_decomposition:
+                    save_kwargs["taskDecomposition"] = task_decomposition
+                if multi_task_decompositions:
+                    save_kwargs["multiTaskDecompositions"] = multi_task_decompositions
+                if suggested_events:
+                    save_kwargs["suggestedEvents"] = suggested_events
+                if timing_strategy:
+                    save_kwargs["timingStrategy"] = timing_strategy
+                if timing_strategy.get("analysisMeta"):
+                    save_kwargs["taskAnalysis"] = timing_strategy.get("analysisMeta")
+
+                ai_message_id = await self.save_message(session_id, "ai", ai_content, **save_kwargs)
             except Exception as e:
                 print(f"Failed to save AI message: {e}")
-            
+
             print(f"📋 日程建议数量: {len(suggested_events)}")
             print(f"📋 任务分解: {'有' if task_decomposition else '无'}")
             print(f"📋 Agent 步骤数: {len(steps)}")
-            
+            routing_meta["timing"]["totalMs"] = int((datetime.now(timezone.utc) - started_at).total_seconds() * 1000)
+
             response_data = {
                 "response": ai_content,
-                "emotionScore": 7, 
+                "messageId": ai_message_id,
+                "emotionScore": 7,
                 "emotionTags": ["helpful"],
                 "needsEmotionInput": False,
                 "suggestedEvents": suggested_events,
@@ -478,29 +1107,53 @@ class ChatBusiness:
                     "tasks": []
                 },
                 "sessionId": session_id,
-                "multiTaskDecompositions": multi_task_decompositions if multi_task_decompositions else None
+                "multiTaskDecompositions": multi_task_decompositions if multi_task_decompositions else None,
+                "timingStrategy": timing_strategy,
+                "taskAnalysis": timing_strategy.get("analysisMeta") if timing_strategy else None,
+                "routingMeta": routing_meta if settings.ENABLE_ROUTING_META else None
             }
-            
-            # 添加任务分解数据
+
             if task_decomposition:
                 response_data["taskDecomposition"] = task_decomposition
-            
-            # 添加批量事件数据
             if batch_events:
                 response_data["batchEvents"] = batch_events
-            
-            return ChatResponse(
-                success=True,
-                data=response_data
-            )
+
+            if timing_strategy.get("profileKey"):
+                elapsed_ms = int((datetime.now(timezone.utc) - started_at).total_seconds() * 1000)
+                await task_timing_service.record_execution(
+                    user_id=user_id,
+                    profile_key=timing_strategy["profileKey"],
+                    duration_ms=elapsed_ms,
+                    success=True
+                )
+
+            return ChatResponse(success=True, data=response_data)
 
         except Exception as e:
             print(f"Chat Error: {e}")
+            routing_meta["timing"]["totalMs"] = int((datetime.now(timezone.utc) - started_at).total_seconds() * 1000)
+            error_text = str(e) if e else ""
+            if "suggest_task_decomposition" in error_text:
+                user_facing_message = "抱歉，本次未成功调用任务分解工具。系统已自动重试，请再发送一次，我会继续重试并确保生成任务分解卡片。"
+            else:
+                user_facing_message = "抱歉，发生了一些错误。"
+
+            if timing_strategy.get("profileKey"):
+                elapsed_ms = int((datetime.now(timezone.utc) - started_at).total_seconds() * 1000)
+                await task_timing_service.record_execution(
+                    user_id=user_id,
+                    profile_key=timing_strategy["profileKey"],
+                    duration_ms=elapsed_ms,
+                    success=False
+                )
             return ChatResponse(
                 success=False,
                 data=ChatResponseData(
-                     response="抱歉，发生了一些错误。",
-                     sessionId=session_id
+                    response=user_facing_message,
+                    sessionId=session_id,
+                    timingStrategy=timing_strategy if timing_strategy else None,
+                    taskAnalysis=timing_strategy.get("analysisMeta") if timing_strategy else None,
+                    routingMeta=routing_meta if settings.ENABLE_ROUTING_META else None
                 ).dict(),
                 error={
                     "message": f"处理请求错误: {str(e)}",

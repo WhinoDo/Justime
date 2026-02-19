@@ -33,6 +33,11 @@ export interface CalendarEventData {
   status?: string
   color?: string
   location?: string
+  resources?: Array<{
+    title: string
+    url: string
+    type?: string
+  }>
 }
 
 interface BigCalendarProps {

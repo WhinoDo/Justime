@@ -289,7 +289,7 @@ conversationSchema.methods.addMessage = function (messageData: Partial<IMessage>
 
     // 更新平均情绪分数
     const emotionScores = this.metadata.emotionTrend
-    this.metadata.avgEmotionScore = emotionScores.reduce((a, b) => a + b, 0) / emotionScores.length
+    this.metadata.avgEmotionScore = emotionScores.reduce((a: number, b: number) => a + b, 0) / emotionScores.length
   }
 
   // 更新任务统计
@@ -304,7 +304,7 @@ conversationSchema.methods.addMessage = function (messageData: Partial<IMessage>
 conversationSchema.methods.updateTaskStatus = function (taskId: string, status: string) {
   for (const message of this.messages) {
     if (message.taskData?.tasks) {
-      const task = message.taskData.tasks.find(t => t.id === taskId)
+      const task = message.taskData.tasks.find((t: any) => t.id === taskId)
       if (task) {
         task.status = status as any
         if (status === 'completed') {

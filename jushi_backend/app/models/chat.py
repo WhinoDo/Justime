@@ -25,6 +25,17 @@ class ChatRequest(BaseModel):
     taskId: Optional[str] = Field(None, description="任务 ID")
     sessionId: Optional[str] = Field(None, description="会话 ID")
     useWebSearch: bool = Field(False, description="是否启用网页搜索")
+    taskType: Optional[str] = Field(None, description="任务类型: recitation/thinking/general")
+    difficultyLevel: Optional[int] = Field(None, ge=1, le=5, description="任务难度: 1-5")
+    urgency: Optional[str] = Field(None, description="紧急程度: low/medium/high")
+    routeMode: Optional[str] = Field(
+        "auto",
+        description="路由模式: auto/fast/balanced/reasoning"
+    )
+    allowReasoningFallback: Optional[bool] = Field(
+        True,
+        description="主模型失败时是否允许回退到推理模型"
+    )
 
 
 class ChatResponseData(BaseModel):
@@ -37,6 +48,9 @@ class ChatResponseData(BaseModel):
     taskResult: Optional[Dict[str, Any]] = Field(None, description="任务结果")
     taskDecomposition: Optional[Dict[str, Any]] = Field(None, description="单个任务分解 (Legacy)")
     multiTaskDecompositions: Optional[List[Dict[str, Any]]] = Field(None, description="多模型任务分解结果")
+    timingStrategy: Optional[Dict[str, Any]] = Field(None, description="任务时间调度策略")
+    taskAnalysis: Optional[Dict[str, Any]] = Field(None, description="任务分析结果")
+    routingMeta: Optional[Dict[str, Any]] = Field(None, description="模型路由元信息")
 
 
 class ChatResponse(BaseModel):
@@ -52,4 +66,3 @@ class LLMTestRequest(BaseModel):
     baseUrl: str = Field(..., description="API 基础 URL")
     apiKey: str = Field(..., description="API 密钥")
     timeout: Optional[int] = Field(60, description="超时时间（秒）")
-

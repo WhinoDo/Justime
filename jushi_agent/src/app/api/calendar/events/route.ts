@@ -53,9 +53,9 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('获取日历事件失败:', error)
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : '获取事件失败' 
+      {
+        success: false,
+        error: error instanceof Error ? error.message : '获取事件失败'
       },
       { status: 500 }
     )
@@ -83,7 +83,8 @@ export async function POST(request: NextRequest) {
       reminders,
       emotionScore,
       aiGenerated = false,
-      taskId
+      taskId,
+      resources
     } = body
 
     // 验证必需字段
@@ -97,7 +98,7 @@ export async function POST(request: NextRequest) {
     // 验证时间
     const startDate = new Date(start)
     const endDate = new Date(end)
-    
+
     if (startDate >= endDate) {
       return NextResponse.json(
         { success: false, error: '结束时间必须晚于开始时间' },
@@ -121,7 +122,8 @@ export async function POST(request: NextRequest) {
       reminders,
       emotionScore,
       aiGenerated,
-      taskId
+      taskId,
+      resources
     })
 
     return NextResponse.json({
@@ -133,9 +135,9 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('创建日历事件失败:', error)
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : '创建事件失败' 
+      {
+        success: false,
+        error: error instanceof Error ? error.message : '创建事件失败'
       },
       { status: 500 }
     )

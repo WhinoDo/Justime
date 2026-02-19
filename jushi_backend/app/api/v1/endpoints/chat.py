@@ -58,3 +58,15 @@ async def test_llm_connection(
 ) -> Dict[str, Any]:
     """测试 LLM 连接"""
     return await chat_business.test_connection(config, str(current_user["_id"]))
+
+
+@router.patch("/messages/{message_id}", summary="更新消息状态")
+async def update_message(
+    message_id: str,
+    updates: Dict[str, Any],
+    current_user: dict = Depends(SecurityService.get_current_user)
+) -> Dict[str, bool]:
+    """更新消息状态（如标记任务分解已处理）"""
+    # TODO: Add ownership validation
+    await chat_business.update_message_interactive_state(message_id, updates)
+    return {"success": True}

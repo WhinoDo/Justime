@@ -1,16 +1,18 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
   Keyboard,
   KeyboardAvoidingView,
   LayoutAnimation,
+  Modal,
   Platform,
-  SafeAreaView,
   StyleSheet,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/context/AuthContext';
 import { ThemedText } from '@/components/themed-text';
@@ -20,14 +22,25 @@ import { Input } from '@/components/ui/input';
 import { Colors, Spacing, BorderRadius } from '@/constants/theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { TaskDecompositionView, TaskDecomposition, TaskItem } from '@/components/chat/TaskDecompositionView';
+import { TaskDecompositionView, TaskDecomposition, TaskItem, AddTaskResult, TaskSchedulePreview } from '@/components/chat/TaskDecompositionView';
 import { ThinkingBubble } from '@/components/chat/ThinkingBubble';
+import { isManualApiBaseUrlEnabled } from '@/constants/app-config';
 
 type ChatMessage = {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
+  suggestedEvents?: SuggestedEvent[];
+  taskDecomposition?: TaskDecomposition | null;
+  multiTaskDecompositions?: TaskDecomposition[] | null;
+};
+
+type ChatSessionSummary = {
+  id: string;
+  title: string;
+  preview?: string;
+  updatedAt?: string;
 };
 
 type SuggestedEvent = {
@@ -39,12 +52,17 @@ type SuggestedEvent = {
   priority?: string;
   location?: string;
   allDay?: boolean;
-  conflicts?: Array<{
+  resources?: {
+    title?: string;
+    url?: string;
+    type?: string;
+  }[];
+  conflicts?: {
     _id?: string;
     title?: string;
     start?: string;
     end?: string;
-  }>;
+  }[];
 };
 
 const formatTime = (value: string) => {
@@ -54,13 +72,73 @@ const formatTime = (value: string) => {
   return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
 };
 
+const formatHistoryTime = (value?: string) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  const hour = `${date.getHours()}`.padStart(2, '0');
+  const minute = `${date.getMinutes()}`.padStart(2, '0');
+  return `${month}-${day} ${hour}:${minute}`;
+};
+
 const normalizeUrl = (value: string) => value.trim().replace(/\/+$/, '');
+
+const toLegacyDecomposition = (decomposition: TaskDecomposition): TaskDecomposition => ({
+  ...decomposition,
+  project_name: decomposition.project_name || decomposition.project?.name || '任务规划',
+  start_date: decomposition.start_date || decomposition.project?.start_date,
+  total_days: decomposition.total_days || decomposition.project?.total_days,
+  subtasks: Array.isArray(decomposition.subtasks) ? decomposition.subtasks : [],
+});
+
+const getMessageDecompositions = (message: ChatMessage): TaskDecomposition[] => {
+  if (Array.isArray(message.multiTaskDecompositions) && message.multiTaskDecompositions.length > 0) {
+    return message.multiTaskDecompositions.map(toLegacyDecomposition);
+  }
+
+  if (message.taskDecomposition) {
+    return [toLegacyDecomposition(message.taskDecomposition)];
+  }
+
+  return [];
+};
+
+const buildEventKey = (event: SuggestedEvent) => `${event.title}-${event.start}-${event.end}`;
+const normalizeResources = (
+  resources?: { title?: string; url?: string; type?: string }[]
+) => (resources || [])
+  .filter((resource) => Boolean(resource?.url))
+  .map((resource) => ({
+    title: resource?.title?.trim() || '相关链接',
+    url: (resource?.url || '').trim(),
+    type: resource?.type,
+  }));
+
+const toChatMessage = (raw: any): ChatMessage => {
+  const rawRole = String(raw?.role || '').toLowerCase();
+  const role: 'user' | 'assistant' = rawRole === 'user' ? 'user' : 'assistant';
+  const timestampValue = raw?.timestamp ? String(raw.timestamp) : new Date().toISOString();
+  const date = new Date(timestampValue);
+
+  return {
+    id: String(raw?._id || raw?.id || `${Date.now()}-${Math.random()}`),
+    role,
+    content: String(raw?.content || ''),
+    timestamp: Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString(),
+    suggestedEvents: Array.isArray(raw?.suggestedEvents) ? raw.suggestedEvents : undefined,
+    taskDecomposition: raw?.taskDecomposition || null,
+    multiTaskDecompositions: Array.isArray(raw?.multiTaskDecompositions) ? raw.multiTaskDecompositions : null,
+  };
+};
 
 export default function ChatScreen() {
   const { token, user, baseUrl, loading, signIn, signUp, signOut, setBaseUrl } = useAuth();
   const backgroundColor = useThemeColor({}, 'background');
   const successColor = useThemeColor({}, 'success');
   const errorColor = useThemeColor({}, 'error');
+  const manualApiBaseUrlEnabled = isManualApiBaseUrlEnabled();
 
   const tabBarHeight = useBottomTabBarHeight();
   const [mode, setMode] = useState<'login' | 'register'>('login');
@@ -97,16 +175,20 @@ export default function ChatScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
-  const [suggestedEvents, setSuggestedEvents] = useState<SuggestedEvent[]>([]);
-  const [taskDecomposition, setTaskDecomposition] = useState<TaskDecomposition | null>(null);
   const [useWebSearch, setUseWebSearch] = useState(false);
-  const [processingTask, setProcessingTask] = useState(false);
+  const [eventActionKey, setEventActionKey] = useState<string | null>(null);
+  const [activePlanIndexes, setActivePlanIndexes] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<{
     type: 'success' | 'error';
     message: string;
   } | null>(null);
   const [testingConnection, setTestingConnection] = useState(false);
+  const [historyVisible, setHistoryVisible] = useState(false);
+  const [sessions, setSessions] = useState<ChatSessionSummary[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [creatingSession, setCreatingSession] = useState(false);
+  const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
   const listRef = useRef<FlatList<ChatMessage>>(null);
 
   useEffect(() => {
@@ -123,11 +205,12 @@ export default function ChatScreen() {
   const handleAuth = async () => {
     setError(null);
     try {
-      await setBaseUrl(baseUrlInput);
+      const resolvedBaseUrl = manualApiBaseUrlEnabled ? baseUrlInput : baseUrl;
+      await setBaseUrl(resolvedBaseUrl);
       if (mode === 'login') {
-        await signIn(identifier.trim(), password, baseUrlInput);
+        await signIn(identifier.trim(), password, resolvedBaseUrl);
       } else {
-        await signUp(email.trim(), password, displayName.trim(), baseUrlInput);
+        await signUp(email.trim(), password, displayName.trim(), resolvedBaseUrl);
       }
       setPassword('');
     } catch (e) {
@@ -179,6 +262,129 @@ export default function ChatScreen() {
     }
   };
 
+  const loadSessions = useCallback(async () => {
+    if (!token) return;
+    setSessionsLoading(true);
+    try {
+      const response = await fetch(`${baseUrl}/api/v1/chat/sessions`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (response.status === 401) {
+        throw new Error('登录已过期，请重新登录');
+      }
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result?.detail || result?.message || '获取会话列表失败');
+      }
+
+      const rawSessions = Array.isArray(result?.sessions) ? result.sessions : [];
+      const mapped = rawSessions.map((item: any) => ({
+        id: String(item?._id || item?.id || ''),
+        title: String(item?.title || item?.preview || '未命名对话'),
+        preview: item?.preview ? String(item.preview) : undefined,
+        updatedAt: item?.updatedAt ? String(item.updatedAt) : undefined,
+      })).filter((item: ChatSessionSummary) => !!item.id);
+      setSessions(mapped);
+    } catch (e) {
+      console.error('加载会话列表失败:', e);
+      const msg = e instanceof Error ? e.message : '';
+      if (msg.includes('登录已过期')) {
+        signOut();
+      }
+    } finally {
+      setSessionsLoading(false);
+    }
+  }, [baseUrl, signOut, token]);
+
+  const handleOpenHistory = () => {
+    setHistoryVisible(true);
+    void loadSessions();
+  };
+
+  const handleCreateSession = async () => {
+    if (!token) return;
+    setCreatingSession(true);
+    setError(null);
+    try {
+      const response = await fetch(`${baseUrl}/api/v1/chat/sessions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ title: '新会话' }),
+      });
+      if (response.status === 401) {
+        throw new Error('登录已过期，请重新登录');
+      }
+      const result = await response.json();
+      if (!response.ok || !result?.sessionId) {
+        throw new Error(result?.detail || result?.message || '创建会话失败');
+      }
+
+      setSessionId(String(result.sessionId));
+      setMessages([]);
+      setActivePlanIndexes({});
+      setHistoryVisible(false);
+      void loadSessions();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : '创建会话失败';
+      setError(msg);
+      if (msg.includes('登录已过期')) {
+        signOut();
+      }
+    } finally {
+      setCreatingSession(false);
+    }
+  };
+
+  const handleSelectSession = async (targetSession: ChatSessionSummary) => {
+    if (!token) return;
+    setLoadingSessionId(targetSession.id);
+    setError(null);
+    try {
+      const response = await fetch(`${baseUrl}/api/v1/chat/sessions/${targetSession.id}/messages`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (response.status === 401) {
+        throw new Error('登录已过期，请重新登录');
+      }
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result?.detail || result?.message || '加载会话消息失败');
+      }
+
+      const rawMessages = Array.isArray(result?.messages) ? result.messages : [];
+      const mappedMessages = rawMessages.map((item: any) => toChatMessage(item));
+      setMessages(mappedMessages);
+      setSessionId(targetSession.id);
+      setActivePlanIndexes({});
+      setHistoryVisible(false);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : '加载会话消息失败';
+      setError(msg);
+      if (msg.includes('登录已过期')) {
+        signOut();
+      }
+    } finally {
+      setLoadingSessionId(null);
+    }
+  };
+
+  useEffect(() => {
+    if (!token) {
+      setSessions([]);
+      setSessionId(null);
+      setMessages([]);
+      return;
+    }
+    void loadSessions();
+  }, [loadSessions, token]);
+
   const handleSend = async () => {
     if (!input.trim() || !token) return;
     const content = input.trim();
@@ -222,10 +428,13 @@ export default function ChatScreen() {
 
       const data = result.data || {};
       const assistantMessage: ChatMessage = {
-        id: `${Date.now()}-assistant`,
+        id: data.messageId || `${Date.now()}-assistant`,
         role: 'assistant',
         content: data.response || '（无内容）',
         timestamp: new Date().toISOString(),
+        suggestedEvents: Array.isArray(data.suggestedEvents) ? data.suggestedEvents : undefined,
+        taskDecomposition: data.taskDecomposition || null,
+        multiTaskDecompositions: Array.isArray(data.multiTaskDecompositions) ? data.multiTaskDecompositions : null,
       };
 
       if (data.sessionId) {
@@ -234,15 +443,7 @@ export default function ChatScreen() {
 
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setMessages((prev) => [...prev, assistantMessage]);
-      setSuggestedEvents(Array.isArray(data.suggestedEvents) ? data.suggestedEvents : []);
-
-      // Handle Task Decomposition
-      if (data.taskDecomposition) {
-        setTaskDecomposition(data.taskDecomposition);
-      } else {
-        setTaskDecomposition(null); // Clear previous if any
-      }
-
+      void loadSessions();
     } catch (e) {
       const msg = e instanceof Error ? e.message : '发送失败';
       setError(msg);
@@ -254,10 +455,49 @@ export default function ChatScreen() {
     }
   };
 
-  const handleAddEvent = async (event: SuggestedEvent) => {
-    // ... existing implementation ...
+  const persistMessageInteractiveState = async (
+    messageId: string,
+    updates: {
+      suggestedEvents?: SuggestedEvent[] | null;
+      taskDecomposition?: TaskDecomposition | null;
+      multiTaskDecompositions?: TaskDecomposition[] | null;
+    }
+  ) => {
+    if (!token || !messageId || messageId.includes('-assistant') || messageId.includes('-system')) {
+      return;
+    }
+
+    await fetch(`${baseUrl}/api/v1/chat/messages/${messageId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(updates),
+    });
+  };
+
+  const removeEventFromMessage = (messageId: string, event: SuggestedEvent) => {
+    let remainingEvents: SuggestedEvent[] = [];
+    setMessages((prev) =>
+      prev.map((msg) => {
+        if (msg.id !== messageId) return msg;
+        remainingEvents = (msg.suggestedEvents || []).filter((item) => buildEventKey(item) !== buildEventKey(event));
+        return {
+          ...msg,
+          suggestedEvents: remainingEvents.length > 0 ? remainingEvents : undefined,
+        };
+      })
+    );
+    return remainingEvents;
+  };
+
+  const handleAddEvent = async (event: SuggestedEvent, messageId: string) => {
     if (!token) return;
     setError(null);
+    const actionKey = `${messageId}-${buildEventKey(event)}`;
+    setEventActionKey(actionKey);
+
     try {
       const response = await fetch(`${baseUrl}/api/v1/calendar/events`, {
         method: 'POST',
@@ -275,6 +515,7 @@ export default function ChatScreen() {
           location: event.location || '',
           allDay: event.allDay || false,
           aiGenerated: true,
+          resources: normalizeResources(event.resources),
         }),
       });
 
@@ -283,39 +524,85 @@ export default function ChatScreen() {
         throw new Error(result.message || result.error || '添加日程失败');
       }
 
-      setSuggestedEvents((prev) => prev.filter((item) => item !== event));
-      // Could add a toast here
+      const remainingEvents = removeEventFromMessage(messageId, event);
+      try {
+        await persistMessageInteractiveState(messageId, {
+          suggestedEvents: remainingEvents.length > 0 ? remainingEvents : null,
+        });
+      } catch (persistError) {
+        console.error('同步日程建议状态失败:', persistError);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : '添加日程失败');
+    } finally {
+      setEventActionKey(null);
     }
   };
 
-  const handleAddTask = async (task: TaskItem, index: number): Promise<boolean> => {
-    if (!token || !taskDecomposition) return false;
+  const handleDismissEvent = async (event: SuggestedEvent, messageId: string) => {
+    const remainingEvents = removeEventFromMessage(messageId, event);
+    try {
+      await persistMessageInteractiveState(messageId, {
+        suggestedEvents: remainingEvents.length > 0 ? remainingEvents : null,
+      });
+    } catch (persistError) {
+      console.error('同步日程建议状态失败:', persistError);
+    }
+  };
+
+  const calculateTaskSchedules = (decomposition: TaskDecomposition): { startTime: Date; endTime: Date }[] => {
+    const startDate = decomposition.start_date ? new Date(decomposition.start_date) : new Date();
+    const cursor = new Date(startDate);
+    cursor.setHours(9, 0, 0, 0);
+
+    const schedules: { startTime: Date; endTime: Date }[] = [];
+
+    for (const task of decomposition.subtasks) {
+      const durationHours = Math.max(task.duration_hours || 1, 0.5);
+      const durationMs = durationHours * 60 * 60 * 1000;
+
+      const dayEnd = new Date(cursor);
+      dayEnd.setHours(18, 0, 0, 0);
+
+      if (cursor.getTime() >= dayEnd.getTime() || cursor.getTime() + durationMs > dayEnd.getTime()) {
+        cursor.setDate(cursor.getDate() + 1);
+        cursor.setHours(9, 0, 0, 0);
+      }
+
+      const startTime = new Date(cursor);
+      const endTime = new Date(startTime.getTime() + durationMs);
+      schedules.push({ startTime, endTime });
+      cursor.setTime(endTime.getTime());
+    }
+
+    return schedules;
+  };
+
+  const getTaskSchedulePreview = (
+    decomposition: TaskDecomposition,
+    index: number
+  ): TaskSchedulePreview | null => {
+    const schedules = calculateTaskSchedules(decomposition);
+    const target = schedules[index];
+    if (!target) return null;
+    return {
+      start: target.startTime.toISOString(),
+      end: target.endTime.toISOString(),
+    };
+  };
+
+  const handleAddTask = async (
+    task: TaskItem,
+    index: number,
+    decomposition: TaskDecomposition
+  ): Promise<AddTaskResult> => {
+    if (!token) return { success: false };
 
     try {
-      const startDate = taskDecomposition.start_date ? new Date(taskDecomposition.start_date) : new Date();
-      const startHour = 9;
-
-      // Simple logic: Schedule at 9am + index hours, moving to next day if needed
-      // This is a simplified version of the batch logic for a single item
-      // To be consistent with batch, we should calculate 'true' start time, but for single add
-      // we can just place it relative to the start date based on its order (index)
-
-      let targetDate = new Date(startDate);
-      let offsetHours = index; // simplistic offset
-
-      // Adjust for day boundaries (assuming 9 hour work day: 9-18)
-      const workHoursPerDay = 9;
-      const daysToAdd = Math.floor(offsetHours / workHoursPerDay);
-      const hoursIntoDay = offsetHours % workHoursPerDay;
-
-      targetDate.setDate(targetDate.getDate() + daysToAdd);
-      targetDate.setHours(startHour + hoursIntoDay, 0, 0, 0);
-
-      const durationHours = task.duration_hours || 1;
-      const endTime = new Date(targetDate);
-      endTime.setHours(targetDate.getHours() + durationHours, 0, 0, 0);
+      const schedule = getTaskSchedulePreview(decomposition, index);
+      if (!schedule) {
+        return { success: false };
+      }
 
       const response = await fetch(`${baseUrl}/api/v1/calendar/events`, {
         method: 'POST',
@@ -325,119 +612,187 @@ export default function ChatScreen() {
         },
         body: JSON.stringify({
           title: task.title,
-          description: task.description || `来自项目「${taskDecomposition.project_name}」`,
-          start: targetDate.toISOString(),
-          end: endTime.toISOString(),
+          description: task.description || `来自项目「${decomposition.project_name || '任务规划'}」`,
+          start: schedule.start,
+          end: schedule.end,
           type: 'task',
           priority: 'medium',
           allDay: false,
-          aiGenerated: true
+          aiGenerated: true,
+          resources: normalizeResources(task.resources),
         })
       });
 
       const result = await response.json();
-      return result.success;
+      if (result.success) {
+        return {
+          success: true,
+          start: schedule.start,
+          end: schedule.end,
+        };
+      }
+
+      return { success: false };
 
     } catch (e) {
       console.error("Failed to add individual task", e);
-      return false;
+      return { success: false };
     }
   };
 
-  const handleConfirmDecomposition = async () => {
-    if (!token || !taskDecomposition) return;
-    setProcessingTask(true);
-    setError(null);
+  const handleDismissDecomposition = async (messageId: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setMessages((prev) =>
+      prev.map((msg) =>
+        msg.id === messageId
+          ? { ...msg, taskDecomposition: undefined, multiTaskDecompositions: undefined }
+          : msg
+      )
+    );
+
+    setActivePlanIndexes((prev) => {
+      const next = { ...prev };
+      delete next[messageId];
+      return next;
+    });
 
     try {
-      const startDate = taskDecomposition.start_date ? new Date(taskDecomposition.start_date) : new Date();
-      let currentDate = new Date(startDate);
-      let currentHour = 9; // Start at 9 AM
-
-      let successCount = 0;
-
-      for (const task of taskDecomposition.subtasks) {
-        const durationHours = task.duration_hours || 1;
-
-        // Move to next day if past 18:00
-        if (currentHour + durationHours > 18) {
-          currentDate.setDate(currentDate.getDate() + 1);
-          currentHour = 9;
-        }
-
-        const startTime = new Date(currentDate);
-        startTime.setHours(currentHour, 0, 0, 0);
-
-        const endTime = new Date(startTime);
-        endTime.setHours(currentHour + durationHours, 0, 0, 0);
-
-        // Call API to create event
-        const response = await fetch(`${baseUrl}/api/v1/calendar/events`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            title: task.title,
-            description: task.description || `来自项目「${taskDecomposition.project_name}」`,
-            start: startTime.toISOString(),
-            end: endTime.toISOString(),
-            type: 'task',
-            priority: 'medium',
-            allDay: false,
-            aiGenerated: true
-          })
-        });
-
-        const result = await response.json();
-        if (result.success) {
-          successCount++;
-        }
-
-        currentHour += durationHours;
-      }
-
-      // Add success message
-      setMessages(prev => [...prev, {
-        id: `${Date.now()}-system`,
-        role: 'assistant',
-        content: `✅ 已成功将 ${successCount} 个子任务添加到日历！`,
-        timestamp: new Date().toISOString()
-      }]);
-
-      setTaskDecomposition(null);
-
-    } catch (e) {
-      setError('批量添加任务失败，请重试');
-    } finally {
-      setProcessingTask(false);
+      await persistMessageInteractiveState(messageId, {
+        taskDecomposition: null,
+        multiTaskDecompositions: null,
+      });
+    } catch (persistError) {
+      console.error('同步任务分解状态失败:', persistError);
     }
   };
 
   const renderMessage = ({ item }: { item: ChatMessage }) => {
     const isUser = item.role === 'user';
+    const decompositions = getMessageDecompositions(item);
+    const hasTaskDecomposition = !isUser && decompositions.length > 0;
+    const activePlanIndex = hasTaskDecomposition
+      ? Math.min(activePlanIndexes[item.id] || 0, decompositions.length - 1)
+      : 0;
+    const currentDecomposition = hasTaskDecomposition ? decompositions[activePlanIndex] : null;
+    const currentTaskSchedules: TaskSchedulePreview[] = currentDecomposition
+      ? calculateTaskSchedules(currentDecomposition).map((schedule) => ({
+          start: schedule.startTime.toISOString(),
+          end: schedule.endTime.toISOString(),
+        }))
+      : [];
+
     return (
-      <View style={[styles.messageRow, isUser ? styles.messageRight : styles.messageLeft]}>
-        {!isUser && (
-          <View style={styles.avatar}>
-            <IconSymbol name="sparkles" size={16} color="#FFF" />
-          </View>
-        )}
-        <View style={{ alignItems: isUser ? 'flex-end' : 'flex-start', maxWidth: '80%' }}>
-          <View style={[
-            styles.bubble,
-            isUser ? styles.bubbleUser : styles.bubbleAssistant,
-            !isUser ? { backgroundColor: Colors.light.surface } : {}
-          ]}>
-            <ThemedText style={isUser ? styles.messageTextUser : styles.messageTextAssistant}>
-              {item.content}
+      <View style={styles.messageBlock}>
+        <View style={[styles.messageRow, isUser ? styles.messageRight : styles.messageLeft]}>
+          {!isUser && (
+            <View style={styles.avatar}>
+              <IconSymbol name="sparkles" size={16} color="#FFF" />
+            </View>
+          )}
+          <View style={{ alignItems: isUser ? 'flex-end' : 'flex-start', maxWidth: '80%' }}>
+            <View style={[
+              styles.bubble,
+              isUser ? styles.bubbleUser : styles.bubbleAssistant,
+              !isUser ? { backgroundColor: Colors.light.surface } : {}
+            ]}>
+              <ThemedText style={isUser ? styles.messageTextUser : styles.messageTextAssistant}>
+                {item.content}
+              </ThemedText>
+            </View>
+            <ThemedText type="caption" style={[styles.messageTime, isUser ? { marginRight: 2 } : { marginLeft: 2 }]}>
+              {formatTime(item.timestamp)}
             </ThemedText>
           </View>
-          <ThemedText type="caption" style={[styles.messageTime, isUser ? { marginRight: 2 } : { marginLeft: 2 }]}>
-            {formatTime(item.timestamp)}
-          </ThemedText>
         </View>
+
+        {!isUser && item.suggestedEvents && item.suggestedEvents.length > 0 ? (
+          <View style={styles.inlineSuggestionBox}>
+            <ThemedText type="defaultSemiBold" style={{ marginBottom: Spacing.sm }}>
+              AI 日程建议
+            </ThemedText>
+            {item.suggestedEvents.map((event, index) => {
+              const actionKey = `${item.id}-${buildEventKey(event)}`;
+              const isEventProcessing = eventActionKey === actionKey;
+              return (
+                <Card key={`${buildEventKey(event)}-${index}`} variant="outlined" style={styles.eventCard}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <View style={{ flex: 1 }}>
+                      <ThemedText type="defaultSemiBold">{event.title}</ThemedText>
+                      <ThemedText type="caption" style={{ color: Colors.light.textSecondary, marginTop: 2 }}>
+                        {formatTime(event.start)} - {formatTime(event.end)}
+                      </ThemedText>
+                      {event.location ? (
+                        <ThemedText type="caption" style={{ color: Colors.light.textSecondary }}>
+                          📍 {event.location}
+                        </ThemedText>
+                      ) : null}
+                      {event.conflicts?.length ? (
+                        <ThemedText type="caption" style={{ color: Colors.light.error, marginTop: Spacing.xs }}>
+                          ⚠️ 存在冲突日程
+                        </ThemedText>
+                      ) : null}
+                    </View>
+                  </View>
+                  <View style={styles.eventActions}>
+                    <Button
+                      title="忽略"
+                      size="sm"
+                      variant="ghost"
+                      onPress={() => {
+                        void handleDismissEvent(event, item.id);
+                      }}
+                      disabled={isEventProcessing}
+                      style={styles.eventActionButton}
+                    />
+                    <Button
+                      title="确认写入"
+                      size="sm"
+                      onPress={() => {
+                        void handleAddEvent(event, item.id);
+                      }}
+                      loading={isEventProcessing}
+                      disabled={isEventProcessing}
+                      style={styles.eventActionButton}
+                    />
+                  </View>
+                </Card>
+              );
+            })}
+          </View>
+        ) : null}
+
+        {!isUser && currentDecomposition ? (
+          <View style={styles.inlineSuggestionBox}>
+            {decompositions.length > 1 ? (
+              <View style={styles.planSwitcher}>
+                {decompositions.map((_, idx) => (
+                  <Button
+                    key={`${item.id}-plan-${idx}`}
+                    title={`方案 ${idx + 1}`}
+                    size="sm"
+                    variant={idx === activePlanIndex ? 'primary' : 'secondary'}
+                    onPress={() =>
+                      setActivePlanIndexes((prev) => ({
+                        ...prev,
+                        [item.id]: idx,
+                      }))
+                    }
+                    style={styles.planSwitcherButton}
+                  />
+                ))}
+              </View>
+            ) : null}
+
+            <TaskDecompositionView
+              decomposition={currentDecomposition}
+              onCancel={() => {
+                void handleDismissDecomposition(item.id);
+              }}
+              onAddTask={(task, index) => handleAddTask(task, index, currentDecomposition)}
+              taskSchedules={currentTaskSchedules}
+            />
+          </View>
+        ) : null}
       </View>
     );
   };
@@ -463,38 +818,48 @@ export default function ChatScreen() {
           </ThemedText>
 
           <Card variant="elevated">
-            <Input
-              label="后端地址"
-              value={baseUrlInput}
-              onChangeText={(value) => {
-                setBaseUrlInput(value);
-                setConnectionStatus(null);
-              }}
-              placeholder="http://127.0.0.1:8080"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            <View style={styles.connectionRow}>
-              <Button
-                title="测试连接"
-                variant="secondary"
-                size="sm"
-                onPress={handleTestConnection}
-                loading={testingConnection}
-                disabled={!baseUrlInput.trim()}
-              />
-              {connectionStatus ? (
-                <ThemedText
-                  type="caption"
-                  style={[
-                    styles.connectionStatus,
-                    { color: connectionStatus.type === 'success' ? successColor : errorColor },
-                  ]}
-                >
-                  {connectionStatus.message}
+            {manualApiBaseUrlEnabled ? (
+              <>
+                <Input
+                  label="后端地址"
+                  value={baseUrlInput}
+                  onChangeText={(value) => {
+                    setBaseUrlInput(value);
+                    setConnectionStatus(null);
+                  }}
+                  placeholder="http://127.0.0.1:8080"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                <View style={styles.connectionRow}>
+                  <Button
+                    title="测试连接"
+                    variant="secondary"
+                    size="sm"
+                    onPress={handleTestConnection}
+                    loading={testingConnection}
+                    disabled={!baseUrlInput.trim()}
+                  />
+                  {connectionStatus ? (
+                    <ThemedText
+                      type="caption"
+                      style={[
+                        styles.connectionStatus,
+                        { color: connectionStatus.type === 'success' ? successColor : errorColor },
+                      ]}
+                    >
+                      {connectionStatus.message}
+                    </ThemedText>
+                  ) : null}
+                </View>
+              </>
+            ) : (
+              <View style={styles.connectionLockedRow}>
+                <ThemedText type="caption" style={{ color: Colors.light.textSecondary }}>
+                  后端地址已从配置读取
                 </ThemedText>
-              ) : null}
-            </View>
+              </View>
+            )}
 
             {mode === 'login' ? (
               <>
@@ -557,10 +922,105 @@ export default function ChatScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]}>
+      <Modal
+        visible={historyVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setHistoryVisible(false)}
+      >
+        <View style={styles.historyOverlay}>
+          <View style={styles.historyDrawer}>
+            <View style={styles.historyHeader}>
+              <ThemedText type="defaultSemiBold">对话记录</ThemedText>
+              <Button
+                title="关闭"
+                variant="ghost"
+                size="sm"
+                onPress={() => setHistoryVisible(false)}
+                style={{ paddingHorizontal: 0 }}
+              />
+            </View>
+
+            <Button
+              title="新建对话"
+              variant="secondary"
+              size="sm"
+              onPress={() => {
+                void handleCreateSession();
+              }}
+              loading={creatingSession}
+              style={{ marginBottom: Spacing.sm }}
+              icon={<IconSymbol name="plus" size={14} color={Colors.light.primary} />}
+            />
+
+            <FlatList
+              data={sessions}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={{ paddingBottom: Spacing.md }}
+              renderItem={({ item }) => {
+                const active = item.id === sessionId;
+                const isLoadingItem = loadingSessionId === item.id;
+                return (
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    onPress={() => {
+                      void handleSelectSession(item);
+                    }}
+                    disabled={isLoadingItem}
+                    style={[styles.historyItem, active && styles.historyItemActive]}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <ThemedText type="defaultSemiBold" numberOfLines={1}>
+                        {item.title || '未命名对话'}
+                      </ThemedText>
+                      {item.preview ? (
+                        <ThemedText type="caption" style={styles.historyPreview} numberOfLines={2}>
+                          {item.preview}
+                        </ThemedText>
+                      ) : null}
+                      {item.updatedAt ? (
+                        <ThemedText type="caption" style={styles.historyTime}>
+                          {formatHistoryTime(item.updatedAt)}
+                        </ThemedText>
+                      ) : null}
+                    </View>
+                    {isLoadingItem ? (
+                      <ActivityIndicator size="small" color={Colors.light.primary} />
+                    ) : null}
+                  </TouchableOpacity>
+                );
+              }}
+              ListEmptyComponent={
+                sessionsLoading ? (
+                  <View style={styles.historyEmpty}>
+                    <ActivityIndicator size="small" color={Colors.light.primary} />
+                    <ThemedText type="caption" style={{ marginTop: Spacing.xs, color: Colors.light.textSecondary }}>
+                      正在加载会话...
+                    </ThemedText>
+                  </View>
+                ) : (
+                  <View style={styles.historyEmpty}>
+                    <ThemedText type="caption" style={{ color: Colors.light.textSecondary }}>
+                      暂无历史对话
+                    </ThemedText>
+                  </View>
+                )
+              }
+            />
+          </View>
+          <TouchableOpacity style={styles.historyBackdrop} onPress={() => setHistoryVisible(false)} />
+        </View>
+      </Modal>
+
       <View style={styles.header}>
-        <View>
-          <ThemedText type="heading">{headerTitle}</ThemedText>
-          <ThemedText type="caption" style={{ color: Colors.light.success }}>• 在线</ThemedText>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity style={styles.historyEntryButton} onPress={handleOpenHistory} activeOpacity={0.8}>
+            <IconSymbol name="list.bullet" size={20} color={Colors.light.primary} />
+          </TouchableOpacity>
+          <View>
+            <ThemedText type="heading">{headerTitle}</ThemedText>
+            <ThemedText type="caption" style={{ color: Colors.light.success }}>• 在线</ThemedText>
+          </View>
         </View>
         <Button
           title="退出"
@@ -583,52 +1043,6 @@ export default function ChatScreen() {
           renderItem={renderMessage}
           contentContainerStyle={styles.messageList}
           onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
-          ListHeaderComponent={
-            <View>
-              {taskDecomposition ? (
-                <View style={styles.suggestionBox}>
-                  <TaskDecompositionView
-                    decomposition={taskDecomposition}
-                    onConfirm={handleConfirmDecomposition}
-                    onCancel={() => setTaskDecomposition(null)}
-                    onAddTask={handleAddTask}
-                    loading={processingTask}
-                  />
-                </View>
-              ) : null}
-
-              {suggestedEvents.length > 0 ? (
-                <View style={styles.suggestionBox}>
-                  <ThemedText type="defaultSemiBold" style={{ marginBottom: Spacing.sm }}>AI 日程建议</ThemedText>
-                  {suggestedEvents.map((event, index) => (
-                    <Card key={`${event.title}-${index}`} variant="outlined" style={styles.eventCard}>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <View style={{ flex: 1 }}>
-                          <ThemedText type="defaultSemiBold">{event.title}</ThemedText>
-                          <ThemedText type="caption" style={{ color: Colors.light.textSecondary, marginTop: 2 }}>
-                            {formatTime(event.start)} - {formatTime(event.end)}
-                          </ThemedText>
-                          {event.location && (
-                            <ThemedText type="caption" style={{ color: Colors.light.textSecondary }}>📍 {event.location}</ThemedText>
-                          )}
-                        </View>
-                        <Button
-                          title="添加"
-                          size="sm"
-                          onPress={() => handleAddEvent(event)}
-                        />
-                      </View>
-                      {event.conflicts?.length ? (
-                        <ThemedText type="caption" style={{ color: Colors.light.error, marginTop: Spacing.xs }}>
-                          ⚠️ 存在冲突日程
-                        </ThemedText>
-                      ) : null}
-                    </Card>
-                  ))}
-                </View>
-              ) : null}
-            </View>
-          }
           ListFooterComponent={
             sending ? <ThinkingBubble /> : null
           }
@@ -643,10 +1057,11 @@ export default function ChatScreen() {
         <View style={[styles.inputBar, { marginBottom: isKeyboardVisible ? Spacing.lg : Math.max(Spacing.lg, tabBarHeight - 25) }]}>
           <Button
             variant="ghost"
+            size="sm"
             title=""
-            icon={<IconSymbol name="globe" size={30} color={useWebSearch ? Colors.light.primary : Colors.light.textSecondary} />}
+            icon={<IconSymbol name="globe" size={22} color={useWebSearch ? Colors.light.primary : Colors.light.textSecondary} />}
             onPress={() => setUseWebSearch(!useWebSearch)}
-            style={{ width: 44, height: 44, paddingHorizontal: 0 }}
+            style={{ width: 44, height: 44, paddingHorizontal: 0, paddingVertical: 0 }}
           />
           <Input
             value={input}
@@ -657,12 +1072,9 @@ export default function ChatScreen() {
             multiline
           />
           <Button
+            size="sm"
             title=""
-            icon={
-              <View style={{ marginLeft: 1, marginRight: 1, marginTop: 1 }}>
-                <IconSymbol name="paperplane.fill" size={24} color="#d6cbcbff" />
-              </View>
-            }
+            icon={<IconSymbol name="paperplane.fill" size={18} color="#d6cbcbff" />}
             onPress={handleSend}
             disabled={!input.trim() || sending}
             loading={sending}
@@ -688,6 +1100,58 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: Spacing.lg,
   },
+  historyOverlay: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: 'rgba(0,0,0,0.2)',
+  },
+  historyDrawer: {
+    width: '78%',
+    maxWidth: 340,
+    backgroundColor: Colors.light.surface,
+    paddingHorizontal: Spacing.md,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.md,
+    borderRightWidth: 1,
+    borderRightColor: Colors.light.border,
+  },
+  historyBackdrop: {
+    flex: 1,
+  },
+  historyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
+  historyItem: {
+    backgroundColor: Colors.light.background,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.sm,
+    marginBottom: Spacing.xs,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  historyItemActive: {
+    borderColor: Colors.light.primary,
+    backgroundColor: Colors.light.primary + '12',
+  },
+  historyPreview: {
+    color: Colors.light.textSecondary,
+    marginTop: 2,
+  },
+  historyTime: {
+    color: Colors.light.textSecondary,
+    marginTop: 4,
+    fontSize: 10,
+  },
+  historyEmpty: {
+    paddingVertical: Spacing.lg,
+    alignItems: 'center',
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -697,10 +1161,29 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Colors.light.border,
   },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  historyEntryButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing.sm,
+    backgroundColor: Colors.light.surface,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+  },
   messageList: {
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.lg,
     paddingTop: Spacing.md,
+  },
+  messageBlock: {
+    marginBottom: Spacing.sm,
   },
   messageRow: {
     marginVertical: Spacing.xs,
@@ -759,13 +1242,36 @@ const styles = StyleSheet.create({
   connectionStatus: {
     marginLeft: Spacing.sm,
   },
-  suggestionBox: {
+  connectionLockedRow: {
     marginBottom: Spacing.md,
+  },
+  inlineSuggestionBox: {
+    marginBottom: Spacing.md,
+    marginLeft: 34,
   },
   eventCard: {
     padding: Spacing.sm,
     backgroundColor: Colors.light.surfaceHighlight,
     borderWidth: 0,
+    marginBottom: Spacing.sm,
+  },
+  eventActions: {
+    marginTop: Spacing.sm,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  eventActionButton: {
+    minWidth: 96,
+    marginLeft: Spacing.sm,
+  },
+  planSwitcher: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: Spacing.sm,
+  },
+  planSwitcherButton: {
+    marginRight: Spacing.xs,
+    marginBottom: Spacing.xs,
   },
   inputBar: {
     flexDirection: 'row',
@@ -798,6 +1304,8 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
     backgroundColor: Colors.light.primary,
     justifyContent: 'center',
     alignItems: 'center',

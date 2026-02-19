@@ -7,44 +7,52 @@
     <list default="true" id="e1f46b03-4277-434a-94ca-0cfd47b146d2" name="更改" comment="">
       <change beforePath="$PROJECT_DIR$/../jushi_agent/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/package-lock.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../jushi_agent/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/app/api/auth/llm-config/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/app/api/auth/llm-config/route.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/app/api/auth/login/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/app/api/auth/login/route.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/app/api/auth/logout/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/app/api/auth/logout/route.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/app/api/auth/me/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/app/api/auth/me/route.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/app/api/auth/profile/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/app/api/auth/profile/route.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/app/api/auth/refresh/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/app/api/auth/refresh/route.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/app/api/auth/register/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/app/api/auth/register/route.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/app/api/calendar/events/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/app/api/calendar/events/route.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../jushi_agent/src/app/api/chat/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/app/api/chat/route.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/app/calendar/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/app/calendar/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/app/chat/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/app/chat/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/app/auth/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/app/auth/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/app/globals.css" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/app/globals.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/app/login/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/app/login/page.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../jushi_agent/src/app/model-config/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/app/model-config/page.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../jushi_agent/src/app/profile/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/app/profile/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/components/auth/LoginForm.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/components/auth/LoginForm.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/components/auth/RegisterForm.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/components/auth/RegisterForm.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/components/auth/SimpleRegisterForm.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/components/auth/SimpleRegisterForm.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/components/calendar/BigCalendar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/components/calendar/BigCalendar.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/components/calendar/DaySchedulePanel.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/components/calendar/DaySchedulePanel.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../jushi_agent/src/components/calendar/EventDialog.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/components/calendar/EventDialog.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../jushi_agent/src/components/chat/ChatInterface.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/components/chat/ChatInterface.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/components/ui/dialog.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/components/ui/dialog.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/components/ui/input.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/components/ui/input.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/components/ui/label.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/components/ui/label.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/components/ui/select.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/components/ui/select.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/components/ui/textarea.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/components/ui/textarea.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/lib/api/proxy.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/lib/api/proxy.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/components/chat/EditableTaskPlan.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/components/chat/EditableTaskPlan.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/components/chat/MessageBubble.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/components/chat/MessageBubble.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/components/chat/SuggestedEventCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/components/chat/SuggestedEventCard.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/lib/auth/AuthService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/lib/auth/AuthService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/lib/database/connection.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/lib/database/connection.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/lib/database/models/CalendarEvent.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/lib/database/models/CalendarEvent.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/lib/database/models/ChatHistory.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/lib/database/models/ChatHistory.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/lib/database/models/Conversation.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/lib/database/models/Conversation.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/lib/database/models/User.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/lib/database/models/User.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/lib/database/services/ChatHistoryService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/lib/database/services/ChatHistoryService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/types/auth.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/types/auth.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../jushi_agent/src/types/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/types/index.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.env" beforeDir="false" afterPath="$PROJECT_DIR$/.env" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/jushi_backend.iml" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ARCHITECTURE.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/v1/api.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/v1/api.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/v1/endpoints/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/v1/endpoints/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/v1/endpoints/feishu.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/v1/endpoints/feishu.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/business/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/business/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/business/feishu_business.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/business/feishu_business.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/config.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/models/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/models/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/services/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/v1/endpoints/auth.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/v1/endpoints/auth.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/v1/endpoints/chat.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/v1/endpoints/chat.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/business/auth_business.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/business/auth_business.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/business/chat_business.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/business/chat_business.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/models/auth.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/models/auth.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/models/calendar.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/models/calendar.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/models/chat.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/models/chat.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/models/history.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/models/history.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/services/agent_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/agent_service.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/services/calendar_tools.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/calendar_tools.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/services/user_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/user_service.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../mobile/jushi_mobile/app.json" beforeDir="false" afterPath="$PROJECT_DIR$/../mobile/jushi_mobile/app.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../mobile/jushi_mobile/app/(tabs)/index.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../mobile/jushi_mobile/app/(tabs)/index.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../mobile/jushi_mobile/app/(tabs)/profile.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../mobile/jushi_mobile/app/(tabs)/profile.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../mobile/jushi_mobile/app/(tabs)/schedule.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../mobile/jushi_mobile/app/(tabs)/schedule.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../mobile/jushi_mobile/app/_layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../mobile/jushi_mobile/app/_layout.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../mobile/jushi_mobile/app/settings/model-config.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../mobile/jushi_mobile/app/settings/model-config.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../mobile/jushi_mobile/components/chat/TaskDecompositionView.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../mobile/jushi_mobile/components/chat/TaskDecompositionView.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../mobile/jushi_mobile/components/ui/icon-symbol.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../mobile/jushi_mobile/components/ui/icon-symbol.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../mobile/jushi_mobile/context/AuthContext.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../mobile/jushi_mobile/context/AuthContext.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../mobile/jushi_mobile/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/../mobile/jushi_mobile/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../mobile/jushi_mobile/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/../mobile/jushi_mobile/package.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -121,6 +129,8 @@
       <workItem from="1768807003573" duration="1000" />
       <workItem from="1768977577659" duration="7773000" />
       <workItem from="1769414049442" duration="121000" />
+      <workItem from="1771127010164" duration="1000" />
+      <workItem from="1771325522877" duration="1000" />
     </task>
     <servers />
   </component>

@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { useEffect, useState } from 'react'
 import {
     User,
     Settings,
@@ -19,13 +20,123 @@ import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 
 export default function ProfilePage() {
-    const { user, isAuthenticated, logout, isLoading } = useAuth()
+    const { user, isAuthenticated, logout, isLoading, updateUser } = useAuth()
     const router = useRouter()
+    const [isHabitLoading, setIsHabitLoading] = useState(false)
+    const [isHabitSaving, setIsHabitSaving] = useState(false)
+    const [habitSaveMessage, setHabitSaveMessage] = useState<string | null>(null)
+    const [habitForm, setHabitForm] = useState({
+        occupation: '',
+        currentStudyFocus: '',
+        highEfficiencyPeriods: '',
+        lowEfficiencyPeriods: '',
+        weeklyUnavailableSlots: '',
+        preferredFocusMinutes: 45,
+        preferredBreakMinutes: 10,
+        maxFocusSessionsPerDay: 4,
+        planningPreference: '',
+        notes: ''
+    })
 
     const handleLogout = async () => {
         await logout()
         router.push('/auth?mode=login')
     }
+
+    const parseListInput = (value: string): string[] => {
+        return value
+            .split(/\n|,/g)
+            .map(item => item.trim())
+            .filter(Boolean)
+    }
+
+    const loadHabitProfile = async () => {
+        if (!isAuthenticated || !user) return
+        setIsHabitLoading(true)
+        setHabitSaveMessage(null)
+        try {
+            const response = await fetch('/api/auth/profile', { credentials: 'include' })
+            const result = await response.json()
+            if (!result.success) return
+
+            const profile = result.data?.user?.profile || {}
+            const habits = profile.habits || {}
+            setHabitForm({
+                occupation: habits.occupation || '',
+                currentStudyFocus: habits.currentStudyFocus || '',
+                highEfficiencyPeriods: Array.isArray(habits.highEfficiencyPeriods) ? habits.highEfficiencyPeriods.join('\n') : '',
+                lowEfficiencyPeriods: Array.isArray(habits.lowEfficiencyPeriods) ? habits.lowEfficiencyPeriods.join('\n') : '',
+                weeklyUnavailableSlots: Array.isArray(habits.weeklyUnavailableSlots) ? habits.weeklyUnavailableSlots.join('\n') : '',
+                preferredFocusMinutes: Number(habits.preferredFocusMinutes || 45),
+                preferredBreakMinutes: Number(habits.preferredBreakMinutes || 10),
+                maxFocusSessionsPerDay: Number(habits.maxFocusSessionsPerDay || 4),
+                planningPreference: habits.planningPreference || '',
+                notes: habits.notes || ''
+            })
+        } catch (error) {
+            console.error('加载习惯画像失败:', error)
+        } finally {
+            setIsHabitLoading(false)
+        }
+    }
+
+    const handleSaveHabits = async () => {
+        if (!user) return
+        setIsHabitSaving(true)
+        setHabitSaveMessage(null)
+        try {
+            const payload = {
+                profile: {
+                    ...(user.profile || {}),
+                    name: user.profile?.name || user.displayName || user.username || '用户',
+                    displayName: user.displayName,
+                    email: user.email,
+                    habits: {
+                        occupation: habitForm.occupation.trim(),
+                        currentStudyFocus: habitForm.currentStudyFocus.trim(),
+                        highEfficiencyPeriods: parseListInput(habitForm.highEfficiencyPeriods),
+                        lowEfficiencyPeriods: parseListInput(habitForm.lowEfficiencyPeriods),
+                        weeklyUnavailableSlots: parseListInput(habitForm.weeklyUnavailableSlots),
+                        preferredFocusMinutes: Math.max(15, Math.min(180, Number(habitForm.preferredFocusMinutes || 45))),
+                        preferredBreakMinutes: Math.max(5, Math.min(60, Number(habitForm.preferredBreakMinutes || 10))),
+                        maxFocusSessionsPerDay: Math.max(1, Math.min(12, Number(habitForm.maxFocusSessionsPerDay || 4))),
+                        planningPreference: habitForm.planningPreference.trim(),
+                        notes: habitForm.notes.trim()
+                    }
+                }
+            }
+
+            const response = await fetch('/api/auth/profile', {
+                method: 'PUT',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            const result = await response.json()
+            if (!result.success) {
+                throw new Error(result.error || '保存失败')
+            }
+            const savedUser = result.data?.user
+            if (savedUser) {
+                updateUser({
+                    profile: savedUser.profile,
+                    displayName: savedUser.displayName
+                })
+            }
+            setHabitSaveMessage('已保存，后续任务安排将参考你的习惯。')
+        } catch (error) {
+            console.error('保存习惯画像失败:', error)
+            setHabitSaveMessage('保存失败，请稍后重试。')
+        } finally {
+            setIsHabitSaving(false)
+        }
+    }
+
+    useEffect(() => {
+        if (isAuthenticated && user) {
+            loadHabitProfile()
+        }
+    }, [isAuthenticated, user?.id])
 
     if (isLoading) {
         return (
@@ -174,6 +285,106 @@ export default function ProfilePage() {
                                     </div>
                                 </div>
                                 {/* <Button size="sm" variant="ghost" className="text-white/40 hover:text-white hover:bg-white/10 h-8 text-xs">Edit</Button> */}
+                            </div>
+                        </div>
+
+                        {/* Work/Study Habits */}
+                        <div className="bg-black/20 rounded-2xl p-4 border border-white/10 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-white font-semibold">工作与学习习惯</h3>
+                                    <p className="text-white/40 text-xs">模型会在任务安排和拆解时参考这些偏好</p>
+                                </div>
+                                {isHabitLoading && (
+                                    <span className="text-white/50 text-xs">加载中...</span>
+                                )}
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <input
+                                    value={habitForm.occupation}
+                                    onChange={(e) => setHabitForm(prev => ({ ...prev, occupation: e.target.value }))}
+                                    placeholder="你的工作角色（如：后端工程师）"
+                                    className="h-10 rounded-xl bg-white/5 border border-white/15 px-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-blue-400/40"
+                                />
+                                <input
+                                    value={habitForm.currentStudyFocus}
+                                    onChange={(e) => setHabitForm(prev => ({ ...prev, currentStudyFocus: e.target.value }))}
+                                    placeholder="当前学习重点（如：算法/英语）"
+                                    className="h-10 rounded-xl bg-white/5 border border-white/15 px-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-blue-400/40"
+                                />
+                                <input
+                                    type="number"
+                                    min={15}
+                                    max={180}
+                                    value={habitForm.preferredFocusMinutes}
+                                    onChange={(e) => setHabitForm(prev => ({ ...prev, preferredFocusMinutes: Number(e.target.value || 45) }))}
+                                    placeholder="偏好专注时长（分钟）"
+                                    className="h-10 rounded-xl bg-white/5 border border-white/15 px-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-blue-400/40"
+                                />
+                                <input
+                                    type="number"
+                                    min={5}
+                                    max={60}
+                                    value={habitForm.preferredBreakMinutes}
+                                    onChange={(e) => setHabitForm(prev => ({ ...prev, preferredBreakMinutes: Number(e.target.value || 10) }))}
+                                    placeholder="偏好休息时长（分钟）"
+                                    className="h-10 rounded-xl bg-white/5 border border-white/15 px-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-blue-400/40"
+                                />
+                                <input
+                                    type="number"
+                                    min={1}
+                                    max={12}
+                                    value={habitForm.maxFocusSessionsPerDay}
+                                    onChange={(e) => setHabitForm(prev => ({ ...prev, maxFocusSessionsPerDay: Number(e.target.value || 4) }))}
+                                    placeholder="每日深度任务上限"
+                                    className="h-10 rounded-xl bg-white/5 border border-white/15 px-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-blue-400/40"
+                                />
+                                <input
+                                    value={habitForm.planningPreference}
+                                    onChange={(e) => setHabitForm(prev => ({ ...prev, planningPreference: e.target.value }))}
+                                    placeholder="计划偏好（如：先难后易）"
+                                    className="h-10 rounded-xl bg-white/5 border border-white/15 px-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-blue-400/40"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <textarea
+                                    value={habitForm.highEfficiencyPeriods}
+                                    onChange={(e) => setHabitForm(prev => ({ ...prev, highEfficiencyPeriods: e.target.value }))}
+                                    placeholder="高效时段（每行一条，如 09:00-11:30）"
+                                    className="h-24 rounded-xl bg-white/5 border border-white/15 px-3 py-2 text-sm text-white placeholder:text-white/30 resize-none focus:outline-none focus:border-blue-400/40"
+                                />
+                                <textarea
+                                    value={habitForm.lowEfficiencyPeriods}
+                                    onChange={(e) => setHabitForm(prev => ({ ...prev, lowEfficiencyPeriods: e.target.value }))}
+                                    placeholder="低效时段（每行一条）"
+                                    className="h-24 rounded-xl bg-white/5 border border-white/15 px-3 py-2 text-sm text-white placeholder:text-white/30 resize-none focus:outline-none focus:border-blue-400/40"
+                                />
+                                <textarea
+                                    value={habitForm.weeklyUnavailableSlots}
+                                    onChange={(e) => setHabitForm(prev => ({ ...prev, weeklyUnavailableSlots: e.target.value }))}
+                                    placeholder="不可用时段（如 周三 14:00-17:00）"
+                                    className="h-24 rounded-xl bg-white/5 border border-white/15 px-3 py-2 text-sm text-white placeholder:text-white/30 resize-none focus:outline-none focus:border-blue-400/40"
+                                />
+                            </div>
+
+                            <textarea
+                                value={habitForm.notes}
+                                onChange={(e) => setHabitForm(prev => ({ ...prev, notes: e.target.value }))}
+                                placeholder="补充说明（如：午休后30分钟不排高强度任务）"
+                                className="w-full h-20 rounded-xl bg-white/5 border border-white/15 px-3 py-2 text-sm text-white placeholder:text-white/30 resize-none focus:outline-none focus:border-blue-400/40"
+                            />
+
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs text-white/40">{habitSaveMessage || '保存后自动应用到聊天任务规划'}</span>
+                                <Button
+                                    onClick={handleSaveHabits}
+                                    disabled={isHabitSaving || isHabitLoading}
+                                    className="h-10 px-5 bg-blue-500/30 hover:bg-blue-500/40 text-blue-100 border border-blue-400/30 rounded-xl"
+                                >
+                                    {isHabitSaving ? '保存中...' : '保存习惯'}
+                                </Button>
                             </div>
                         </div>
 

@@ -3,7 +3,7 @@
 import { useMemo, useEffect, useRef } from 'react'
 import { format, isSameDay, differenceInMinutes, startOfDay, addMinutes } from 'date-fns'
 import { zhCN } from 'date-fns/locale/zh-CN'
-import { X, Clock, Calendar as CalendarIcon, Plus, MapPin, AlignLeft } from 'lucide-react'
+import { X, Clock, Calendar as CalendarIcon, Plus, MapPin, AlignLeft, Link as LinkIcon, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
@@ -280,6 +280,12 @@ export function DaySchedulePanel({
                                                     <div className="flex items-center gap-1 mt-1 opacity-70 text-xs line-clamp-1">
                                                         <AlignLeft className="w-3 h-3" />
                                                         <span>{event.description}</span>
+                                                    </div>
+                                                )}
+                                                {event.resources && event.resources.length > 0 && (
+                                                    <div className="flex items-center gap-1 mt-1 opacity-70 text-xs text-blue-600 dark:text-blue-400">
+                                                        <LinkIcon className="w-3 h-3" />
+                                                        <span>{event.resources.length} 个资源</span>
                                                     </div>
                                                 )}
                                             </>

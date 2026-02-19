@@ -3,7 +3,7 @@
 """
 
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from bson import ObjectId
 from pymongo import ReturnDocument
@@ -20,18 +20,23 @@ def _serialize_event(doc: dict) -> dict:
     """MongoDB 文档序列化为可返回的 JSON"""
     data = dict(doc)
     if "_id" in data:
-        data["id"] = str(data["_id"])
-        del data["_id"]
-    # 确保时间字段为 ISO 字符串
-    if isinstance(data.get("start"), datetime):
-        data["start"] = data["start"].isoformat()
-    if isinstance(data.get("end"), datetime):
-        data["end"] = data["end"].isoformat()
-    if isinstance(data.get("createdAt"), datetime):
-        data["createdAt"] = data["createdAt"].isoformat()
-    if isinstance(data.get("updatedAt"), datetime):
-        data["updatedAt"] = data["updatedAt"].isoformat()
-    return data
+        data["id"] = str(data.pop("_id"))
+    return _to_jsonable(data)
+
+
+def _to_jsonable(value: Any) -> Any:
+    """递归将 Mongo 类型转换为 FastAPI 可序列化类型。"""
+    if isinstance(value, ObjectId):
+        return str(value)
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, dict):
+        return {k: _to_jsonable(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_to_jsonable(item) for item in value]
+    if isinstance(value, tuple):
+        return [_to_jsonable(item) for item in value]
+    return value
 
 
 @router.get("/events", summary="获取日历事件列表")

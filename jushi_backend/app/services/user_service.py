@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from passlib.context import CryptContext
 from app.database import db
 from bson import ObjectId
@@ -253,3 +253,277 @@ class UserService:
             )
             return True
         except Exception: return False
+
+    @staticmethod
+    async def record_model_token_usage(
+        user_id: str,
+        config_id: str,
+        model_id: str,
+        config_name: str,
+        prompt_tokens: int,
+        completion_tokens: int,
+        is_estimated: bool = True,
+        usage_date: Optional[str] = None
+    ) -> bool:
+        """兼容旧接口：仅保留真实 usage；估算请求仅记缺失计数。"""
+        if is_estimated:
+            prompt_tokens = 0
+            completion_tokens = 0
+        return await UserService.record_llm_usage_event(
+            user_id=user_id,
+            session_id="unknown_session",
+            config_id=config_id,
+            model_id=model_id,
+            config_name=config_name,
+            path_type="legacy",
+            is_primary=True,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            usage_missing=bool(is_estimated),
+            usage_date=usage_date,
+            request_count=1
+        )
+
+    @staticmethod
+    async def record_llm_usage_event(
+        user_id: str,
+        session_id: str,
+        config_id: str,
+        model_id: str,
+        config_name: str,
+        path_type: str,
+        is_primary: bool,
+        prompt_tokens: int,
+        completion_tokens: int,
+        usage_missing: bool = False,
+        usage_date: Optional[str] = None,
+        request_count: int = 1,
+        missing_usage_requests: Optional[int] = None,
+        provider_request_ids: Optional[List[str]] = None,
+        message_id: Optional[str] = None,
+        usage_raw: Optional[Dict[str, Any]] = None
+    ) -> bool:
+        """记录真实 usage 事件，并同步写入按 scope 的日聚合表。"""
+        if db.db is None:
+            return False
+
+        try:
+            prompt_tokens = max(0, int(prompt_tokens or 0))
+            completion_tokens = max(0, int(completion_tokens or 0))
+            total_tokens = prompt_tokens + completion_tokens
+            request_count = max(1, int(request_count or 1))
+
+            today = usage_date or datetime.utcnow().strftime("%Y-%m-%d")
+            now = datetime.utcnow()
+
+            usage_missing = bool(usage_missing)
+            if missing_usage_requests is None:
+                missing_usage_requests = request_count if usage_missing else 0
+            else:
+                missing_usage_requests = max(0, int(missing_usage_requests))
+
+            event_doc = {
+                "userId": user_id,
+                "sessionId": session_id or "unknown_session",
+                "messageId": message_id,
+                "configId": config_id or "system-default",
+                "modelId": model_id or "",
+                "configName": config_name or "未命名配置",
+                "pathType": path_type or "unknown",
+                "isPrimary": bool(is_primary),
+                "promptTokens": prompt_tokens,
+                "completionTokens": completion_tokens,
+                "totalTokens": total_tokens,
+                "requestCount": request_count,
+                "missingUsageRequests": missing_usage_requests,
+                "usageMissing": usage_missing,
+                "providerRequestIds": provider_request_ids or [],
+                "usageRaw": usage_raw or {},
+                "date": today,
+                "createdAt": now,
+            }
+            await db.db["llm_usage_events"].insert_one(event_doc)
+
+            async def _update_daily(scope: str):
+                await db.db["llm_token_usage_daily"].update_one(
+                    {
+                        "userId": user_id,
+                        "configId": config_id or "system-default",
+                        "date": today,
+                        "scope": scope
+                    },
+                    {
+                        "$inc": {
+                            "promptTokens": prompt_tokens,
+                            "completionTokens": completion_tokens,
+                            "totalTokens": total_tokens,
+                            "requests": request_count,
+                            "missingUsageRequests": missing_usage_requests
+                        },
+                        "$set": {
+                            "modelId": model_id or "",
+                            "configName": config_name or "未命名配置",
+                            "updatedAt": now
+                        },
+                        "$setOnInsert": {
+                            "createdAt": now
+                        }
+                    },
+                    upsert=True
+                )
+
+            # all 口径包含 primary + shadow；primary 仅主链路
+            await _update_daily("all")
+            if is_primary:
+                await _update_daily("primary")
+
+            return True
+        except Exception as e:
+            print(f"Error recording model token usage: {e}")
+            return False
+
+    @staticmethod
+    async def get_model_token_usage_daily(
+        user_id: str,
+        date_from: str,
+        date_to: str,
+        scope: str = "primary"
+    ) -> List[Dict[str, Any]]:
+        """获取用户在日期区间内的模型 token 使用记录"""
+        if db.db is None:
+            return []
+
+        try:
+            target_scope = "all" if scope == "all" else "primary"
+            cursor = db.db["llm_token_usage_daily"].find(
+                {
+                    "userId": user_id,
+                    "date": {"$gte": date_from, "$lte": date_to},
+                    "scope": target_scope
+                },
+                {
+                    "_id": 0
+                }
+            )
+            return await cursor.to_list(length=5000)
+        except Exception as e:
+            print(f"Error fetching model token usage: {e}")
+            return []
+
+    @staticmethod
+    async def get_model_token_usage_sessions(
+        user_id: str,
+        date_from: str,
+        date_to: str,
+        scope: str = "primary"
+    ) -> List[Dict[str, Any]]:
+        """获取用户在日期区间内按会话聚合的 usage 记录。"""
+        if db.db is None:
+            return []
+
+        try:
+            match_query: Dict[str, Any] = {
+                "userId": user_id,
+                "date": {"$gte": date_from, "$lte": date_to},
+            }
+            if scope != "all":
+                match_query["isPrimary"] = True
+
+            pipeline = [
+                {"$match": match_query},
+                {
+                    "$group": {
+                        "_id": {
+                            "sessionId": "$sessionId",
+                            "configId": "$configId",
+                            "modelId": "$modelId",
+                            "configName": "$configName",
+                        },
+                        "promptTokens": {"$sum": "$promptTokens"},
+                        "completionTokens": {"$sum": "$completionTokens"},
+                        "totalTokens": {"$sum": "$totalTokens"},
+                        "requests": {"$sum": "$requestCount"},
+                        "missingUsageRequests": {"$sum": "$missingUsageRequests"},
+                        "firstAt": {"$min": "$createdAt"},
+                        "lastAt": {"$max": "$createdAt"},
+                    }
+                },
+                {
+                    "$project": {
+                        "_id": 0,
+                        "sessionId": "$_id.sessionId",
+                        "configId": "$_id.configId",
+                        "modelId": "$_id.modelId",
+                        "configName": "$_id.configName",
+                        "promptTokens": 1,
+                        "completionTokens": 1,
+                        "totalTokens": 1,
+                        "requests": 1,
+                        "missingUsageRequests": 1,
+                        "firstAt": 1,
+                        "lastAt": 1,
+                    }
+                },
+                {"$sort": {"lastAt": -1}},
+            ]
+            cursor = db.db["llm_usage_events"].aggregate(pipeline)
+            return await cursor.to_list(length=10000)
+        except Exception as e:
+            print(f"Error fetching model session usage: {e}")
+            return []
+
+    @staticmethod
+    async def get_user_profile(user_id: str) -> Dict[str, Any]:
+        """获取用户 profile 数据（不存在时返回默认结构）"""
+        default_profile = {"name": "", "habits": {}}
+        if db.db is None:
+            return default_profile
+        try:
+            oid = ObjectId(user_id) if isinstance(user_id, str) else user_id
+            user = await db.db.users.find_one({"_id": oid}, {"profile": 1, "displayName": 1, "email": 1, "username": 1})
+            if not user:
+                return default_profile
+            profile = user.get("profile") or {}
+            if not isinstance(profile, dict):
+                profile = {}
+            if not profile.get("name"):
+                profile["name"] = user.get("displayName") or user.get("username") or ""
+            profile.setdefault("email", user.get("email") or "")
+            profile.setdefault("displayName", user.get("displayName") or "")
+            profile.setdefault("habits", {})
+            return profile
+        except Exception as e:
+            print(f"Error get user profile: {e}")
+            return default_profile
+
+    @staticmethod
+    async def update_user_profile(user_id: str, profile: Dict[str, Any]) -> bool:
+        """更新用户 profile 数据"""
+        if db.db is None:
+            return False
+        try:
+            oid = ObjectId(user_id) if isinstance(user_id, str) else user_id
+            safe_profile = profile if isinstance(profile, dict) else {}
+            if "name" in safe_profile and isinstance(safe_profile["name"], str):
+                safe_profile["name"] = safe_profile["name"].strip()
+            if "displayName" in safe_profile and isinstance(safe_profile["displayName"], str):
+                safe_profile["displayName"] = safe_profile["displayName"].strip()
+            if "habits" in safe_profile and not isinstance(safe_profile["habits"], dict):
+                safe_profile["habits"] = {}
+
+            update_doc = {
+                "$set": {
+                    "profile": safe_profile,
+                    "updated_at": datetime.utcnow()
+                }
+            }
+
+            display_name = safe_profile.get("displayName") or safe_profile.get("name")
+            if isinstance(display_name, str) and display_name.strip():
+                update_doc["$set"]["displayName"] = display_name.strip()
+
+            result = await db.db.users.update_one({"_id": oid}, update_doc)
+            return result.modified_count > 0 or result.matched_count > 0
+        except Exception as e:
+            print(f"Error update user profile: {e}")
+            return False

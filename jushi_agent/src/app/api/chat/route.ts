@@ -10,7 +10,7 @@ import { createErrorResponse, createSuccessResponse } from '@/lib/api/proxy'
 export async function POST(request: NextRequest) {
   try {
     const body: ChatRequest = await request.json()
-    const { message, taskId, sessionId } = body
+    const { message, taskId, sessionId, useWebSearch, taskType, difficultyLevel, urgency } = body
 
     // 输入验证
     if (!message || typeof message !== 'string') {
@@ -47,6 +47,10 @@ export async function POST(request: NextRequest) {
     console.log('Chat API: 转发请求到后端服务:', {
       message: cleanMessage.substring(0, 100),
       taskId,
+      taskType,
+      difficultyLevel,
+      urgency,
+      useWebSearch,
       messageLength: cleanMessage.length,
       backendUrl: API_CONFIG.BASE_URL,
       hasAuthToken: !!authToken
@@ -63,7 +67,11 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         message: cleanMessage,
         taskId: taskId,
-        sessionId: body.sessionId
+        sessionId: sessionId,
+        useWebSearch: !!useWebSearch,
+        taskType: taskType,
+        difficultyLevel: difficultyLevel,
+        urgency: urgency
       })
     })
 

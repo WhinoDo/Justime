@@ -2,15 +2,21 @@
 聊天历史记录数据模型
 """
 
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 from datetime import datetime
 
 class ChatMessage(BaseModel):
     """聊天消息模型"""
+    id: str = Field(..., alias="_id", description="消息 ID")
     role: str = Field(..., description="角色 (user/ai)")
     content: str = Field(..., description="消息内容")
     timestamp: datetime = Field(default_factory=datetime.now, description="时间戳")
+    taskDecomposition: Optional[Dict[str, Any]] = Field(None, description="任务分解数据")
+    multiTaskDecompositions: Optional[List[Dict[str, Any]]] = Field(None, description="多任务分解方案")
+    suggestedEvents: Optional[List[Dict[str, Any]]] = Field(None, description="建议的日程事件")
+    timingStrategy: Optional[Dict[str, Any]] = Field(None, description="任务调度策略")
+    taskAnalysis: Optional[Dict[str, Any]] = Field(None, description="任务分析数据")
 
 class ChatSession(BaseModel):
     """聊天会话模型"""

@@ -54,7 +54,7 @@ export interface IChatSession extends Document {
   sessionId: string        // 会话唯一标识
   title: string           // 会话标题
   messages: IChatMessage[] // 消息列表
-  
+
   // 会话统计
   stats: {
     messageCount: number    // 消息总数
@@ -63,7 +63,7 @@ export interface IChatSession extends Document {
     totalTokens: number     // 总token数
     averageResponseTime: number // 平均响应时间
   }
-  
+
   // 会话元数据
   metadata: {
     startTime: Date         // 会话开始时间
@@ -73,7 +73,7 @@ export interface IChatSession extends Document {
     mainTopics: string[]    // 主要话题
     taskCount: number       // 提取的任务数量
   }
-  
+
   // 会话设置
   settings: {
     autoSave: boolean       // 自动保存
@@ -82,7 +82,7 @@ export interface IChatSession extends Document {
     isPrivate: boolean      // 是否私密
     tags: string[]          // 标签
   }
-  
+
   status: 'active' | 'archived' | 'deleted'
   createdAt: Date
   updatedAt: Date
@@ -157,7 +157,7 @@ const chatSessionSchema = new Schema<IChatSession>({
     default: '新对话'
   },
   messages: [chatMessageSchema],
-  
+
   stats: {
     messageCount: { type: Number, default: 0 },
     userMessageCount: { type: Number, default: 0 },
@@ -165,7 +165,7 @@ const chatSessionSchema = new Schema<IChatSession>({
     totalTokens: { type: Number, default: 0 },
     averageResponseTime: { type: Number, default: 0 }
   },
-  
+
   metadata: {
     startTime: { type: Date, default: Date.now },
     lastActiveTime: { type: Date, default: Date.now },
@@ -174,7 +174,7 @@ const chatSessionSchema = new Schema<IChatSession>({
     mainTopics: [String],
     taskCount: { type: Number, default: 0 }
   },
-  
+
   settings: {
     autoSave: { type: Boolean, default: true },
     emotionAnalysis: { type: Boolean, default: true },
@@ -182,7 +182,7 @@ const chatSessionSchema = new Schema<IChatSession>({
     isPrivate: { type: Boolean, default: false },
     tags: [String]
   },
-  
+
   status: {
     type: String,
     enum: ['active', 'archived', 'deleted'],
@@ -206,68 +206,68 @@ if (typeof window === 'undefined') {
 }
 
 // 实例方法
-chatSessionSchema.methods.addMessage = function(message: Omit<IChatMessage, 'timestamp'>) {
+chatSessionSchema.methods.addMessage = function (message: Omit<IChatMessage, 'timestamp'>) {
   const newMessage: IChatMessage = {
     ...message,
     timestamp: new Date()
   }
-  
+
   this.messages.push(newMessage)
   this.updateStats()
   this.metadata.lastActiveTime = new Date()
-  
+
   return this.save()
 }
 
-chatSessionSchema.methods.updateStats = function() {
-  const messages = this.messages
-  
+chatSessionSchema.methods.updateStats = function () {
+  const messages: IChatMessage[] = this.messages
+
   this.stats.messageCount = messages.length
   this.stats.userMessageCount = messages.filter(m => m.type === MessageType.USER).length
   this.stats.assistantMessageCount = messages.filter(m => m.type === MessageType.ASSISTANT).length
-  
+
   // 计算总token数
   this.stats.totalTokens = messages.reduce((sum, msg) => {
     return sum + (msg.metadata?.tokenCount || 0)
   }, 0)
-  
+
   // 计算平均响应时间
   const responseTimes = messages
     .filter(m => m.metadata?.responseTime)
     .map(m => m.metadata!.responseTime!)
-  
+
   if (responseTimes.length > 0) {
     this.stats.averageResponseTime = responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length
   }
-  
+
   // 更新会话持续时间
   if (messages.length > 0) {
     const startTime = messages[0].timestamp
     const endTime = messages[messages.length - 1].timestamp
     this.metadata.duration = Math.floor((endTime.getTime() - startTime.getTime()) / 1000)
   }
-  
+
   // 更新情绪趋势
   const emotions = messages
     .filter(m => m.metadata?.emotionAnalysis?.emotion)
     .map(m => m.metadata!.emotionAnalysis!.emotion)
-  
+
   this.metadata.emotionTrend = emotions
-  
+
   // 更新任务数量
   this.metadata.taskCount = messages.reduce((sum, msg) => {
     return sum + (msg.metadata?.taskExtraction?.tasks?.length || 0)
   }, 0)
 }
 
-chatSessionSchema.methods.generateTitle = function() {
+chatSessionSchema.methods.generateTitle = function () {
   if (this.messages.length === 0) {
     this.title = '新对话'
     return
   }
-  
+
   // 使用第一条用户消息的前30个字符作为标题
-  const firstUserMessage = this.messages.find(m => m.type === MessageType.USER)
+  const firstUserMessage = this.messages.find((m: IChatMessage) => m.type === MessageType.USER)
   if (firstUserMessage) {
     this.title = firstUserMessage.content.substring(0, 30) + (firstUserMessage.content.length > 30 ? '...' : '')
   } else {
@@ -275,31 +275,31 @@ chatSessionSchema.methods.generateTitle = function() {
   }
 }
 
-chatSessionSchema.methods.archive = function() {
+chatSessionSchema.methods.archive = function () {
   this.status = 'archived'
   return this.save()
 }
 
-chatSessionSchema.methods.restore = function() {
+chatSessionSchema.methods.restore = function () {
   this.status = 'active'
   return this.save()
 }
 
-chatSessionSchema.methods.softDelete = function() {
+chatSessionSchema.methods.softDelete = function () {
   this.status = 'deleted'
   return this.save()
 }
 
 // 静态方法
-chatSessionSchema.statics.findByUserId = function(userId: string, status: string = 'active') {
+chatSessionSchema.statics.findByUserId = function (userId: string, status: string = 'active') {
   return this.find({ userId, status }).sort({ 'metadata.lastActiveTime': -1 })
 }
 
-chatSessionSchema.statics.findActiveByUserId = function(userId: string) {
+chatSessionSchema.statics.findActiveByUserId = function (userId: string) {
   return this.findOne({ userId, status: 'active' }).sort({ 'metadata.lastActiveTime': -1 })
 }
 
-chatSessionSchema.statics.createNewSession = function(userId: string, sessionId?: string) {
+chatSessionSchema.statics.createNewSession = function (userId: string, sessionId?: string) {
   return this.create({
     userId,
     sessionId: sessionId || `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -313,28 +313,30 @@ chatSessionSchema.statics.createNewSession = function(userId: string, sessionId?
 }
 
 // 中间件
-chatSessionSchema.pre('save', function(next) {
+chatSessionSchema.pre('save', function (next) {
+  const session = this as unknown as IChatSession & { generateTitle: () => void; updateStats: () => void; isNew: boolean };
+
   // 自动生成标题
-  if (this.isNew || this.title === '新对话') {
-    this.generateTitle()
+  if (session.isNew || session.title === '新对话') {
+    session.generateTitle()
   }
-  
+
   // 更新统计信息
-  this.updateStats()
-  
+  session.updateStats()
+
   next()
 })
 
 // 虚拟字段
-chatSessionSchema.virtual('isActive').get(function() {
+chatSessionSchema.virtual('isActive').get(function () {
   return this.status === 'active'
 })
 
-chatSessionSchema.virtual('lastMessage').get(function() {
+chatSessionSchema.virtual('lastMessage').get(function () {
   return this.messages.length > 0 ? this.messages[this.messages.length - 1] : null
 })
 
-chatSessionSchema.virtual('duration').get(function() {
+chatSessionSchema.virtual('duration').get(function () {
   return this.metadata.duration
 })
 

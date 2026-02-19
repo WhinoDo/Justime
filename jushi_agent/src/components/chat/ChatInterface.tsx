@@ -6,12 +6,13 @@ import { Button } from '@/components/ui/button'
 import { MessageBubble } from './MessageBubble'
 import { Message } from '@/types'
 import { generateId } from '@/lib/utils'
-import { Send, Trash2, Sparkles, MessageCircle, Sun, Moon, Monitor, Clock, AlertTriangle, Settings, Bot, Calendar, ChevronRight, Globe, Brain } from 'lucide-react'
+import { Send, Trash2, Sparkles, MessageCircle, Sun, Moon, Monitor, Clock, AlertTriangle, Settings, Bot, Calendar, ChevronRight, Globe, Brain, ListChecks, ChevronDown } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useEffect as useEffectTheme, useState as useStateTheme } from 'react'
 import Link from 'next/link'
 import { TaskSelector } from './TaskSelector'
-import { SuggestedEventCard, SuggestedCalendarEvent } from './SuggestedEventCard'
+import { SuggestedEventCard } from './SuggestedEventCard'
+import { SuggestedCalendarEvent } from '@/types'
 import { EditableTaskPlan } from './EditableTaskPlan'
 import { TaskItem } from '@/lib/ai/task-planner'
 import { TimeAwareTaskInput } from './TimeAwareTaskInput'
@@ -63,7 +64,10 @@ export function ChatInterface({
   const [taskDecomposition, setTaskDecomposition] = useState<any>(null)
   const [decompositionMessageId, setDecompositionMessageId] = useState<string | null>(null)
   const [multiTaskDecompositions, setMultiTaskDecompositions] = useState<any[] | null>(null)
+  const [expandedDecompositionId, setExpandedDecompositionId] = useState<string | null>(null)
   const [useWebSearch, setUseWebSearch] = useState(false)
+  const [timingStrategy, setTimingStrategy] = useState<any | null>(null)
+  const [taskAnalysis, setTaskAnalysis] = useState<any | null>(null)
 
   // 当 sessionId 改变时加载历史消息
   useEffect(() => {
@@ -72,6 +76,8 @@ export function ChatInterface({
         try {
           // 清空当前消息以避免闪烁
           setMessages([])
+          setTimingStrategy(null)
+          setTaskAnalysis(null)
 
           const res = await fetch(`/api/chat/sessions/${sessionId}/messages`)
           const data = await res.json()
@@ -83,7 +89,12 @@ export function ChatInterface({
               user_id: msg.role === 'user' ? 'current-user' : 'ai',
               role: msg.role === 'user' ? 'user' : 'assistant',
               content: msg.content,
-              created_at: msg.timestamp
+              created_at: msg.timestamp,
+              taskDecomposition: msg.taskDecomposition,
+              multiTaskDecompositions: msg.multiTaskDecompositions,
+              suggestedEvents: msg.suggestedEvents,
+              timingStrategy: msg.timingStrategy,
+              taskAnalysis: msg.taskAnalysis
             }))
             setMessages(formattedMessages)
           }
@@ -95,8 +106,29 @@ export function ChatInterface({
     } else {
       // 新会话，清空消息
       setMessages([])
+      setTimingStrategy(null)
+      setTaskAnalysis(null)
     }
   }, [sessionId])
+
+  const formatTaskType = (taskType?: string) => {
+    if (taskType === 'recitation') return '背诵任务'
+    if (taskType === 'thinking') return '思考任务'
+    return '通用任务'
+  }
+
+  const formatUrgency = (urgency?: string) => {
+    if (urgency === 'high') return '高紧急'
+    if (urgency === 'low') return '低紧急'
+    return '中紧急'
+  }
+
+  const formatStrategySource = (source?: string) => {
+    if (source === 'llm_classifier') return '模型自动分析'
+    if (source === 'heuristic_fallback') return '规则回退'
+    if (source === 'explicit') return '用户指定'
+    return source || '自动策略'
+  }
 
   const scrollToBottom = () => {
     if (messagesEndRef.current && typeof messagesEndRef.current.scrollIntoView === 'function') {
@@ -104,20 +136,13 @@ export function ChatInterface({
     }
   }
 
-  const adjustTextareaHeight = () => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto'
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`
-    }
-  }
+
 
   useEffect(() => {
     scrollToBottom()
   }, [messages])
 
-  useEffect(() => {
-    adjustTextareaHeight()
-  }, [input])
+
 
   // 更新当前时间
   useEffect(() => {
@@ -225,10 +250,7 @@ export function ChatInterface({
     setInput('')
     setIsLoading(true)
 
-    // 重置textarea高度
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto'
-    }
+    // textarea height reset removed as it is now fixed
 
     try {
       // 保存用户消息到数据库 (Client DB)
@@ -287,13 +309,18 @@ export function ChatInterface({
         })
 
         const assistantMessage: Message = {
-          id: generateId(),
+          id: data.data?.messageId || generateId(),
           user_id: 'current-user',
           role: 'assistant',
           content: responseContent,
           task_id: currentTaskId,
           emotion_score: data.data?.emotionScore || data.data?.emotion_score,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
+          timingStrategy: data.data?.timingStrategy,
+          taskAnalysis: data.data?.taskAnalysis,
+          taskDecomposition: data.data?.taskDecomposition,
+          multiTaskDecompositions: data.data?.multiTaskDecompositions,
+          suggestedEvents: data.data?.suggestedEvents
         }
 
         setMessages(prev => [...prev, assistantMessage])
@@ -310,6 +337,7 @@ export function ChatInterface({
 
         // 如果包含AI建议的日程
         if (data.data.suggestedEvents && data.data.suggestedEvents.length > 0) {
+          assistantMessage.suggestedEvents = data.data.suggestedEvents
           setSuggestedEvents(data.data.suggestedEvents)
           setEventMessageId(assistantMessage.id)
         }
@@ -319,6 +347,14 @@ export function ChatInterface({
           setMultiTaskDecompositions(data.data.multiTaskDecompositions || null)
           setDecompositionMessageId(assistantMessage.id)
         }
+
+        // Global state setters removed as we now attached directly to message
+        // if (data.data?.timingStrategy) {
+        //   setTimingStrategy(data.data.timingStrategy)
+        // }
+        // if (data.data?.taskAnalysis) {
+        //   setTaskAnalysis(data.data.taskAnalysis)
+        // }
 
         // 如果创建了新任务
         if (data.data.task) {
@@ -371,7 +407,7 @@ export function ChatInterface({
   }
 
   // 确认添加日程到日历
-  const handleConfirmEvent = async (event: SuggestedCalendarEvent) => {
+  const handleConfirmEvent = async (event: SuggestedCalendarEvent, messageId?: string) => {
     if (!authUser?.id) {
       throw new Error('请先登录')
     }
@@ -391,7 +427,8 @@ export function ChatInterface({
         priority: event.priority || 'medium',
         location: event.location,
         allDay: event.allDay || false,
-        aiGenerated: true
+        aiGenerated: true,
+        resources: event.resources
       })
     })
 
@@ -401,19 +438,47 @@ export function ChatInterface({
       throw new Error(result.error || '添加日程失败')
     }
 
+    // 清除该 message 上的已确认 event
+    if (messageId) {
+      setMessages(prev => prev.map(msg => {
+        if (msg.id !== messageId) return msg
+        const remaining = (msg.suggestedEvents || []).filter(e => e.title !== event.title)
+        return { ...msg, suggestedEvents: remaining.length > 0 ? remaining : undefined }
+      }))
+
+      // 持久化到后端
+      try {
+        await fetch(`/api/chat/messages/${messageId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ suggestedEvents: null })
+        })
+      } catch (error) {
+        console.error('Failed to persist suggestedEvents removal:', error)
+      }
+    }
+
     return result.data.event
   }
 
   // 取消日程建议
-  const handleDismissEvent = (event: SuggestedCalendarEvent) => {
+  const handleDismissEvent = (event: SuggestedCalendarEvent, messageId?: string) => {
     setSuggestedEvents(prev => prev.filter(e => e.title !== event.title))
     if (suggestedEvents.length === 1) {
       setEventMessageId(null)
     }
+    // 从 message 对象中移除该 event，使卡片消失
+    if (messageId) {
+      setMessages(prev => prev.map(msg => {
+        if (msg.id !== messageId) return msg
+        const remaining = (msg.suggestedEvents || []).filter(e => e.title !== event.title)
+        return { ...msg, suggestedEvents: remaining.length > 0 ? remaining : undefined }
+      }))
+    }
   }
 
   // 确认任务分解方案，批量创建日程
-  const handleConfirmDecomposition = async (project: any, selectedTasks: any[]) => {
+  const handleConfirmDecomposition = async (project: any, selectedTasks: any[], messageId?: string) => {
     if (!authUser?.id) {
       throw new Error('请先登录')
     }
@@ -453,7 +518,8 @@ export function ChatInterface({
           type: 'task',
           priority: 'medium',
           allDay: false,
-          aiGenerated: true
+          aiGenerated: true,
+          resources: task.resources || []
         })
       })
 
@@ -465,16 +531,44 @@ export function ChatInterface({
       currentHour += durationHours
     }
 
-    // 清空任务分解状态
+    // 清空任务分解状态 (全局)
+    console.log('🧹 handleConfirmDecomposition: clearing state, messageId =', messageId)
     setTaskDecomposition(null)
     setDecompositionMessageId(null)
+    setExpandedDecompositionId(null)
+
+    // 更新消息列表，移除已处理的任务分解数据，使其不再显示
+    if (messageId) {
+      // 1. 本地立即更新 UI (Optimistic UI Update)
+      setMessages(prev => prev.map(msg =>
+        msg.id === messageId
+          ? { ...msg, taskDecomposition: undefined, multiTaskDecompositions: undefined }
+          : msg
+      ))
+
+      // 2. 调用后端 API 持久化状态
+      try {
+        await fetch(`/api/chat/messages/${messageId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            taskDecomposition: null,
+            multiTaskDecompositions: null
+          })
+        })
+      } catch (error) {
+        console.error('Failed to persist message state update:', error)
+      }
+    }
 
     // 添加成功消息
     setMessages(prev => [...prev, {
       id: generateId(),
       user_id: authUser.id,
       role: 'assistant' as const,
-      type: 'assistant' as MessageType,
+      type: 'assistant' as MessageType, // Ensure MessageType is imported or use string if loose
       content: `已成功将 ${selectedTasks.length} 个子任务添加到日历！您可以在日历页面查看和管理这些任务。`,
       timestamp: new Date(),
       created_at: new Date().toISOString()
@@ -496,6 +590,8 @@ export function ChatInterface({
   const handleClearChat = () => {
     setMessages([])
     setCurrentTaskId(undefined)
+    setTimingStrategy(null)
+    setTaskAnalysis(null)
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -508,9 +604,9 @@ export function ChatInterface({
   const isEmpty = messages.length === 0
 
   return (
-    <div className="chat-interface">
+    <div className="chat-interface flex flex-col h-screen relative bg-gradient-to-br from-indigo-50 via-white to-cyan-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       {/* 聊天头部 */}
-      <div className="chat-header">
+      <div className="chat-header backdrop-blur-md bg-white/70 dark:bg-black/40 border-b border-white/20 dark:border-white/10 sticky top-0 z-40 shadow-sm">
         <div className="chat-header-content">
           <div className="flex items-center gap-3">
             <Link href="/dashboard">
@@ -627,7 +723,8 @@ export function ChatInterface({
       </div>
 
       {/* 消息容器 */}
-      <div className="messages-container">
+      {/* 消息容器 */}
+      <div className="messages-container flex-1 overflow-y-auto px-4 md:px-0 scroll-smooth">
         {isEmpty ? (
           <div className="flex flex-col items-center justify-center h-full text-center space-y-6">
             <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 flex items-center justify-center">
@@ -670,32 +767,130 @@ export function ChatInterface({
                   />
                 )}
                 {/* 如果这条消息包含日程建议，显示日程卡片 */}
-                {/* 只有在没有任务分解方案时才显示建议卡片，避免重复显示 */}
-                {eventMessageId === message.id && suggestedEvents.length > 0 && (!taskDecomposition || decompositionMessageId !== message.id) && (
+                {message.suggestedEvents && message.suggestedEvents.length > 0 && (
                   <div className="ml-11 mt-2 space-y-2">
-                    {suggestedEvents.map((event, index) => (
+                    {message.suggestedEvents.map((event, index) => (
                       <SuggestedEventCard
                         key={`${event.title}-${index}`}
                         event={event}
-                        onConfirm={handleConfirmEvent}
-                        onDismiss={() => handleDismissEvent(event)}
+                        onConfirm={(e) => handleConfirmEvent(e, message.id)}
+                        onDismiss={() => handleDismissEvent(event, message.id)}
                       />
                     ))}
                   </div>
                 )}
-                {/* 如果这条消息包含任务分解方案，显示可编辑任务计划 */}
-                {decompositionMessageId === message.id && taskDecomposition && (
+                {/* 如果这条消息包含任务分解方案，显示两阶段交互 */}
+                {((message.taskDecomposition?.project) || (decompositionMessageId === message.id && taskDecomposition?.project)) && (
                   <div className="ml-11 mt-2">
-                    <EditableTaskPlan
-                      decomposition={taskDecomposition}
-                      alternatives={multiTaskDecompositions || undefined}
-                      onConfirm={handleConfirmDecomposition}
-                      onCancel={() => {
-                        setTaskDecomposition(null)
-                        setMultiTaskDecompositions(null)
-                        setDecompositionMessageId(null)
-                      }}
-                    />
+                    {(() => {
+                      const decomp = message.taskDecomposition || taskDecomposition
+                      const isExpanded = expandedDecompositionId === message.id
+                      const totalHours = (decomp.subtasks || []).reduce((sum: number, t: any) => sum + (t.duration_hours || 0), 0)
+
+                      return isExpanded ? (
+                        <EditableTaskPlan
+                          decomposition={decomp}
+                          alternatives={message.multiTaskDecompositions || multiTaskDecompositions || undefined}
+                          onConfirm={(project, tasks) => handleConfirmDecomposition(project, tasks, message.id)}
+                          onCancel={() => {
+                            setExpandedDecompositionId(null)
+                          }}
+                        />
+                      ) : (
+                        /* 概要时间表卡片 */
+                        <div className="bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-xl border border-purple-200 dark:border-purple-800 p-4 shadow-sm">
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="p-2 bg-purple-100 dark:bg-purple-800 rounded-lg">
+                              <ListChecks className="w-5 h-5 text-purple-600 dark:text-purple-300" />
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-gray-900 dark:text-gray-100">
+                                {decomp.project?.name || '任务分解方案'}
+                              </h4>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                AI 已生成概要时间表
+                              </p>
+                            </div>
+                          </div>
+
+                          {decomp.project?.description && (
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
+                              {decomp.project.description}
+                            </p>
+                          )}
+
+                          {/* 概要统计 */}
+                          <div className="grid grid-cols-3 gap-3 mb-4">
+                            <div className="text-center p-2 bg-white/60 dark:bg-gray-800/60 rounded-lg">
+                              <div className="text-lg font-bold text-purple-600 dark:text-purple-400">
+                                {(decomp.subtasks || []).length}
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">子任务</div>
+                            </div>
+                            <div className="text-center p-2 bg-white/60 dark:bg-gray-800/60 rounded-lg">
+                              <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                                {decomp.project?.total_days || '—'}
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">天</div>
+                            </div>
+                            <div className="text-center p-2 bg-white/60 dark:bg-gray-800/60 rounded-lg">
+                              <div className="text-lg font-bold text-cyan-600 dark:text-cyan-400">
+                                {totalHours}
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">总工时</div>
+                            </div>
+                          </div>
+
+                          {/* 子任务预览列表 */}
+                          <div className="space-y-1.5 mb-4">
+                            {(decomp.subtasks || []).slice(0, 4).map((task: any, idx: number) => (
+                              <div key={idx} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                <span className="w-5 h-5 flex items-center justify-center bg-purple-100 dark:bg-purple-800/50 text-purple-600 dark:text-purple-300 rounded text-xs font-medium">
+                                  {task.order || idx + 1}
+                                </span>
+                                <span className="flex-1 truncate">{task.title}</span>
+                                <span className="text-xs text-gray-400">{task.duration_hours}h</span>
+                              </div>
+                            ))}
+                            {(decomp.subtasks || []).length > 4 && (
+                              <div className="text-xs text-gray-400 dark:text-gray-500 text-center">
+                                ... 还有 {(decomp.subtasks || []).length - 4} 个子任务
+                              </div>
+                            )}
+                          </div>
+
+                          {/* 操作按钮 */}
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => setExpandedDecompositionId(message.id)}
+                              className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
+                            >
+                              <Calendar className="w-4 h-4 mr-2" />
+                              查看详细日程安排
+                              <ChevronDown className="w-4 h-4 ml-1" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setTaskDecomposition(null)
+                                setMultiTaskDecompositions(null)
+                                setDecompositionMessageId(null)
+                                // Also clear from message
+                                setMessages(prev => prev.map(msg =>
+                                  msg.id === message.id
+                                    ? { ...msg, taskDecomposition: undefined, multiTaskDecompositions: undefined }
+                                    : msg
+                                ))
+                              }}
+                            >
+                              忽略
+                            </Button>
+                          </div>
+                        </div>
+                      )
+                    })()}
                   </div>
                 )}
               </div>
@@ -724,10 +919,11 @@ export function ChatInterface({
         </div>
       )}
 
-      {/* 悬浮输入区域 */}
-      <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 w-full max-w-3xl px-4 z-50">
-        <div className="relative bg-black/80 dark:bg-gray-900/90 backdrop-blur-xl border border-gray-700/50 rounded-3xl shadow-2xl overflow-hidden transition-all duration-300 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500/30">
+      {/* 底部输入区域容器 */}
+      <div className="p-4 shrink-0 transition-all duration-300">
+        <div className="max-w-3xl mx-auto relative rounded-2xl bg-white/30 dark:bg-white/5 border border-white/30 dark:border-white/10 shadow-sm backdrop-blur-sm overflow-hidden transition-all duration-300 focus-within:ring-2 focus-within:ring-blue-500/20">
 
+          {/* 输入框 */}
           {/* 输入框 */}
           <textarea
             ref={textareaRef}
@@ -735,9 +931,8 @@ export function ChatInterface({
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder={`输入 "@" 唤起常用语，或粘贴代码快速提问`}
-            className="w-full min-h-[56px] max-h-[200px] px-6 py-4 bg-transparent text-gray-200 placeholder:text-gray-500 text-base resize-none focus:outline-none scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent"
+            className="w-full h-32 px-6 py-4 bg-transparent text-gray-800 dark:text-gray-200 placeholder:text-gray-500 dark:placeholder:text-gray-400 text-base resize-none focus:outline-none overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400/50 scrollbar-track-transparent"
             disabled={isLoading}
-            rows={1}
           />
 
           {/* 底部工具栏 */}
@@ -746,7 +941,7 @@ export function ChatInterface({
               {/* 深度思考 (Toggle) */}
               <button
                 onClick={() => setUseWebSearch(!useWebSearch)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${useWebSearch ? 'text-blue-400 bg-blue-500/10' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/30'}`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${useWebSearch ? 'text-blue-600 bg-blue-500/10 dark:text-blue-400' : 'text-gray-500 hover:bg-black/5 dark:text-gray-400 dark:hover:bg-white/5'}`}
                 title="启用深度思考"
               >
                 <Brain className="w-4 h-4" />
@@ -760,8 +955,8 @@ export function ChatInterface({
                 onClick={handleSendMessage}
                 disabled={isLoading || !input.trim()}
                 className={`p-2 rounded-full transition-all duration-200 ${input.trim()
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 hover:bg-blue-500 hover:scale-105'
-                    : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 hover:bg-blue-500 hover:scale-105'
+                  : 'bg-gray-300 dark:bg-gray-700 text-gray-500 cursor-not-allowed'
                   }`}
               >
                 {isLoading ? (
@@ -772,6 +967,11 @@ export function ChatInterface({
               </button>
             </div>
           </div>
+        </div>
+        <div className="text-center mt-2">
+          <p className="text-xs text-gray-400 dark:text-gray-500">
+            内容由 AI 生成，请仔细甄别
+          </p>
         </div>
       </div>
     </div>

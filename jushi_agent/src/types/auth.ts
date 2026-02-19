@@ -43,6 +43,19 @@ export enum MessageStatus {
 
 
 // 用户资料接口
+export interface WorkStudyHabits {
+  occupation?: string
+  currentStudyFocus?: string
+  highEfficiencyPeriods?: string[]
+  lowEfficiencyPeriods?: string[]
+  preferredFocusMinutes?: number
+  preferredBreakMinutes?: number
+  maxFocusSessionsPerDay?: number
+  weeklyUnavailableSlots?: string[]
+  planningPreference?: string
+  notes?: string
+}
+
 export interface UserProfile {
   name: string
   displayName?: string
@@ -54,6 +67,7 @@ export interface UserProfile {
   phone?: string
   location?: string
   website?: string
+  habits?: WorkStudyHabits
 }
 
 // 用户偏好设置接口
@@ -98,13 +112,14 @@ export interface SafeUser {
   profile: UserProfile
   isEmailVerified: boolean
   isPhoneVerified?: boolean
-  isPhoneVerified?: boolean
+
   role: UserRole
   status?: UserStatus
   preferences?: UserPreferences
   statistics?: UserStatistics
   lastLoginAt?: string
   createdAt?: string
+  feishuBinding?: boolean
 }
 
 // 认证结果接口

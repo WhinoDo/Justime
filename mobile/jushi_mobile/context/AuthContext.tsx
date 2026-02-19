@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getConfiguredApiBaseUrl, isManualApiBaseUrlEnabled } from '@/constants/app-config';
 
 const STORAGE_KEYS = {
   token: '@jushi/token',
@@ -30,12 +31,27 @@ type AuthContextValue = {
 };
 
 const normalizeBaseUrl = (value: string) => value.trim().replace(/\/+$/, '');
+const safeParseUser = (value: string): AuthUser | null => {
+  try {
+    const parsed = JSON.parse(value) as Partial<AuthUser>;
+    if (!parsed || typeof parsed !== 'object') return null;
+    if (!parsed.id || !parsed.email) return null;
+    return {
+      id: parsed.id,
+      email: parsed.email,
+      displayName: parsed.displayName || parsed.email,
+    };
+  } catch {
+    return null;
+  }
+};
+
 const getDefaultBaseUrl = () => {
-  const envUrl = (process.env.EXPO_PUBLIC_API_BASE_URL || '').trim();
-  return normalizeBaseUrl(envUrl) || 'http://127.0.0.1:8080';
+  return normalizeBaseUrl(getConfiguredApiBaseUrl()) || 'http://127.0.0.1:8080';
 };
 
 const DEFAULT_BASE_URL = getDefaultBaseUrl();
+const MANUAL_API_BASE_URL_ENABLED = isManualApiBaseUrlEnabled();
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -46,6 +62,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
+    let settled = false;
+    const failSafeTimer = setTimeout(() => {
+      if (!settled) {
+        setLoading(false);
+      }
+    }, 6000);
+
     const hydrate = async () => {
       try {
         const [savedToken, savedUser, savedBaseUrl] = await Promise.all([
@@ -58,18 +81,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setToken(savedToken);
         }
         if (savedUser) {
-          setUser(JSON.parse(savedUser) as AuthUser);
+          const parsedUser = safeParseUser(savedUser);
+          if (parsedUser) {
+            setUser(parsedUser);
+          } else {
+            await AsyncStorage.removeItem(STORAGE_KEYS.user);
+          }
         }
-        if (savedBaseUrl) {
-          const cleanSaved = normalizeBaseUrl(savedBaseUrl);
-          setBaseUrlState(cleanSaved || DEFAULT_BASE_URL);
+        if (MANUAL_API_BASE_URL_ENABLED) {
+          if (savedBaseUrl) {
+            const cleanSaved = normalizeBaseUrl(savedBaseUrl);
+            setBaseUrlState(cleanSaved || DEFAULT_BASE_URL);
+          }
+        } else {
+          setBaseUrlState(DEFAULT_BASE_URL);
+          await AsyncStorage.setItem(STORAGE_KEYS.baseUrl, DEFAULT_BASE_URL);
         }
+      } catch (error) {
+        console.error('Auth hydrate failed:', error);
       } finally {
+        settled = true;
+        clearTimeout(failSafeTimer);
         setLoading(false);
       }
     };
 
-    hydrate();
+    void hydrate();
+    return () => {
+      clearTimeout(failSafeTimer);
+    };
   }, []);
 
   const setBaseUrl = async (url: string) => {

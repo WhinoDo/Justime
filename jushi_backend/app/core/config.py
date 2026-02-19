@@ -44,6 +44,14 @@ class Settings(BaseSettings):
     
     # 默认使用的 LLM 名称
     LLM_DEFAULT_PROVIDER: str = "default"
+
+    # 模型路由配置
+    ROUTER_ENABLED: bool = True
+    ROUTER_CLASSIFIER_TIMEOUT_SECONDS: int = 8
+    ROUTER_MAIN_TIMEOUT_SECONDS: int = 22
+    ROUTER_FALLBACK_TIMEOUT_SECONDS: int = 35
+    ENABLE_PARALLEL_ENSEMBLE: bool = False
+    ENABLE_ROUTING_META: bool = True
     
     # MongoDB配置
     MONGODB_URI: str = "mongodb://localhost:27017/jushi-agent"
@@ -115,4 +123,3 @@ class Settings(BaseSettings):
 
 # 创建全局配置实例
 settings = Settings()
-

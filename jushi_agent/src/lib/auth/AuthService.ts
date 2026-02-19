@@ -262,7 +262,7 @@ export class AuthService {
       loginMethod: user.loginMethod
     }
 
-    return jwt.sign(payload, this.JWT_SECRET, { expiresIn })
+    return jwt.sign(payload, this.JWT_SECRET, { expiresIn: expiresIn as any })
   }
 
   /**
@@ -275,7 +275,7 @@ export class AuthService {
     }
 
     return jwt.sign(payload, this.JWT_REFRESH_SECRET, {
-      expiresIn: this.JWT_REFRESH_EXPIRES_IN
+      expiresIn: this.JWT_REFRESH_EXPIRES_IN as any
     })
   }
 

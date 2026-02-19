@@ -18,6 +18,13 @@ class Reminder(BaseModel):
     sent: bool = Field(False, description="是否已发送")
 
 
+class EventResource(BaseModel):
+    """日程关联资源"""
+    title: str = Field(..., max_length=200, description="资源标题")
+    url: str = Field(..., max_length=1000, description="资源链接")
+    type: Optional[str] = Field(None, max_length=50, description="资源类型")
+
+
 class CalendarEventBase(BaseModel):
     """日历事件基础字段"""
     title: str = Field(..., max_length=200, description="事件标题")
@@ -30,6 +37,7 @@ class CalendarEventBase(BaseModel):
     status: EventStatus = Field("pending", description="事件状态")
     color: Optional[str] = Field(None, description="事件颜色")
     location: Optional[str] = Field(None, max_length=200, description="地点")
+    resources: Optional[List[EventResource]] = Field(None, description="相关资源链接")
     reminders: Optional[List[Reminder]] = Field(None, description="提醒设置")
     emotionScore: Optional[int] = Field(None, ge=0, le=10, description="创建时情绪分数")
     aiGenerated: bool = Field(False, description="是否由AI生成")
@@ -53,6 +61,7 @@ class CalendarEventUpdate(BaseModel):
     status: Optional[EventStatus] = None
     color: Optional[str] = None
     location: Optional[str] = None
+    resources: Optional[List[EventResource]] = None
     reminders: Optional[List[Reminder]] = None
     emotionScore: Optional[int] = Field(None, ge=0, le=10)
     aiGenerated: Optional[bool] = None

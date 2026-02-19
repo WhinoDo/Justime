@@ -45,6 +45,18 @@ export function MessageBubble({ message, onTaskCreate }: MessageBubbleProps) {
     return '状态良好'
   }
 
+  const formatTaskType = (taskType?: string) => {
+    if (taskType === 'recitation') return '背诵任务'
+    if (taskType === 'thinking') return '思考任务'
+    return '通用任务'
+  }
+
+  const formatUrgency = (urgency?: string) => {
+    if (urgency === 'high') return '高紧急'
+    if (urgency === 'low') return '低紧急'
+    return '中紧急'
+  }
+
   return (
     <div className={cn(
       "group flex gap-3 max-w-[85%] animate-in slide-in-from-bottom-1 duration-300",
@@ -73,6 +85,26 @@ export function MessageBubble({ message, onTaskCreate }: MessageBubbleProps) {
             ? "bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-br-md"
             : "bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-bl-md border-gray-200 dark:border-gray-700"
         )}>
+          {/* 任务分析元数据 */}
+          {(message.timingStrategy || message.taskAnalysis) && (
+            <div className="mb-3 flex flex-wrap items-center gap-1.5 text-[10px] md:text-xs border-b border-gray-100 dark:border-gray-700/50 pb-2">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-medium">
+                <Brain className="w-3 h-3" />
+                {formatTaskType(message.taskAnalysis?.taskType || message.timingStrategy?.taskType)}
+              </span>
+              <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 font-medium">
+                难度 {message.taskAnalysis?.difficultyLevel || message.timingStrategy?.difficultyLevel || 3}
+              </span>
+              <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 font-medium">
+                {formatUrgency(message.taskAnalysis?.urgency || message.timingStrategy?.urgency)}
+              </span>
+              {typeof message.taskAnalysis?.confidence === 'number' && (
+                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 font-medium">
+                  {Math.round(message.taskAnalysis.confidence * 100)}%
+                </span>
+              )}
+            </div>
+          )}
           {/* Markdown 渲染 */}
           <div className={cn(
             "prose prose-sm max-w-none",

@@ -1,9 +1,9 @@
-import React, { useCallback, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   RefreshControl,
-  SafeAreaView,
   StyleSheet,
   View,
   TouchableOpacity,
@@ -16,6 +16,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/context/AuthContext';
 import { ThemedText } from '@/components/themed-text';
@@ -24,6 +25,11 @@ import { Card } from '@/components/ui/card';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Button } from '@/components/ui/button';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import {
+  EventDetailSheet,
+  ScheduleEventDetail,
+  ScheduleEventUpdatePayload,
+} from '@/components/schedule/EventDetailSheet';
 
 // Configure Locale for Calendar (Simplified Chinese)
 LocaleConfig.locales['zh'] = {
@@ -43,17 +49,33 @@ type CalendarEvent = {
   end: string;
   location?: string;
   type?: string;
+  priority?: string;
+  status?: string;
+  allDay?: boolean;
+  aiGenerated?: boolean;
+  resources?: {
+    title?: string;
+    url?: string;
+  }[];
 };
 
 export default function ScheduleScreen() {
   const { token, baseUrl, loading: authLoading } = useAuth();
   const backgroundColor = useThemeColor({}, 'background');
+  const { width: screenWidth } = useWindowDimensions();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [viewMode, setViewMode] = useState<'list' | 'timeline'>('list');
   const [isDatePickerVisible, setDatePickerVisible] = useState(false);
   const [pickerYear, setPickerYear] = useState(new Date().getFullYear());
+  const [selectedEvent, setSelectedEvent] = useState<ScheduleEventDetail | null>(null);
+  const [detailVisible, setDetailVisible] = useState(false);
+  const [deletingEvent, setDeletingEvent] = useState(false);
+  const [savingEvent, setSavingEvent] = useState(false);
+  const [batchDeleteMode, setBatchDeleteMode] = useState(false);
+  const [selectedEventIds, setSelectedEventIds] = useState<Set<string>>(new Set());
+  const [batchDeleting, setBatchDeleting] = useState(false);
 
   const toggleViewMode = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -69,7 +91,10 @@ export default function ScheduleScreen() {
       });
       const result = await response.json();
       if (result.success) {
-        setEvents(result.data?.events || []);
+        const nextEvents = result.data?.events || [];
+        setEvents(nextEvents);
+        const validIds = new Set(nextEvents.map((event: CalendarEvent) => event.id));
+        setSelectedEventIds((prev) => new Set(Array.from(prev).filter((id) => validIds.has(id))));
       }
     } catch (e) {
       console.error(e);
@@ -113,6 +138,181 @@ export default function ScheduleScreen() {
     return events.filter(event => event.start.startsWith(selectedDate));
   }, [events, selectedDate]);
 
+  useEffect(() => {
+    if (!batchDeleteMode) return;
+    const visibleIds = new Set(selectedEvents.map((event) => event.id));
+    setSelectedEventIds((prev) => new Set(Array.from(prev).filter((id) => visibleIds.has(id))));
+  }, [batchDeleteMode, selectedEvents]);
+
+  const openEventDetail = (event: CalendarEvent) => {
+    setSelectedEvent(event);
+    setDetailVisible(true);
+  };
+
+  const closeEventDetail = () => {
+    setDetailVisible(false);
+    setSelectedEvent(null);
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    if (!token) return;
+    setDeletingEvent(true);
+    try {
+      const response = await fetch(`${baseUrl}/api/v1/calendar/events/${eventId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.detail || result.message || '删除失败');
+      }
+
+      setEvents((prev) => prev.filter((event) => event.id !== eventId));
+      closeEventDetail();
+    } catch (error) {
+      console.error('删除日程失败:', error);
+    } finally {
+      setDeletingEvent(false);
+    }
+  };
+
+  const toggleEventSelection = (eventId: string) => {
+    setSelectedEventIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(eventId)) {
+        next.delete(eventId);
+      } else {
+        next.add(eventId);
+      }
+      return next;
+    });
+  };
+
+  const handleEnterBatchDeleteMode = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    if (viewMode !== 'list') {
+      setViewMode('list');
+    }
+    closeEventDetail();
+    setSelectedEventIds(new Set());
+    setBatchDeleteMode(true);
+  };
+
+  const handleCancelBatchDelete = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setBatchDeleteMode(false);
+    setSelectedEventIds(new Set());
+  };
+
+  const handleBatchDeleteEvents = () => {
+    if (!token || selectedEventIds.size === 0 || batchDeleting) return;
+
+    Alert.alert(
+      '批量删除日程',
+      `确认删除已勾选的 ${selectedEventIds.size} 个日程吗？`,
+      [
+        { text: '取消', style: 'cancel' },
+        {
+          text: '删除',
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              setBatchDeleting(true);
+              const ids = Array.from(selectedEventIds);
+              const deletedIds: string[] = [];
+              let failedCount = 0;
+
+              try {
+                const results = await Promise.allSettled(
+                  ids.map(async (eventId) => {
+                    const response = await fetch(`${baseUrl}/api/v1/calendar/events/${eventId}`, {
+                      method: 'DELETE',
+                      headers: { Authorization: `Bearer ${token}` },
+                    });
+
+                    let payload: any = null;
+                    try {
+                      payload = await response.json();
+                    } catch {
+                      payload = null;
+                    }
+
+                    if (!response.ok || (payload && payload.success === false)) {
+                      throw new Error(payload?.detail || payload?.message || '删除失败');
+                    }
+                    return eventId;
+                  })
+                );
+
+                results.forEach((result) => {
+                  if (result.status === 'fulfilled') {
+                    deletedIds.push(result.value);
+                  } else {
+                    failedCount += 1;
+                  }
+                });
+
+                if (deletedIds.length > 0) {
+                  setEvents((prev) => prev.filter((event) => !deletedIds.includes(event.id)));
+                  setSelectedEventIds((prev) => {
+                    const next = new Set(prev);
+                    deletedIds.forEach((id) => next.delete(id));
+                    return next;
+                  });
+                }
+
+                if (failedCount > 0) {
+                  Alert.alert('部分删除失败', `已删除 ${deletedIds.length} 个，失败 ${failedCount} 个，请稍后重试。`);
+                } else {
+                  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                  setBatchDeleteMode(false);
+                  setSelectedEventIds(new Set());
+                }
+              } catch (error) {
+                console.error('批量删除日程失败:', error);
+                Alert.alert('删除失败', '批量删除失败，请稍后重试。');
+              } finally {
+                setBatchDeleting(false);
+              }
+            })();
+          },
+        },
+      ]
+    );
+  };
+
+  const handleUpdateEvent = async (eventId: string, payload: ScheduleEventUpdatePayload) => {
+    if (!token) return;
+    setSavingEvent(true);
+    try {
+      const response = await fetch(`${baseUrl}/api/v1/calendar/events/${eventId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.detail || result.message || '保存失败');
+      }
+
+      const updatedEvent = result.data?.event as CalendarEvent | undefined;
+      if (updatedEvent) {
+        setEvents((prev) => prev.map((item) => (item.id === eventId ? updatedEvent : item)));
+      } else {
+        await loadEvents();
+      }
+      closeEventDetail();
+    } catch (error) {
+      console.error('更新日程失败:', error);
+      throw error;
+    } finally {
+      setSavingEvent(false);
+    }
+  };
+
   if (authLoading) {
     return (
       <View style={[styles.centered, { backgroundColor }]}>
@@ -128,8 +328,6 @@ export default function ScheduleScreen() {
       </SafeAreaView>
     );
   }
-
-  const { width: screenWidth } = useWindowDimensions();
 
   const HOUR_HEIGHT = 60;
   const START_HOUR = 0;
@@ -289,7 +487,7 @@ export default function ScheduleScreen() {
                   backgroundColor: 'transparent', // Wrapper handles color if specific styling needed, but here we apply to content or container
                 }
               ]}
-              onPress={() => { /* Handle press */ }}
+              onPress={() => openEventDetail(event)}
             >
               <View style={[
                 styles.gridEventContent,
@@ -383,6 +581,15 @@ export default function ScheduleScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]}>
       {renderDatePicker()}
+      <EventDetailSheet
+        visible={detailVisible}
+        event={selectedEvent}
+        deleting={deletingEvent}
+        saving={savingEvent}
+        onClose={closeEventDetail}
+        onDelete={handleDeleteEvent}
+        onSave={handleUpdateEvent}
+      />
       <View style={styles.calendarContainer}>
         <Calendar
           key={selectedDate} // Force re-render to jump to new date
@@ -432,12 +639,44 @@ export default function ScheduleScreen() {
           <ThemedText type="subtitle">{format(new Date(selectedDate), 'yyyy年 M月', { locale: zhCN })}</ThemedText>
           <IconSymbol name="chevron.down" size={16} color={Colors.light.text} style={{ marginLeft: 4, marginTop: 2 }} />
         </TouchableOpacity>
-        <Button
-          variant="ghost"
-          title=""
-          icon={<IconSymbol name={viewMode === 'list' ? 'list.bullet' : 'calendar'} size={20} color={Colors.light.primary} />}
-          onPress={toggleViewMode}
-        />
+        <View style={styles.headerActions}>
+          {batchDeleteMode ? (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                title="取消"
+                onPress={handleCancelBatchDelete}
+                style={styles.headerActionButton}
+              />
+              <Button
+                variant="destructive"
+                size="sm"
+                title={`删除(${selectedEventIds.size})`}
+                onPress={handleBatchDeleteEvents}
+                disabled={selectedEventIds.size === 0 || batchDeleting}
+                loading={batchDeleting}
+                style={styles.headerActionButton}
+              />
+            </>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              title="批量删除"
+              icon={<IconSymbol name="trash" size={16} color={Colors.light.error} />}
+              onPress={handleEnterBatchDeleteMode}
+              style={styles.headerActionButton}
+            />
+          )}
+          <Button
+            variant="ghost"
+            title=""
+            icon={<IconSymbol name={viewMode === 'list' ? 'list.bullet' : 'calendar'} size={20} color={Colors.light.primary} />}
+            onPress={toggleViewMode}
+            disabled={batchDeleting || batchDeleteMode}
+          />
+        </View>
       </View>
 
       {viewMode === 'list' ? (
@@ -446,34 +685,52 @@ export default function ScheduleScreen() {
           keyExtractor={(item) => item.id}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={loadEvents} />}
           contentContainerStyle={styles.listContent}
-          renderItem={({ item }) => (
-            <Card variant="elevated" style={styles.eventCard}>
-              <View style={styles.eventRow}>
-                <View style={styles.timeColumn}>
-                  <ThemedText type="caption" style={{ color: Colors.light.primary, fontWeight: '600' }}>
-                    {format(new Date(item.start), 'HH:mm')}
-                  </ThemedText>
-                  <ThemedText type="caption" style={{ color: Colors.light.textSecondary }}>
-                    {format(new Date(item.end), 'HH:mm')}
-                  </ThemedText>
-                </View>
-                <View style={styles.infoColumn}>
-                  <ThemedText type="defaultSemiBold">{item.title}</ThemedText>
-                  {!!item.location && (
-                    <View style={styles.locationRow}>
-                      <IconSymbol name="location" size={12} color={Colors.light.textSecondary} />
-                      <ThemedText type="caption" style={{ marginLeft: 4 }}>{item.location}</ThemedText>
+          renderItem={({ item }) => {
+            const selected = selectedEventIds.has(item.id);
+            return (
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => (batchDeleteMode ? toggleEventSelection(item.id) : openEventDetail(item))}
+              >
+                <Card variant="elevated" style={[styles.eventCard, batchDeleteMode && selected && styles.eventCardSelected]}>
+                  {batchDeleteMode ? (
+                    <View style={styles.selectionIndicatorWrap}>
+                      <View style={[styles.selectionIndicator, selected && styles.selectionIndicatorSelected]}>
+                        {selected ? <IconSymbol name="checkmark" size={14} color="#FFF" /> : null}
+                      </View>
                     </View>
-                  )}
-                  {!!item.description && (
-                    <ThemedText type="caption" style={{ marginTop: 4, color: Colors.light.textSecondary }} numberOfLines={2}>
-                      {item.description}
-                    </ThemedText>
-                  )}
-                </View>
-              </View>
-            </Card>
-          )}
+                  ) : null}
+                  <View style={styles.eventRow}>
+                    <View style={styles.timeColumn}>
+                      <ThemedText type="caption" style={{ color: Colors.light.primary, fontWeight: '600' }}>
+                        {format(new Date(item.start), 'HH:mm')}
+                      </ThemedText>
+                      <ThemedText type="caption" style={{ color: Colors.light.textSecondary }}>
+                        {format(new Date(item.end), 'HH:mm')}
+                      </ThemedText>
+                    </View>
+                    <View style={styles.infoColumn}>
+                      <ThemedText type="defaultSemiBold">{item.title}</ThemedText>
+                      {!!item.location && (
+                        <View style={styles.locationRow}>
+                          <IconSymbol name="location" size={12} color={Colors.light.textSecondary} />
+                          <ThemedText type="caption" style={{ marginLeft: 4 }}>{item.location}</ThemedText>
+                        </View>
+                      )}
+                      {!!item.description && (
+                        <ThemedText type="caption" style={{ marginTop: 4, color: Colors.light.textSecondary }} numberOfLines={2}>
+                          {item.description}
+                        </ThemedText>
+                      )}
+                      <ThemedText type="caption" style={{ marginTop: 6, color: Colors.light.primary }}>
+                        {batchDeleteMode ? '点击勾选日程' : '点击查看详细信息'}
+                      </ThemedText>
+                    </View>
+                  </View>
+                </Card>
+              </TouchableOpacity>
+            );
+          }}
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <ThemedText style={{ color: Colors.light.textSecondary }}>暂无日程</ThemedText>
@@ -508,6 +765,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerActionButton: {
+    marginRight: Spacing.xs,
+  },
   listContent: {
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.xl,
@@ -515,6 +779,31 @@ const styles = StyleSheet.create({
   eventCard: {
     marginBottom: Spacing.md,
     padding: Spacing.md,
+  },
+  eventCardSelected: {
+    borderWidth: 1,
+    borderColor: Colors.light.error,
+    backgroundColor: Colors.light.surface,
+  },
+  selectionIndicatorWrap: {
+    position: 'absolute',
+    top: Spacing.sm,
+    right: Spacing.sm,
+    zIndex: 2,
+  },
+  selectionIndicator: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    backgroundColor: Colors.light.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectionIndicatorSelected: {
+    backgroundColor: Colors.light.error,
+    borderColor: Colors.light.error,
   },
   eventRow: {
     flexDirection: 'row',

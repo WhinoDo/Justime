@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import { FileText } from 'lucide-react'
+import { FileText, Link as LinkIcon, ExternalLink, Plus, Trash2, X } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -54,6 +54,7 @@ export function EventDialog({
     priority: 'medium',
     location: '',
     color: '#3b82f6',
+    resources: [] as Array<{ title: string; url: string; type?: string }>,
   })
   const [loading, setLoading] = useState(false)
 
@@ -68,8 +69,10 @@ export function EventDialog({
         allDay: event.allDay || false,
         type: event.type || 'other',
         priority: event.priority || 'medium',
+
         location: event.location || '',
         color: event.color || '#3b82f6',
+        resources: event.resources || [],
       })
     } else if (defaultStart && defaultEnd) {
       setFormData({
@@ -80,8 +83,10 @@ export function EventDialog({
         allDay: false,
         type: 'other',
         priority: 'medium',
+
         location: '',
         color: '#3b82f6',
+        resources: [],
       })
     }
   }, [event, defaultStart, defaultEnd])
@@ -118,8 +123,29 @@ export function EventDialog({
         alert('删除失败，请重试')
       } finally {
         setLoading(false)
+
+
       }
     }
+  }
+
+  const addResource = () => {
+    setFormData({
+      ...formData,
+      resources: [...(formData.resources || []), { title: '', url: '' }]
+    })
+  }
+
+  const removeResource = (index: number) => {
+    const newResources = [...(formData.resources || [])]
+    newResources.splice(index, 1)
+    setFormData({ ...formData, resources: newResources })
+  }
+
+  const updateResource = (index: number, field: 'title' | 'url', value: string) => {
+    const newResources = [...(formData.resources || [])]
+    newResources[index] = { ...newResources[index], [field]: value }
+    setFormData({ ...formData, resources: newResources })
   }
 
   return (
@@ -226,6 +252,72 @@ export function EventDialog({
                 placeholder="输入事件描述"
                 rows={3}
               />
+            </div>
+
+            {/* 资源列表管理 */}
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between">
+                <Label>相关资源</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={addResource}
+                  className="h-6 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                >
+                  <Plus className="w-3 h-3 mr-1" />
+                  添加资源
+                </Button>
+              </div>
+
+              <div className="grid gap-2">
+                {formData.resources && formData.resources.map((resource, i) => (
+                  <div key={i} className="flex gap-2 items-start bg-gray-50 dark:bg-gray-800/50 p-2 rounded-lg group">
+                    <div className="grid gap-2 flex-1">
+                      <Input
+                        value={resource.title}
+                        onChange={(e) => updateResource(i, 'title', e.target.value)}
+                        placeholder="资源名称"
+                        className="h-8 text-sm"
+                      />
+                      <div className="flex gap-2">
+                        <Input
+                          value={resource.url}
+                          onChange={(e) => updateResource(i, 'url', e.target.value)}
+                          placeholder="URL 链接 (https://...)"
+                          className="h-8 text-sm flex-1 font-mono"
+                        />
+                        {resource.url && (
+                          <a
+                            href={resource.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center w-8 h-8 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200"
+                            title="访问链接"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeResource(i)}
+                      className="h-8 w-8 text-gray-400 hover:text-red-500 hover:bg-red-50"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+
+                {(!formData.resources || formData.resources.length === 0) && (
+                  <div className="text-center py-4 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-lg text-sm text-gray-400">
+                    暂无资源
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* 颜色 */}

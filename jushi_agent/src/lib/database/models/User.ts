@@ -312,7 +312,7 @@ if (typeof window === 'undefined') {
 
 // 虚拟字段
 userSchema.virtual('isLocked').get(function () {
-  return !!(this.lockUntil && this.lockUntil > Date.now())
+  return !!(this.lockUntil && this.lockUntil.getTime() > Date.now())
 })
 
 userSchema.virtual('displayName').get(function () {

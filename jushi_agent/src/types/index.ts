@@ -50,6 +50,26 @@ export interface Message {
   content: string
   emotion_score?: number
   created_at: string
+  suggestedEvents?: SuggestedCalendarEvent[]
+  timingStrategy?: any
+  taskAnalysis?: any
+  taskDecomposition?: any
+  multiTaskDecompositions?: any[]
+}
+
+export interface SuggestedCalendarEvent {
+  _id?: string
+  title: string
+  description?: string
+  start: string
+  end: string
+  type?: string
+  priority?: string
+  location?: string
+  allDay?: boolean
+  aiGenerated?: boolean
+  conflicts?: any[]
+  resources?: Array<{ title: string; url: string; type?: string }>
 }
 
 // 任务类型
@@ -141,6 +161,10 @@ export interface ChatRequest {
   taskId?: string
   emotionScore?: number
   sessionId?: string
+  useWebSearch?: boolean
+  taskType?: 'recitation' | 'thinking' | 'general'
+  difficultyLevel?: 1 | 2 | 3 | 4 | 5
+  urgency?: 'low' | 'medium' | 'high'
 }
 
 export interface ChatResponse {
@@ -149,6 +173,35 @@ export interface ChatResponse {
   emotionTags: string[]
   needsEmotionInput?: boolean
   sessionId?: string
+  timingStrategy?: {
+    profileKey: string
+    taskType: 'recitation' | 'thinking' | 'general'
+    difficultyLevel: number
+    urgency: 'low' | 'medium' | 'high'
+    interactionDurationSeconds: number
+    intervalSeconds: number
+    maxSteps: number
+    timeoutSeconds: number
+    contextWindowMessages: number
+    nextSuggestedAt: string
+    strategySource: string
+    analysisMeta?: {
+      source?: 'llm' | 'heuristic' | string
+      confidence?: number
+      reason?: string
+      taskType?: 'recitation' | 'thinking' | 'general'
+      difficultyLevel?: number
+      urgency?: 'low' | 'medium' | 'high'
+    }
+  }
+  taskAnalysis?: {
+    source?: 'llm' | 'heuristic' | string
+    confidence?: number
+    reason?: string
+    taskType?: 'recitation' | 'thinking' | 'general'
+    difficultyLevel?: number
+    urgency?: 'low' | 'medium' | 'high'
+  }
   suggestedActions?: string[]
   task?: Task
   taskExtraction?: TaskExtraction

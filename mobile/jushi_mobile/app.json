@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "jushi_mobile",
+    "name": "聚时",
     "slug": "jushi_mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "jushimobile",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
@@ -18,14 +18,28 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "edgeToEdgeEnabled": false,
+      "predictiveBackGestureEnabled": false,
+      "package": "com.anonymous.jushi_mobile"
     },
     "web": {
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      [
+        "./plugins/with-jushi-android-gradle",
+        {
+          "gradleJvmArgs": "-Xmx2048m -XX:MaxMetaspaceSize=512m --add-opens=java.base/java.lang=ALL-UNNAMED",
+          "gradleParallel": true,
+          "javaHome": "/Users/zhuyuxuan/Library/Java/JavaVirtualMachines/ms-17.0.16/Contents/Home",
+          "extraMavenRepos": [
+            "https://www.jitpack.io"
+          ],
+          "newArchEnabled": true,
+          "forceJsBundleInDebug": true
+        }
+      ],
       "expo-router",
       [
         "expo-splash-screen",
@@ -42,7 +56,11 @@
     ],
     "experiments": {
       "typedRoutes": true,
-      "reactCompiler": true
+      "reactCompiler": false
+    },
+    "extra": {
+      "apiBaseUrl": "https://gemological-envyingly-hulda.ngrok-free.dev",
+      "allowManualApiBaseUrl": false
     }
   }
 }

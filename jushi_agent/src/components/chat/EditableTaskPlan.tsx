@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import {
     Calendar, Clock, Plus, Trash2, GripVertical,
     ChevronDown, ChevronUp, Sparkles, Edit3, Save, X,
-    CheckCircle, Bot
+    CheckCircle, Bot, Link as LinkIcon, ExternalLink
 } from 'lucide-react'
 
 interface EditableSubtask {
@@ -16,6 +16,7 @@ interface EditableSubtask {
     duration_hours: number
     order: number
     description: string
+    resources?: Array<{ title: string; url: string }>
     selected: boolean
     isEditing: boolean
 }
@@ -42,6 +43,7 @@ interface TaskDecomposition {
         duration_hours: number
         order: number
         description?: string
+        resources?: Array<{ title: string; url: string }>
     }>
     message: string
 }
@@ -49,7 +51,7 @@ interface TaskDecomposition {
 interface EditableTaskPlanProps {
     decomposition: TaskDecomposition
     alternatives?: TaskDecomposition[]
-    onConfirm: (project: EditableProject, selectedTasks: EditableSubtask[]) => void
+    onConfirm: (project: EditableProject, selectedTasks: EditableSubtask[]) => Promise<void>
     onCancel: () => void
 }
 
@@ -59,15 +61,18 @@ export function EditableTaskPlan({
     onConfirm,
     onCancel
 }: EditableTaskPlanProps) {
-    const allPlans = alternatives && alternatives.length > 0 ? alternatives : [decomposition]
+    const allPlans = useMemo(() => {
+        return alternatives && alternatives.length > 0 ? alternatives : [decomposition]
+    }, [alternatives, decomposition])
+
     const [activeIndex, setActiveIndex] = useState(0)
     const currentPlan = allPlans[activeIndex]
 
     const [project, setProject] = useState<EditableProject>({
-        name: currentPlan.project.name,
-        description: currentPlan.project.description || '',
-        total_days: currentPlan.project.total_days,
-        start_date: currentPlan.project.start_date
+        name: currentPlan?.project?.name || 'Project',
+        description: currentPlan?.project?.description || '',
+        total_days: currentPlan?.project?.total_days || 1,
+        start_date: currentPlan?.project?.start_date || new Date().toISOString()
     })
 
     const [subtasks, setSubtasks] = useState<EditableSubtask[]>([])
@@ -75,18 +80,21 @@ export function EditableTaskPlan({
     // Update state when active plan changes
     useEffect(() => {
         const plan = allPlans[activeIndex]
+        if (!plan) return
+
         setProject({
-            name: plan.project.name,
-            description: plan.project.description || '',
-            total_days: plan.project.total_days,
-            start_date: plan.project.start_date
+            name: plan.project?.name || 'Project',
+            description: plan.project?.description || '',
+            total_days: plan.project?.total_days || 1,
+            start_date: plan.project?.start_date || new Date().toISOString()
         })
-        setSubtasks(plan.subtasks.map((task, index) => ({
+        setSubtasks((plan.subtasks || []).map((task, index) => ({
             id: `task-${activeIndex}-${index}`,
             title: task.title,
             duration_hours: task.duration_hours,
             order: task.order,
             description: task.description || '',
+            resources: task.resources || [],
             selected: true,
             isEditing: false
         })))
@@ -141,6 +149,7 @@ export function EditableTaskPlan({
             duration_hours: 1,
             order: newOrder,
             description: '',
+            resources: [],
             selected: true,
             isEditing: true
         }])
@@ -201,7 +210,7 @@ export function EditableTaskPlan({
                         >
                             <Bot className={`w-3.5 h-3.5 ${activeIndex === index ? 'text-white' : 'text-purple-500'}`} />
                             <span>方案 {index + 1}</span>
-                            {plan.project.name && <span className="text-xs opacity-75">({plan.project.name})</span>}
+                            {plan?.project?.name && <span className="text-xs opacity-75">({plan?.project?.name})</span>}
                         </button>
                     ))}
                 </div>
@@ -424,6 +433,24 @@ export function EditableTaskPlan({
                                                         }
                                                         return <span key={i}>{part}</span>
                                                     })}
+                                                </div>
+                                            )}
+                                            {/* Resources display */}
+                                            {task.resources && task.resources.length > 0 && (
+                                                <div className="mt-2 flex flex-wrap gap-2">
+                                                    {task.resources.map((res, i) => (
+                                                        <a
+                                                            key={i}
+                                                            href={res.url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+                                                        >
+                                                            <ExternalLink className="w-3 h-3" />
+                                                            <span className="truncate max-w-[150px]">{res.title}</span>
+                                                        </a>
+                                                    ))}
                                                 </div>
                                             )}
                                         </div>

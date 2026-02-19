@@ -38,25 +38,32 @@ export interface ICalendarEvent extends Document {
   start: Date            // 开始时间
   end: Date              // 结束时间
   allDay: boolean        // 是否全天事件
-  
+
   // 事件属性
   type: EventType
   priority: EventPriority
   status: EventStatus
   color?: string         // 事件颜色
   location?: string      // 地点
-  
+
   // 提醒设置
   reminders?: Array<{
     minutes: number      // 提前多少分钟提醒
     sent: boolean        // 是否已发送
   }>
-  
+
   // AI相关
   emotionScore?: number  // 创建时的情绪分数
   aiGenerated: boolean   // 是否由AI生成
   taskId?: string        // 关联的任务ID
-  
+
+  // 资源列表
+  resources?: Array<{
+    title: string
+    url: string
+    type?: string
+  }>
+
   // 元数据
   createdAt: Date
   updatedAt: Date
@@ -80,6 +87,11 @@ const calendarEventSchema = new Schema<ICalendarEvent>({
     trim: true,
     maxlength: 1000
   },
+  resources: [{
+    title: { type: String, required: true },
+    url: { type: String, required: true },
+    type: { type: String }
+  }],
   start: {
     type: Date,
     required: true,
@@ -156,42 +168,42 @@ if (typeof window === 'undefined') {
 }
 
 // 虚拟字段
-calendarEventSchema.virtual('duration').get(function() {
+calendarEventSchema.virtual('duration').get(function () {
   return this.end.getTime() - this.start.getTime()
 })
 
-calendarEventSchema.virtual('isUpcoming').get(function() {
+calendarEventSchema.virtual('isUpcoming').get(function () {
   return this.start > new Date() && this.status !== EventStatus.COMPLETED
 })
 
-calendarEventSchema.virtual('isPast').get(function() {
+calendarEventSchema.virtual('isPast').get(function () {
   return this.end < new Date()
 })
 
 // 实例方法
-calendarEventSchema.methods.markCompleted = function() {
+calendarEventSchema.methods.markCompleted = function () {
   this.status = EventStatus.COMPLETED
   return this.save()
 }
 
-calendarEventSchema.methods.markCancelled = function() {
+calendarEventSchema.methods.markCancelled = function () {
   this.status = EventStatus.CANCELLED
   return this.save()
 }
 
-calendarEventSchema.methods.updateTime = function(start: Date, end: Date) {
+calendarEventSchema.methods.updateTime = function (start: Date, end: Date) {
   this.start = start
   this.end = end
   return this.save()
 }
 
 // 静态方法
-calendarEventSchema.statics.findByUserId = function(userId: string) {
+calendarEventSchema.statics.findByUserId = function (userId: string) {
   return this.find({ userId, status: { $ne: EventStatus.CANCELLED } })
     .sort({ start: 1 })
 }
 
-calendarEventSchema.statics.findByDateRange = function(
+calendarEventSchema.statics.findByDateRange = function (
   userId: string,
   startDate: Date,
   endDate: Date
@@ -207,7 +219,7 @@ calendarEventSchema.statics.findByDateRange = function(
   }).sort({ start: 1 })
 }
 
-calendarEventSchema.statics.findUpcoming = function(userId: string, limit = 10) {
+calendarEventSchema.statics.findUpcoming = function (userId: string, limit = 10) {
   return this.find({
     userId,
     start: { $gte: new Date() },
@@ -217,7 +229,7 @@ calendarEventSchema.statics.findUpcoming = function(userId: string, limit = 10) 
     .limit(limit)
 }
 
-calendarEventSchema.statics.findByType = function(userId: string, type: EventType) {
+calendarEventSchema.statics.findByType = function (userId: string, type: EventType) {
   return this.find({
     userId,
     type,
@@ -226,6 +238,11 @@ calendarEventSchema.statics.findByType = function(userId: string, type: EventTyp
 }
 
 // 导出模型
+// 防止开发环境下模型缓存导致Schema更新不生效
+if (process.env.NODE_ENV === 'development' && mongoose.models.CalendarEvent) {
+  delete mongoose.models.CalendarEvent
+}
+
 export const CalendarEvent = (typeof window === 'undefined')
   ? (mongoose.models.CalendarEvent || mongoose.model<ICalendarEvent>('CalendarEvent', calendarEventSchema))
   : null as any

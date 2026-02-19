@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
+import { SuggestedCalendarEvent } from '@/types'
 import {
     Calendar,
     Clock,
@@ -14,7 +15,9 @@ import {
     Sparkles,
     ArrowRightLeft,
     AlertTriangle,
-    FileText
+    FileText,
+    Link as LinkIcon,
+    ExternalLink
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -27,19 +30,7 @@ const EVENT_TYPE_STYLES: Record<string, { label: string; className: string; icon
     other: { label: '事项', className: 'bg-slate-500/10 text-slate-600 dark:text-slate-300 border-slate-500/20' }
 }
 
-export interface SuggestedCalendarEvent {
-    _id?: string
-    title: string
-    description?: string
-    start: string
-    end: string
-    type?: string
-    priority?: string
-    location?: string
-    allDay?: boolean
-    aiGenerated?: boolean
-    conflicts?: any[]
-}
+
 
 interface SuggestedEventCardProps {
     event: SuggestedCalendarEvent
@@ -157,14 +148,43 @@ export function SuggestedEventCard({ event, onConfirm, onDismiss }: SuggestedEve
                 </div>
 
                 {/* Description with Link Parsing */}
+                {/* Description - Simplified as resources are separate */}
                 {event.description && (
                     <div className="text-sm text-gray-600 dark:text-gray-300/90 leading-relaxed bg-white/30 dark:bg-black/10 p-3 rounded-xl border border-white/20 dark:border-white/5">
-                        {event.description.split(/(\[.*?\]\(.*?\)|https?:\/\/\S+)/g).map((part, i) => {
-                            const linkMatch = part.match(/^\[(.*?)\]\((.*?)\)$/)
-                            if (linkMatch) return <a key={i} href={linkMatch[2]} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">{linkMatch[1]}</a>
-                            if (part.match(/^https?:\/\//)) return <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">{part}</a>
-                            return <span key={i}>{part}</span>
-                        })}
+                        {event.description}
+                    </div>
+                )}
+
+                {/* Resources Section - New Modular Display */}
+                {event.resources && event.resources.length > 0 && (
+                    <div className="space-y-2">
+                        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <LinkIcon className="h-3 w-3" />
+                            相关资源
+                        </h4>
+                        <div className="grid gap-2">
+                            {event.resources.map((resource, i) => (
+                                <a
+                                    key={i}
+                                    href={resource.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-3 p-2.5 rounded-lg bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800/30 hover:bg-blue-100/50 dark:hover:bg-blue-900/20 transition-colors group/resource"
+                                >
+                                    <div className="h-8 w-8 rounded-md bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover/resource:scale-105 transition-transform">
+                                        <ExternalLink className="h-4 w-4" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-blue-700 dark:text-blue-300 truncate">
+                                            {resource.title}
+                                        </p>
+                                        <p className="text-xs text-blue-500/80 dark:text-blue-400/60 truncate">
+                                            {resource.url}
+                                        </p>
+                                    </div>
+                                </a>
+                            ))}
+                        </div>
                     </div>
                 )}
 

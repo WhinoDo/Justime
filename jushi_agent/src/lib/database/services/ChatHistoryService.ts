@@ -40,14 +40,14 @@ export class ChatHistoryService {
    * 创建新的聊天会话
    */
   static async createSession(
-    userId: string, 
+    userId: string,
     options: CreateSessionOptions = {}
   ): Promise<IChatSession> {
     await ensureDbConnection()
 
     try {
       const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-      
+
       const session = await ChatSession.create({
         userId,
         sessionId,
@@ -102,7 +102,7 @@ export class ChatHistoryService {
 
     try {
       let session = await this.getActiveSession(userId)
-      
+
       if (!session) {
         session = await this.createSession(userId)
       }
@@ -277,8 +277,8 @@ export class ChatHistoryService {
     try {
       const result = await ChatSession.updateOne(
         { sessionId },
-        { 
-          $set: { 
+        {
+          $set: {
             'settings': settings,
             updatedAt: new Date()
           }
@@ -420,10 +420,10 @@ export class ChatHistoryService {
 
       const stats = {
         totalSessions: sessions.length,
-        activeSessions: sessions.filter(s => s.status === 'active').length,
-        archivedSessions: sessions.filter(s => s.status === 'archived').length,
-        totalMessages: sessions.reduce((sum, s) => sum + s.stats.messageCount, 0),
-        totalTokens: sessions.reduce((sum, s) => sum + s.stats.totalTokens, 0),
+        activeSessions: sessions.filter((s: IChatSession) => s.status === 'active').length,
+        archivedSessions: sessions.filter((s: IChatSession) => s.status === 'archived').length,
+        totalMessages: sessions.reduce((sum: number, s: IChatSession) => sum + s.stats.messageCount, 0),
+        totalTokens: sessions.reduce((sum: number, s: IChatSession) => sum + s.stats.totalTokens, 0),
         averageSessionDuration: 0,
         mostActiveDay: '',
         emotionDistribution: {} as Record<string, number>
@@ -431,25 +431,25 @@ export class ChatHistoryService {
 
       // 计算平均会话持续时间
       if (sessions.length > 0) {
-        const totalDuration = sessions.reduce((sum, s) => sum + s.metadata.duration, 0)
+        const totalDuration = sessions.reduce((sum: number, s: IChatSession) => sum + s.metadata.duration, 0)
         stats.averageSessionDuration = Math.round(totalDuration / sessions.length)
       }
 
       // 统计情绪分布
-      const allEmotions = sessions.flatMap(s => s.metadata.emotionTrend)
-      allEmotions.forEach(emotion => {
+      const allEmotions = sessions.flatMap((s: IChatSession) => s.metadata.emotionTrend)
+      allEmotions.forEach((emotion: number) => {
         stats.emotionDistribution[emotion] = (stats.emotionDistribution[emotion] || 0) + 1
       })
 
       // 找出最活跃的日期
       const dayActivity: Record<string, number> = {}
-      sessions.forEach(session => {
+      sessions.forEach((session: IChatSession) => {
         const day = session.createdAt.toISOString().split('T')[0]
         dayActivity[day] = (dayActivity[day] || 0) + 1
       })
 
       stats.mostActiveDay = Object.entries(dayActivity)
-        .sort(([,a], [,b]) => b - a)[0]?.[0] || ''
+        .sort(([, a], [, b]) => b - a)[0]?.[0] || ''
 
       return stats
 
@@ -499,16 +499,16 @@ export class ChatHistoryService {
     await ensureDbConnection()
 
     try {
-      const sessions = await ChatSession.find({ 
-        userId, 
-        status: { $ne: 'deleted' } 
+      const sessions = await ChatSession.find({
+        userId,
+        status: { $ne: 'deleted' }
       }).sort({ createdAt: 1 })
 
       return {
         exportDate: new Date().toISOString(),
         userId,
         totalSessions: sessions.length,
-        sessions: sessions.map(session => ({
+        sessions: sessions.map((session: IChatSession) => ({
           sessionId: session.sessionId,
           title: session.title,
           createdAt: session.createdAt,
@@ -516,7 +516,7 @@ export class ChatHistoryService {
           stats: session.stats,
           metadata: session.metadata,
           settings: session.settings,
-          messages: session.messages.map(msg => ({
+          messages: session.messages.map((msg: IChatMessage) => ({
             id: msg.id,
             type: msg.type,
             content: msg.content,

@@ -5,10 +5,14 @@ Agent 服务层
 
 import asyncio
 from typing import Optional, List, Any, Dict
-from smolagents import CodeAgent, LiteLLMModel, DuckDuckGoSearchTool, tool
+from smolagents import CodeAgent, LiteLLMModel, DuckDuckGoSearchTool
 
 from app.core.config import settings, LLMConfig
-from app.services.calendar_tools import CALENDAR_TOOLS
+from app.services.calendar_tools import (
+    CALENDAR_TOOLS,
+    get_pending_suggestions,
+    clear_pending_suggestions,
+)
 
 
 class AgentService:
@@ -159,9 +163,13 @@ class AgentService:
         tools: Optional[List] = None,
         provider: Optional[str] = None,
         llm_config: Optional[LLMConfig] = None,
-        system_prompt: Optional[str] = None
+        system_prompt: Optional[str] = None,
+        max_steps: int = 10
     ) -> Optional[CodeAgent]:
         """创建 Agent 实例"""
+        if system_prompt is None:
+            system_prompt = self._get_default_system_prompt()
+
         if llm_config:
             model = self._create_model(llm_config)
         else:
@@ -186,7 +194,7 @@ class AgentService:
             agent = CodeAgent(
                 tools=agent_tools,
                 model=model,
-                max_steps=10,
+                max_steps=max_steps,
                 additional_authorized_imports=["datetime"]
             )
             return agent
@@ -198,28 +206,113 @@ class AgentService:
         """获取默认系统提示词 - 简洁确认式响应"""
         return """你是「聚时」智能日程助手。回复要简洁。
 
+## 语言规则
+- **默认使用中文回复用户。**
+- 仅当用户明确要求使用英文或其他语言时，才切换到对应语言。
+
 ## 核心规则
 
 1. 当用户提到日程、会议、提醒、任务等时间相关事项时，使用 `suggest_calendar_event` 工具创建日程建议。
 
-2. 使用 `get_current_datetime` 获取当前时间，将"明天"、"下周"等转换为具体 ISO 8601 时间。
+2. **核心指令：当用户要求制定计划、项目分解、学习路线或处理复杂多步骤任务时，你必须使用 `suggest_task_decomposition` 工具。**
+   - 不要直接用文字回复计划详情。
+   - 工具返回的结果会自动渲染为交互式卡片。
+   - 回复只需简要说明已生成方案，引导用户查看卡片。
 
-3. 如果用户未指定结束时间，默认持续1小时。
+3. 使用 `get_current_datetime` 获取当前时间，将"明天"、"下周"等转换为具体 ISO 8601 时间。
 
-4. 回复格式简洁，示例：
+4. 如果用户未指定结束时间，默认持续1小时。
+
+5. 回复格式简洁，示例：
    "好的，我为您创建了一个日程建议，请确认是否添加到日历。"
-
-5. 日程详情会自动显示为卡片，无需在文字中重复。
+   "已为您生成学习计划，请在上方卡片中查看详情。"
 
 请简短、友好地回复。"""
+
+    def _to_int(self, value: Any) -> int:
+        try:
+            return max(0, int(value or 0))
+        except Exception:
+            return 0
+
+    def _extract_provider_request_id(self, raw: Any) -> Optional[str]:
+        if raw is None:
+            return None
+        if isinstance(raw, dict):
+            value = raw.get("id") or raw.get("request_id")
+            return str(value) if value else None
+        for attr in ("id", "request_id"):
+            if hasattr(raw, attr):
+                value = getattr(raw, attr)
+                if value:
+                    return str(value)
+        return None
+
+    def _extract_usage_summary_from_steps(self, extracted_steps: List[Any]) -> Dict[str, Any]:
+        prompt_tokens = 0
+        completion_tokens = 0
+        requests_with_usage = 0
+        missing_usage_requests = 0
+        provider_request_ids: List[str] = []
+
+        for step in extracted_steps:
+            token_usage = None
+            model_output_message = None
+
+            if isinstance(step, dict):
+                token_usage = step.get("token_usage")
+                model_output_message = step.get("model_output_message")
+            else:
+                token_usage = getattr(step, "token_usage", None)
+                model_output_message = getattr(step, "model_output_message", None)
+
+            if token_usage:
+                in_tokens = self._to_int(
+                    token_usage.get("input_tokens") if isinstance(token_usage, dict) else getattr(token_usage, "input_tokens", 0)
+                )
+                out_tokens = self._to_int(
+                    token_usage.get("output_tokens") if isinstance(token_usage, dict) else getattr(token_usage, "output_tokens", 0)
+                )
+                prompt_tokens += in_tokens
+                completion_tokens += out_tokens
+                requests_with_usage += 1
+            elif model_output_message is not None:
+                # 有模型输出但没有 usage，计入缺失
+                missing_usage_requests += 1
+
+            raw = None
+            if isinstance(model_output_message, dict):
+                raw = model_output_message.get("raw")
+            elif model_output_message is not None:
+                raw = getattr(model_output_message, "raw", None)
+
+            request_id = self._extract_provider_request_id(raw)
+            if request_id and request_id not in provider_request_ids:
+                provider_request_ids.append(request_id)
+
+        total_tokens = prompt_tokens + completion_tokens
+        total_requests = requests_with_usage + missing_usage_requests
+
+        return {
+            "promptTokens": prompt_tokens,
+            "completionTokens": completion_tokens,
+            "totalTokens": total_tokens,
+            "requestsWithUsage": requests_with_usage,
+            "missingUsageRequests": missing_usage_requests,
+            "totalRequests": total_requests,
+            "usageMissing": total_tokens == 0 and missing_usage_requests > 0,
+            "providerRequestIds": provider_request_ids,
+        }
     
     async def run_task(
         self, 
-        task: str, 
+        task: str,
         tools: Optional[List] = None,
         max_steps: int = 10,
+        timeout_seconds: Optional[float] = None,
         provider: Optional[str] = None,
-        llm_config: Optional[LLMConfig] = None
+        llm_config: Optional[LLMConfig] = None,
+        system_prompt: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         执行 Agent 任务
@@ -245,29 +338,45 @@ class AgentService:
                 "success": False,
                 "error": f"LLM 模型不可用，请检查配置"
             }
-        
+        # 运行前清空 default 桶，防止残留数据串扰
+        clear_pending_suggestions("default")
+
         try:
-            agent = self.create_agent(tools, provider, llm_config)
+            agent = self.create_agent(
+                tools, 
+                provider, 
+                llm_config, 
+                max_steps=max_steps,
+                system_prompt=system_prompt
+            )
             if not agent:
                 return {
                     "success": False,
                     "error": "创建 Agent 实例失败"
                 }
             
+            # 如果提供了 system_prompt，将其作为任务上下文的一部分（因为 CodeAgent 不支持直接传递 system_prompt）
+            final_task = task
+            if system_prompt:
+                 final_task = f"{system_prompt}\n\n【用户任务】\n{task}"
+            
             # 在线程池中运行同步的 agent.run
             loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(
+            run_future = loop.run_in_executor(
                 None,
-                lambda: agent.run(task)
+                lambda: agent.run(final_task, return_full_result=True)
             )
+            if timeout_seconds and timeout_seconds > 0:
+                result = await asyncio.wait_for(run_future, timeout=timeout_seconds)
+            else:
+                result = await run_future
             
             # 收集执行步骤和工具调用结果
             steps = []
             tool_outputs = []
             
-            # 方法1: 从全局存储中获取日历建议 (calendar_tools.py 中存储)
-            from app.services.calendar_tools import get_pending_suggestions, clear_pending_suggestions
-            pending = get_pending_suggestions()
+            # 方法1: 从全局 default 桶获取工具输出
+            pending = get_pending_suggestions("default")
             for suggestion in pending:
                 suggestion_type = suggestion.get("type")
                 if suggestion_type in ["calendar_event_suggestion", "task_decomposition_suggestion", "batch_calendar_events"]:
@@ -281,51 +390,116 @@ class AgentService:
                         "tool_name": tool_name,
                         "observation": suggestion
                     })
-            clear_pending_suggestions()  # 清空已处理的建议
+            clear_pending_suggestions("default")  # 清空缓存
             
-            # 方法2: 尝试从 agent.logs 提取 (备用)
-            try:
-                if not tool_outputs and hasattr(agent, 'logs') and agent.logs:
-                    logs_list = list(agent.logs) if hasattr(agent.logs, '__iter__') else []
-                    for i, log in enumerate(logs_list):
-                        step = {
-                            "step_number": i + 1,
-                            "thought": None,
-                            "action": None,
-                            "observation": None
-                        }
-                        
-                        if isinstance(log, dict):
-                            step["thought"] = log.get('thought')
-                            step["action"] = log.get('action')
-                            step["observation"] = log.get('observation')
-                            
-                            # 检查是否有工具调用结果
-                            obs = log.get('observation')
-                            if isinstance(obs, dict) and obs.get("type") == "calendar_event_suggestion":
-                                tool_outputs.append({
-                                    "tool_name": "suggest_calendar_event",
-                                    "observation": obs
-                                })
-                        else:
-                            step["action"] = str(log)
-                        
-                        steps.append(step)
-            except Exception as log_err:
-                print(f"⚠️ 提取 logs 失败: {log_err}")
+            # 方法2: 从 agent.memory 或 agent.steps 提取 (通用方法)
+            # Smolagents 可能将步骤存储在 memory.steps 或 logs 中
+            extracted_steps = []
+            if hasattr(agent, "memory") and hasattr(agent.memory, "steps"):
+                extracted_steps = agent.memory.steps
+            elif hasattr(agent, "steps"):
+                extracted_steps = agent.steps
+            elif hasattr(agent, "logs"):
+                 extracted_steps = list(agent.logs) if hasattr(agent.logs, '__iter__') else []
             
+            print(f"🕵️ Found {len(extracted_steps)} steps in agent history")
+            
+            # 已从方法1收集到的 type 集合，用于方法2去重
+            seen_types = set(
+                o.get("observation", {}).get("type") for o in tool_outputs
+            )
+            
+            for i, step in enumerate(extracted_steps):
+                # 尝试标准化步骤对象
+                step_data = {
+                    "step_number": i + 1,
+                    "thought": None,
+                    "action": None,
+                    "observation": None
+                }
+                
+                has_tool_calls = hasattr(step, "tool_calls") and step.tool_calls and isinstance(step.tool_calls, list)
+                has_action_output = hasattr(step, "action_output")
+                
+                if has_tool_calls:
+                     step_data["action"] = str(step.tool_calls[0])
+                
+                if has_action_output:
+                     obs_data = step.action_output
+                     
+                     if isinstance(obs_data, dict):
+                        obs_type = obs_data.get("type")
+                        # 仅在方法1未捕获到时才从此补充（去重）
+                        if obs_type and obs_type not in seen_types and obs_type in [
+                            "calendar_event_suggestion",
+                            "task_decomposition_suggestion",
+                            "batch_calendar_events"
+                        ]:
+                            tool_name_map = {
+                                "calendar_event_suggestion": "suggest_calendar_event",
+                                "task_decomposition_suggestion": "suggest_task_decomposition",
+                                "batch_calendar_events": "create_batch_calendar_events"
+                            }
+                            tool_outputs.append({
+                                "tool_name": tool_name_map.get(obs_type, "unknown"),
+                                "observation": obs_data
+                            })
+                            seen_types.add(obs_type)
+                            print(f"✅ Extracted {obs_type} from step.action_output (fallback)")
+
+                if has_tool_calls:
+                        if hasattr(step, "observations") and step.observations:
+                            step_data["observation"] = step.observations
+
+                elif isinstance(step, dict):
+                    step_data["thought"] = step.get('thought')
+                    step_data["action"] = step.get('action')
+                    step_data["observation"] = step.get('observation')
+                    
+                    obs = step.get('observation')
+                    if isinstance(obs, dict):
+                        obs_type = obs.get("type")
+                        if obs_type and obs_type not in seen_types and obs_type in [
+                            "calendar_event_suggestion",
+                            "task_decomposition_suggestion",
+                            "batch_calendar_events"
+                        ]:
+                            tool_name_map = {
+                                "calendar_event_suggestion": "suggest_calendar_event",
+                                "task_decomposition_suggestion": "suggest_task_decomposition",
+                                "batch_calendar_events": "create_batch_calendar_events"
+                            }
+                            tool_outputs.append({
+                                "tool_name": tool_name_map.get(obs_type, "unknown"),
+                                "observation": obs
+                            })
+                            seen_types.add(obs_type)
+                
+                steps.append(step_data)
+            
+            usage_summary = self._extract_usage_summary_from_steps(extracted_steps)
+
             print(f"📝 收集到 {len(steps)} 个执行步骤, {len(tool_outputs)} 个工具输出")
             
             return {
                 "success": True,
-                "result": result,
+                "result": result.output if hasattr(result, "output") else result,
                 "steps": steps,
                 "tool_outputs": tool_outputs,
+                "usage": usage_summary,
                 "provider": llm_config.model_id if llm_config else (provider or settings.LLM_DEFAULT_PROVIDER or "default")
             }
             
+        except asyncio.TimeoutError:
+            print(f"❌ Agent 任务执行超时: timeout={timeout_seconds}s")
+            clear_pending_suggestions("default")
+            return {
+                "success": False,
+                "error": f"Agent 执行超时（{timeout_seconds}s）"
+            }
         except Exception as e:
             print(f"❌ Agent 任务执行失败: {e}")
+            clear_pending_suggestions("default")
             return {
                 "success": False,
                 "error": str(e)
@@ -334,7 +508,10 @@ class AgentService:
         self,
         task: str,
         llm_configs: List[LLMConfig],
-        tools: Optional[List] = None
+        tools: Optional[List] = None,
+        max_steps: int = 10,
+        timeout_seconds: Optional[float] = None,
+        system_prompt: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         并行执行 Agent 任务
@@ -346,7 +523,15 @@ class AgentService:
         
         # Create coroutines for each config
         coroutines = [
-            self.run_task(task, tools=tools, llm_config=config, provider=config.model_id)
+            self.run_task(
+                task,
+                tools=tools,
+                llm_config=config,
+                provider=config.model_id,
+                max_steps=max_steps,
+                timeout_seconds=timeout_seconds,
+                system_prompt=system_prompt
+            )
             for config in llm_configs
         ]
         
@@ -377,4 +562,3 @@ class AgentService:
 
 # 创建全局服务实例
 agent_service = AgentService()
-
