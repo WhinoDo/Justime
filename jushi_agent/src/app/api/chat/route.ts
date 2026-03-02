@@ -9,8 +9,8 @@ import { createErrorResponse, createSuccessResponse } from '@/lib/api/proxy'
  */
 export async function POST(request: NextRequest) {
   try {
-    const body: ChatRequest = await request.json()
-    const { message, taskId, sessionId, useWebSearch, taskType, difficultyLevel, urgency } = body
+    const body: ChatRequest & { runtimeModelId?: string } = await request.json()
+    const { message, taskId, sessionId, useWebSearch, taskType, difficultyLevel, urgency, runtimeModelId } = body
 
     // 输入验证
     if (!message || typeof message !== 'string') {
@@ -71,7 +71,8 @@ export async function POST(request: NextRequest) {
         useWebSearch: !!useWebSearch,
         taskType: taskType,
         difficultyLevel: difficultyLevel,
-        urgency: urgency
+        urgency: urgency,
+        runtimeModelId: runtimeModelId
       })
     })
 

@@ -36,7 +36,10 @@ class ChatRequest(BaseModel):
         True,
         description="主模型失败时是否允许回退到推理模型"
     )
-
+    runtimeModelId: Optional[str] = Field(
+        None,
+        description="运行时指定的优先模型ID（例如从UI下拉列表选取）"
+    )
 
 class ChatResponseData(BaseModel):
     """聊天响应数据"""
@@ -50,6 +53,7 @@ class ChatResponseData(BaseModel):
     multiTaskDecompositions: Optional[List[Dict[str, Any]]] = Field(None, description="多模型任务分解结果")
     timingStrategy: Optional[Dict[str, Any]] = Field(None, description="任务时间调度策略")
     taskAnalysis: Optional[Dict[str, Any]] = Field(None, description="任务分析结果")
+    ragReferences: Optional[List[Dict[str, Any]]] = Field(None, description="RAG 引用文档")
     routingMeta: Optional[Dict[str, Any]] = Field(None, description="模型路由元信息")
 
 

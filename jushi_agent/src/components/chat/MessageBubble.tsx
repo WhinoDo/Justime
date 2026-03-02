@@ -1,22 +1,23 @@
 'use client'
 
-import { Message } from '@/types'
+import { Message, RagReference } from '@/types'
 import { formatTime } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import ReactMarkdown from 'react-markdown'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import remarkGfm from 'remark-gfm'
-import { Copy, Check, User, Bot, Brain } from 'lucide-react'
+import { Copy, Check, User, Bot, Brain, FileText } from 'lucide-react'
 import { useState } from 'react'
 import { useTheme } from 'next-themes'
 
 interface MessageBubbleProps {
   message: Message
   onTaskCreate?: (task: any) => void
+  onReferenceClick?: (reference: RagReference) => void
 }
 
-export function MessageBubble({ message, onTaskCreate }: MessageBubbleProps) {
+export function MessageBubble({ message, onTaskCreate, onReferenceClick }: MessageBubbleProps) {
   const isUser = message.role === 'user'
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
   const { theme } = useTheme()
@@ -85,26 +86,27 @@ export function MessageBubble({ message, onTaskCreate }: MessageBubbleProps) {
             ? "bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-br-md"
             : "bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-bl-md border-gray-200 dark:border-gray-700"
         )}>
-          {/* 任务分析元数据 */}
-          {(message.timingStrategy || message.taskAnalysis) && (
-            <div className="mb-3 flex flex-wrap items-center gap-1.5 text-[10px] md:text-xs border-b border-gray-100 dark:border-gray-700/50 pb-2">
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-medium">
-                <Brain className="w-3 h-3" />
-                {formatTaskType(message.taskAnalysis?.taskType || message.timingStrategy?.taskType)}
-              </span>
-              <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 font-medium">
-                难度 {message.taskAnalysis?.difficultyLevel || message.timingStrategy?.difficultyLevel || 3}
-              </span>
-              <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 font-medium">
-                {formatUrgency(message.taskAnalysis?.urgency || message.timingStrategy?.urgency)}
-              </span>
-              {typeof message.taskAnalysis?.confidence === 'number' && (
-                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 font-medium">
-                  {Math.round(message.taskAnalysis.confidence * 100)}%
+          {/* 任务分析元数据（仅对非通用对话展示） */}
+          {(message.timingStrategy || message.taskAnalysis) &&
+            (message.taskAnalysis?.taskType !== 'general' && message.timingStrategy?.taskType !== 'general') && (
+              <div className="mb-3 flex flex-wrap items-center gap-1.5 text-[10px] md:text-xs border-b border-gray-100 dark:border-gray-700/50 pb-2">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-medium">
+                  <Brain className="w-3 h-3" />
+                  {formatTaskType(message.taskAnalysis?.taskType || message.timingStrategy?.taskType)}
                 </span>
-              )}
-            </div>
-          )}
+                <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 font-medium">
+                  难度 {message.taskAnalysis?.difficultyLevel || message.timingStrategy?.difficultyLevel || 3}
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 font-medium">
+                  {formatUrgency(message.taskAnalysis?.urgency || message.timingStrategy?.urgency)}
+                </span>
+                {typeof message.taskAnalysis?.confidence === 'number' && (
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 font-medium">
+                    {Math.round(message.taskAnalysis.confidence * 100)}%
+                  </span>
+                )}
+              </div>
+            )}
           {/* Markdown 渲染 */}
           <div className={cn(
             "prose prose-sm max-w-none",
@@ -218,6 +220,30 @@ export function MessageBubble({ message, onTaskCreate }: MessageBubbleProps) {
             </ReactMarkdown>
           </div>
         </div>
+
+        {!isUser && message.ragReferences && message.ragReferences.length > 0 && (
+          <div className="w-fit max-w-[100%] rounded-xl border border-blue-200/80 bg-blue-50/70 p-3 dark:border-blue-900/60 dark:bg-blue-900/20">
+            <div className="mb-2 text-xs font-medium text-blue-700 dark:text-blue-300">
+              引用文档
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {message.ragReferences.map((reference) => (
+                <button
+                  key={reference.referenceId}
+                  type="button"
+                  onClick={() => onReferenceClick?.(reference)}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-blue-200 bg-white px-2.5 py-1.5 text-xs text-blue-700 transition-colors hover:bg-blue-100 dark:border-blue-800 dark:bg-gray-900 dark:text-blue-300 dark:hover:bg-blue-900/40"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  <span className="max-w-[180px] truncate">{reference.fileName || reference.docPath}</span>
+                  <span className="text-[10px] text-blue-500 dark:text-blue-400">
+                    {reference.snippets?.length || 0} 段
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* 元信息 */}
         <div className={cn(

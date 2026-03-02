@@ -9,6 +9,19 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider } from '@/context/AuthContext';
 
+// Monkey patch global.fetch to bypass Localtunnel's warning page
+const originalFetch = global.fetch;
+global.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+  if (typeof input === 'string' && input.includes('loca.lt')) {
+    init = init || {};
+    init.headers = {
+      ...init.headers,
+      'Bypass-Tunnel-Reminder': 'true',
+    };
+  }
+  return originalFetch(input, init);
+};
+
 export const unstable_settings = {
   anchor: '(tabs)',
 };

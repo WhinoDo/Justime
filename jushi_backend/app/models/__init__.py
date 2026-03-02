@@ -12,7 +12,12 @@ from app.models.auth import (
 
 from app.models.admin import (
     AdminUser,
-    SystemStats
+    SystemStats,
+    UserModelAccessUpdateRequest,
+)
+from app.models.admin_apikey import (
+    AdminApiKey,
+    AdminApiKeyUpsertRequest,
 )
 
 from app.models.chat import (
@@ -44,6 +49,9 @@ __all__ = [
     # Admin
     "AdminUser",
     "SystemStats",
+    "UserModelAccessUpdateRequest",
+    "AdminApiKey",
+    "AdminApiKeyUpsertRequest",
     # Chat
     "ChatRequest",
     "ChatResponse",

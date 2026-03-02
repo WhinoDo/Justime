@@ -30,7 +30,7 @@ async def get_agent_status(
     - **provider**: LLM 提供者名称（可选，不指定则使用默认）
     """
     try:
-        return agent_business.get_status(provider)
+        return await agent_business.get_status(provider)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取状态失败: {str(e)}")
 
@@ -43,7 +43,7 @@ async def get_agent_providers():
     返回所有配置的 LLM 提供者及其可用状态
     """
     try:
-        return agent_business.get_providers()
+        return await agent_business.get_providers()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取提供者列表失败: {str(e)}")
 
@@ -78,4 +78,3 @@ async def run_agent_task(request: AgentRunRequest):
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"任务执行失败: {str(e)}")
-

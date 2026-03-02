@@ -42,6 +42,15 @@ export interface EmotionRecord {
 }
 
 // 对话消息类型
+export interface RagReference {
+  referenceId: string
+  docPath: string
+  fileName: string
+  score: number
+  snippets: string[]
+  queries: string[]
+}
+
 export interface Message {
   id: string
   user_id: string
@@ -55,6 +64,7 @@ export interface Message {
   taskAnalysis?: any
   taskDecomposition?: any
   multiTaskDecompositions?: any[]
+  ragReferences?: RagReference[]
 }
 
 export interface SuggestedCalendarEvent {
@@ -205,6 +215,7 @@ export interface ChatResponse {
   suggestedActions?: string[]
   task?: Task
   taskExtraction?: TaskExtraction
+  ragReferences?: RagReference[]
   taskResult?: {
     hasTasks: boolean
     tasks: Array<{

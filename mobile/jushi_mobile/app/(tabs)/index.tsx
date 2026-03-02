@@ -43,6 +43,13 @@ type ChatSessionSummary = {
   updatedAt?: string;
 };
 
+type ChatModelOption = {
+  id: string;
+  name: string;
+  capabilities: string[];
+  isDefault: boolean;
+};
+
 type SuggestedEvent = {
   title: string;
   description?: string;
@@ -115,6 +122,49 @@ const normalizeResources = (
     url: (resource?.url || '').trim(),
     type: resource?.type,
   }));
+
+const normalizeModelCapabilities = (raw: unknown): string[] => {
+  if (!Array.isArray(raw)) return [];
+  const labels: string[] = [];
+  for (const item of raw) {
+    if (typeof item !== 'string') continue;
+    const value = item.trim().toLowerCase();
+    if (!value || labels.includes(value)) continue;
+    labels.push(value);
+  }
+  return labels;
+};
+
+const normalizeModelOptions = (rawItems: any[]): ChatModelOption[] => {
+  const models: ChatModelOption[] = [];
+  const seenIds = new Set<string>();
+
+  for (const raw of rawItems) {
+    if (!raw || raw.enabled === false) continue;
+    const modelId = String(raw.modelId || raw.model_id || raw.id || '').trim();
+    if (!modelId || seenIds.has(modelId)) continue;
+    seenIds.add(modelId);
+
+    const modelName = String(raw.name || raw.modelName || modelId).trim();
+    models.push({
+      id: modelId,
+      name: modelName || modelId,
+      capabilities: normalizeModelCapabilities(raw.capabilities),
+      isDefault: Boolean(raw.is_default || raw.isDefault || raw.isActive),
+    });
+  }
+
+  return models;
+};
+
+const extractRawModelItems = (result: any): any[] => {
+  if (Array.isArray(result?.data?.models)) return result.data.models;
+  if (Array.isArray(result?.data?.configs)) return result.data.configs;
+  if (Array.isArray(result?.models)) return result.models;
+  if (Array.isArray(result?.configs)) return result.configs;
+  if (Array.isArray(result?.data)) return result.data;
+  return [];
+};
 
 const toChatMessage = (raw: any): ChatMessage => {
   const rawRole = String(raw?.role || '').toLowerCase();
@@ -189,6 +239,10 @@ export default function ChatScreen() {
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [creatingSession, setCreatingSession] = useState(false);
   const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
+  const [availableModels, setAvailableModels] = useState<ChatModelOption[]>([]);
+  const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
+  const [isModelPickerVisible, setModelPickerVisible] = useState(false);
+  const [modelsLoading, setModelsLoading] = useState(false);
   const listRef = useRef<FlatList<ChatMessage>>(null);
 
   useEffect(() => {
@@ -201,6 +255,18 @@ export default function ChatScreen() {
     if (!user) return '聚时智能助手';
     return `你好，${user.displayName || user.email?.split('@')[0]}`;
   }, [user]);
+
+  const selectedModel = useMemo(
+    () => availableModels.find((model) => model.id === selectedModelId) || null,
+    [availableModels, selectedModelId]
+  );
+
+  const selectedModelLabel = useMemo(() => {
+    if (selectedModel) return selectedModel.name;
+    if (modelsLoading) return '加载模型中...';
+    if (availableModels.length > 0) return availableModels[0].name;
+    return '默认模型';
+  }, [availableModels, modelsLoading, selectedModel]);
 
   const handleAuth = async () => {
     setError(null);
@@ -298,6 +364,70 @@ export default function ChatScreen() {
     }
   }, [baseUrl, signOut, token]);
 
+  const loadModels = useCallback(async () => {
+    if (!token) return;
+    setModelsLoading(true);
+
+    const endpoints = [
+      `${baseUrl}/api/v1/user/models`,
+      `${baseUrl}/api/v1/auth/llm-configs`,
+    ];
+
+    try {
+      let fetchedModels: ChatModelOption[] = [];
+      let fetchSucceeded = false;
+
+      for (const endpoint of endpoints) {
+        const response = await fetch(endpoint, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (response.status === 404) {
+          continue;
+        }
+
+        if (response.status === 401) {
+          throw new Error('登录已过期，请重新登录');
+        }
+
+        const result = await response.json();
+        if (!response.ok || result?.success === false) {
+          throw new Error(result?.detail || result?.message || '加载模型列表失败');
+        }
+
+        const rawModels = extractRawModelItems(result);
+        fetchedModels = normalizeModelOptions(rawModels);
+        fetchSucceeded = true;
+        break;
+      }
+
+      if (!fetchSucceeded) {
+        throw new Error('模型列表接口不可用');
+      }
+
+      setAvailableModels(fetchedModels);
+      setSelectedModelId((prev) => {
+        if (prev && fetchedModels.some((item) => item.id === prev)) {
+          return prev;
+        }
+        const defaultModel = fetchedModels.find((item) => item.isDefault);
+        return defaultModel?.id || fetchedModels[0]?.id || null;
+      });
+    } catch (e) {
+      console.error('加载模型列表失败:', e);
+      const msg = e instanceof Error ? e.message : '';
+      if (msg.includes('登录已过期')) {
+        signOut();
+      }
+      setAvailableModels([]);
+      setSelectedModelId(null);
+    } finally {
+      setModelsLoading(false);
+    }
+  }, [baseUrl, signOut, token]);
+
   const handleOpenHistory = () => {
     setHistoryVisible(true);
     void loadSessions();
@@ -380,10 +510,14 @@ export default function ChatScreen() {
       setSessions([]);
       setSessionId(null);
       setMessages([]);
+      setAvailableModels([]);
+      setSelectedModelId(null);
+      setModelPickerVisible(false);
       return;
     }
     void loadSessions();
-  }, [loadSessions, token]);
+    void loadModels();
+  }, [loadModels, loadSessions, token]);
 
   const handleSend = async () => {
     if (!input.trim() || !token) return;
@@ -412,7 +546,9 @@ export default function ChatScreen() {
         body: JSON.stringify({
           message: content,
           sessionId,
-          useWebSearch: useWebSearch
+          useWebSearch: useWebSearch,
+          runtimeModelId: selectedModelId || undefined,
+          targetModelId: selectedModelId || undefined,
         }),
       });
 
@@ -676,9 +812,9 @@ export default function ChatScreen() {
     const currentDecomposition = hasTaskDecomposition ? decompositions[activePlanIndex] : null;
     const currentTaskSchedules: TaskSchedulePreview[] = currentDecomposition
       ? calculateTaskSchedules(currentDecomposition).map((schedule) => ({
-          start: schedule.startTime.toISOString(),
-          end: schedule.endTime.toISOString(),
-        }))
+        start: schedule.startTime.toISOString(),
+        end: schedule.endTime.toISOString(),
+      }))
       : [];
 
     return (
@@ -1012,6 +1148,79 @@ export default function ChatScreen() {
         </View>
       </Modal>
 
+      <Modal
+        visible={isModelPickerVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setModelPickerVisible(false)}
+      >
+        <View style={styles.modelPickerOverlay}>
+          <TouchableOpacity
+            activeOpacity={1}
+            style={styles.modelPickerBackdrop}
+            onPress={() => setModelPickerVisible(false)}
+          />
+          <View style={styles.modelPickerContainer}>
+            <View style={styles.modelPickerHeader}>
+              <ThemedText type="defaultSemiBold">选择对话模型</ThemedText>
+              <Button
+                title="关闭"
+                variant="ghost"
+                size="sm"
+                onPress={() => setModelPickerVisible(false)}
+                style={{ paddingHorizontal: 0 }}
+              />
+            </View>
+
+            {modelsLoading ? (
+              <View style={styles.modelPickerLoading}>
+                <ActivityIndicator size="small" color={Colors.light.primary} />
+                <ThemedText type="caption" style={{ marginTop: Spacing.xs, color: Colors.light.textSecondary }}>
+                  正在加载模型...
+                </ThemedText>
+              </View>
+            ) : (
+              <FlatList
+                data={availableModels}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => {
+                  const isSelected = item.id === selectedModelId;
+                  return (
+                    <TouchableOpacity
+                      style={[styles.modelPickerItem, isSelected && styles.modelPickerItemActive]}
+                      activeOpacity={0.85}
+                      onPress={() => {
+                        setSelectedModelId(item.id);
+                        setModelPickerVisible(false);
+                      }}
+                    >
+                      <View style={styles.modelPickerItemMain}>
+                        <ThemedText type="defaultSemiBold" style={styles.modelPickerItemText}>
+                          {item.name}
+                        </ThemedText>
+                        <ThemedText type="caption" style={styles.modelPickerItemMeta} numberOfLines={1}>
+                          {item.capabilities.length > 0 ? item.capabilities.join(' · ') : '通用能力'}
+                        </ThemedText>
+                      </View>
+                      {isSelected ? (
+                        <IconSymbol name="checkmark.circle.fill" size={18} color={Colors.light.primary} />
+                      ) : null}
+                    </TouchableOpacity>
+                  );
+                }}
+                ListEmptyComponent={
+                  <View style={styles.modelPickerEmpty}>
+                    <ThemedText type="caption" style={{ color: Colors.light.textSecondary }}>
+                      暂无可用模型
+                    </ThemedText>
+                  </View>
+                }
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
+
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <TouchableOpacity style={styles.historyEntryButton} onPress={handleOpenHistory} activeOpacity={0.8}>
@@ -1019,7 +1228,20 @@ export default function ChatScreen() {
           </TouchableOpacity>
           <View>
             <ThemedText type="heading">{headerTitle}</ThemedText>
-            <ThemedText type="caption" style={{ color: Colors.light.success }}>• 在线</ThemedText>
+            <TouchableOpacity
+              style={styles.modelSelectBadge}
+              activeOpacity={0.85}
+              onPress={() => setModelPickerVisible(true)}
+            >
+              <ThemedText type="caption" style={styles.modelSelectBadgeText} numberOfLines={1}>
+                {selectedModelLabel}
+              </ThemedText>
+              {modelsLoading ? (
+                <ActivityIndicator size="small" color={Colors.light.primary} />
+              ) : (
+                <IconSymbol name="chevron.down" size={12} color={Colors.light.primary} />
+              )}
+            </TouchableOpacity>
           </View>
         </View>
         <Button
@@ -1044,7 +1266,7 @@ export default function ChatScreen() {
           contentContainerStyle={styles.messageList}
           onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
           ListFooterComponent={
-            sending ? <ThinkingBubble /> : null
+            sending ? <ThinkingBubble input={input} /> : null
           }
         />
 
@@ -1176,6 +1398,74 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.surface,
     borderWidth: 1,
     borderColor: Colors.light.border,
+  },
+  modelSelectBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    marginTop: 2,
+    backgroundColor: Colors.light.primary + '1A',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  modelSelectBadgeText: {
+    color: Colors.light.primary,
+    maxWidth: 180,
+    marginRight: 4,
+  },
+  modelPickerOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  modelPickerBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  modelPickerContainer: {
+    backgroundColor: Colors.light.surface,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.lg,
+    maxHeight: '60%',
+  },
+  modelPickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
+  modelPickerLoading: {
+    paddingVertical: Spacing.lg,
+    alignItems: 'center',
+  },
+  modelPickerItem: {
+    paddingVertical: Spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.light.border,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  modelPickerItemActive: {
+    backgroundColor: Colors.light.primary + '10',
+  },
+  modelPickerItemMain: {
+    flex: 1,
+    marginRight: Spacing.sm,
+  },
+  modelPickerItemText: {
+    fontSize: 16,
+  },
+  modelPickerItemMeta: {
+    color: Colors.light.textSecondary,
+    marginTop: 2,
+  },
+  modelPickerEmpty: {
+    paddingVertical: Spacing.xl,
+    alignItems: 'center',
   },
   messageList: {
     paddingHorizontal: Spacing.lg,

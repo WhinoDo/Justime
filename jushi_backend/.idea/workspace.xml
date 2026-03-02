@@ -5,52 +5,23 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="e1f46b03-4277-434a-94ca-0cfd47b146d2" name="更改" comment="">
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/app/api/calendar/events/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/app/api/calendar/events/route.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../jushi_agent/src/app/api/chat/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/app/api/chat/route.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/app/auth/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/app/auth/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/app/globals.css" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/app/globals.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/app/login/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/app/login/page.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../jushi_agent/src/app/model-config/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/app/model-config/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/app/profile/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/app/profile/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/components/calendar/BigCalendar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/components/calendar/BigCalendar.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/components/calendar/DaySchedulePanel.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/components/calendar/DaySchedulePanel.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/components/calendar/EventDialog.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/components/calendar/EventDialog.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../jushi_agent/src/components/chat/ChatInterface.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/components/chat/ChatInterface.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/components/chat/EditableTaskPlan.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/components/chat/EditableTaskPlan.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/components/chat/MessageBubble.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/components/chat/MessageBubble.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/components/chat/SuggestedEventCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/components/chat/SuggestedEventCard.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/lib/auth/AuthService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/lib/auth/AuthService.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/lib/database/connection.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/lib/database/connection.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/lib/database/models/CalendarEvent.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/lib/database/models/CalendarEvent.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/lib/database/models/ChatHistory.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/lib/database/models/ChatHistory.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/lib/database/models/Conversation.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/lib/database/models/Conversation.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/lib/database/models/User.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/lib/database/models/User.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/lib/database/services/ChatHistoryService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/lib/database/services/ChatHistoryService.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/types/auth.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/types/auth.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/types/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/types/index.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/components/ui/select.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/components/ui/select.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../jushi_agent/src/hooks/useLLMConfig.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../jushi_agent/src/hooks/useLLMConfig.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/api/v1/endpoints/auth.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/v1/endpoints/auth.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/v1/endpoints/chat.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/v1/endpoints/chat.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/business/auth_business.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/business/auth_business.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/business/chat_business.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/business/chat_business.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/config.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/models/auth.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/models/auth.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/models/calendar.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/models/calendar.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/models/chat.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/models/chat.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/models/history.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/models/history.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/services/agent_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/agent_service.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/services/calendar_tools.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/calendar_tools.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/services/task_classifier_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/task_classifier_service.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/services/user_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/user_service.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../mobile/jushi_mobile/app.json" beforeDir="false" afterPath="$PROJECT_DIR$/../mobile/jushi_mobile/app.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../mobile/jushi_mobile/app/(tabs)/index.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../mobile/jushi_mobile/app/(tabs)/index.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../mobile/jushi_mobile/app/(tabs)/profile.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../mobile/jushi_mobile/app/(tabs)/profile.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../mobile/jushi_mobile/app/(tabs)/schedule.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../mobile/jushi_mobile/app/(tabs)/schedule.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../mobile/jushi_mobile/app/_layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../mobile/jushi_mobile/app/_layout.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../mobile/jushi_mobile/app/settings/model-config.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../mobile/jushi_mobile/app/settings/model-config.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../mobile/jushi_mobile/components/chat/TaskDecompositionView.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../mobile/jushi_mobile/components/chat/TaskDecompositionView.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../mobile/jushi_mobile/components/ui/icon-symbol.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../mobile/jushi_mobile/components/ui/icon-symbol.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../mobile/jushi_mobile/context/AuthContext.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../mobile/jushi_mobile/context/AuthContext.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../mobile/jushi_mobile/components/chat/ThinkingBubble.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../mobile/jushi_mobile/components/chat/ThinkingBubble.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../mobile/jushi_mobile/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/../mobile/jushi_mobile/package-lock.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../mobile/jushi_mobile/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/../mobile/jushi_mobile/package.json" afterDir="false" />
     </list>
@@ -131,6 +102,7 @@
       <workItem from="1769414049442" duration="121000" />
       <workItem from="1771127010164" duration="1000" />
       <workItem from="1771325522877" duration="1000" />
+      <workItem from="1771855613330" duration="87000" />
     </task>
     <servers />
   </component>

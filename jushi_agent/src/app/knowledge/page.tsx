@@ -2,12 +2,21 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAuth } from '@/hooks/useAuth'
-import { Loader2, Upload, Trash2, RefreshCw, FileText, ArrowLeft, Database, Search } from 'lucide-react'
+import { Loader2, Upload, Trash2, RefreshCw, FileText, ArrowLeft, Database, Eye, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
 import { useToast } from '@/components/ui/use-toast'
 import { JushiBackground } from '@/components/ui/JushiBackground'
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 interface DocumentFile {
     name: string
@@ -15,12 +24,37 @@ interface DocumentFile {
     modified: number
 }
 
+interface PreviewState {
+    open: boolean
+    fileName: string
+    isPdf: boolean
+    rawUrl: string
+    content: string
+    loading: boolean
+    error: string
+    truncated: boolean
+    charCount: number
+    maxChars: number
+}
+
 export default function KnowledgeBasePage() {
-    const { user, isAuthenticated, isLoading: authLoading } = useAuth()
+    const { isAuthenticated, isLoading: authLoading } = useAuth()
     const [files, setFiles] = useState<DocumentFile[]>([])
     const [loading, setLoading] = useState(true)
     const [uploading, setUploading] = useState(false)
     const [rebuilding, setRebuilding] = useState(false)
+    const [previewState, setPreviewState] = useState<PreviewState>({
+        open: false,
+        fileName: '',
+        isPdf: false,
+        rawUrl: '',
+        content: '',
+        loading: false,
+        error: '',
+        truncated: false,
+        charCount: 0,
+        maxChars: 20000,
+    })
     const { toast } = useToast()
 
     // 加载文件列表
@@ -152,6 +186,70 @@ export default function KnowledgeBasePage() {
         } finally {
             setRebuilding(false)
         }
+    }
+
+    const closePreview = () => {
+        setPreviewState((prev) => ({
+            ...prev,
+            open: false,
+        }))
+    }
+
+    const openPreview = async (filename: string) => {
+        const pdfPreview = isPdfFile(filename)
+        const rawUrl = pdfPreview ? `/api/knowledge/raw?path=${encodeURIComponent(filename)}` : ''
+
+        setPreviewState({
+            open: true,
+            fileName: filename,
+            isPdf: pdfPreview,
+            rawUrl,
+            content: '',
+            loading: !pdfPreview,
+            error: '',
+            truncated: false,
+            charCount: 0,
+            maxChars: 20000,
+        })
+
+        if (pdfPreview) {
+            return
+        }
+
+        try {
+            const response = await fetch(`/api/knowledge/content?path=${encodeURIComponent(filename)}&max_chars=20000`, {
+                credentials: 'include',
+            })
+            const payload = await response.json()
+
+            if (!response.ok || !payload.success) {
+                throw new Error(payload?.detail || payload?.error || `HTTP ${response.status}`)
+            }
+
+            setPreviewState((prev) => ({
+                ...prev,
+                content: String(payload.content || ''),
+                truncated: Boolean(payload.truncated),
+                charCount: Number(payload.charCount || 0),
+                maxChars: Number(payload.maxChars || 20000),
+                loading: false,
+            }))
+        } catch (error) {
+            setPreviewState((prev) => ({
+                ...prev,
+                loading: false,
+                error: error instanceof Error ? error.message : '文档预览加载失败',
+            }))
+        }
+    }
+
+    const isMarkdownFile = (filename: string) => {
+        const lower = filename.toLowerCase()
+        return lower.endsWith('.md') || lower.endsWith('.markdown')
+    }
+
+    const isPdfFile = (filename: string) => {
+        return filename.toLowerCase().endsWith('.pdf')
     }
 
     const formatSize = (bytes: number) => {
@@ -316,14 +414,26 @@ export default function KnowledgeBasePage() {
                                                         </p>
                                                     </div>
                                                 </div>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="text-white/30 hover:text-rose-300 hover:bg-rose-500/20 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
-                                                    onClick={() => handleDelete(file.name)}
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
+                                                <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="text-white/30 hover:text-sky-300 hover:bg-sky-500/20 rounded-lg"
+                                                        onClick={() => openPreview(file.name)}
+                                                        title="预览文档"
+                                                    >
+                                                        <Eye className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="text-white/30 hover:text-rose-300 hover:bg-rose-500/20 rounded-lg"
+                                                        onClick={() => handleDelete(file.name)}
+                                                        title="删除文档"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
@@ -333,6 +443,58 @@ export default function KnowledgeBasePage() {
                     </div>
                 </div>
             </div>
+
+            <Dialog open={previewState.open} onOpenChange={(open) => !open && closePreview()}>
+                <DialogContent className="max-w-4xl max-h-[85vh] bg-slate-950/95 border-white/20 text-white backdrop-blur-xl">
+                    <DialogHeader>
+                        <DialogTitle className="truncate pr-10">文档预览: {previewState.fileName}</DialogTitle>
+                        <DialogDescription className="text-white/60">
+                            {previewState.isPdf ? '原生 PDF 预览（保留图片与排版）' : '在线查看文档解析内容（来自知识库预览接口）'}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="h-[62vh] rounded-xl border border-white/10 bg-black/20">
+                        {previewState.isPdf ? (
+                            <iframe
+                                key={previewState.rawUrl}
+                                src={previewState.rawUrl}
+                                className="h-full w-full rounded-xl border-0 bg-white"
+                                title={`PDF Preview: ${previewState.fileName}`}
+                            />
+                        ) : (
+                            <ScrollArea className="h-full w-full p-4">
+                                {previewState.loading ? (
+                                    <div className="h-full min-h-[240px] flex items-center justify-center text-white/70 text-sm">
+                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                        正在加载文档内容...
+                                    </div>
+                                ) : previewState.error ? (
+                                    <div className="rounded-lg border border-red-500/30 bg-red-500/10 text-red-200 p-4 text-sm flex gap-2">
+                                        <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                                        <span>{previewState.error}</span>
+                                    </div>
+                                ) : isMarkdownFile(previewState.fileName) ? (
+                                    <article className="prose prose-invert prose-sm max-w-none break-words">
+                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                            {previewState.content || '暂无内容'}
+                                        </ReactMarkdown>
+                                    </article>
+                                ) : (
+                                    <pre className="whitespace-pre-wrap break-words text-sm leading-6 text-white/90 font-mono">
+                                        {previewState.content || '暂无内容'}
+                                    </pre>
+                                )}
+                            </ScrollArea>
+                        )}
+                    </div>
+
+                    {!previewState.isPdf && previewState.truncated && !previewState.loading && !previewState.error && (
+                        <p className="text-xs text-amber-300/90">
+                            文档较长，当前仅展示前 {previewState.maxChars.toLocaleString()} 字内容（原文 {previewState.charCount.toLocaleString()} 字）。
+                        </p>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

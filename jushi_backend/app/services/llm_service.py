@@ -5,7 +5,6 @@ LLM 基础服务层
 
 import httpx
 from typing import Dict, Any, List, Optional
-from app.core.config import settings
 
 class LLMService:
     @staticmethod
@@ -19,11 +18,11 @@ class LLMService:
         timeout: float = 60.0
     ) -> Dict[str, Any]:
         """通用对话补全接口"""
-        target_api_key = api_key or settings.LLM_API_KEY
-        target_api_base = api_base or settings.LLM_BASE_URL
-        target_model = model or settings.LLM_MODEL_ID or "gpt-3.5-turbo"
+        target_api_key = api_key
+        target_api_base = api_base
+        target_model = model
 
-        if not target_api_key or not target_api_base:
+        if not target_api_key or not target_api_base or not target_model:
             raise ValueError("LLM 配置不完整")
 
         headers = {

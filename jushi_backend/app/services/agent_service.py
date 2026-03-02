@@ -7,12 +7,26 @@ import asyncio
 from typing import Optional, List, Any, Dict
 from smolagents import CodeAgent, LiteLLMModel, DuckDuckGoSearchTool
 
-from app.core.config import settings, LLMConfig
+from app.core.config import LLMConfig
+from app.services.user_service import UserService
+from app.services.encryption_service import encryption_service
 from app.services.calendar_tools import (
     CALENDAR_TOOLS,
     get_pending_suggestions,
     clear_pending_suggestions,
 )
+
+try:
+    from app.tools.knowledge_base import (
+        get_pending_rag_references,
+        clear_pending_rag_references,
+    )
+except Exception:
+    def get_pending_rag_references(request_id: Optional[str] = None) -> List[dict]:
+        return []
+
+    def clear_pending_rag_references(request_id: Optional[str] = None):
+        return None
 
 
 class AgentService:
@@ -20,6 +34,7 @@ class AgentService:
     
     def __init__(self):
         self._models: Dict[str, LiteLLMModel] = {}  # 缓存已初始化的模型
+        self._configs_cache: Dict[str, LLMConfig] = {}
         self._default_tools = []
         self._initialized = False
     
@@ -29,9 +44,14 @@ class AgentService:
             # 特殊处理 DeepSeek 的 model_id (litellm 要求 deepseek/ 前缀)
             # 或者如果用户在前端已经配了 'deepseek-chat'，我们需要加上前缀
             target_model_id = config.model_id
-            if "deepseek" in config.model_id.lower() and not config.model_id.startswith("deepseek/"):
+            
+            # 兼容处理：如果用户输入纯 'deepseek'，我们映射到官方主模型 'deepseek-chat'
+            if target_model_id.strip().lower() == "deepseek":
+                target_model_id = "deepseek-chat"
+                
+            if "deepseek" in target_model_id.lower() and not target_model_id.startswith("deepseek/"):
                  # 简单的启发式：如果包含 deepseek 但没有前缀，加上前缀
-                 target_model_id = f"deepseek/{config.model_id}"
+                 target_model_id = f"deepseek/{target_model_id}"
 
             # 特殊处理 API base 和 Key
             # LiteLLM 某些 Provider 需要环境变量，或者特定的参数传递方式
@@ -83,72 +103,120 @@ class AgentService:
         
         return tools
     
-    def initialize(self) -> bool:
-        """初始化服务"""
-        if self._initialized:
-            return len(self._models) > 0
-        
-        # 初始化所有配置的 LLM
-        configs = settings.get_llm_configs()
+    async def _fetch_db_configs(self) -> Dict[str, LLMConfig]:
+        """从 system_llm_configs 读取所有可用模型，作为唯一模型来源。"""
+        rows = await UserService.get_system_llm_configs()
+        configs: Dict[str, LLMConfig] = {}
+
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            if row.get("enabled") is False:
+                continue
+
+            encrypted_key = row.get("api_key", "")
+            api_key = encryption_service.decrypt(encrypted_key) if encrypted_key else ""
+            model_id = str(row.get("model_id") or "").strip()
+            base_url = str(row.get("base_url") or "").strip()
+            provider_name = str(row.get("id") or row.get("model_id") or row.get("name") or "").strip()
+            if not provider_name or not model_id or not base_url or not api_key:
+                continue
+
+            timeout = 60
+            try:
+                timeout = max(1, int(row.get("timeout", 60)))
+            except Exception:
+                timeout = 60
+
+            configs[provider_name] = LLMConfig(
+                name=str(row.get("name") or provider_name),
+                model_id=model_id,
+                api_key=api_key,
+                api_base=base_url,
+                timeout=timeout
+            )
+
+        return configs
+
+    async def initialize(self) -> bool:
+        """初始化服务（每次刷新数据库模型池，保证后台变更即时生效）。"""
+        configs = await self._fetch_db_configs()
+        self._configs_cache = configs
+        self._models = {}
+
         for name, config in configs.items():
             model = self._create_model(config)
             if model:
                 self._models[name] = model
-        
-        self._default_tools = self._init_default_tools()
+
+        if not self._default_tools:
+            self._default_tools = self._init_default_tools()
+
         self._initialized = True
-        
         return len(self._models) > 0
-    
-    def get_model(self, provider: Optional[str] = None) -> Optional[LiteLLMModel]:
+
+    async def get_model(self, provider: Optional[str] = None) -> Optional[LiteLLMModel]:
         """获取指定提供者的模型"""
-        if not self._initialized:
-            self.initialize()
-        
+        await self.initialize()
+
         if not self._models:
             return None
-        
-        # 如果没有指定提供者，使用默认
-        target = provider or settings.LLM_DEFAULT_PROVIDER or "default"
-        
-        # 尝试获取指定模型，否则返回第一个
-        return self._models.get(target) or next(iter(self._models.values()), None)
-    
-    def is_available(self, provider: Optional[str] = None) -> bool:
+
+        if provider:
+            if provider in self._models:
+                return self._models[provider]
+
+            lowered = provider.strip().lower()
+            for key, config in self._configs_cache.items():
+                if config.model_id.strip().lower() == lowered or config.name.strip().lower() == lowered:
+                    return self._models.get(key)
+
+        return next(iter(self._models.values()), None)
+
+    async def is_available(self, provider: Optional[str] = None) -> bool:
         """检查服务是否可用"""
-        return self.get_model(provider) is not None
-    
-    def get_available_providers(self) -> List[Dict[str, str]]:
+        return await self.get_model(provider) is not None
+
+    async def get_available_providers(self) -> List[Dict[str, str]]:
         """获取所有可用的 LLM 提供者"""
-        if not self._initialized:
-            self.initialize()
-        
+        await self.initialize()
+
         providers = []
-        configs = settings.get_llm_configs()
-        for name, config in configs.items():
+        for name, config in self._configs_cache.items():
             providers.append({
                 "name": name,
                 "model_id": config.model_id,
                 "available": name in self._models
             })
         return providers
-    
-    def get_model_info(self, provider: Optional[str] = None) -> Optional[str]:
+
+    async def get_model_info(self, provider: Optional[str] = None) -> Optional[str]:
         """获取模型信息"""
-        if not self._initialized:
-            self.initialize()
-        
-        target = provider or settings.LLM_DEFAULT_PROVIDER or "default"
-        config = settings.get_llm_config(target)
-        
-        if config and target in self._models:
+        await self.initialize()
+        if not self._models:
+            return None
+
+        if provider:
+            if provider in self._models and provider in self._configs_cache:
+                config = self._configs_cache[provider]
+                return f"{config.name}: {config.model_id}"
+
+            lowered = provider.strip().lower()
+            for key, config in self._configs_cache.items():
+                if key.strip().lower() == lowered or config.model_id.strip().lower() == lowered or config.name.strip().lower() == lowered:
+                    if key in self._models:
+                        return f"{config.name}: {config.model_id}"
+
+        first_key = next(iter(self._models.keys()), None)
+        if first_key and first_key in self._configs_cache:
+            config = self._configs_cache[first_key]
             return f"{config.name}: {config.model_id}"
         return None
     
     def get_available_tools(self) -> List[Dict[str, str]]:
         """获取可用工具列表"""
-        if not self._initialized:
-            self.initialize()
+        if not self._default_tools:
+            self._default_tools = self._init_default_tools()
         
         tools_info = []
         for t in self._default_tools:
@@ -158,7 +226,7 @@ class AgentService:
             })
         return tools_info
     
-    def create_agent(
+    async def create_agent(
         self, 
         tools: Optional[List] = None,
         provider: Optional[str] = None,
@@ -173,7 +241,7 @@ class AgentService:
         if llm_config:
             model = self._create_model(llm_config)
         else:
-            model = self.get_model(provider)
+            model = await self.get_model(provider)
             
         if not model:
             return None
@@ -226,6 +294,10 @@ class AgentService:
 5. 回复格式简洁，示例：
    "好的，我为您创建了一个日程建议，请确认是否添加到日历。"
    "已为您生成学习计划，请在上方卡片中查看详情。"
+
+6. 当用户询问知识库/上传文档/PDF/文件中的具体内容，或要求“根据资料回答”时，必须先调用 `retrieve_knowledge` 工具，再基于检索结果作答。
+   - 若检索无结果，明确说明“未检索到相关文档内容”。
+   - 不要在未调用 `retrieve_knowledge` 的情况下臆造文档内容。
 
 请简短、友好地回复。"""
 
@@ -331,7 +403,7 @@ class AgentService:
             model = self._create_model(llm_config)
             print(f"🚀 使用动态配置执行任务: {llm_config.model_id}")
         else:
-            model = self.get_model(provider)
+            model = await self.get_model(provider)
             
         if not model:
             return {
@@ -340,9 +412,10 @@ class AgentService:
             }
         # 运行前清空 default 桶，防止残留数据串扰
         clear_pending_suggestions("default")
+        clear_pending_rag_references("default")
 
         try:
-            agent = self.create_agent(
+            agent = await self.create_agent(
                 tools, 
                 provider, 
                 llm_config, 
@@ -391,6 +464,17 @@ class AgentService:
                         "observation": suggestion
                     })
             clear_pending_suggestions("default")  # 清空缓存
+
+            rag_pending = get_pending_rag_references("default")
+            for observation in rag_pending:
+                if isinstance(observation, dict):
+                    tool_outputs.append(
+                        {
+                            "tool_name": "retrieve_knowledge",
+                            "observation": observation,
+                        }
+                    )
+            clear_pending_rag_references("default")
             
             # 方法2: 从 agent.memory 或 agent.steps 提取 (通用方法)
             # Smolagents 可能将步骤存储在 memory.steps 或 logs 中
@@ -433,19 +517,21 @@ class AgentService:
                         if obs_type and obs_type not in seen_types and obs_type in [
                             "calendar_event_suggestion",
                             "task_decomposition_suggestion",
-                            "batch_calendar_events"
+                            "batch_calendar_events",
+                            "rag_references",
                         ]:
                             tool_name_map = {
                                 "calendar_event_suggestion": "suggest_calendar_event",
                                 "task_decomposition_suggestion": "suggest_task_decomposition",
-                                "batch_calendar_events": "create_batch_calendar_events"
+                                "batch_calendar_events": "create_batch_calendar_events",
+                                "rag_references": "retrieve_knowledge",
                             }
                             tool_outputs.append({
                                 "tool_name": tool_name_map.get(obs_type, "unknown"),
                                 "observation": obs_data
                             })
                             seen_types.add(obs_type)
-                            print(f"✅ Extracted {obs_type} from step.action_output (fallback)")
+                            print(f"✅ Extracted {obs_type} from step.action_output (fallback 1)")
 
                 if has_tool_calls:
                         if hasattr(step, "observations") and step.observations:
@@ -462,18 +548,21 @@ class AgentService:
                         if obs_type and obs_type not in seen_types and obs_type in [
                             "calendar_event_suggestion",
                             "task_decomposition_suggestion",
-                            "batch_calendar_events"
+                            "batch_calendar_events",
+                            "rag_references",
                         ]:
                             tool_name_map = {
                                 "calendar_event_suggestion": "suggest_calendar_event",
                                 "task_decomposition_suggestion": "suggest_task_decomposition",
-                                "batch_calendar_events": "create_batch_calendar_events"
+                                "batch_calendar_events": "create_batch_calendar_events",
+                                "rag_references": "retrieve_knowledge",
                             }
                             tool_outputs.append({
                                 "tool_name": tool_name_map.get(obs_type, "unknown"),
                                 "observation": obs
                             })
                             seen_types.add(obs_type)
+                            print(f"✅ Extracted {obs_type} from step observation dict (fallback 2)")
                 
                 steps.append(step_data)
             
@@ -487,12 +576,13 @@ class AgentService:
                 "steps": steps,
                 "tool_outputs": tool_outputs,
                 "usage": usage_summary,
-                "provider": llm_config.model_id if llm_config else (provider or settings.LLM_DEFAULT_PROVIDER or "default")
+                "provider": llm_config.model_id if llm_config else (provider or "database")
             }
             
         except asyncio.TimeoutError:
             print(f"❌ Agent 任务执行超时: timeout={timeout_seconds}s")
             clear_pending_suggestions("default")
+            clear_pending_rag_references("default")
             return {
                 "success": False,
                 "error": f"Agent 执行超时（{timeout_seconds}s）"
@@ -500,6 +590,7 @@ class AgentService:
         except Exception as e:
             print(f"❌ Agent 任务执行失败: {e}")
             clear_pending_suggestions("default")
+            clear_pending_rag_references("default")
             return {
                 "success": False,
                 "error": str(e)

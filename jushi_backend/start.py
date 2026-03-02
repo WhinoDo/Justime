@@ -3,6 +3,15 @@
 用于快速启动FastAPI服务
 """
 
+import os
+import sys
+
+# 自动切换到虚拟环境 (Auto-activate virtual environment)
+venv_python = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".venv", "bin", "python")
+if os.path.exists(venv_python) and sys.executable != venv_python:
+    print("🔄 检测到未使用虚拟环境，正在自动切换至 .venv...")
+    os.execl(venv_python, venv_python, *sys.argv)
+
 import uvicorn
 from app.core.config import settings
 

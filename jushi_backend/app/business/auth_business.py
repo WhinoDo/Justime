@@ -2,10 +2,7 @@
 用户认证业务逻辑
 """
 
-import dotenv
-from pathlib import Path
 from fastapi import HTTPException
-from app.core.config import settings
 from app.services.user_service import UserService
 from app.models.auth import (
     RegisterRequest, LoginRequest, SafeUser, 
@@ -163,25 +160,19 @@ class AuthBusiness:
     @staticmethod
     async def get_llm_config(user_id: str) -> AuthResponse:
         """获取用户的 LLM 配置 (自动获取当前激活的配置)"""
-        # 1. 获取所有配置数据
-        data = await UserService.get_user_llm_configs_data(user_id)
-        configs = data.get("configs", [])
-        active_id = data.get("active_id")
-        legacy_config = data.get("legacy_config")
+        # 1. 获取所有系统配置数据
+        system_configs = await UserService.get_available_models_for_user(user_id)
+        active_id = await UserService.get_user_active_model_id(user_id)
         
         target_config = None
         
         # 2. 尝试获取激活的配置
-        if active_id and configs:
-            target_config = next((c for c in configs if c.get("id") == active_id), None)
+        if active_id and system_configs:
+            target_config = next((c for c in system_configs if c.get("id") == active_id), None)
             
         # 3. 如果没有激活的，尝试使用第一个
-        if not target_config and configs:
-            target_config = configs[0]
-            
-        # 4. 如果连列表都没有，尝试使用旧配置
-        if not target_config and legacy_config:
-            target_config = legacy_config
+        if not target_config and system_configs:
+            target_config = system_configs[0]
             
         if target_config:
             # 解密 API Key
@@ -191,93 +182,31 @@ class AuthBusiness:
             config = LLMConfig(
                 modelId=target_config.get("model_id"),
                 baseUrl=target_config.get("base_url"),
-                apiKey="******" if plain_key else None,
+                apiKey=plain_key if plain_key else None,
                 temperature=target_config.get("temperature", 0.7)
             )
             return AuthResponse(success=True, message="获取用户配置成功", data=AuthData(llmConfig=config))
-            
-        # 5. 如果用户没有配置，回退到全局默认配置
-        config = LLMConfig(
-            modelId=settings.LLM_MODEL_ID,
-            baseUrl=settings.LLM_BASE_URL,
-            apiKey=None,
-            temperature=0.7
-        )
-        return AuthResponse(success=True, message="获取系统默认配置", data=AuthData(llmConfig=config))
 
-    @staticmethod
-    async def save_llm_config(user_id: str, config: LLMConfig) -> AuthResponse:
-        """保存用户的 LLM 配置"""
-        try:
-            # 1. 获取现有配置以处理掩码
-            current_config = await UserService.get_user_llm_config(user_id) or {}
-            current_encrypted_key = current_config.get("api_key", "")
-            
-            # 2. 处理 API Key
-            final_encrypted_key = current_encrypted_key
-            if config.apiKey and "******" not in config.apiKey:
-                # 如果是新 Key，加密保存
-                final_encrypted_key = encryption_service.encrypt(config.apiKey)
-            
-            # 3. 构造存储对象
-            # 只要有修改，就保存到用户对象
-            new_config = {
-                "model_id": config.modelId,
-                "base_url": config.baseUrl,
-                "api_key": final_encrypted_key,
-                "temperature": config.temperature
-            }
-            
-            # 4. 更新数据库
-            await UserService.update_user_llm_config(user_id, new_config)
-            
-            return AuthResponse(success=True, message="配置已安全保存", data=AuthData(llmConfig=config))
-        except Exception as e:
-            return AuthResponse(success=False, message=f"保存失败: {str(e)}")
+        return AuthResponse(success=False, message="平台尚未配置可用的 AI 模型，请联系管理员添加。")
 
 
     @staticmethod
     async def get_llm_configs_list(user_id: str) -> AuthResponse:
-        """获取用户的 LLM 配置列表"""
-        data = await UserService.get_user_llm_configs_data(user_id)
-        configs = data.get("configs", [])
-        active_id = data.get("active_id")
-        legacy_config = data.get("legacy_config")
+        """获取平台的 LLM 配置列表"""
+        system_configs = await UserService.get_available_models_for_user(user_id)
+        active_id = await UserService.get_user_active_model_id(user_id)
         
-        # 1. 自动迁移：如果列表为空但有旧配置，创建默认配置
-        if not configs and legacy_config and legacy_config.get("model_id"):
-            import uuid
-            new_id = str(uuid.uuid4())
-            migration_config = {
-                "id": new_id,
-                "name": "默认配置",
-                "model_id": legacy_config.get("model_id"),
-                "base_url": legacy_config.get("base_url"),
-                "api_key": legacy_config.get("api_key"), # Keeping encrypted
-                "capabilities": [],
-                "priority": 100,
-                "enabled": True,
-                "created_at": str(datetime.now())
-            }
-            await UserService.add_user_llm_config(user_id, migration_config)
-            await UserService.set_active_llm_config(user_id, new_id)
-            configs = [migration_config]
-            active_id = new_id
-            
-        # 2. 处理返回数据 (隐藏 Key)
+        # 处理返回数据 (完全隐藏 Key)
         safe_configs = []
-        for c in configs:
-            # 解密 API Key 检查是否存在 (不返回明文)
-            encrypted_key = c.get("api_key", "")
-            has_key = bool(encrypted_key)
-            
+        for c in system_configs:
             safe_configs.append({
                 "id": c.get("id"),
-                "name": c.get("name", "未命名配置"),
+                "name": c.get("name", "系统模型"),
                 "modelId": c.get("model_id"),
                 "baseUrl": c.get("base_url"),
-                "apiKey": "******" if has_key else None,
+                "apiKey": None, # Never return any API keys to the frontend in B2C
                 "isActive": c.get("id") == active_id,
+                "temperature": c.get("temperature", 0.7),
                 "capabilities": AuthBusiness._normalize_capabilities(c.get("capabilities")),
                 "priority": AuthBusiness._normalize_priority(c.get("priority", 100), default=100),
                 "enabled": AuthBusiness._normalize_enabled(c.get("enabled", True), default=True)
@@ -286,73 +215,94 @@ class AuthBusiness:
         return AuthResponse(success=True, message="获取配置列表成功", data={"configs": safe_configs})
 
     @staticmethod
-    async def add_llm_config(user_id: str, payload: dict) -> AuthResponse:
-        """添加新配置"""
-        import uuid
+    async def get_provider_models(user_id: str) -> AuthResponse:
+        """从 LLM 供应商动态获取可用的模型列表"""
+        system_configs = await UserService.get_available_models_for_user(user_id)
+        active_id = await UserService.get_user_active_model_id(user_id)
         
-        # 加密 Key
-        encrypted_key = ""
-        if payload.get("apiKey"):
-            encrypted_key = encryption_service.encrypt(payload["apiKey"])
+        target_config = None
+        if active_id and system_configs:
+            target_config = next((c for c in system_configs if c.get("id") == active_id), None)
+        if not target_config and system_configs:
+            target_config = system_configs[0]
             
-        new_id = str(uuid.uuid4())
-        new_config = {
-            "id": new_id,
-            "name": payload.get("name", "新配置"),
-            "model_id": payload.get("modelId"),
-            "base_url": payload.get("baseUrl"),
-            "api_key": encrypted_key,
-            "timeout": payload.get("timeout", 60),
-            "capabilities": AuthBusiness._normalize_capabilities(payload.get("capabilities")),
-            "priority": AuthBusiness._normalize_priority(payload.get("priority", 100), default=100),
-            "enabled": AuthBusiness._normalize_enabled(payload.get("enabled", True), default=True),
-            "created_at": str(datetime.now())
-        }
+        if not target_config:
+            return AuthResponse(success=False, message="系统未配置模型")
+            
+        base_url = target_config.get("base_url")
+        encrypted_key = target_config.get("api_key", "")
+        plain_key = encryption_service.decrypt(encrypted_key) if encrypted_key else ""
         
-        if await UserService.add_user_llm_config(user_id, new_config):
-            # 如果是第一个配置，设为激活
-            data = await UserService.get_user_llm_configs_data(user_id)
-            if len(data.get("configs", [])) == 1:
-                await UserService.set_active_llm_config(user_id, new_id)
-                
-            return AuthResponse(success=True, message="添加成功", data={"id": new_id})
-        return AuthResponse(success=False, message="添加失败")
+        if not base_url or not plain_key:
+             return AuthResponse(success=False, message="系统模型配置缺失（URL或Key不存在）")
+             
+        # Normalize baseUrl for models endpoint
+        testing_url = base_url
+        if not testing_url.endswith("/v1"):
+             testing_url = f"{testing_url.rstrip('/')}/v1"
+        testing_url = f"{testing_url}/models"
+        
+        try:
+             import httpx
+             async with httpx.AsyncClient(timeout=10.0) as client:
+                 response = await client.get(
+                     testing_url,
+                     headers={
+                         "Authorization": f"Bearer {plain_key}",
+                         "Content-Type": "application/json"
+                     }
+                 )
+                 
+                 if response.status_code == 200:
+                     data = response.json()
+                     models = data.get("data", [])
+                     model_ids = [m.get("id") for m in models if isinstance(m, dict) and m.get("id")]
+                     return AuthResponse(success=True, message="获取供应商模型成功", data={"models": model_ids})
+                 else:
+                     return AuthResponse(success=False, message=f"获取失败，供应商返回 {response.status_code}")
+        except httpx.TimeoutException:
+             return AuthResponse(success=False, message="连接超时，无法获取供应商模型")
+        except Exception as e:
+             return AuthResponse(success=False, message=f"获取供应商模型失败: {str(e)}")
 
     @staticmethod
-    async def update_llm_config(user_id: str, config_id: str, payload: dict) -> AuthResponse:
-        """更新配置"""
-        update_data = {
-            "name": payload.get("name"),
-            "model_id": payload.get("modelId"),
-            "base_url": payload.get("baseUrl"),
-            "timeout": payload.get("timeout", 60),
-            "capabilities": AuthBusiness._normalize_capabilities(payload.get("capabilities")) if "capabilities" in payload else None,
-            "priority": AuthBusiness._normalize_priority(payload.get("priority", 100), default=100) if "priority" in payload else None,
-            "enabled": AuthBusiness._normalize_enabled(payload.get("enabled", True), default=True) if "enabled" in payload else None
-        }
-        
-        # 只有在提供了新 Key 时才更新 (非掩码)
-        if payload.get("apiKey") and "******" not in payload["apiKey"]:
-            update_data["api_key"] = encryption_service.encrypt(payload["apiKey"])
-            
-        # 过滤 None
-        update_data = {k: v for k, v in update_data.items() if v is not None}
-        
-        if await UserService.update_user_llm_config_item(user_id, config_id, update_data):
-            return AuthResponse(success=True, message="更新成功")
-        return AuthResponse(success=False, message="更新失败")
+    async def update_system_config(config_id: str, payload: Dict[str, Any]) -> AuthResponse:
+        """更新系统模型配置的可调参数（当前支持 temperature）"""
+        if not isinstance(payload, dict):
+            return AuthResponse(success=False, message="请求参数格式错误")
 
-    @staticmethod
-    async def delete_llm_config(user_id: str, config_id: str) -> AuthResponse:
-        """删除配置"""
-        if await UserService.delete_user_llm_config(user_id, config_id):
-            return AuthResponse(success=True, message="删除成功")
-        return AuthResponse(success=False, message="删除失败")
+        updates: Dict[str, Any] = {}
+        if "temperature" in payload:
+            temperature = payload.get("temperature")
+            if isinstance(temperature, bool) or not isinstance(temperature, (int, float)):
+                return AuthResponse(success=False, message="temperature 必须是数字")
+            if temperature < 0 or temperature > 2:
+                return AuthResponse(success=False, message="temperature 必须在 0.0 ~ 2.0 之间")
+            updates["temperature"] = float(temperature)
+
+        if not updates:
+            return AuthResponse(success=False, message="没有可更新的参数")
+
+        from app.database import db
+        if db.db is None:
+            return AuthResponse(success=False, message="数据库未连接")
+
+        result = await db.db.system_llm_configs.update_one(
+            {"id": config_id},
+            {"$set": updates}
+        )
+        if result.matched_count == 0:
+            return AuthResponse(success=False, message=f"未找到配置 {config_id}")
+
+        return AuthResponse(success=True, message="更新配置成功")
 
     @staticmethod
     async def set_active_config(user_id: str, config_id: str) -> AuthResponse:
         """设置激活配置"""
-        if await UserService.set_active_llm_config(user_id, config_id):
+        available = await UserService.get_available_models_for_user(user_id)
+        if not any(str(c.get("id") or "") == config_id for c in available):
+            return AuthResponse(success=False, message="无权访问该模型配置")
+        if await UserService.set_active_model_id(user_id, config_id):
             return AuthResponse(success=True, message="设置激活成功")
         return AuthResponse(success=False, message="设置失败")
 
@@ -377,9 +327,8 @@ class AuthBusiness:
             scope=target_scope
         )
 
-        config_data = await UserService.get_user_llm_configs_data(user_id)
-        configs = config_data.get("configs", []) or []
-        active_id = config_data.get("active_id")
+        system_configs = await UserService.get_system_llm_configs()
+        active_id = await UserService.get_user_active_model_id(user_id)
 
         def init_daily_points() -> Dict[str, Dict[str, int]]:
             return {
@@ -395,13 +344,13 @@ class AuthBusiness:
 
         models_map: Dict[str, Dict[str, Any]] = {}
 
-        for conf in configs:
+        for conf in system_configs:
             config_id = conf.get("id")
             if not config_id:
                 continue
             models_map[config_id] = {
                 "configId": config_id,
-                "name": conf.get("name") or "未命名配置",
+                "name": conf.get("name") or "未命名平台配置",
                 "modelId": conf.get("model_id") or "",
                 "isActive": config_id == active_id,
                 "_daily_map": init_daily_points()
@@ -414,13 +363,46 @@ class AuthBusiness:
                 continue
 
             if config_id not in models_map:
-                models_map[config_id] = {
-                    "configId": config_id,
-                    "name": row.get("configName") or "历史配置",
-                    "modelId": row.get("modelId") or "",
-                    "isActive": config_id == active_id,
-                    "_daily_map": init_daily_points()
-                }
+                row_model_id = (row.get("modelId") or "").strip().lower()
+                matched_key = None
+                if row_model_id:
+                    best_score = 0
+                    for key, entry in models_map.items():
+                        entry_model_id = (entry.get("modelId") or "").strip().lower()
+                        if not entry_model_id:
+                            continue
+
+                        score = 0
+                        if entry_model_id == row_model_id:
+                            score = 3
+                        elif row_model_id in entry_model_id or entry_model_id in row_model_id:
+                            score = 2
+                        else:
+                            row_provider = row_model_id.split("-")[0]
+                            entry_provider = entry_model_id.split("-")[0]
+                            if row_provider and row_provider == entry_provider:
+                                score = 1
+
+                        if score > best_score:
+                            best_score = score
+                            matched_key = key
+                        elif score > 0 and score == best_score and key == active_id:
+                            matched_key = key
+
+                # 历史默认配置优先归并到当前激活配置，避免出现孤立“默认配置”条目
+                if not matched_key and config_id in {"legacy-default", "platform-default", "default"} and active_id in models_map:
+                    matched_key = active_id
+
+                if matched_key:
+                    config_id = matched_key
+                else:
+                    models_map[config_id] = {
+                        "configId": config_id,
+                        "name": row.get("configName") or "历史配置",
+                        "modelId": row.get("modelId") or "",
+                        "isActive": config_id == active_id,
+                        "_daily_map": init_daily_points()
+                    }
 
             models_map[config_id]["_daily_map"][usage_date] = {
                 "promptTokens": int(row.get("promptTokens", 0)),

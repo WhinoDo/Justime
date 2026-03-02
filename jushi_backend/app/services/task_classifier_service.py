@@ -52,11 +52,20 @@ class TaskClassifierService:
         if not text:
             return None
 
-        match = re.search(r"\{[\s\S]*\}", text)
-        if not match:
-            return None
+        # 预先剥离 deepseek-reasoner 输出的思维链闭环部分，防止里面意外包含 { 破坏边界
+        text = re.sub(r"<think>[\s\S]*?</think>", "", text)
 
-        candidate = match.group(0)
+        # 优先提取 markdown 的 json 代码块
+        md_match = re.search(r"```(?:json)?\s*(\{[\s\S]*?\})\s*```", text)
+        if md_match:
+            candidate = md_match.group(1)
+        else:
+            # 退化处理：暴力匹配最外侧花括号对
+            match = re.search(r"\{[\s\S]*\}", text)
+            if not match:
+                return None
+            candidate = match.group(0)
+
         try:
             data = json.loads(candidate)
             return data if isinstance(data, dict) else None

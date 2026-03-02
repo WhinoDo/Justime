@@ -3,8 +3,43 @@
 使用 RAG 技术从本地文档检索信息
 """
 
+import threading
+from typing import Dict, List, Optional
+
 from smolagents import tool
 from app.services.rag_service import rag_service
+
+_pending_rag_references: Dict[str, List[dict]] = {}
+_rag_lock = threading.Lock()
+_request_local = threading.local()
+
+
+def _get_current_request_id() -> str:
+    request_id = getattr(_request_local, "request_id", None)
+    return request_id or "default"
+
+
+def get_pending_rag_references(request_id: Optional[str] = None) -> List[dict]:
+    key = request_id or _get_current_request_id()
+    with _rag_lock:
+        return list(_pending_rag_references.get(key, []))
+
+
+def clear_pending_rag_references(request_id: Optional[str] = None):
+    key = request_id or _get_current_request_id()
+    with _rag_lock:
+        _pending_rag_references.pop(key, None)
+
+
+def _store_rag_references(observation: dict):
+    request_id = _get_current_request_id()
+    with _rag_lock:
+        bucket = _pending_rag_references.get(request_id)
+        if bucket is None:
+            bucket = []
+            _pending_rag_references[request_id] = bucket
+        bucket.append(observation)
+
 
 @tool
 def retrieve_knowledge(query: str) -> str:
@@ -17,4 +52,14 @@ def retrieve_knowledge(query: str) -> str:
     Returns:
         基于文档内容的回答或相关片段
     """
-    return rag_service.query(query)
+    result = rag_service.query_with_references(query)
+    references = result.get("references") if isinstance(result, dict) else []
+    if isinstance(references, list) and references:
+        _store_rag_references(
+            {
+                "type": "rag_references",
+                "query": query,
+                "references": references,
+            }
+        )
+    return str(result.get("answer", "")) if isinstance(result, dict) else rag_service.query(query)

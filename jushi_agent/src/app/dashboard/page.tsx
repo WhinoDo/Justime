@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
-import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import {
   Loader2,
@@ -13,14 +12,14 @@ import {
   User,
   Database,
   ArrowRight,
-  Sparkles
+  Sparkles,
+  ShieldCheck
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { JushiBackground } from '@/components/ui/JushiBackground'
 
 export default function DashboardPage() {
   const { user, isLoading, isAuthenticated } = useAuth()
-  const router = useRouter()
   const [greeting, setGreeting] = useState('')
 
   useEffect(() => {
@@ -31,13 +30,6 @@ export default function DashboardPage() {
     else if (hour < 18) setGreeting('下午好')
     else setGreeting('晚上好')
   }, [])
-
-  // 认证重定向逻辑
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push('/auth?mode=login&redirect=/dashboard')
-    }
-  }, [isLoading, isAuthenticated, router])
 
   if (isLoading) {
     return (
@@ -52,6 +44,8 @@ export default function DashboardPage() {
   }
 
   if (!isAuthenticated) return null
+  const role = (user?.role || '').toString().toLowerCase()
+  const isAdmin = role === 'admin'
 
   // 仪表盘功能卡片配置
   // Updated Colors: Lighter, more pastel/glass-friendly
@@ -109,7 +103,16 @@ export default function DashboardPage() {
       color: "text-rose-200",
       bgColor: "bg-rose-500/20",
       borderColor: "border-rose-400/30"
-    }
+    },
+    ...(isAdmin ? [{
+      title: "后台管理",
+      description: "查看系统概览并管理用户与模型配置",
+      icon: ShieldCheck,
+      href: "/admin",
+      color: "text-amber-200",
+      bgColor: "bg-amber-500/20",
+      borderColor: "border-amber-400/30"
+    }] : [])
   ]
 
   return (

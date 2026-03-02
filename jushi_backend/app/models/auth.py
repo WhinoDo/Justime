@@ -64,6 +64,7 @@ class AuthData(BaseModel):
     refreshToken: Optional[str] = None
     llmConfig: Optional[LLMConfig] = None
     configs: Optional[list] = None # Support for multiple configs
+    models: Optional[list] = None # Support for dynamic provider models
 
 
 class AuthResponse(BaseModel):

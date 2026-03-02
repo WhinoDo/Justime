@@ -6,7 +6,6 @@ Agent 业务逻辑层
 from typing import Optional, List, Dict, Any
 
 from app.services.agent_service import agent_service
-from app.core.config import settings
 from app.models.agent import (
     AgentRunRequest,
     AgentRunResponse,
@@ -25,16 +24,16 @@ class AgentBusiness:
     def __init__(self):
         self.service = agent_service
     
-    def get_status(self, provider: Optional[str] = None) -> AgentStatusResponse:
+    async def get_status(self, provider: Optional[str] = None) -> AgentStatusResponse:
         """获取 Agent 服务状态"""
-        available = self.service.is_available(provider)
-        model = self.service.get_model_info(provider)
+        available = await self.service.is_available(provider)
+        model = await self.service.get_model_info(provider)
         tools = self.service.get_available_tools()
         
         if available:
             message = f"Agent 服务运行正常，使用模型: {model}"
         else:
-            message = f"LLM 提供者 '{provider or 'default'}' 不可用，请检查配置"
+            message = f"LLM 提供者 '{provider or 'database'}' 不可用，请检查管理员模型配置"
         
         return AgentStatusResponse(
             available=available,
@@ -57,9 +56,9 @@ class AgentBusiness:
             tools=tools
         )
     
-    def get_providers(self) -> AgentProvidersResponse:
+    async def get_providers(self) -> AgentProvidersResponse:
         """获取所有 LLM 提供者列表"""
-        providers_data = self.service.get_available_providers()
+        providers_data = await self.service.get_available_providers()
         
         providers = [
             LLMProviderInfo(
@@ -73,7 +72,7 @@ class AgentBusiness:
         return AgentProvidersResponse(
             success=True,
             providers=providers,
-            default_provider=settings.LLM_DEFAULT_PROVIDER or "default"
+            default_provider=providers[0].name if providers else "database"
         )
     
     async def run_task(self, request: AgentRunRequest) -> AgentRunResponse:
@@ -129,4 +128,3 @@ class AgentBusiness:
 
 # 创建全局业务实例
 agent_business = AgentBusiness()
-

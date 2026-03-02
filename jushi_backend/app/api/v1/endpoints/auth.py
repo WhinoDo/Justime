@@ -131,29 +131,29 @@ async def get_llm_configs(current_user: Dict[str, Any] = Depends(SecurityService
     user_id = str(current_user["_id"])
     return await auth_business.get_llm_configs_list(user_id)
 
-@router.post("/llm-configs", response_model=AuthResponse, summary="添加配置")
-async def add_llm_config(payload: Dict[str, Any], current_user: Dict[str, Any] = Depends(SecurityService.get_current_user)) -> AuthResponse:
-    """添加新的LLM配置"""
-    user_id = str(current_user["_id"])
-    return await auth_business.add_llm_config(user_id, payload)
 
-@router.put("/llm-configs/{config_id}", response_model=AuthResponse, summary="更新配置")
-async def update_llm_config(config_id: str, payload: Dict[str, Any], current_user: Dict[str, Any] = Depends(SecurityService.get_current_user)) -> AuthResponse:
-    """更新指定的LLM配置"""
-    user_id = str(current_user["_id"])
-    return await auth_business.update_llm_config(user_id, config_id, payload)
+@router.put("/llm-configs/{config_id}", response_model=AuthResponse, summary="更新配置参数")
+async def update_llm_config(
+    config_id: str,
+    payload: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(SecurityService.get_current_user)
+) -> AuthResponse:
+    """更新指定系统模型配置的可调参数（当前支持 temperature）"""
+    _ = current_user
+    return await auth_business.update_system_config(config_id, payload)
 
-@router.delete("/llm-configs/{config_id}", response_model=AuthResponse, summary="删除配置")
-async def delete_llm_config(config_id: str, current_user: Dict[str, Any] = Depends(SecurityService.get_current_user)) -> AuthResponse:
-    """删除指定的LLM配置"""
-    user_id = str(current_user["_id"])
-    return await auth_business.delete_llm_config(user_id, config_id)
 
 @router.put("/llm-configs/{config_id}/active", response_model=AuthResponse, summary="激活配置")
 async def set_active_config(config_id: str, current_user: Dict[str, Any] = Depends(SecurityService.get_current_user)) -> AuthResponse:
     """设置当前激活的配置"""
     user_id = str(current_user["_id"])
     return await auth_business.set_active_config(user_id, config_id)
+
+@router.get("/provider-models", response_model=AuthResponse, summary="动态获取供应商支持的模型列表")
+async def get_provider_models(current_user: Dict[str, Any] = Depends(SecurityService.get_current_user)) -> AuthResponse:
+    """根据当前激活的模型配置请求对应的供应商API，动态返回可用的模型列表"""
+    user_id = str(current_user["_id"])
+    return await auth_business.get_provider_models(user_id)
 
 
 @router.get("/llm-usage/daily", summary="获取模型每日 Token 使用量")

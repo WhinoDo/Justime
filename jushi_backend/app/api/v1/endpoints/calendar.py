@@ -2,6 +2,7 @@
 日历事件 API 端点
 """
 
+import asyncio
 from datetime import datetime
 from typing import Any, Optional
 
@@ -10,8 +11,13 @@ from pymongo import ReturnDocument
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.database import db
-from app.models.calendar import CalendarEventCreate, CalendarEventUpdate
+from app.models.calendar import (
+    CalendarEventCreate,
+    CalendarEventUpdate,
+    YouTubeSummaryJobCreate,
+)
 from app.services.security_service import SecurityService
+from app.services.youtube_summary_service import youtube_summary_service
 
 router = APIRouter()
 
@@ -184,3 +190,98 @@ async def delete_event(
         raise HTTPException(status_code=404, detail="事件不存在")
 
     return {"success": True, "message": "事件删除成功"}
+
+
+@router.post(
+    "/events/{event_id}/youtube-summary/jobs",
+    summary="创建 YouTube 资源解析任务",
+    status_code=202,
+)
+async def create_youtube_summary_job(
+    event_id: str,
+    payload: Optional[YouTubeSummaryJobCreate] = None,
+    current_user: dict = Depends(SecurityService.get_current_user),
+):
+    user_id = str(current_user["_id"])
+    try:
+        event_oid = ObjectId(event_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="无效的事件ID")
+
+    event = await db.db["calendar_events"].find_one({"_id": event_oid, "userId": user_id})
+    if not event:
+        raise HTTPException(status_code=404, detail="事件不存在")
+
+    if await youtube_summary_service.has_active_job(event_id=event_id, user_id=user_id):
+        raise HTTPException(status_code=409, detail="当前事件已有进行中的解析任务")
+
+    resource_indexes = payload.resourceIndexes if payload else None
+    youtube_resources = youtube_summary_service.extract_youtube_resources(
+        resources=event.get("resources"),
+        resource_indexes=resource_indexes,
+    )
+    if not youtube_resources:
+        raise HTTPException(status_code=400, detail="相关资源中未找到 YouTube 链接")
+
+    job_id = await youtube_summary_service.create_job(
+        event_id=event_id,
+        user_id=user_id,
+        resources=youtube_resources,
+    )
+
+    task = asyncio.create_task(
+        youtube_summary_service.process_job(job_id=job_id, user_id=user_id, event_id=event_id)
+    )
+    youtube_summary_service.register_task(job_id, task)
+
+    return {
+        "success": True,
+        "data": {
+            "jobId": job_id,
+            "status": "queued",
+            "totalUrls": len(youtube_resources),
+            "documentEventId": event_id,
+        },
+        "message": "解析任务已创建",
+    }
+
+
+@router.get(
+    "/events/{event_id}/youtube-summary/jobs/{job_id}",
+    summary="查询 YouTube 资源解析任务状态",
+)
+async def get_youtube_summary_job_status(
+    event_id: str,
+    job_id: str,
+    current_user: dict = Depends(SecurityService.get_current_user),
+):
+    user_id = str(current_user["_id"])
+    job = await youtube_summary_service.get_job(
+        job_id=job_id,
+        event_id=event_id,
+        user_id=user_id,
+    )
+    if not job:
+        raise HTTPException(status_code=404, detail="任务不存在")
+
+    processed = int(job.get("processedUrls") or 0)
+    total = int(job.get("totalUrls") or 0)
+    progress = 0.0 if total <= 0 else round(processed / total, 4)
+
+    return {
+        "success": True,
+        "data": {
+            "jobId": str(job["_id"]),
+            "status": job.get("status"),
+            "currentStage": job.get("currentStage"),
+            "processedUrls": processed,
+            "totalUrls": total,
+            "progress": progress,
+            "error": job.get("error"),
+            "items": _to_jsonable(job.get("items") or []),
+            "documentEventId": job.get("documentEventId") or event_id,
+            "createdAt": _to_jsonable(job.get("createdAt")),
+            "startedAt": _to_jsonable(job.get("startedAt")),
+            "completedAt": _to_jsonable(job.get("completedAt")),
+        },
+    }

@@ -74,3 +74,11 @@ class CalendarEventOut(CalendarEventBase):
     userId: str
     createdAt: Optional[datetime] = None
     updatedAt: Optional[datetime] = None
+
+
+class YouTubeSummaryJobCreate(BaseModel):
+    """创建 YouTube 解析任务请求"""
+    resourceIndexes: Optional[List[int]] = Field(
+        default=None,
+        description="可选，仅解析指定资源索引",
+    )

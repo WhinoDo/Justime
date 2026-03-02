@@ -9,9 +9,19 @@ export interface LLMConfig {
 
 const DEFAULT_CONFIG: LLMConfig = {
     apiKey: '',
-    modelName: 'gpt-3.5-turbo',
+    modelName: '',
     baseUrl: '',
     temperature: 0.7
+}
+
+export interface ConfigItem {
+    id: string;
+    name: string;
+    modelId: string;
+    baseUrl?: string;
+    apiKey?: string;
+    temperature?: number;
+    isActive: boolean;
 }
 
 const STORAGE_KEY = 'jushi_llm_config'
@@ -21,13 +31,24 @@ export function useLLMConfig() {
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<Error | null>(null)
 
-    // Load config from local storage
+    // Load config from backend
     useEffect(() => {
-        const loadConfig = () => {
+        const loadConfig = async () => {
             try {
-                const stored = localStorage.getItem(STORAGE_KEY)
-                if (stored) {
-                    setConfig({ ...DEFAULT_CONFIG, ...JSON.parse(stored) })
+                const response = await fetch('/api/auth/llm-config', {
+                    headers: { 'Cache-Control': 'no-cache' },
+                    credentials: 'include'
+                })
+                const result = await response.json()
+
+                if (result.success && result.data?.llmConfig) {
+                    const apiConfig = result.data.llmConfig
+                    setConfig({
+                        apiKey: apiConfig.apiKey || '',
+                        modelName: apiConfig.modelId || '',
+                        baseUrl: apiConfig.baseUrl || '',
+                        temperature: apiConfig.temperature ?? 0.7
+                    })
                 } else {
                     setConfig(DEFAULT_CONFIG)
                 }
@@ -48,12 +69,29 @@ export function useLLMConfig() {
     const updateConfig = useCallback(async (newConfig: Partial<LLMConfig>) => {
         setIsLoading(true)
         try {
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 600))
+            const payload = {
+                apiKey: newConfig.apiKey,
+                modelId: newConfig.modelName,
+                baseUrl: newConfig.baseUrl,
+                temperature: newConfig.temperature
+            }
+
+            const response = await fetch('/api/auth/llm-config', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload),
+                credentials: 'include'
+            })
+
+            const result = await response.json()
+            if (!result.success) {
+                throw new Error(result.error || result.message || 'Failed to update config')
+            }
 
             setConfig(prev => {
                 const updated = { ...prev!, ...newConfig }
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
                 return updated
             })
         } catch (err) {
@@ -67,8 +105,27 @@ export function useLLMConfig() {
     const resetConfig = useCallback(async () => {
         setIsLoading(true)
         try {
-            await new Promise(resolve => setTimeout(resolve, 600))
-            localStorage.removeItem(STORAGE_KEY)
+            const payload = {
+                apiKey: DEFAULT_CONFIG.apiKey,
+                modelId: DEFAULT_CONFIG.modelName,
+                baseUrl: DEFAULT_CONFIG.baseUrl,
+                temperature: DEFAULT_CONFIG.temperature
+            }
+
+            const response = await fetch('/api/auth/llm-config', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload),
+                credentials: 'include'
+            })
+
+            const result = await response.json()
+            if (!result.success) {
+                throw new Error(result.error || result.message || 'Failed to reset config')
+            }
+
             setConfig(DEFAULT_CONFIG)
         } catch (err) {
             setError(err instanceof Error ? err : new Error('Failed to reset config'))
@@ -83,5 +140,114 @@ export function useLLMConfig() {
         resetConfig,
         isLoading,
         error
+    }
+}
+
+export function useLLMConfigs() {
+    const [configs, setConfigs] = useState<ConfigItem[]>([])
+    const [isLoading, setIsLoading] = useState(true)
+    const [error, setError] = useState<Error | null>(null)
+
+    const loadConfigs = useCallback(async () => {
+        setIsLoading(true)
+        try {
+            const response = await fetch('/api/auth/llm-configs', {
+                headers: { 'Cache-Control': 'no-cache' },
+                credentials: 'include'
+            })
+            const result = await response.json()
+            if (result.success && Array.isArray(result.data)) {
+                setConfigs(result.data)
+            } else if (result.success && Array.isArray(result.data?.configs)) {
+                setConfigs(result.data.configs)
+            } else {
+                setConfigs([])
+            }
+        } catch (err) {
+            console.error('Failed to load LLM configs', err)
+            setError(err instanceof Error ? err : new Error('Failed to load configs'))
+        } finally {
+            setIsLoading(false)
+        }
+    }, [])
+
+    useEffect(() => {
+        loadConfigs()
+    }, [loadConfigs])
+
+    const addConfig = async (newConfig: Partial<ConfigItem>) => {
+        setIsLoading(true)
+        try {
+            const response = await fetch('/api/auth/llm-configs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newConfig),
+                credentials: 'include'
+            })
+            const result = await response.json()
+            if (!result.success) throw new Error(result.error || 'Failed to add config')
+            await loadConfigs()
+            return result.data
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    const updateConfig = async (id: string, updates: Partial<ConfigItem>) => {
+        setIsLoading(true)
+        try {
+            const response = await fetch(`/api/auth/llm-configs/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updates),
+                credentials: 'include'
+            })
+            const result = await response.json()
+            if (!result.success) throw new Error(result.error || 'Failed to update config')
+            await loadConfigs()
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    const deleteConfig = async (id: string) => {
+        setIsLoading(true)
+        try {
+            const response = await fetch(`/api/auth/llm-configs/${id}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            })
+            const result = await response.json()
+            if (!result.success) throw new Error(result.error || 'Failed to delete config')
+            await loadConfigs()
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    const setActiveConfig = async (id: string) => {
+        setIsLoading(true)
+        try {
+            const response = await fetch(`/api/auth/llm-configs/${id}/active`, {
+                method: 'PUT',
+                credentials: 'include'
+            })
+            const result = await response.json()
+            if (!result.success) throw new Error(result.error || 'Failed to activate config')
+            await loadConfigs()
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    return {
+        configs,
+        isLoading,
+        error,
+        loadConfigs,
+        addConfig,
+        updateConfig,
+        deleteConfig,
+        setActiveConfig
     }
 }

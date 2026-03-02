@@ -27,11 +27,21 @@ export async function proxyToBackend(
       requireAuth = true
     } = options;
 
+    // 判断是否为 multipart/form-data 文件上传请求
+    const sourceContentType = request.headers.get('content-type') || '';
+    const isMultipart = sourceContentType.includes('multipart/form-data');
+
     // 构建请求头
     const requestHeaders: Record<string, string> = {
       ...DEFAULT_HEADERS,
       ...headers
     };
+
+    // 对 multipart 请求移除默认 JSON Content-Type，让 fetch 自动附加带 boundary 的 header
+    if (isMultipart) {
+      delete requestHeaders['Content-Type'];
+      delete requestHeaders['content-type'];
+    }
 
     // 如果需要认证，添加认证头
     if (requireAuth) {
@@ -65,17 +75,39 @@ export async function proxyToBackend(
     }
 
     // 构建请求体
-    let requestBody: string | undefined;
+    let requestBody: BodyInit | undefined;
     if (body) {
-      requestBody = typeof body === 'string' ? body : JSON.stringify(body);
-    } else if (request.method !== 'GET' && request.method !== 'HEAD') {
-      // 从原始请求中读取body
-      const clonedRequest = request.clone();
-      requestBody = await clonedRequest.text();
+      if (typeof body === 'string') {
+        requestBody = body;
+      } else if (body instanceof FormData) {
+        requestBody = body;
+      } else {
+        requestBody = JSON.stringify(body);
+      }
+    } else if (method !== 'GET' && method !== 'HEAD') {
+      if (isMultipart) {
+        requestBody = await request.formData();
+      } else {
+        // 从原始请求中读取 body 文本（JSON 等）
+        const clonedRequest = request.clone();
+        requestBody = await clonedRequest.text();
+      }
     }
 
     // 构建完整的后端URL
-    const backendUrl = API_CONFIG.getFullUrl(endpoint);
+    let backendUrl = API_CONFIG.getFullUrl(endpoint);
+
+    // 如果原请求带有查询参数，将其附加到后端URL
+    if (request.nextUrl && request.nextUrl.searchParams) {
+      const queryStr = request.nextUrl.searchParams.toString();
+      if (queryStr) {
+        if (backendUrl.includes('?')) {
+          backendUrl += `&${queryStr}`;
+        } else {
+          backendUrl += `?${queryStr}`;
+        }
+      }
+    }
 
     console.log(`🔀 代理请求: ${method} ${backendUrl}`);
 
@@ -94,6 +126,10 @@ export async function proxyToBackend(
 
     try {
       data = JSON.parse(responseData);
+      // 🔥 关键调试点：如果后端返回了 422，强制把代理时拼凑的具体 URL 塞进响应里，供前端查看
+      if (response.status === 422) {
+        data._debugUrl = backendUrl;
+      }
     } catch {
       data = responseData;
     }

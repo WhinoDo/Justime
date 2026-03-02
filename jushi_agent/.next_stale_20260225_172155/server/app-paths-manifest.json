@@ -1,0 +1,10 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/chat/page": "app/chat/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/model-config/page": "app/model-config/page.js",
+  "/api/auth/me/route": "app/api/auth/me/route.js",
+  "/api/auth/refresh/route": "app/api/auth/refresh/route.js",
+  "/admin/page": "app/admin/page.js",
+  "/admin/models/page": "app/admin/models/page.js"
+}

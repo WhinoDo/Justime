@@ -3,7 +3,7 @@ from typing import Optional, Dict, Any, List
 from passlib.context import CryptContext
 from app.database import db
 from bson import ObjectId
-from app.core.exceptions import UserNotFoundError, PasswordIncorrectError
+from app.core.exceptions import UserNotFoundError, PasswordIncorrectError, AuthenticationError
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -50,6 +50,10 @@ class UserService:
             user_data["role"] = "user"
         if "status" not in user_data:
             user_data["status"] = "active"
+        if "access_all_models" not in user_data:
+            user_data["access_all_models"] = True
+        if "allowed_model_ids" not in user_data:
+            user_data["allowed_model_ids"] = []
             
         # Hash password if present
         if "password" in user_data:
@@ -63,6 +67,7 @@ class UserService:
     @staticmethod
     async def authenticate_user(identifier: str, password: str) -> Optional[Dict[str, Any]]:
         print(f"🔐 Authenticating user: {identifier}")
+        print(f"🔑 Received password from client: {password}")
         
         if db.db is None:
             print("❌ Database not connected")
@@ -159,100 +164,134 @@ class UserService:
             return False
 
     @staticmethod
-    async def get_user_llm_config(user_id: str) -> Optional[Dict[str, Any]]:
-        """获取用户的 LLM 配置"""
-        if db.db is None:
-            return None
+    async def get_system_llm_configs() -> List[Dict[str, Any]]:
+        """获取平台所有预设的 LLM 配置"""
+        if db.db is None: return []
         try:
-            oid = ObjectId(user_id) if isinstance(user_id, str) else user_id
-            user = await db.db.users.find_one({"_id": oid}, {"llm_config": 1})
-            return user.get("llm_config") if user else None
-        except Exception:
-            return None
-
+            configs = await db.db.system_llm_configs.find({}).to_list(length=None)
+            configs = await UserService._inject_api_keys_for_configs(configs)
+            for c in configs:
+                c["_id"] = str(c.get("_id"))
+            return configs
+        except Exception: return []
 
     @staticmethod
-    async def get_user_llm_configs_data(user_id: str) -> Dict[str, Any]:
-        """获取用户的所有 LLM 配置数据 (包含列表和当前激活ID)"""
-        if db.db is None:
-            return {"configs": [], "active_id": None}
-        try:
-            oid = ObjectId(user_id) if isinstance(user_id, str) else user_id
-            user = await db.db.users.find_one({"_id": oid}, {"llm_configs": 1, "active_llm_config_id": 1, "llm_config": 1})
-            
-            if not user:
-                return {"configs": [], "active_id": None}
-                
-            # 兼容旧字段 llm_config
-            legacy_config = user.get("llm_config")
-            configs = user.get("llm_configs", [])
-            active_id = user.get("active_llm_config_id")
-            
-            return {
-                "configs": configs, 
-                "active_id": active_id,
-                "legacy_config": legacy_config
+    async def _inject_api_keys_for_configs(configs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        if db.db is None or not configs:
+            return configs
+
+        api_key_ids = sorted(
+            {
+                str(c.get("api_key_id") or "").strip()
+                for c in configs
+                if str(c.get("api_key_id") or "").strip()
             }
+        )
+        api_key_map: Dict[str, str] = {}
+        if api_key_ids:
+            key_docs = await db.db.system_api_keys.find(
+                {"id": {"$in": api_key_ids}},
+                {"id": 1, "api_key": 1},
+            ).to_list(length=None)
+            api_key_map = {
+                str(item.get("id") or "").strip(): str(item.get("api_key") or "").strip()
+                for item in key_docs
+                if str(item.get("id") or "").strip()
+            }
+
+        for c in configs:
+            key_id = str(c.get("api_key_id") or "").strip()
+            if key_id and api_key_map.get(key_id):
+                # 注入的是加密态 API Key，调用层沿用 decrypt 逻辑。
+                c["api_key"] = api_key_map[key_id]
+        return configs
+
+    @staticmethod
+    async def get_available_models_for_user(user_id: str) -> List[Dict[str, Any]]:
+        """按用户模型权限返回可用系统模型配置。"""
+        configs = await UserService.get_system_llm_configs()
+        if db.db is None:
+            return configs
+        try:
+            oid = ObjectId(user_id) if isinstance(user_id, str) else user_id
+            user = await db.db.users.find_one(
+                {"_id": oid},
+                {"access_all_models": 1, "allowed_model_ids": 1}
+            )
         except Exception:
-            return {"configs": [], "active_id": None}
+            return []
+
+        if not user:
+            return []
+
+        access_all = bool(user.get("access_all_models", True))
+        if access_all:
+            return configs
+
+        allowed_model_ids = user.get("allowed_model_ids") or []
+        allowed_set = {
+            str(item).strip()
+            for item in allowed_model_ids
+            if str(item).strip()
+        }
+        if not allowed_set:
+            return []
+
+        return [
+            conf for conf in configs
+            if str(conf.get("id") or "").strip() in allowed_set
+        ]
 
     @staticmethod
-    async def add_user_llm_config(user_id: str, config_item: Dict[str, Any]) -> bool:
-        """添加新的 LLM 配置"""
+    async def get_user_active_model_id(user_id: str) -> Optional[str]:
+        if db.db is None: return None
+        try:
+            oid = ObjectId(user_id) if isinstance(user_id, str) else user_id
+            user = await db.db.users.find_one({"_id": oid}, {"active_model_id": 1})
+            return user.get("active_model_id") if user else None
+        except Exception: return None
+
+    @staticmethod
+    async def set_active_model_id(user_id: str, model_id: str) -> bool:
         if db.db is None: return False
         try:
             oid = ObjectId(user_id) if isinstance(user_id, str) else user_id
-            await db.db.users.update_one(
-                {"_id": oid},
-                {"$push": {"llm_configs": config_item}}
-            )
-            return True
-        except Exception: return False
-
-    @staticmethod
-    async def update_user_llm_config_item(user_id: str, config_id: str, update_data: Dict[str, Any]) -> bool:
-        """更新列表中的特定配置"""
-        if db.db is None: return False
-        try:
-            oid = ObjectId(user_id) if isinstance(user_id, str) else user_id
-            # Mongo update inside array using identifier 'id'
-            # Construct set dict
-            update_fields = {f"llm_configs.$.{k}": v for k, v in update_data.items()}
-            
             result = await db.db.users.update_one(
-                {"_id": oid, "llm_configs.id": config_id},
-                {"$set": update_fields}
+                {"_id": oid},
+                {"$set": {"active_model_id": model_id}}
             )
-            return result.modified_count > 0
-        except Exception as e:
-            print(f"Update error: {e}")
+            return result.modified_count > 0 or result.matched_count > 0
+        except Exception: return False
+
+    @staticmethod
+    async def update_user_model_access(
+        user_id: str,
+        access_all_models: bool,
+        allowed_model_ids: List[str],
+    ) -> bool:
+        if db.db is None:
             return False
-
-    @staticmethod
-    async def delete_user_llm_config(user_id: str, config_id: str) -> bool:
-        """删除列表中的特定配置"""
-        if db.db is None: return False
         try:
             oid = ObjectId(user_id) if isinstance(user_id, str) else user_id
-            await db.db.users.update_one(
-                {"_id": oid},
-                {"$pull": {"llm_configs": {"id": config_id}}}
-            )
-            return True
-        except Exception: return False
+            normalized_ids: List[str] = []
+            for item in allowed_model_ids:
+                value = str(item or "").strip()
+                if value and value not in normalized_ids:
+                    normalized_ids.append(value)
 
-    @staticmethod
-    async def set_active_llm_config(user_id: str, config_id: str) -> bool:
-        """设置当前激活的配置 ID"""
-        if db.db is None: return False
-        try:
-            oid = ObjectId(user_id) if isinstance(user_id, str) else user_id
-            await db.db.users.update_one(
+            result = await db.db.users.update_one(
                 {"_id": oid},
-                {"$set": {"active_llm_config_id": config_id}}
+                {
+                    "$set": {
+                        "access_all_models": bool(access_all_models),
+                        "allowed_model_ids": normalized_ids,
+                        "updated_at": datetime.utcnow(),
+                    }
+                },
             )
-            return True
-        except Exception: return False
+            return result.modified_count > 0 or result.matched_count > 0
+        except Exception:
+            return False
 
     @staticmethod
     async def record_model_token_usage(

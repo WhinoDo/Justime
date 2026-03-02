@@ -4,13 +4,57 @@
 
 import shutil
 import os
+import mimetypes
+from urllib.parse import quote
 from pathlib import Path
 from typing import List, Dict, Any
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Query
+from fastapi.responses import FileResponse
+from llama_index.core import SimpleDirectoryReader
 from app.services.rag_service import rag_service, DOCS_DIR
 from app.services.security_service import SecurityService
 
 router = APIRouter()
+TEXT_FILE_EXTENSIONS = {
+    ".txt", ".md", ".csv", ".json", ".yaml", ".yml", ".xml",
+    ".html", ".htm", ".log", ".ini", ".py", ".js", ".ts", ".tsx", ".jsx"
+}
+DEFAULT_PREVIEW_MAX_CHARS = 20000
+MAX_PREVIEW_MAX_CHARS = 200000
+
+
+def _resolve_safe_document_path(doc_path: str) -> Path:
+    if not doc_path:
+        raise HTTPException(status_code=400, detail="path 不能为空")
+    target = (DOCS_DIR / doc_path).expanduser().resolve()
+    docs_root = DOCS_DIR.resolve()
+    if target != docs_root and docs_root not in target.parents:
+        raise HTTPException(status_code=400, detail="非法路径")
+    if not target.exists() or not target.is_file():
+        raise HTTPException(status_code=404, detail="文档不存在")
+    return target
+
+
+def _extract_document_text(file_path: Path) -> str:
+    suffix = file_path.suffix.lower()
+    if suffix in TEXT_FILE_EXTENSIONS:
+        return file_path.read_text(encoding="utf-8", errors="ignore")
+
+    if suffix == ".pdf":
+        from app.services.rag_service import OcrFallbackPDFReader
+        reader = OcrFallbackPDFReader()
+        documents = reader.load_data(file_path=file_path)
+    else:
+        documents = SimpleDirectoryReader(input_files=[str(file_path)]).load_data()
+        
+    parts = []
+    for document in documents:
+        text = str(getattr(document, "text", "") or "").strip()
+        if text:
+            parts.append(text)
+    if not parts:
+        raise ValueError("文件不可预览或内容为空 (如果是扫描件，请确保 Tesseract OCR 已正确安装)")
+    return "\n\n".join(parts)
 
 @router.post("/upload", summary="上传文档")
 async def upload_document(
@@ -54,6 +98,62 @@ async def list_documents(
         return {"success": True, "files": files}
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+
+@router.get("/content", summary="预览知识库文档内容")
+async def get_document_content(
+    path: str = Query(..., description="文档相对路径"),
+    max_chars: int = Query(DEFAULT_PREVIEW_MAX_CHARS, ge=100, le=MAX_PREVIEW_MAX_CHARS),
+    current_user: dict = Depends(SecurityService.get_current_user)
+) -> Dict[str, Any]:
+    """获取文档预览内容（带路径安全校验）。"""
+    try:
+        from fastapi.concurrency import run_in_threadpool
+        target = _resolve_safe_document_path(path)
+        raw_content = await run_in_threadpool(_extract_document_text, target)
+        raw_content = raw_content.strip()
+        truncated = len(raw_content) > max_chars
+        preview_content = raw_content[:max_chars]
+        relative_path = target.resolve().relative_to(DOCS_DIR.resolve()).as_posix()
+        return {
+            "success": True,
+            "path": relative_path,
+            "fileName": target.name,
+            "content": preview_content,
+            "truncated": truncated,
+            "charCount": len(raw_content),
+            "maxChars": max_chars,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        return {"success": False, "error": f"文件不可预览: {str(e)}"}
+
+
+@router.get("/raw", summary="获取知识库原始文件流")
+async def get_document_raw(
+    path: str = Query(..., description="文档相对路径"),
+    current_user: dict = Depends(SecurityService.get_current_user)
+) -> FileResponse:
+    """返回文档原始文件流（适用于 PDF 原生预览等场景）。"""
+    try:
+        target = _resolve_safe_document_path(path)
+        guessed_type, _ = mimetypes.guess_type(str(target))
+        media_type = guessed_type or "application/octet-stream"
+        if target.suffix.lower() == ".pdf":
+            media_type = "application/pdf"
+        encoded_name = quote(target.name)
+
+        return FileResponse(
+            path=str(target),
+            media_type=media_type,
+            headers={"Content-Disposition": f"inline; filename*=UTF-8''{encoded_name}"},
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"文件读取失败: {str(e)}")
+
 
 @router.delete("/files/{filename}", summary="删除文档")
 async def delete_document(

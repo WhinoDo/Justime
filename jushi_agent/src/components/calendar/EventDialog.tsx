@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import { FileText, Link as LinkIcon, ExternalLink, Plus, Trash2, X } from 'lucide-react'
+import { FileText, Link as LinkIcon, ExternalLink, Plus, X } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -35,6 +35,15 @@ interface EventDialogProps {
   onDelete?: (eventId: string) => Promise<void>
 }
 
+type YouTubeJobState = {
+  jobId: string | null
+  status: string | null
+  stage: string | null
+  processedUrls: number
+  totalUrls: number
+  error: string | null
+}
+
 export function EventDialog({
   open,
   onOpenChange,
@@ -57,6 +66,40 @@ export function EventDialog({
     resources: [] as Array<{ title: string; url: string; type?: string }>,
   })
   const [loading, setLoading] = useState(false)
+  const [youtubeJob, setYoutubeJob] = useState<YouTubeJobState>({
+    jobId: null,
+    status: null,
+    stage: null,
+    processedUrls: 0,
+    totalUrls: 0,
+    error: null,
+  })
+  const [youtubeBusy, setYoutubeBusy] = useState(false)
+  const [youtubeMessage, setYoutubeMessage] = useState<string | null>(null)
+  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const isYouTubeUrl = (value: string) => {
+    if (!value) return false
+    try {
+      const parsed = new URL(value)
+      const host = parsed.hostname.toLowerCase()
+      return ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be', 'www.youtu.be'].includes(host)
+    } catch {
+      return false
+    }
+  }
+
+  const savedYoutubeResourcesCount = useMemo(() => {
+    if (!event?.resources) return 0
+    return event.resources.filter((resource) => isYouTubeUrl(resource.url || '')).length
+  }, [event?.resources])
+
+  const stopPolling = () => {
+    if (pollTimerRef.current) {
+      clearInterval(pollTimerRef.current)
+      pollTimerRef.current = null
+    }
+  }
 
   // 初始化表单数据
   useEffect(() => {
@@ -90,6 +133,143 @@ export function EventDialog({
       })
     }
   }, [event, defaultStart, defaultEnd])
+
+  useEffect(() => {
+    if (!open) {
+      stopPolling()
+      setYoutubeBusy(false)
+      setYoutubeJob({
+        jobId: null,
+        status: null,
+        stage: null,
+        processedUrls: 0,
+        totalUrls: 0,
+        error: null,
+      })
+      setYoutubeMessage(null)
+    }
+  }, [open])
+
+  useEffect(() => {
+    return () => {
+      stopPolling()
+    }
+  }, [])
+
+  const pollJobStatus = async (eventId: string, jobId: string) => {
+    const response = await fetch(`/api/calendar/events/${eventId}/youtube-summary/jobs/${jobId}`, {
+      cache: 'no-store'
+    })
+    const result = await response.json()
+    if (!response.ok || !result.success) {
+      throw new Error(result?.detail || result?.error || '查询任务状态失败')
+    }
+
+    const data = result.data || {}
+    const nextState: YouTubeJobState = {
+      jobId,
+      status: data.status || null,
+      stage: data.currentStage || null,
+      processedUrls: Number(data.processedUrls || 0),
+      totalUrls: Number(data.totalUrls || 0),
+      error: data.error || null,
+    }
+    setYoutubeJob(nextState)
+
+    if (nextState.status === 'completed') {
+      stopPolling()
+      setYoutubeBusy(false)
+      setYoutubeMessage('YouTube 资源解析完成，结果已写入工作文档。')
+    } else if (nextState.status === 'completed_with_errors') {
+      stopPolling()
+      setYoutubeBusy(false)
+      setYoutubeMessage('解析已完成，但部分资源失败。可打开工作文档查看已成功内容。')
+    } else if (nextState.status === 'failed') {
+      stopPolling()
+      setYoutubeBusy(false)
+      setYoutubeMessage(nextState.error || '解析任务失败')
+    }
+  }
+
+  const startPolling = (eventId: string, jobId: string) => {
+    const run = async () => {
+      try {
+        await pollJobStatus(eventId, jobId)
+      } catch (error) {
+        stopPolling()
+        setYoutubeBusy(false)
+        setYoutubeMessage(error instanceof Error ? error.message : '查询任务状态失败')
+      }
+    }
+    stopPolling()
+    void run()
+    pollTimerRef.current = setInterval(() => {
+      void run()
+    }, 3000)
+  }
+
+  const handleStartYouTubeSummary = async () => {
+    if (!event?._id) {
+      alert('请先保存事件，再执行 YouTube 资源解析。')
+      return
+    }
+    if (savedYoutubeResourcesCount <= 0) {
+      alert('相关资源中未找到 YouTube 链接。')
+      return
+    }
+
+    setYoutubeBusy(true)
+    setYoutubeMessage('正在创建解析任务...')
+    try {
+      const response = await fetch(`/api/calendar/events/${event._id}/youtube-summary/jobs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({})
+      })
+      const result = await response.json()
+      if (!response.ok || !result.success) {
+        throw new Error(result?.detail || result?.error || '创建解析任务失败')
+      }
+      const data = result.data || {}
+      const jobId = data.jobId as string | undefined
+      if (!jobId) {
+        throw new Error('解析任务返回缺少 jobId')
+      }
+      setYoutubeJob({
+        jobId,
+        status: data.status || 'queued',
+        stage: 'queued',
+        processedUrls: 0,
+        totalUrls: Number(data.totalUrls || savedYoutubeResourcesCount),
+        error: null,
+      })
+      setYoutubeMessage('解析任务已创建，正在后台处理...')
+      startPolling(event._id, jobId)
+    } catch (error) {
+      setYoutubeBusy(false)
+      const message = error instanceof Error ? error.message : '创建解析任务失败'
+      setYoutubeMessage(message)
+    }
+  }
+
+  const stageLabel = useMemo(() => {
+    const stage = youtubeJob.stage || ''
+    if (stage.includes('downloading')) return '正在下载视频'
+    if (stage.includes('extracting_audio')) return '正在提取音频'
+    if (stage.includes('uploading_audio')) return '正在上传音频到 OSS'
+    if (stage.includes('asr_submitting')) return '正在提交语音识别任务'
+    if (stage.includes('asr_polling')) return '正在等待语音识别结果'
+    if (stage.includes('transcribing')) return '正在转写音频'
+    if (stage.includes('summarizing')) return '正在总结内容'
+    if (stage.includes('writing_document')) return '正在写入工作文档'
+    if (stage === 'queued') return '任务排队中'
+    if (stage === 'completed') return '已完成'
+    if (stage === 'completed_with_errors') return '部分完成'
+    if (stage === 'failed') return '任务失败'
+    return ''
+  }, [youtubeJob.stage])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -258,17 +438,56 @@ export function EventDialog({
             <div className="grid gap-2">
               <div className="flex items-center justify-between">
                 <Label>相关资源</Label>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={addResource}
-                  className="h-6 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                >
-                  <Plus className="w-3 h-3 mr-1" />
-                  添加资源
-                </Button>
+                <div className="flex items-center gap-2">
+                  {event?._id && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleStartYouTubeSummary}
+                      disabled={youtubeBusy || savedYoutubeResourcesCount <= 0}
+                      className="h-7 px-2"
+                    >
+                      解析全部 YouTube 资源
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={addResource}
+                    className="h-6 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                  >
+                    <Plus className="w-3 h-3 mr-1" />
+                    添加资源
+                  </Button>
+                </div>
               </div>
+              {event?._id && (
+                <div className="text-xs text-gray-500">
+                  已保存资源中 YouTube 链接数: {savedYoutubeResourcesCount}
+                </div>
+              )}
+              {(youtubeMessage || youtubeJob.jobId) && (
+                <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700">
+                  {youtubeMessage && <p>{youtubeMessage}</p>}
+                  {youtubeJob.jobId && (
+                    <p className="mt-1">
+                      任务ID: {youtubeJob.jobId} | {stageLabel || '处理中'} | 进度 {youtubeJob.processedUrls}/
+                      {youtubeJob.totalUrls || 0}
+                    </p>
+                  )}
+                  {(youtubeJob.status === 'completed' || youtubeJob.status === 'completed_with_errors') && event?._id && (
+                    <div className="mt-2">
+                      <Link href={`/schedule/${event._id}/document`} passHref>
+                        <Button type="button" size="sm" variant="secondary">
+                          打开工作文档
+                        </Button>
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="grid gap-2">
                 {formData.resources && formData.resources.map((resource, i) => (

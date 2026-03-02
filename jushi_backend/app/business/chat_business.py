@@ -1,4 +1,6 @@
 import asyncio
+import hashlib
+import json
 from datetime import datetime, timezone
 from time import perf_counter
 import re
@@ -46,6 +48,7 @@ LEARNING_PLAN_KEYWORDS = [
 ]
 
 DECOMPOSITION_TOOL_RETRY_LIMIT = 2
+KNOWLEDGE_TOOL_RETRY_LIMIT = 1
 
 
 class ChatBusiness:
@@ -80,6 +83,8 @@ class ChatBusiness:
             message_doc["timingStrategy"] = kwargs["timingStrategy"]
         if kwargs.get("taskAnalysis"):
             message_doc["taskAnalysis"] = kwargs["taskAnalysis"]
+        if kwargs.get("ragReferences"):
+            message_doc["ragReferences"] = kwargs["ragReferences"]
             
         result = await db.db["chat_messages"].insert_one(message_doc)
         
@@ -379,6 +384,186 @@ class ChatBusiness:
 
         return False
 
+    def _has_retrieve_knowledge_output(self, task_result: Optional[Dict[str, Any]]) -> bool:
+        """判断是否产生了真实的知识检索工具输出。"""
+        if not isinstance(task_result, dict):
+            return False
+
+        tool_outputs = task_result.get("tool_outputs", [])
+        if not isinstance(tool_outputs, list):
+            return False
+
+        for output in tool_outputs:
+            if not isinstance(output, dict):
+                continue
+            tool_name = str(output.get("tool_name") or "").strip()
+            observation = output.get("observation")
+            if tool_name == "retrieve_knowledge":
+                return True
+            if isinstance(observation, dict) and observation.get("type") == "rag_references":
+                return True
+        return False
+
+    def _detect_knowledge_intent(self, user_message: str) -> bool:
+        """识别是否应该优先调用知识库检索。"""
+        text = (user_message or "").strip()
+        lowered = text.lower()
+        if not text:
+            return False
+
+        hard_keywords = [
+            "知识库", "文档", "资料", "pdf", "文件", "上传", "根据文档", "根据资料",
+            "这份文档", "这份资料", "串.pdf", "readme"
+        ]
+        if any(kw in text or kw in lowered for kw in hard_keywords):
+            return True
+
+        # 对定义/概念类短问句优先走知识检索，提升“回答-引用”一致性
+        if len(text) <= 40 and re.search(r"(什么是|定义|概念|含义|是什么意思|是啥|是什么)", text):
+            return True
+
+        return False
+
+    def _extract_rag_references(self, tool_outputs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """从工具输出中聚合 RAG 引用，按文档去重合并片段。"""
+        if not isinstance(tool_outputs, list):
+            return []
+
+        def _normalize_observation(raw_observation: Any, tool_name: str) -> Optional[Dict[str, Any]]:
+            observation_obj = raw_observation
+            if isinstance(observation_obj, str):
+                stripped = observation_obj.strip()
+                if stripped.startswith("{") or stripped.startswith("["):
+                    try:
+                        parsed = json.loads(stripped)
+                        if isinstance(parsed, dict):
+                            observation_obj = parsed
+                    except Exception:
+                        return None
+                else:
+                    return None
+
+            if not isinstance(observation_obj, dict):
+                return None
+
+            # 兼容某些工具层会再包一层 observation 的情况
+            nested = observation_obj.get("observation")
+            if isinstance(nested, dict):
+                observation_obj = nested
+
+            obs_type = str(observation_obj.get("type") or "").strip()
+            if obs_type == "rag_references":
+                return observation_obj
+
+            # 当 tool_name 已是 retrieve_knowledge 时，允许无 type 但带 references 的 payload
+            references = observation_obj.get("references")
+            if tool_name == "retrieve_knowledge" and isinstance(references, list):
+                payload = dict(observation_obj)
+                payload["type"] = "rag_references"
+                return payload
+            return None
+
+        def _normalize_reference(reference: Dict[str, Any]) -> Dict[str, Any]:
+            doc_path = str(
+                reference.get("docPath")
+                or reference.get("doc_path")
+                or ""
+            ).strip()
+            file_name = str(
+                reference.get("fileName")
+                or reference.get("file_name")
+                or ""
+            ).strip()
+            reference_id = str(
+                reference.get("referenceId")
+                or reference.get("reference_id")
+                or ""
+            ).strip()
+
+            snippets_raw = reference.get("snippets")
+            if not isinstance(snippets_raw, list):
+                snippets_raw = []
+            snippets = [str(item or "").strip() for item in snippets_raw if str(item or "").strip()]
+
+            queries_raw = reference.get("queries")
+            if not isinstance(queries_raw, list):
+                queries_raw = []
+            queries = [str(item or "").strip() for item in queries_raw if str(item or "").strip()]
+
+            score = 0.0
+            try:
+                score = float(reference.get("score", 0.0) or 0.0)
+            except Exception:
+                score = 0.0
+
+            return {
+                "referenceId": reference_id,
+                "docPath": doc_path,
+                "fileName": file_name,
+                "score": score,
+                "snippets": snippets,
+                "queries": queries,
+            }
+
+        merged: Dict[str, Dict[str, Any]] = {}
+        for output in tool_outputs:
+            if not isinstance(output, dict):
+                continue
+
+            tool_name = str(output.get("tool_name") or "").strip()
+            observation = _normalize_observation(output.get("observation"), tool_name)
+            if not observation:
+                continue
+
+            observation_query = str(observation.get("query") or "").strip()
+            references = observation.get("references")
+            if not isinstance(references, list):
+                continue
+
+            for reference_raw in references:
+                if not isinstance(reference_raw, dict):
+                    continue
+                reference = _normalize_reference(reference_raw)
+                doc_path = reference["docPath"]
+                file_name = reference["fileName"]
+                group_key = doc_path or file_name
+                if not group_key:
+                    continue
+
+                if group_key not in merged:
+                    seed = f"{doc_path}|{file_name}" if (doc_path or file_name) else group_key
+                    reference_id = str(reference["referenceId"] or hashlib.sha1(seed.encode("utf-8")).hexdigest())
+                    merged[group_key] = {
+                        "referenceId": reference_id,
+                        "docPath": doc_path,
+                        "fileName": file_name or (doc_path.split("/")[-1] if doc_path else "未知文档"),
+                        "score": 0.0,
+                        "snippets": [],
+                        "queries": [],
+                    }
+
+                current = merged[group_key]
+                reference_score = float(reference.get("score", 0.0) or 0.0)
+                current["score"] = max(float(current.get("score", 0.0) or 0.0), reference_score)
+
+                for snippet_text in reference.get("snippets", []):
+                    if snippet_text not in current["snippets"]:
+                        current["snippets"].append(snippet_text)
+
+                reference_queries = reference.get("queries", [])
+                if observation_query:
+                    reference_queries.append(observation_query)
+                for query_text in reference_queries:
+                    query_str = str(query_text or "").strip()
+                    if query_str and query_str not in current["queries"]:
+                        current["queries"].append(query_str)
+
+        return sorted(
+            merged.values(),
+            key=lambda item: float(item.get("score", 0.0) or 0.0),
+            reverse=True,
+        )
+
     # ... (rest of methods) ...
 
     def _build_enhanced_task(self, user_message: str, use_web_search: bool = False) -> str:
@@ -392,6 +577,7 @@ class ChatBusiness:
         intent_info = self._detect_schedule_component_intent(user_message)
         has_complex_task = intent_info["prefer_decomposition"]
         has_calendar_intent = intent_info["prefer_calendar_event"]
+        has_knowledge_intent = self._detect_knowledge_intent(user_message)
         # 检测是否包含搜索关键词
         has_search_intent = use_web_search or any(kw in user_message for kw in SEARCH_KEYWORDS)
         
@@ -487,6 +673,20 @@ class ChatBusiness:
 - 默认使用中文回复。仅当用户明确要求使用其他语言时才切换。
 
 请务必在需要时使用搜索工具！"""
+        elif has_knowledge_intent:
+            enhanced_task = f"""当前时间：{current_time_str}
+
+用户请求：{user_message}
+
+【执行要求】
+1. 你必须先调用 `retrieve_knowledge` 工具进行检索，再基于检索结果回答。
+2. 如果知识库未检索到内容，可以明确说明“未检索到相关文档内容”。
+3. 仅在知识库无结果且用户问题需要外部知识时，再考虑使用搜索工具补充。
+
+【语言要求】
+- 默认使用中文回复。仅当用户明确要求使用其他语言时才切换。
+
+请先调用 `retrieve_knowledge`，不要直接 final_answer。"""
 
         else:
             # 普通对话请求
@@ -500,37 +700,29 @@ class ChatBusiness:
 
 
     async def _get_user_llm_config(self, user_id: str) -> Dict[str, Any]:
-        """获取并解密用户的 LLM 配置 (支持多配置)"""
-        
-        # 1. 获取所有配置数据
-        data = await UserService.get_user_llm_configs_data(user_id)
-        configs = data.get("configs", [])
-        active_id = data.get("active_id")
-        legacy_config = data.get("legacy_config")
+        """获取并解密用户的 LLM 配置 (自动获取系统级平台的当前激活配置)"""
+        system_configs = await UserService.get_available_models_for_user(user_id)
+        active_id = await UserService.get_user_active_model_id(user_id)
         
         target_config = None
         
-        # 2. 尝试获取激活的配置
-        if active_id and configs:
-            target_config = next((c for c in configs if c.get("id") == active_id), None)
+        # 1. 尝试获取激活的配置
+        if active_id and system_configs:
+            target_config = next((c for c in system_configs if c.get("id") == active_id), None)
             
-        # 3. 如果没有激活的，尝试使用第一个
-        if not target_config and configs:
-            target_config = configs[0]
-            
-        # 4. 如果连列表都没有，尝试使用旧配置
-        if not target_config and legacy_config:
-            target_config = legacy_config
+        # 2. 如果没有激活的，尝试使用第一个
+        if not target_config and system_configs:
+            target_config = system_configs[0]
             
         if not target_config:
-            # 回退到系统默认
+            # 平台未配置模型时返回空配置，由调用方做明确提示
             return {
-                "config_id": "system-default",
-                "config_name": "系统默认配置",
-                "model_id": settings.LLM_MODEL_ID,
-                "api_key": settings.LLM_API_KEY,
-                "base_url": settings.LLM_BASE_URL,
-                "timeout": settings.LLM_TIMEOUT or 60
+                "config_id": "",
+                "config_name": "",
+                "model_id": "",
+                "api_key": "",
+                "base_url": "",
+                "timeout": 60
             }
         
         # 解密 API Key
@@ -538,8 +730,8 @@ class ChatBusiness:
         plain_key = encryption_service.decrypt(encrypted_key) if encrypted_key else ""
         
         return {
-            "config_id": target_config.get("id") or "legacy-default",
-            "config_name": target_config.get("name") or "默认配置",
+            "config_id": target_config.get("id") or "",
+            "config_name": target_config.get("name") or "平台默认配置",
             "model_id": target_config.get("model_id"),
             "api_key": plain_key,
             "base_url": target_config.get("base_url"),
@@ -582,7 +774,7 @@ class ChatBusiness:
         timeout_value = max(1, timeout_value)
         return LLMConfig(
             name=runtime_config.get("config_name") or "未命名配置",
-            model_id=runtime_config.get("model_id") or "gpt-3.5-turbo",
+            model_id=runtime_config.get("model_id") or "",
             api_key=runtime_config.get("api_key") or "",
             api_base=runtime_config.get("base_url"),
             timeout=timeout_value
@@ -590,14 +782,13 @@ class ChatBusiness:
 
     def _build_runtime_model_candidates(
         self,
-        all_configs_data: Dict[str, Any],
+        system_configs: List[Dict[str, Any]],
+        active_id: Optional[str],
         active_config: Dict[str, Any]
     ) -> List[Dict[str, Any]]:
-        configs = all_configs_data.get("configs", []) if isinstance(all_configs_data, dict) else []
-        active_id = all_configs_data.get("active_id") if isinstance(all_configs_data, dict) else None
         runtime_configs: List[Dict[str, Any]] = []
 
-        for conf in configs:
+        for conf in system_configs:
             if not isinstance(conf, dict):
                 continue
             encrypted_key = conf.get("api_key", "")
@@ -608,7 +799,7 @@ class ChatBusiness:
                 continue
             runtime_configs.append({
                 "config_id": conf.get("id") or "unknown",
-                "config_name": conf.get("name") or "未命名配置",
+                "config_name": conf.get("name") or "平台选项",
                 "model_id": model_id,
                 "api_key": plain_key,
                 "base_url": base_url,
@@ -619,14 +810,14 @@ class ChatBusiness:
                 "is_active": bool(conf.get("id") and conf.get("id") == active_id),
             })
 
-        # 保证激活配置/旧配置至少可用一条
+        # 保证激活配置至少可用一条
         if active_config.get("api_key") and active_config.get("base_url") and active_config.get("model_id"):
-            active_runtime_id = active_config.get("config_id") or "legacy-default"
+            active_runtime_id = active_config.get("config_id") or ""
             exists = any(item.get("config_id") == active_runtime_id for item in runtime_configs)
             if not exists:
                 runtime_configs.append({
-                    "config_id": active_runtime_id,
-                    "config_name": active_config.get("config_name") or "默认配置",
+                    "config_id": active_runtime_id or "active",
+                    "config_name": active_config.get("config_name") or "平台默认配置",
                     "model_id": active_config.get("model_id"),
                     "api_key": active_config.get("api_key"),
                     "base_url": active_config.get("base_url"),
@@ -702,9 +893,9 @@ class ChatBusiness:
         }
 
         config_dict = await self._get_user_llm_config(user_id)
-        all_configs_data = await UserService.get_user_llm_configs_data(user_id)
-        active_id = all_configs_data.get("active_id") if isinstance(all_configs_data, dict) else None
-        runtime_configs = self._build_runtime_model_candidates(all_configs_data, config_dict)
+        system_configs = await UserService.get_available_models_for_user(user_id)
+        active_id = await UserService.get_user_active_model_id(user_id)
+        runtime_configs = self._build_runtime_model_candidates(system_configs, active_id, config_dict)
 
         # 1. 处理会话 (创建或使用现有)
         session_id = request.sessionId
@@ -736,10 +927,11 @@ class ChatBusiness:
                 urgency=request.urgency,
                 strategy_source="explicit" if has_explicit_profile else "heuristic"
             )
+            no_model_message = "平台尚未配置可用的 AI 模型，请联系管理员添加。"
             return ChatResponse(
-                success=True,
+                success=False,
                 data=ChatResponseData(
-                    response="你好！我是聚时智能助手。我注意到你还没有配置 LLM 模型。请前往系统设置配置 API Key。",
+                    response=no_model_message,
                     emotionScore=5,
                     emotionTags=["neutral"],
                     needsEmotionInput=False,
@@ -747,8 +939,38 @@ class ChatBusiness:
                     timingStrategy=timing_strategy,
                     taskAnalysis=timing_strategy.get("analysisMeta") if timing_strategy else None,
                     routingMeta=routing_meta if settings.ENABLE_ROUTING_META else None
-                ).dict()
+                ).dict(),
+                error={
+                    "message": no_model_message,
+                    "type": "no_model_configured"
+                }
             )
+
+        if request.runtimeModelId:
+            requested_model = str(request.runtimeModelId).strip()
+            allowed = any(
+                str(item.get("model_id") or "").strip() == requested_model
+                for item in runtime_configs
+            )
+            if not allowed:
+                denied_message = "你当前无权访问该模型，请联系管理员分配模型权限。"
+                return ChatResponse(
+                    success=False,
+                    data=ChatResponseData(
+                        response=denied_message,
+                        emotionScore=5,
+                        emotionTags=["neutral"],
+                        needsEmotionInput=False,
+                        sessionId=session_id,
+                        timingStrategy=timing_strategy,
+                        taskAnalysis=timing_strategy.get("analysisMeta") if timing_strategy else None,
+                        routingMeta=routing_meta if settings.ENABLE_ROUTING_META else None
+                    ).dict(),
+                    error={
+                        "message": denied_message,
+                        "type": "model_access_denied"
+                    }
+                )
 
         try:
             route_mode = self._normalize_route_mode(request.routeMode)
@@ -847,9 +1069,20 @@ class ChatBusiness:
             fallback_timeout = float(min(base_timeout, max(1, int(settings.ROUTER_FALLBACK_TIMEOUT_SECONDS))))
             intent_info = self._detect_schedule_component_intent(request.message)
             require_real_decomposition_call = bool(intent_info.get("prefer_decomposition"))
+            require_knowledge_retrieval_call = (
+                self._detect_knowledge_intent(request.message)
+                and not require_real_decomposition_call
+                and not bool(intent_info.get("prefer_calendar_event"))
+            )
 
             # 路由选择主模型和回退模型
-            if settings.ROUTER_ENABLED:
+            if request.runtimeModelId:
+                requested_model = str(request.runtimeModelId).strip()
+                main_runtime = next((c for c in runtime_configs if c.get("model_id") == requested_model), None)
+                if not main_runtime:
+                     # fallback if the requested model doesn't exist
+                     main_runtime = next((c for c in runtime_configs if c.get("is_active")), runtime_configs[0])
+            elif settings.ROUTER_ENABLED:
                 main_runtime = model_router_service.pick_main_config(
                     task_type=task_type,
                     difficulty_level=difficulty_level,
@@ -995,6 +1228,47 @@ class ChatBusiness:
                 if not self._has_real_task_decomposition_output(task_result):
                     raise Exception("任务分解请求未成功调用 suggest_task_decomposition 工具，请重试。")
 
+            if require_knowledge_retrieval_call and not self._has_retrieve_knowledge_output(task_result):
+                print("⚠️ 首轮未检测到 retrieve_knowledge 调用，开始自动重试。")
+                retry_task = (
+                    f"{timed_task}\n\n"
+                    "【硬性约束（必须遵守）】\n"
+                    "你上一次没有调用 retrieve_knowledge。\n"
+                    "本次必须先调用 retrieve_knowledge 工具，再给出 final_answer。\n"
+                    "若知识库无结果，请明确说明；不要跳过工具直接回答。"
+                )
+                for retry_idx in range(KNOWLEDGE_TOOL_RETRY_LIMIT):
+                    retry_runtime = used_runtime
+                    retry_timeout = (
+                        fallback_timeout
+                        if fallback_runtime and retry_runtime.get("config_id") == fallback_runtime.get("config_id")
+                        else main_timeout
+                    )
+                    retry_result = await agent_service.run_task(
+                        task=retry_task,
+                        llm_config=self._runtime_to_llm_config(retry_runtime, timeout_override=retry_timeout),
+                        max_steps=agent_max_steps,
+                        timeout_seconds=retry_timeout
+                    )
+                    await self._record_usage_event(
+                        user_id=user_id,
+                        session_id=session_id,
+                        config_id=retry_runtime.get("config_id") or "legacy-default",
+                        model_id=retry_runtime.get("model_id") or "",
+                        config_name=retry_runtime.get("config_name") or "默认配置",
+                        path_type="main",
+                        is_primary=True,
+                        usage=retry_result.get("usage") if isinstance(retry_result, dict) else None,
+                    )
+                    routing_meta["retryCount"] = max(int(routing_meta.get("retryCount") or 0), retry_idx + 1)
+                    if not retry_result or not retry_result.get("success"):
+                        print(f"⚠️ 知识检索工具调用重试第 {retry_idx + 1} 次失败。")
+                        continue
+                    task_result = retry_result
+                    if self._has_retrieve_knowledge_output(task_result):
+                        print(f"✅ 知识检索工具在第 {retry_idx + 1} 次重试成功调用。")
+                        break
+
             # 解析 Agent 返回结果 (Main Result)
             agent_result = task_result["result"]
             steps = task_result.get("steps", [])
@@ -1003,7 +1277,10 @@ class ChatBusiness:
             suggested_events = []
             task_decomposition = None
             batch_events = None
+            rag_references = []
 
+            print(f"DEBUG: raw agent_result: {agent_result}")
+            print(f"DEBUG: tool_outputs: {tool_outputs}")
             for output in tool_outputs:
                 suggestion = output.get("observation")
                 if not isinstance(suggestion, dict):
@@ -1018,11 +1295,53 @@ class ChatBusiness:
                 elif suggestion_type == "task_decomposition_suggestion":
                     task_decomposition = suggestion
                     ai_content = suggestion.get("message", ai_content)
+                    print(f"DEBUG: Found task_decomposition via tool_outputs: {task_decomposition.get('project', {}).get('name')}")
                 elif suggestion_type == "batch_calendar_events":
                     batch_events = suggestion
                     for event in suggestion.get("events", []):
                         suggested_events.append(event)
                     ai_content = suggestion.get("message", ai_content)
+
+            rag_references = self._extract_rag_references(tool_outputs)
+
+            # 如果 agent 的 final_answer 直接返回了 dict (而没有写进 tool_outputs里)，尝试从中解析
+            if isinstance(agent_result, dict):
+                suggestion_type = agent_result.get("type")
+                if suggestion_type == "calendar_event_suggestion" and not suggested_events:
+                    event_data = agent_result.get("event", {})
+                    if event_data:
+                        suggested_events.append(event_data)
+                        ai_content = agent_result.get("message", ai_content)
+                elif suggestion_type == "task_decomposition_suggestion" and not task_decomposition:
+                    task_decomposition = agent_result
+                    ai_content = agent_result.get("message", ai_content)
+                elif suggestion_type == "batch_calendar_events" and not batch_events:
+                    batch_events = agent_result
+                    for event in agent_result.get("events", []):
+                        suggested_events.append(event)
+                    ai_content = agent_result.get("message", ai_content)
+            elif isinstance(agent_result, str) and not task_decomposition and not suggested_events:
+                # 尝试解析可能被 stringify 的 json
+                try:
+                    import json
+                    parsed_result = json.loads(agent_result)
+                    if isinstance(parsed_result, dict):
+                        suggestion_type = parsed_result.get("type")
+                        if suggestion_type == "task_decomposition_suggestion":
+                            task_decomposition = parsed_result
+                            ai_content = parsed_result.get("message", ai_content)
+                        elif suggestion_type == "calendar_event_suggestion":
+                            event_data = parsed_result.get("event", {})
+                            if event_data:
+                                suggested_events.append(event_data)
+                                ai_content = parsed_result.get("message", ai_content)
+                        elif suggestion_type == "batch_calendar_events":
+                            batch_events = parsed_result
+                            for event in parsed_result.get("events", []):
+                                suggested_events.append(event)
+                            ai_content = parsed_result.get("message", ai_content)
+                except Exception:
+                    pass
 
             if suggested_events:
                 try:
@@ -1085,6 +1404,8 @@ class ChatBusiness:
                     save_kwargs["timingStrategy"] = timing_strategy
                 if timing_strategy.get("analysisMeta"):
                     save_kwargs["taskAnalysis"] = timing_strategy.get("analysisMeta")
+                if rag_references:
+                    save_kwargs["ragReferences"] = rag_references
 
                 ai_message_id = await self.save_message(session_id, "ai", ai_content, **save_kwargs)
             except Exception as e:
@@ -1110,6 +1431,7 @@ class ChatBusiness:
                 "multiTaskDecompositions": multi_task_decompositions if multi_task_decompositions else None,
                 "timingStrategy": timing_strategy,
                 "taskAnalysis": timing_strategy.get("analysisMeta") if timing_strategy else None,
+                "ragReferences": rag_references,
                 "routingMeta": routing_meta if settings.ENABLE_ROUTING_META else None
             }
 

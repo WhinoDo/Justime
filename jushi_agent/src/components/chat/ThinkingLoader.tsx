@@ -1,65 +1,114 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Sparkles, Brain, Search, Calculator, Calendar } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import type { LucideIcon } from 'lucide-react'
 
 interface ThinkingLoaderProps {
     input: string
 }
 
+interface ThinkingStep {
+    text: string
+    icon: LucideIcon
+    duration: number
+}
+
 export function ThinkingLoader({ input }: ThinkingLoaderProps) {
     const [step, setStep] = useState(0)
 
-    // Determine intent based on input keywords
-    const isTaskDecomposition = /分解|拆解|计划|方案|项目/.test(input)
-    const isCalendar = /日程|提醒|会议|预约|明天|下周/.test(input)
-    const isSearch = /搜索|查找|查询|是谁|什么/.test(input)
+    const normalizedInput = input.trim().toLowerCase()
+    const isGreeting = /^[你您]好|^hello|^hi|在吗/i.test(input.trim())
+    const isTaskDecomposition = /分解|拆解|计划|方案|项目|路线图|里程碑/.test(input)
+    const isCalendar = /日程|提醒|会议|预约|明天|后天|下周|时间安排/.test(input)
+    const isSearch = /搜索|查找|查询|最新|新闻|资料来源|web|网页/.test(input)
+    const isKnowledge = /知识库|文档|资料|pdf|文件|串\.pdf|readme|查一下|定义/.test(input)
+    const isCode = /代码|报错|bug|python|java|javascript|typescript|js|tsx|sql|接口/.test(normalizedInput)
 
-    // Define steps based on intent
-    const steps = [
-        { text: '正在分析意图...', icon: Brain, duration: 1500 },
-        ...(isTaskDecomposition ? [
-            { text: '正在构建工作结构(WBS)...', icon: Calculator, duration: 2500 },
-            { text: '正在拆解子任务...', icon: Sparkles, duration: 2500 },
-        ] : []),
-        ...(isCalendar ? [
-            { text: '正在检查日历冲突...', icon: Calendar, duration: 1500 },
-            { text: '正在规划日程...', icon: Calendar, duration: 1500 },
-        ] : []),
-        ...(isSearch ? [
-            { text: '正在检索知识库...', icon: Search, duration: 2000 },
-            { text: '正在整合信息...', icon: Sparkles, duration: 2000 },
-        ] : []),
-        // Fallback steps if no specific intent or after specific steps
-        { text: '正在调用工具...', icon: Sparkles, duration: 2000 },
-        { text: '正在生成回答...', icon: Sparkles, duration: 3000 },
-        { text: '正在完善细节...', icon: Sparkles, duration: 5000 },
-    ]
+    const jitter = (base: number, amplitude: number) => {
+        const delta = Math.floor(Math.random() * amplitude)
+        return base + delta
+    }
 
-    // Filter steps to avoid redundant generic ones if specific ones exist? 
-    // Actually, we want a linear progression.
-    // Let's just use the constructed array but ensure unique keys if needed.
+    const steps = useMemo<ThinkingStep[]>(() => {
+        const baseSteps: ThinkingStep[] = [
+            { text: '正在解析语义...', icon: Brain, duration: jitter(1000, 500) },
+        ]
 
-    useEffect(() => {
-        let currentStep = 0
-        let timeoutId: NodeJS.Timeout
-
-        const nextStep = () => {
-            if (currentStep >= steps.length - 1) return // Stay on last step
-
-            const duration = steps[currentStep].duration
-            timeoutId = setTimeout(() => {
-                currentStep++
-                setStep(currentStep)
-                nextStep()
-            }, duration)
+        if (isGreeting) {
+            return [
+                ...baseSteps,
+                { text: '正在构建回复...', icon: Sparkles, duration: jitter(1200, 400) },
+            ]
         }
 
-        nextStep()
+        const specificSteps: ThinkingStep[] = []
 
-        return () => clearTimeout(timeoutId)
-    }, [input]) // Reset if input changes (though usually component unmounts on response)
+        if (isTaskDecomposition) {
+            specificSteps.push(
+                { text: '正在构建工作结构(WBS)...', icon: Calculator, duration: jitter(1800, 1000) },
+                { text: '正在评估任务耗时...', icon: Calendar, duration: jitter(1600, 700) }
+            )
+        } else if (isCalendar) {
+            specificSteps.push(
+                { text: '正在提取时间要素...', icon: Calendar, duration: jitter(1300, 600) },
+                { text: '正在检查日程冲突...', icon: Search, duration: jitter(1500, 800) }
+            )
+        } else if (isKnowledge) {
+            specificSteps.push(
+                { text: '正在转换为向量查询...', icon: Brain, duration: jitter(1300, 500) },
+                { text: '正在检索本地知识库...', icon: Search, duration: jitter(1800, 900) }
+            )
+        } else if (isCode) {
+            specificSteps.push(
+                { text: '正在分析代码逻辑...', icon: Calculator, duration: jitter(1500, 800) },
+                { text: '正在推导修复方案...', icon: Brain, duration: jitter(1800, 1000) }
+            )
+        } else if (isSearch) {
+            specificSteps.push(
+                { text: '正在调用搜索引擎...', icon: Search, duration: jitter(1700, 900) },
+                { text: '正在整合全网信息...', icon: Sparkles, duration: jitter(1500, 800) }
+            )
+        }
+
+        if (specificSteps.length === 0) {
+            specificSteps.push(
+                { text: '正在进行逻辑推理...', icon: Brain, duration: jitter(1500, 700) },
+                { text: '正在组织语言...', icon: Sparkles, duration: jitter(1800, 1000) }
+            )
+            return [...baseSteps, ...specificSteps]
+        }
+
+        return [
+            ...baseSteps,
+            ...specificSteps,
+            { text: '正在生成最终结论...', icon: Sparkles, duration: jitter(1800, 1200) },
+        ]
+    }, [input, isCalendar, isCode, isGreeting, isKnowledge, isSearch, isTaskDecomposition])
+
+    useEffect(() => {
+        setStep(0)
+        let currentStep = 0
+        let timeoutId: ReturnType<typeof setTimeout> | undefined
+
+        const scheduleNext = () => {
+            if (currentStep >= steps.length - 1) {
+                return
+            }
+            timeoutId = setTimeout(() => {
+                currentStep += 1
+                setStep(currentStep)
+                scheduleNext()
+            }, steps[currentStep].duration)
+        }
+
+        scheduleNext()
+
+        return () => {
+            if (timeoutId) clearTimeout(timeoutId)
+        }
+    }, [steps])
 
     const CurrentIcon = steps[step].icon || Sparkles
 

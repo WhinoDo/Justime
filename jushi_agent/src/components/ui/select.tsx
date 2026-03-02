@@ -14,7 +14,7 @@ interface SelectTriggerProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   children: React.ReactNode
 }
 
-interface SelectContentProps {
+interface SelectContentProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode
 }
 
@@ -100,7 +100,7 @@ const SelectValue: React.FC<SelectValueProps> = ({ placeholder, children }) => {
   )
 }
 
-const SelectContent: React.FC<SelectContentProps> = ({ children }) => {
+const SelectContent: React.FC<SelectContentProps> = ({ children, className, ...props }) => {
   const { isOpen, setIsOpen } = React.useContext(SelectContext)
   const contentRef = React.useRef<HTMLDivElement>(null)
 
@@ -125,7 +125,11 @@ const SelectContent: React.FC<SelectContentProps> = ({ children }) => {
   return (
     <div
       ref={contentRef}
-      className="absolute top-full left-0 right-0 z-50 mt-1 max-h-96 overflow-auto rounded-md border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-lg"
+      className={cn(
+        "absolute z-50 max-h-96 overflow-auto rounded-md border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-lg",
+        className || "top-full left-0 right-0 mt-1"
+      )}
+      {...props}
     >
       <div className="p-1">
         {children}

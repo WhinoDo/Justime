@@ -2,9 +2,7 @@
 应用配置管理
 """
 
-import os
-import json
-from typing import List, Dict, Optional
+from typing import List, Optional
 from pydantic_settings import BaseSettings
 from pydantic import BaseModel
 
@@ -31,27 +29,38 @@ class Settings(BaseSettings):
     PORT: int = 8080
     DEBUG: bool = True
 
-    
-    # 默认 LLM 配置（向后兼容）
+    # 兼容旧环境变量（已废弃，不再作为模型来源）
     LLM_MODEL_ID: str = ""
     LLM_API_KEY: str = ""
     LLM_BASE_URL: str = ""
     LLM_TIMEOUT: int = 60
-    
-    # 多 LLM 配置（JSON 字符串格式）
-    # 格式: [{"name": "openai", "model_id": "gpt-4", "api_key": "...", "api_base": null}]
     LLM_PROVIDERS: str = "[]"
-    
-    # 默认使用的 LLM 名称
-    LLM_DEFAULT_PROVIDER: str = "default"
+    LLM_DEFAULT_PROVIDER: str = "database"
 
+    
     # 模型路由配置
     ROUTER_ENABLED: bool = True
     ROUTER_CLASSIFIER_TIMEOUT_SECONDS: int = 8
-    ROUTER_MAIN_TIMEOUT_SECONDS: int = 22
-    ROUTER_FALLBACK_TIMEOUT_SECONDS: int = 35
+    ROUTER_MAIN_TIMEOUT_SECONDS: int = 120
+    ROUTER_FALLBACK_TIMEOUT_SECONDS: int = 150
     ENABLE_PARALLEL_ENSEMBLE: bool = False
     ENABLE_ROUTING_META: bool = True
+
+    # YouTube 资源解析配置
+    DEEPSEEK_API_KEY: str = ""
+    DEEPSEEK_BASE_URL: str = "https://api.deepseek.com/v1"
+    DASHSCOPE_API_KEY: str = ""
+    DASHSCOPE_BASE_URL: str = "https://dashscope.aliyuncs.com/api/v1"
+    DASHSCOPE_ASR_MODEL: str = "paraformer-v2"
+    DASHSCOPE_ASR_TIMEOUT_SECONDS: int = 900
+    ALIYUN_OSS_ENDPOINT: str = ""
+    ALIYUN_OSS_BUCKET: str = ""
+    ALIYUN_OSS_ACCESS_KEY_ID: str = ""
+    ALIYUN_OSS_ACCESS_KEY_SECRET: str = ""
+    ALIYUN_OSS_PREFIX: str = "youtube-summary-temp"
+    ALIYUN_OSS_SIGNED_URL_EXPIRES_SECONDS: int = 3600
+    YOUTUBE_SUMMARY_OUTPUT_DIR: str = "output/youtube_summaries"
+    YOUTUBE_JOB_TIMEOUT_SECONDS: int = 7200
     
     # MongoDB配置
     MONGODB_URI: str = "mongodb://localhost:27017/jushi-agent"
@@ -72,50 +81,6 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3001",
         "http://192.168.1.4:3000"
     ]
-    
-    def get_llm_configs(self) -> Dict[str, LLMConfig]:
-        """获取所有 LLM 配置"""
-        configs = {}
-        
-        # 添加默认配置（向后兼容）
-        if self.LLM_API_KEY:
-            configs["default"] = LLMConfig(
-                name="default",
-                model_id=self.LLM_MODEL_ID or "gpt-3.5-turbo",
-                api_key=self.LLM_API_KEY,
-                api_base=self.LLM_BASE_URL if self.LLM_BASE_URL else None,
-                timeout=self.LLM_TIMEOUT
-            )
-        
-        # 解析多 LLM 配置
-        try:
-            providers = json.loads(self.LLM_PROVIDERS)
-            for provider in providers:
-                if isinstance(provider, dict) and provider.get("name") and provider.get("api_key"):
-                    config = LLMConfig(
-                        name=provider["name"],
-                        model_id=provider.get("model_id", "gpt-3.5-turbo"),
-                        api_key=provider["api_key"],
-                        api_base=provider.get("api_base"),
-                        timeout=provider.get("timeout", 60)
-                    )
-                    configs[config.name] = config
-        except json.JSONDecodeError:
-            print("⚠️ LLM_PROVIDERS 配置解析失败，请检查 JSON 格式")
-        
-        return configs
-    
-    def get_llm_config(self, name: Optional[str] = None) -> Optional[LLMConfig]:
-        """获取指定名称的 LLM 配置"""
-        configs = self.get_llm_configs()
-        if not configs:
-            return None
-        
-        # 如果没有指定名称，使用默认
-        target_name = name or self.LLM_DEFAULT_PROVIDER or "default"
-        
-        # 尝试获取指定配置，如果不存在则返回第一个
-        return configs.get(target_name) or next(iter(configs.values()), None)
     
     class Config:
         env_file = ".env"

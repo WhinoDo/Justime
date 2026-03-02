@@ -17,6 +17,7 @@ class ChatMessage(BaseModel):
     suggestedEvents: Optional[List[Dict[str, Any]]] = Field(None, description="建议的日程事件")
     timingStrategy: Optional[Dict[str, Any]] = Field(None, description="任务调度策略")
     taskAnalysis: Optional[Dict[str, Any]] = Field(None, description="任务分析数据")
+    ragReferences: Optional[List[Dict[str, Any]]] = Field(None, description="RAG 引用文档")
 
 class ChatSession(BaseModel):
     """聊天会话模型"""
