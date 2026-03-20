@@ -1,15 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { StyleSheet, View, ScrollView, Alert, ActivityIndicator, FlatList, TouchableOpacity, Modal, LayoutAnimation } from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { StyleSheet, View, ScrollView, Alert, ActivityIndicator, FlatList, TouchableOpacity, LayoutAnimation } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Colors, Spacing, BorderRadius } from '@/constants/theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useAuth } from '@/context/AuthContext';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 
 type LLMConfigItem = {
     id: string;
@@ -49,22 +47,25 @@ export default function ModelConfigScreen() {
 
     const [configs, setConfigs] = useState<LLMConfigItem[]>([]);
     const [loading, setLoading] = useState(false);
-    const [modalVisible, setModalVisible] = useState(false);
-    const [editingConfig, setEditingConfig] = useState<Partial<LLMConfigItem> | null>(null);
-
-    // Form State
-    const [formName, setFormName] = useState('');
-    const [formApiKey, setFormApiKey] = useState('');
-    const [formModelId, setFormModelId] = useState('gpt-3.5-turbo');
-    const [formUrl, setFormUrl] = useState('');
-    const [formTemperature, setFormTemperature] = useState('0.7');
-    const [saving, setSaving] = useState(false);
     const [usageLoading, setUsageLoading] = useState(false);
     const [usageError, setUsageError] = useState<string | null>(null);
     const [usageModels, setUsageModels] = useState<ModelUsageItem[]>([]);
     const [usageDays, setUsageDays] = useState(14);
     const [usageNote, setUsageNote] = useState('');
     const [usageScope, setUsageScope] = useState<'primary' | 'all'>('primary');
+
+    const isGPTModel = useCallback((modelId?: string) => modelId?.toLowerCase().includes('gpt') ?? false, []);
+    const visibleConfigs = useMemo(
+        () =>
+            configs
+                .filter((config) => !isGPTModel(config.modelId))
+                .sort((a, b) => Number(b.isActive) - Number(a.isActive)),
+        [configs, isGPTModel]
+    );
+    const visibleUsageModels = useMemo(
+        () => usageModels.filter((model) => !isGPTModel(model.modelId)),
+        [usageModels, isGPTModel]
+    );
 
     // Load Configs
     const fetchConfigs = useCallback(async () => {
@@ -132,117 +133,9 @@ export default function ModelConfigScreen() {
         return value;
     };
 
-    const openModal = (config?: LLMConfigItem) => {
-        if (config) {
-            setEditingConfig(config);
-            setFormName(config.name);
-            setFormApiKey(config.apiKey || '');
-            setFormModelId(config.modelId || '');
-            setFormUrl(config.baseUrl || '');
-            setFormTemperature(config.temperature?.toString() || '0.7');
-        } else {
-            setEditingConfig(null);
-            setFormName('');
-            setFormApiKey('');
-            setFormModelId('gpt-3.5-turbo');
-            setFormUrl('');
-            setFormTemperature('0.7');
-        }
-        setModalVisible(true);
-    };
-
-    const handleSave = async () => {
-        if (!token) return;
-        setSaving(true);
-        try {
-            const payload = {
-                name: formName || (editingConfig ? editingConfig.name : '新配置'),
-                modelId: formModelId,
-                baseUrl: formUrl,
-                apiKey: formApiKey,
-                temperature: parseFloat(formTemperature) || 0.7
-            };
-
-            let url = `${baseUrl}/api/v1/auth/llm-configs`;
-            let method = 'POST';
-
-            if (editingConfig && editingConfig.id) {
-                url += `/${editingConfig.id}`;
-                method = 'PUT';
-            }
-
-            const response = await fetch(url, {
-                method: method,
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify(payload)
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                setModalVisible(false);
-                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                fetchConfigs();
-                fetchUsage();
-                Alert.alert('成功', '保存成功');
-            } else {
-                Alert.alert('保存失败', result.message || '未知错误');
-            }
-        } catch {
-            Alert.alert('保存失败', '网络请求错误');
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    const handleSetActive = async (id: string, currentActive: boolean) => {
-        if (currentActive) return;
-        try {
-            const response = await fetch(`${baseUrl}/api/v1/auth/llm-configs/${id}/active`, {
-                method: 'PUT',
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            const result = await response.json();
-            if (result.success) {
-                fetchConfigs();
-                fetchUsage();
-            }
-        } catch {
-            Alert.alert('设置失败', '网络错误');
-        }
-    };
-
-    const handleDelete = async (id: string) => {
-        Alert.alert('确认删除', '确定要删除这个配置吗？', [
-            { text: '取消', style: 'cancel' },
-            {
-                text: '删除', style: 'destructive', onPress: async () => {
-                    try {
-                        const response = await fetch(`${baseUrl}/api/v1/auth/llm-configs/${id}`, {
-                            method: 'DELETE',
-                            headers: { Authorization: `Bearer ${token}` }
-                        });
-                        const result = await response.json();
-                        if (result.success) {
-                            fetchConfigs();
-                            fetchUsage();
-                        } else {
-                            Alert.alert('删除失败', result.message);
-                        }
-                    } catch {
-                        Alert.alert('删除失败', '网络错误');
-                    }
-                }
-            }
-        ]);
-    };
-
     const renderItem = ({ item }: { item: LLMConfigItem }) => (
         <Card variant={item.isActive ? 'elevated' : 'outlined'} style={[styles.card, item.isActive && styles.activeCard]}>
-            <TouchableOpacity onPress={() => handleSetActive(item.id, item.isActive)} style={styles.cardContent}>
+            <View style={styles.cardContent}>
                 <View style={styles.cardInfo}>
                     <View style={styles.cardHeader}>
                         <ThemedText type="defaultSemiBold">{item.name}</ThemedText>
@@ -251,11 +144,7 @@ export default function ModelConfigScreen() {
                     <ThemedText type="caption" style={styles.cardDetail}>{item.modelId}</ThemedText>
                     <ThemedText type="caption" style={styles.cardDetail} numberOfLines={1}>{item.baseUrl || '默认 URL'}</ThemedText>
                 </View>
-                <View style={styles.cardActions}>
-                    <Button variant="ghost" title="" icon={<IconSymbol name="pencil" size={20} color={Colors.light.primary} />} onPress={() => openModal(item)} />
-                    <Button variant="ghost" title="" icon={<IconSymbol name="trash" size={20} color={Colors.light.error} />} onPress={() => handleDelete(item.id)} />
-                </View>
-            </TouchableOpacity>
+            </View>
         </Card>
     );
 
@@ -326,13 +215,13 @@ export default function ModelConfigScreen() {
                 </View>
             )}
 
-            {!usageLoading && !usageError && usageModels.length === 0 && (
+            {!usageLoading && !usageError && visibleUsageModels.length === 0 && (
                 <View style={styles.usageEmpty}>
-                    <ThemedText type="caption">暂无模型使用数据，发送聊天消息后会开始累计。</ThemedText>
+                    <ThemedText type="caption">暂无模型使用数据。开始与 AI 助手对话后会生成统计记录。</ThemedText>
                 </View>
             )}
 
-            {usageModels.map(model => {
+            {visibleUsageModels.map(model => {
                 const maxToken = Math.max(...model.daily.map(point => point.totalTokens), 0);
                 return (
                     <Card key={model.configId} variant="outlined" style={styles.usageModelCard}>
@@ -395,40 +284,28 @@ export default function ModelConfigScreen() {
     return (
         <SafeAreaView style={[styles.container, { backgroundColor }]}>
             <View style={styles.header}>
-                <Button variant="ghost" title="返回" onPress={() => router.back()} size="sm" />
-                <ThemedText type="subtitle">模型配置</ThemedText>
-                <Button variant="ghost" title="" icon={<IconSymbol name="plus" size={24} color={Colors.light.primary} />} onPress={() => openModal()} />
+                <View style={styles.headerLeft}>
+                    <Button variant="ghost" title="返回" onPress={() => router.back()} size="sm" />
+                    <ThemedText type="subtitle">模型概览</ThemedText>
+                </View>
             </View>
 
             {loading ? (
                 <View style={styles.centered}><ActivityIndicator size="large" color={Colors.light.primary} /></View>
             ) : (
                 <FlatList
-                    data={configs}
+                    data={visibleConfigs}
                     keyExtractor={item => item.id}
                     renderItem={renderItem}
                     contentContainerStyle={styles.listContent}
-                    ListEmptyComponent={<View style={styles.empty}><ThemedText>暂无配置，请点击右上角添加</ThemedText></View>}
+                    ListEmptyComponent={
+                        <View style={styles.empty}>
+                            <ThemedText>暂无可用模型，请等待系统管理员配置。</ThemedText>
+                        </View>
+                    }
                     ListFooterComponent={renderUsageSection}
                 />
             )}
-
-            <Modal visible={modalVisible} animationType="slide" presentationStyle="pageSheet">
-                <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
-                    <View style={styles.modalHeader}>
-                        <Button variant="ghost" title="取消" onPress={() => setModalVisible(false)} />
-                        <ThemedText type="subtitle">{editingConfig ? '编辑配置' : '新建配置'}</ThemedText>
-                        <Button variant="ghost" title="保存" onPress={handleSave} loading={saving} disabled={saving} />
-                    </View>
-                    <ScrollView contentContainerStyle={styles.formContent}>
-                        <Input label="配置名称" value={formName} onChangeText={setFormName} placeholder="例如：我的GPT-4" containerStyle={styles.input} />
-                        <Input label="模型ID" value={formModelId} onChangeText={setFormModelId} placeholder="gpt-4" containerStyle={styles.input} />
-                        <Input label="API Key" value={formApiKey} onChangeText={setFormApiKey} secureTextEntry placeholder="sk-..." containerStyle={styles.input} />
-                        <Input label="Base URL (可选)" value={formUrl} onChangeText={setFormUrl} placeholder="https://api.openai.com/v1" containerStyle={styles.input} />
-                        <Input label="Temperature" value={formTemperature} onChangeText={setFormTemperature} keyboardType="numeric" placeholder="0.7" containerStyle={styles.input} />
-                    </ScrollView>
-                </SafeAreaView>
-            </Modal>
         </SafeAreaView>
     );
 }
@@ -438,11 +315,14 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
         paddingHorizontal: Spacing.md,
         paddingVertical: Spacing.sm,
         borderBottomWidth: 1,
         borderBottomColor: Colors.light.border,
+    },
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     listContent: { padding: Spacing.md },
     centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
@@ -461,17 +341,6 @@ const styles = StyleSheet.create({
     },
     activeText: { color: '#fff', fontSize: 10 },
     cardDetail: { color: Colors.light.textSecondary, marginTop: 2 },
-    cardActions: { flexDirection: 'row', alignItems: 'center' },
-    modalHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: Spacing.md,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.light.border
-    },
-    formContent: { padding: Spacing.lg },
-    input: { marginBottom: Spacing.md },
     usageSection: {
         marginTop: Spacing.lg,
         borderTopWidth: 1,

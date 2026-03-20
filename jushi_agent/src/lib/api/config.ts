@@ -4,9 +4,15 @@
  */
 
 // 后端服务地址配置
+const rawBaseUrl =
+  process.env.BACKEND_INTERNAL_URL ||
+  process.env.NEXT_PUBLIC_BACKEND_URL ||
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  'http://127.0.0.1:8080';
+
 export const API_CONFIG = {
   // 后端服务基础地址
-  BASE_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8080',
+  BASE_URL: rawBaseUrl.replace(/\/+$/, ''),
   
   // API版本前缀
   API_PREFIX: '/api/v1',
@@ -20,6 +26,16 @@ export const API_CONFIG = {
     
     // 确保endpoint以/开头
     const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+
+    // endpoint 已经包含 API 前缀时，避免重复拼接 /api/v1
+    if (
+      cleanEndpoint === API_CONFIG.API_PREFIX ||
+      cleanEndpoint.startsWith(`${API_CONFIG.API_PREFIX}/`) ||
+      cleanEndpoint.startsWith(`${API_CONFIG.API_PREFIX}?`)
+    ) {
+      return `${API_CONFIG.BASE_URL}${cleanEndpoint}`;
+    }
+
     return `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}${cleanEndpoint}`;
   }
 };

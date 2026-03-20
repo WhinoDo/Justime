@@ -1,0 +1,9 @@
+.git
+.next
+node_modules
+out
+coverage
+android
+md
+*.log
+tsconfig.tsbuildinfo

@@ -77,15 +77,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           AsyncStorage.getItem(STORAGE_KEYS.baseUrl),
         ]);
 
-        if (savedToken) {
+        const parsedUser = savedUser ? safeParseUser(savedUser) : null;
+        if (savedToken && parsedUser) {
           setToken(savedToken);
-        }
-        if (savedUser) {
-          const parsedUser = safeParseUser(savedUser);
-          if (parsedUser) {
-            setUser(parsedUser);
-          } else {
-            await AsyncStorage.removeItem(STORAGE_KEYS.user);
+          setUser(parsedUser);
+        } else {
+          const invalidKeys: string[] = [];
+          if (savedToken) invalidKeys.push(STORAGE_KEYS.token);
+          if (savedUser) invalidKeys.push(STORAGE_KEYS.user);
+          if (invalidKeys.length) {
+            await AsyncStorage.multiRemove(invalidKeys);
           }
         }
         if (MANUAL_API_BASE_URL_ENABLED) {

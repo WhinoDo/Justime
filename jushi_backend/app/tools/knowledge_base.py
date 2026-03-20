@@ -6,8 +6,11 @@
 import threading
 from typing import Dict, List, Optional
 
-from smolagents import tool
-from app.services.rag_service import rag_service
+try:
+    from smolagents import tool
+except Exception:
+    def tool(func):
+        return func
 
 _pending_rag_references: Dict[str, List[dict]] = {}
 _rag_lock = threading.Lock()
@@ -52,6 +55,11 @@ def retrieve_knowledge(query: str) -> str:
     Returns:
         基于文档内容的回答或相关片段
     """
+    try:
+        from app.services.rag_service import rag_service
+    except Exception as exc:
+        return f"知识库功能当前不可用：{exc}"
+
     result = rag_service.query_with_references(query)
     references = result.get("references") if isinstance(result, dict) else []
     if isinstance(references, list) and references:

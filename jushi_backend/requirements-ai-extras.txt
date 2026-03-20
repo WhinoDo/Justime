@@ -1,0 +1,9 @@
+faster-whisper>=1.0.3
+llama-index>=0.10.0
+llama-index-embeddings-huggingface>=0.2.0
+llama-index-readers-file>=0.1.0
+docx2txt>=0.8
+pypdf>=4.0.0
+PyMuPDF>=1.23.0
+pytesseract>=0.3.10
+Pillow>=10.0.0

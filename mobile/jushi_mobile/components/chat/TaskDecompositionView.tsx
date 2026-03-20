@@ -5,44 +5,9 @@ import { Button } from '@/components/ui/button';
 import { ThemedText } from '@/components/themed-text';
 import { Colors, Spacing } from '@/constants/theme';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import type { AddTaskResult, TaskDecomposition, TaskItem, TaskSchedulePreview } from '@/types/chat';
 
-export type AddTaskResult = {
-    success: boolean;
-    start?: string;
-    end?: string;
-};
-
-export type TaskSchedulePreview = {
-    start: string;
-    end: string;
-};
-
-export type TaskItem = {
-    title: string;
-    duration_hours: number;
-    description?: string;
-    order?: number;
-    resources?: {
-        title?: string;
-        url?: string;
-        type?: string;
-    }[];
-};
-
-export type TaskDecomposition = {
-    project?: {
-        name?: string;
-        description?: string;
-        total_days?: number;
-        start_date?: string;
-        subtask_count?: number;
-    };
-    project_name?: string;
-    start_date?: string;
-    total_days?: number;
-    subtasks: TaskItem[];
-    message?: string;
-};
+export type { AddTaskResult, TaskDecomposition, TaskItem, TaskSchedulePreview } from '@/types/chat';
 
 interface TaskDecompositionViewProps {
     decomposition: TaskDecomposition;

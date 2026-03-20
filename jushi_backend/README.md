@@ -83,6 +83,14 @@ uvicorn app.main:app --host 127.0.0.1 --port 8080 --reload
 - `POST /api/v1/feishu/oauth/callback` - OAuth回调处理
 - `GET /api/v1/feishu/tenant-token` - 获取应用令牌
 
+### 3. 聊天会话
+- `GET /api/v1/chat/sessions` - 获取当前用户会话列表
+- `POST /api/v1/chat/sessions` - 创建新会话
+- `GET /api/v1/chat/sessions/{session_id}/messages` - 获取会话消息（支持 `limit` 查询参数）
+  - `limit` 默认 `200`
+  - `limit < 1` 返回 `400`
+  - `limit > 1000` 按 `1000` 截断后返回
+
 ## 开发说明
 
 ### 项目架构

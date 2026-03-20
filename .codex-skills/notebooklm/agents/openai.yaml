@@ -1,0 +1,4 @@
+interface:
+  display_name: "NotebookLM"
+  short_description: "NotebookLM CLI workflows and artifact generation"
+  default_prompt: "Use $notebooklm to create a notebook, add sources, ask questions, or generate NotebookLM artifacts with the local notebooklm CLI."

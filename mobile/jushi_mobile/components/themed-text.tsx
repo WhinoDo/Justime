@@ -16,15 +16,17 @@ export function ThemedText({
   type = 'default',
   ...rest
 }: ThemedTextProps) {
-  const color = useThemeColor({ light: lightColor, dark: darkColor }, 'text');
+  const defaultColor = useThemeColor({ light: lightColor, dark: darkColor }, 'text');
+  const captionColor = useThemeColor(
+    { light: Colors.light.textSecondary, dark: Colors.dark.textSecondary },
+    'textSecondary'
+  );
+  const linkColor = useThemeColor(
+    { light: Colors.light.primary, dark: Colors.dark.primary },
+    'primary'
+  );
 
-  // Semantic color overrides based on type
-  let semanticColor = color;
-  if (type === 'caption') {
-    semanticColor = useThemeColor({ light: Colors.light.textSecondary, dark: Colors.dark.textSecondary }, 'textSecondary');
-  } else if (type === 'link') {
-    semanticColor = useThemeColor({ light: Colors.light.primary, dark: Colors.dark.primary }, 'primary');
-  }
+  const semanticColor = type === 'caption' ? captionColor : type === 'link' ? linkColor : defaultColor;
 
   return (
     <Text

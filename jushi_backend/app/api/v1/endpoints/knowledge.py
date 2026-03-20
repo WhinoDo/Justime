@@ -10,17 +10,25 @@ from pathlib import Path
 from typing import List, Dict, Any
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Query
 from fastapi.responses import FileResponse
-from llama_index.core import SimpleDirectoryReader
-from app.services.rag_service import rag_service, DOCS_DIR
 from app.services.security_service import SecurityService
 
 router = APIRouter()
+DOCS_DIR = Path("app/data/documents")
+DOCS_DIR.mkdir(parents=True, exist_ok=True)
 TEXT_FILE_EXTENSIONS = {
     ".txt", ".md", ".csv", ".json", ".yaml", ".yml", ".xml",
     ".html", ".htm", ".log", ".ini", ".py", ".js", ".ts", ".tsx", ".jsx"
 }
 DEFAULT_PREVIEW_MAX_CHARS = 20000
 MAX_PREVIEW_MAX_CHARS = 200000
+
+
+def _get_rag_service():
+    try:
+        from app.services.rag_service import rag_service
+        return rag_service
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"知识库扩展依赖未安装: {exc}")
 
 
 def _resolve_safe_document_path(doc_path: str) -> Path:
@@ -41,10 +49,17 @@ def _extract_document_text(file_path: Path) -> str:
         return file_path.read_text(encoding="utf-8", errors="ignore")
 
     if suffix == ".pdf":
-        from app.services.rag_service import OcrFallbackPDFReader
+        try:
+            from app.services.rag_service import OcrFallbackPDFReader
+        except Exception as exc:
+            raise ValueError(f"PDF 预览能力不可用: {exc}") from exc
         reader = OcrFallbackPDFReader()
         documents = reader.load_data(file_path=file_path)
     else:
+        try:
+            from llama_index.core import SimpleDirectoryReader
+        except Exception as exc:
+            raise ValueError(f"文档解析扩展依赖未安装: {exc}") from exc
         documents = SimpleDirectoryReader(input_files=[str(file_path)]).load_data()
         
     parts = []
@@ -177,6 +192,7 @@ async def rebuild_index(
 ) -> Dict[str, Any]:
     """手动触发索引重建"""
     try:
+        rag_service = _get_rag_service()
         result = rag_service.rebuild_index()
         return {"success": True, "message": result}
     except Exception as e:

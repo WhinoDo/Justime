@@ -77,11 +77,21 @@ export default function ScheduleScreen() {
   const [selectedEventIds, setSelectedEventIds] = useState<Set<string>>(new Set());
   const [batchDeleting, setBatchDeleting] = useState(false);
 
+  /**
+   * 切换日历下方的视图模式
+   * 在 "列表视图 (list)" 和 "时间轴视图 (timeline)" 之间切换
+   * LayoutAnimation 提供了一个流畅的原生过渡动画
+   */
   const toggleViewMode = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setViewMode(prev => prev === 'list' ? 'timeline' : 'list');
   };
 
+  /**
+   * 从后端 API 拉取当前用户的所有日程数据
+   * 1. 携带全局 AuthContext 中的 JWT Token 
+   * 2. 如果当前处于批量删除模式，会自动清洗 selectedEventIds，剔除掉已经被删掉的旧 ID
+   */
   const loadEvents = useCallback(async () => {
     if (!token) return;
     setRefreshing(true);
@@ -109,7 +119,8 @@ export default function ScheduleScreen() {
     }, [loadEvents])
   );
 
-  // Group events by date for the calendar markers
+  // 根据当月的所有 events 数据，在日历组件 (Calendar) 的对应日期下方画小圆点
+  // 使用 useMemo 缓存计算结果，防止每次渲染都重新遍历数组
   const markedDates = useMemo(() => {
     const marks: any = {};
     events.forEach(event => {
@@ -117,13 +128,13 @@ export default function ScheduleScreen() {
       if (!marks[dateKey]) {
         marks[dateKey] = { dots: [] };
       }
-      // Limit dots to avoid UI clutter
+      // UI 限制：就算一天有 10 个日程，最多只画 3 个点防止太拥挤
       if (marks[dateKey].dots.length < 3) {
         marks[dateKey].dots.push({ color: Colors.light.primary });
       }
     });
 
-    // Add selected date styling
+    // 为当前用户点击选中的日期叠加蓝色高亮背景效果
     marks[selectedDate] = {
       ...(marks[selectedDate] || {}),
       selected: true,
@@ -133,11 +144,13 @@ export default function ScheduleScreen() {
     return marks;
   }, [events, selectedDate]);
 
-  // Filter events for the selected date
+  // 从所有日程中，筛选出属于当前选中日期 (selectedDate) 的日程，用于下方列表/时间轴展示
   const selectedEvents = useMemo(() => {
     return events.filter(event => event.start.startsWith(selectedDate));
   }, [events, selectedDate]);
 
+  // 监听批量删除模式
+  // 如果用户切了日期，把不在当前日期的人从勾选缓存里剔除掉
   useEffect(() => {
     if (!batchDeleteMode) return;
     const visibleIds = new Set(selectedEvents.map((event) => event.id));
@@ -154,6 +167,10 @@ export default function ScheduleScreen() {
     setSelectedEvent(null);
   };
 
+  /**
+   * 删除单个日程
+   * 调用 DELETE 接口并从本地状态中移除以刷新 UI
+   */
   const handleDeleteEvent = async (eventId: string) => {
     if (!token) return;
     setDeletingEvent(true);
@@ -176,6 +193,9 @@ export default function ScheduleScreen() {
     }
   };
 
+  /**
+   * （批量删除模式下）切换某个日程的选中状态
+   */
   const toggleEventSelection = (eventId: string) => {
     setSelectedEventIds((prev) => {
       const next = new Set(prev);
@@ -188,6 +208,10 @@ export default function ScheduleScreen() {
     });
   };
 
+  /**
+   * 进入批量删除模式
+   * 强制切换回列表试图，因为时间轴视图不好做勾选 UI
+   */
   const handleEnterBatchDeleteMode = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     if (viewMode !== 'list') {
@@ -281,6 +305,10 @@ export default function ScheduleScreen() {
     );
   };
 
+  /**
+   * 更新日程信息
+   * 该函数会作为回调通过 Props 传递给 EventDetailSheet 组件内部使用
+   */
   const handleUpdateEvent = async (eventId: string, payload: ScheduleEventUpdatePayload) => {
     if (!token) return;
     setSavingEvent(true);
@@ -299,6 +327,7 @@ export default function ScheduleScreen() {
       }
 
       const updatedEvent = result.data?.event as CalendarEvent | undefined;
+      // 悲观更新：优先使用接口返回的已更新数据替换本地旧数据，避免全量重新 loadEvents 加快响应
       if (updatedEvent) {
         setEvents((prev) => prev.map((item) => (item.id === eventId ? updatedEvent : item)));
       } else {

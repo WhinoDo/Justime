@@ -25,6 +25,7 @@ class ChatRequest(BaseModel):
     taskId: Optional[str] = Field(None, description="任务 ID")
     sessionId: Optional[str] = Field(None, description="会话 ID")
     useWebSearch: bool = Field(False, description="是否启用网页搜索")
+    useOpenClaw: bool = Field(False, description="是否显式启用 OpenClaw 特殊任务链路")
     taskType: Optional[str] = Field(None, description="任务类型: recitation/thinking/general")
     difficultyLevel: Optional[int] = Field(None, ge=1, le=5, description="任务难度: 1-5")
     urgency: Optional[str] = Field(None, description="紧急程度: low/medium/high")

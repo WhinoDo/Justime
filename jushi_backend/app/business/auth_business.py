@@ -108,6 +108,7 @@ class AuthBusiness:
     @staticmethod
     async def login(payload: LoginRequest) -> AuthResponse:
         try:
+            safe_identifier = UserService._mask_identifier(payload.identifier)
             # 检查数据库连接
             from app.database import db
             if db.db is None:
@@ -117,11 +118,11 @@ class AuthBusiness:
             # 验证用户
             user = await UserService.authenticate_user(payload.identifier, payload.password)
             if not user:
-                print(f"❌ Login failed: Invalid credentials for {payload.identifier}")
+                print(f"❌ Login failed: Invalid credentials for {safe_identifier}")
                 return AuthResponse(success=False, message="用户名或密码错误")
             
             user_id = str(user["_id"])
-            print(f"✅ User {payload.identifier} authenticated successfully")
+            print(f"✅ User {safe_identifier} authenticated successfully")
             profile = await UserService.get_user_profile(user_id)
             safe_user = AuthBusiness._build_safe_user(user, profile)
 
@@ -146,16 +147,14 @@ class AuthBusiness:
                 )
             )
         except UserNotFoundError:
-             print(f"❌ Login failed: User {payload.identifier} not found")
+             print(f"❌ Login failed: User {safe_identifier} not found")
              return AuthResponse(success=False, message="账号不存在")
         except PasswordIncorrectError:
-             print(f"❌ Login failed: Password incorrect for {payload.identifier}")
+             print(f"❌ Login failed: Password incorrect for {safe_identifier}")
              return AuthResponse(success=False, message="密码错误")
         except Exception as e:
-            print(f"❌ Login error: {type(e).__name__}: {e}")
-            import traceback
-            traceback.print_exc()
-            return AuthResponse(success=False, message=f"登录时发生错误: {str(e)}")
+            print(f"❌ Login error for {safe_identifier}: {type(e).__name__}")
+            return AuthResponse(success=False, message="登录失败，请稍后重试")
 
     @staticmethod
     async def get_llm_config(user_id: str) -> AuthResponse:

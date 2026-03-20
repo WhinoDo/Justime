@@ -5,7 +5,16 @@ Agent 服务层
 
 import asyncio
 from typing import Optional, List, Any, Dict
-from smolagents import CodeAgent, LiteLLMModel, DuckDuckGoSearchTool
+try:
+    from smolagents import CodeAgent, LiteLLMModel, DuckDuckGoSearchTool
+    SMOLAGENTS_AVAILABLE = True
+    SMOLAGENTS_IMPORT_ERROR = ""
+except Exception as exc:
+    CodeAgent = Any  # type: ignore[assignment]
+    LiteLLMModel = Any  # type: ignore[assignment]
+    DuckDuckGoSearchTool = None  # type: ignore[assignment]
+    SMOLAGENTS_AVAILABLE = False
+    SMOLAGENTS_IMPORT_ERROR = str(exc)
 
 from app.core.config import LLMConfig
 from app.services.user_service import UserService
@@ -37,9 +46,15 @@ class AgentService:
         self._configs_cache: Dict[str, LLMConfig] = {}
         self._default_tools = []
         self._initialized = False
+
+    def is_runtime_available(self) -> bool:
+        return SMOLAGENTS_AVAILABLE
     
     def _create_model(self, config: LLMConfig) -> Optional[LiteLLMModel]:
         """根据配置创建 LLM 模型"""
+        if not SMOLAGENTS_AVAILABLE:
+            print(f"⚠️ Smolagents 不可用，跳过模型初始化: {SMOLAGENTS_IMPORT_ERROR}")
+            return None
         try:
             # 特殊处理 DeepSeek 的 model_id (litellm 要求 deepseek/ 前缀)
             # 或者如果用户在前端已经配了 'deepseek-chat'，我们需要加上前缀
@@ -76,6 +91,8 @@ class AgentService:
     def _init_default_tools(self) -> List:
         """初始化默认工具"""
         tools = []
+        if not SMOLAGENTS_AVAILABLE:
+            return tools
         
         # 加载搜索工具
         try:
@@ -140,6 +157,12 @@ class AgentService:
 
     async def initialize(self) -> bool:
         """初始化服务（每次刷新数据库模型池，保证后台变更即时生效）。"""
+        if not SMOLAGENTS_AVAILABLE:
+            self._configs_cache = {}
+            self._models = {}
+            self._default_tools = []
+            self._initialized = True
+            return False
         configs = await self._fetch_db_configs()
         self._configs_cache = configs
         self._models = {}
@@ -235,6 +258,9 @@ class AgentService:
         max_steps: int = 10
     ) -> Optional[CodeAgent]:
         """创建 Agent 实例"""
+        if not SMOLAGENTS_AVAILABLE:
+            print(f"⚠️ 无法创建 Agent，Smolagents 未安装: {SMOLAGENTS_IMPORT_ERROR}")
+            return None
         if system_prompt is None:
             system_prompt = self._get_default_system_prompt()
 

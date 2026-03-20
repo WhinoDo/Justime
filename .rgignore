@@ -1,0 +1,4 @@
+# Ignore generated, ultra-large export payloads from book-analysis documents.
+# These files can exceed 100MB and contain multi-million-character single lines,
+# which makes plain `rg` scans noisy and slow.
+jushi_backend/app/data/documents/**/exports/*.html

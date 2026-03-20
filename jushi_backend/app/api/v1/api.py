@@ -3,7 +3,7 @@ API v1 路由聚合
 """
 
 from fastapi import APIRouter
-from app.api.v1.endpoints import health, auth, chat, admin, admin_apikeys, agent, knowledge, calendar
+from app.api.v1.endpoints import health, auth, chat, admin, admin_apikeys, agent, knowledge, calendar, book_analysis
 
 api_router = APIRouter()
 
@@ -16,3 +16,4 @@ api_router.include_router(admin_apikeys.router, prefix="/admin", tags=["后台�
 api_router.include_router(agent.router, prefix="/agent", tags=["AI Agent"])
 api_router.include_router(knowledge.router, prefix="/knowledge", tags=["知识库管理"])
 api_router.include_router(calendar.router, prefix="/calendar", tags=["日历管理"])
+api_router.include_router(book_analysis.router, prefix="/book-analysis", tags=["书籍分析"])

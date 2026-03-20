@@ -9,6 +9,21 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class UserService:
     @staticmethod
+    def _mask_identifier(identifier: str) -> str:
+        raw = str(identifier or "").strip()
+        if not raw:
+            return "[EMPTY]"
+        if "@" in raw:
+            local, _, domain = raw.partition("@")
+            masked_local = f"{local[:1]}***" if local else "***"
+            return f"{masked_local}@{domain}"
+        if len(raw) == 1:
+            return "*"
+        if len(raw) == 2:
+            return f"{raw[0]}*"
+        return f"{raw[:2]}***"
+
+    @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
         return pwd_context.verify(plain_password, hashed_password)
 
@@ -66,8 +81,9 @@ class UserService:
 
     @staticmethod
     async def authenticate_user(identifier: str, password: str) -> Optional[Dict[str, Any]]:
-        print(f"🔐 Authenticating user: {identifier}")
-        print(f"🔑 Received password from client: {password}")
+        safe_identifier = UserService._mask_identifier(identifier)
+        print(f"🔐 Authenticating user: {safe_identifier}")
+        print("🔑 Received password from client: [REDACTED]")
         
         if db.db is None:
             print("❌ Database not connected")
@@ -80,10 +96,11 @@ class UserService:
             user = await UserService.get_user_by_username(identifier)
             
         if not user:
-            print(f"❌ User not found: {identifier}")
-            raise UserNotFoundError(f"User {identifier} not found")
+            print(f"❌ User not found: {safe_identifier}")
+            raise UserNotFoundError(f"User {safe_identifier} not found")
         
-        print(f"  Found user: {user.get('email', 'N/A')}, role: {user.get('role', 'N/A')}")
+        safe_email = UserService._mask_identifier(user.get("email", ""))
+        print(f"  Found user: {safe_email}, role: {user.get('role', 'N/A')}")
             
         # 优先检查 hashed_password
         hashed_password = user.get("hashed_password")

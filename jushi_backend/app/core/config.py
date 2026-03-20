@@ -61,6 +61,12 @@ class Settings(BaseSettings):
     ALIYUN_OSS_SIGNED_URL_EXPIRES_SECONDS: int = 3600
     YOUTUBE_SUMMARY_OUTPUT_DIR: str = "output/youtube_summaries"
     YOUTUBE_JOB_TIMEOUT_SECONDS: int = 7200
+
+    # NotebookLM 书籍分析配置
+    NOTEBOOKLM_CLI_PATH: str = "notebooklm"
+    BOOK_ANALYSIS_SOURCE_WAIT_TIMEOUT_SECONDS: int = 180
+    BOOK_ANALYSIS_COMMAND_TIMEOUT_SECONDS: int = 300
+    BOOK_ANALYSIS_SOURCE_ADD_TIMEOUT_SECONDS: int = 900
     
     # MongoDB配置
     MONGODB_URI: str = "mongodb://localhost:27017/jushi-agent"
@@ -81,6 +87,15 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3001",
         "http://192.168.1.4:3000"
     ]
+
+    # OpenClaw 特殊任务链路配置
+    OPENCLAW_ENABLED: bool = False
+    OPENCLAW_TIMEOUT_SECONDS: int = 180
+    OPENCLAW_SESSION_PREFIX: str = "jushi"
+    OPENCLAW_EXTRA_SYSTEM_PROMPT: str = (
+        "你是 Jushi 项目的特种任务执行代理。优先给出可执行、简洁、中文结果；"
+        "如果任务信息不足，明确说明缺失项，不要编造。"
+    )
     
     class Config:
         env_file = ".env"

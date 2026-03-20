@@ -240,6 +240,11 @@ export function EventDetailSheet({
   const safeStatus = STATUS_LABEL[event?.status || 'pending'] || '待处理';
   const eventResources = event?.resources || [];
 
+  /**
+   * 处理删除日程操作
+   * 弹出系统级别的二次确认框，防止用户误触
+   * 确认后调用由父组件传入的 onDelete 异步回调函数
+   */
   const handleDelete = () => {
     if (!event || !onDelete) return;
 
@@ -255,6 +260,11 @@ export function EventDetailSheet({
     ]);
   };
 
+  /**
+   * 打开日期时间选择器面板
+   * @param target 'start' | 'end'，标识当前正在编辑的是开始时间还是结束时间
+   * 会将当前对应的 ISO 时间字符串解析为 Date 对象，拆解出年月日时分，并赋值给选择器状态
+   */
   const openDateTimePicker = (target: Exclude<DateTimePickerTarget, null>) => {
     const currentValue = target === 'start' ? draft.startInput : draft.endInput;
     const parsed = parseDateTimeInput(currentValue) || new Date();
@@ -264,6 +274,10 @@ export function EventDetailSheet({
     setActiveDateTimeTarget(target);
   };
 
+  /**
+   * 关闭日期时间选择器面板
+   * 通过清空 activeDateTimeTarget 来隐藏 Modal
+   */
   const closeDateTimePicker = () => {
     setActiveDateTimeTarget(null);
   };
@@ -282,6 +296,12 @@ export function EventDetailSheet({
     parsedMinuteInput <= 59;
   const canApplyDateTime = isHourValid && isMinuteValid;
 
+  /**
+   * 确认并应用时间选择器中的修改
+   * 1. 验证用户输入的时/分是否合法
+   * 2. 调用 clampPickerStateDay 防止选中类似 "2月31日" 这样不存在的日期
+   * 3. 将组装好的时间字符串更新回草稿状态 (draft.startInput / endInput)
+   */
   const applyDateTimePicker = () => {
     if (!canApplyDateTime) return;
 
@@ -299,6 +319,7 @@ export function EventDetailSheet({
     closeDateTimePicker();
   };
 
+  // 预生成年份、月份、日期的滚动选择器选项数据
   const currentYear = new Date().getFullYear();
   const yearOptions = useMemo(
     () => Array.from({ length: 11 }, (_, index) => currentYear - 3 + index),
@@ -310,10 +331,18 @@ export function EventDetailSheet({
     [pickerState.month, pickerState.year]
   );
 
+  /**
+   * 更新日期选择器的某一个具体维度（年/月/日）状态
+   * 同样会经过 clampPickerStateDay 来收敛不合法的月末日期
+   */
   const updatePickerState = (key: keyof DateTimePickerState, value: number) => {
     setPickerState((prev) => clampPickerStateDay({ ...prev, [key]: value }));
   };
 
+  /**
+   * 向资源列表中追加一条空资源选项
+   * 扩展草稿中的 resources 数组
+   */
   const addResource = () => {
     setDraft((prev) => ({
       ...prev,
@@ -321,6 +350,12 @@ export function EventDetailSheet({
     }));
   };
 
+  /**
+   * 更新草稿资源列表中某一项的具体字段（标题或链接）
+   * @param index 要更新的资源在数组中的索引位置
+   * @param field 要修改的字段，'title' 或 'url'
+   * @param value 用户输入的新内容
+   */
   const updateResourceField = (index: number, field: 'title' | 'url', value: string) => {
     setDraft((prev) => ({
       ...prev,
@@ -330,6 +365,10 @@ export function EventDetailSheet({
     }));
   };
 
+  /**
+   * 从草稿资源列表中移除指定的资源条目
+   * @param index 要删除的资源索引
+   */
   const removeResource = (index: number) => {
     setDraft((prev) => ({
       ...prev,
@@ -337,6 +376,14 @@ export function EventDetailSheet({
     }));
   };
 
+  /**
+   * 处理保存日程操作
+   * 在这里进行全表单的数据校验：
+   * 1. 验证标题是否为空
+   * 2. 验证起止时间是否合法且没有时间倒流 (结束 < 开始)
+   * 3. 过滤并净化空的资源选项
+   * 4. 组装标准 UpdatePayload，并抛给父组件传入的 onSave 进行接口网络请求保存
+   */
   const handleSave = async () => {
     if (!event || !onSave) return;
 
@@ -409,6 +456,12 @@ export function EventDetailSheet({
     }
   };
 
+  /**
+   * 处理设备端唤起外部浏览器或其他应用打开 URL
+   * 依赖 React Native 官方的 Linking API
+   * 会预先使用 canOpenURL 判断手机内是否有能支持该协议的 App 处理
+   * @param url 要打开的目标网页/深度链接
+   */
   const openResource = async (url?: string) => {
     if (!url) return;
     try {

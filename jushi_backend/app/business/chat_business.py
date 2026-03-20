@@ -11,6 +11,7 @@ from app.services.agent_service import agent_service
 from app.services.task_timing_service import task_timing_service
 from app.services.task_classifier_service import task_classifier_service
 from app.services.model_router_service import model_router_service
+from app.services.openclaw_service import openclaw_service
 from app.core.config import settings, LLMConfig
 from app.models.chat import ChatRequest, ChatResponse, LLMTestRequest, ChatResponseData
 from app.models.history import ChatSession, ChatMessage
@@ -119,6 +120,67 @@ class ChatBusiness:
                 {"$set": update_fields}
             )
 
+    def _should_use_openclaw(self, request: ChatRequest) -> bool:
+        return bool(request.useOpenClaw)
+
+    async def _build_openclaw_response(
+        self,
+        *,
+        request: ChatRequest,
+        user_id: str,
+        session_id: str,
+        started_at: datetime,
+        routing_meta: Dict[str, Any],
+    ) -> ChatResponse:
+        openclaw_result = await openclaw_service.run_special_task(
+            message=request.message,
+            session_id=session_id,
+            user_id=user_id,
+            task_type=request.taskType,
+            use_web_search=bool(request.useWebSearch),
+        )
+
+        ai_message_id = await self.save_message(
+            session_id,
+            "ai",
+            openclaw_result.text,
+            taskAnalysis={
+                "source": "openclaw",
+                "taskType": request.taskType or "general",
+            },
+        )
+
+        routing_meta["mainModel"] = "openclaw/embedded"
+        routing_meta["routeReason"] = "explicit_openclaw"
+        routing_meta["fallbackModel"] = None
+        routing_meta["fallbackUsed"] = False
+        routing_meta["timing"]["totalMs"] = int((datetime.now(timezone.utc) - started_at).total_seconds() * 1000)
+
+        return ChatResponse(
+            success=True,
+            data={
+                "response": openclaw_result.text,
+                "messageId": ai_message_id,
+                "emotionScore": 7,
+                "emotionTags": ["helpful", "openclaw"],
+                "needsEmotionInput": False,
+                "suggestedEvents": [],
+                "taskResult": {
+                    "hasTasks": False,
+                    "tasks": [],
+                    "provider": "openclaw",
+                },
+                "sessionId": session_id,
+                "timingStrategy": None,
+                "taskAnalysis": {
+                    "source": "openclaw",
+                    "taskType": request.taskType or "general",
+                },
+                "ragReferences": [],
+                "routingMeta": routing_meta if settings.ENABLE_ROUTING_META else None,
+            },
+        )
+
     async def get_user_sessions(self, user_id: str) -> List[dict]:
         """获取用户会话列表"""
         cursor = db.db["chat_sessions"].find({"userId": user_id}).sort("updatedAt", -1)
@@ -128,10 +190,11 @@ class ChatBusiness:
             s["_id"] = str(s["_id"])
         return sessions
 
-    async def get_session_messages(self, session_id: str) -> List[dict]:
+    async def get_session_messages(self, session_id: str, limit: int = 200) -> List[dict]:
         """获取会话消息"""
+        safe_limit = max(1, min(int(limit or 200), 1000))
         cursor = db.db["chat_messages"].find({"sessionId": session_id}).sort("timestamp", 1)
-        messages = await cursor.to_list(length=1000)
+        messages = await cursor.to_list(length=safe_limit)
         # Convert ObjectId to str
         for m in messages:
             m["_id"] = str(m["_id"])
@@ -908,6 +971,39 @@ class ChatBusiness:
             await self.save_message(session_id, "user", request.message)
         except Exception as e:
             print(f"Failed to save user message: {e}")
+
+        if self._should_use_openclaw(request):
+            try:
+                return await self._build_openclaw_response(
+                    request=request,
+                    user_id=user_id,
+                    session_id=session_id,
+                    started_at=started_at,
+                    routing_meta=routing_meta,
+                )
+            except Exception as exc:
+                print(f"OpenClaw Chat Error: {exc}")
+                return ChatResponse(
+                    success=False,
+                    data=ChatResponseData(
+                        response="OpenClaw 特殊任务链路执行失败，请检查部署配置后重试。",
+                        emotionScore=5,
+                        emotionTags=["neutral"],
+                        needsEmotionInput=False,
+                        sessionId=session_id,
+                        timingStrategy=timing_strategy,
+                        taskAnalysis={
+                            "source": "openclaw",
+                            "reason": str(exc),
+                            "taskType": request.taskType or "general",
+                        },
+                        routingMeta=routing_meta if settings.ENABLE_ROUTING_META else None,
+                    ).dict(),
+                    error={
+                        "message": str(exc),
+                        "type": "openclaw_error",
+                    },
+                )
 
         has_explicit_profile = (
             bool(request.taskType) or

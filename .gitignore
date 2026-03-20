@@ -27,3 +27,6 @@ build/
 .vscode/
 *.swp
 *.swo
+
+# Large generated exports
+jushi_backend/app/data/documents/**/exports/

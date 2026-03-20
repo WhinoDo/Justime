@@ -6,6 +6,38 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { API_CONFIG, DEFAULT_HEADERS, ApiResponse } from './config';
 
+function normalizeAuthToken(token: string | null): string | null {
+  if (!token) {
+    return null;
+  }
+
+  const trimmedToken = token.trim();
+  if (!trimmedToken) {
+    return null;
+  }
+
+  const unquotedToken = trimmedToken.replace(/^(['"])(.*)\1$/, '$2').trim();
+  if (!unquotedToken) {
+    return null;
+  }
+
+  // Ignore common placeholder values from broken cookie/header writes.
+  if (/^(undefined|null)$/i.test(unquotedToken)) {
+    return null;
+  }
+
+  const bearerMatch = unquotedToken.match(/^Bearer(?:\s+(.+))?$/i);
+  if (bearerMatch) {
+    const bearerPayload = bearerMatch[1]?.trim();
+    if (!bearerPayload || /^(undefined|null)$/i.test(bearerPayload)) {
+      return null;
+    }
+    return `Bearer ${bearerPayload}`;
+  }
+
+  return `Bearer ${unquotedToken}`;
+}
+
 /**
  * 代理请求到后端服务
  */
@@ -48,24 +80,38 @@ export async function proxyToBackend(
       const authHeader = request.headers.get('authorization');
       const cookieHeader = request.headers.get('cookie');
 
-      if (authHeader) {
-        requestHeaders['Authorization'] = authHeader;
+      const normalizedAuthHeader = authHeader ? normalizeAuthToken(authHeader) : null;
+      if (normalizedAuthHeader) {
+        requestHeaders['Authorization'] = normalizedAuthHeader;
       } else if (cookieHeader) {
         // 如果没有 Authorizaton 头但有 Cookie，尝试从 Cookie 提取 access_token
         const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
-          const [key, value] = cookie.trim().split('=');
+          const trimmed = cookie.trim();
+          const separatorIndex = trimmed.indexOf('=');
+          if (separatorIndex <= 0) {
+            return acc;
+          }
+
+          const key = trimmed.slice(0, separatorIndex);
+          const value = trimmed.slice(separatorIndex + 1);
           if (key && value) acc[key] = value;
           return acc;
         }, {} as Record<string, string>);
 
         const accessToken = cookies['access_token'];
         if (accessToken) {
-          // 确保 token 格式正确
-          const tokenValue = accessToken.startsWith('Bearer%20')
-            ? accessToken.replace('Bearer%20', 'Bearer ')
-            : `Bearer ${accessToken}`;
+          // Cookie 中 token 可能是 URL 编码值，先安全解码再规范化 Bearer 头格式
+          let decodedToken = accessToken;
+          try {
+            decodedToken = decodeURIComponent(accessToken.replace(/\+/g, '%20'));
+          } catch {
+            decodedToken = accessToken;
+          }
 
-          requestHeaders['Authorization'] = tokenValue;
+          const normalizedToken = normalizeAuthToken(decodedToken);
+          if (normalizedToken) {
+            requestHeaders['Authorization'] = normalizedToken;
+          }
         }
       }
 
@@ -76,7 +122,7 @@ export async function proxyToBackend(
 
     // 构建请求体
     let requestBody: BodyInit | undefined;
-    if (body) {
+    if (body !== undefined) {
       if (typeof body === 'string') {
         requestBody = body;
       } else if (body instanceof FormData) {
@@ -126,15 +172,21 @@ export async function proxyToBackend(
 
     try {
       data = JSON.parse(responseData);
-      // 🔥 关键调试点：如果后端返回了 422，强制把代理时拼凑的具体 URL 塞进响应里，供前端查看
-      if (response.status === 422) {
+      // 仅在非生产环境保留 422 调试 URL，避免生产暴露内部地址细节
+      if (response.status === 422 && process.env.NODE_ENV !== 'production') {
         data._debugUrl = backendUrl;
       }
     } catch {
       data = responseData;
     }
 
-    console.log(`📥 后端响应: ${response.status}`, responseData.slice(0, 200));
+    if (process.env.NODE_ENV === 'production') {
+      console.log(`📥 后端响应: ${response.status}`, {
+        responseLength: responseData.length
+      });
+    } else {
+      console.log(`📥 后端响应: ${response.status}`, responseData.slice(0, 200));
+    }
 
     // 创建响应
     const nextResponse = NextResponse.json(
@@ -217,7 +269,14 @@ export function validateRequiredFields(
   data: Record<string, any>,
   requiredFields: string[]
 ): { valid: boolean; missing: string[] } {
-  const missing = requiredFields.filter(field => !data[field]);
+  const missing = requiredFields.filter(field => {
+    if (!Object.prototype.hasOwnProperty.call(data, field)) {
+      return true;
+    }
+
+    const value = data[field];
+    return value === undefined || value === null || (typeof value === 'string' && value.trim() === '');
+  });
 
   return {
     valid: missing.length === 0,

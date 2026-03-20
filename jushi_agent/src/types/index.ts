@@ -172,6 +172,7 @@ export interface ChatRequest {
   emotionScore?: number
   sessionId?: string
   useWebSearch?: boolean
+  useOpenClaw?: boolean
   taskType?: 'recitation' | 'thinking' | 'general'
   difficultyLevel?: 1 | 2 | 3 | 4 | 5
   urgency?: 'low' | 'medium' | 'high'

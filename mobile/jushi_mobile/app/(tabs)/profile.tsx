@@ -38,6 +38,10 @@ const DEFAULT_HABIT_FORM: HabitFormState = {
   notes: '',
 };
 
+/**
+ * 将用户在输入框里填写的由换行符或逗号分隔的字符串，解析成字符串数组
+ * 用于处理 "高效时段"、"低效时段" 等多条目设置
+ */
 const parseListInput = (value: string): string[] => (
   value
     .split(/\n|,/g)
@@ -45,11 +49,19 @@ const parseListInput = (value: string): string[] => (
     .filter(Boolean)
 );
 
+/**
+ * 将从后端接口拿到的字符串数组，重新拼接回带有换行符的纯文本
+ * 用于在界面的多行输入框 (Multiline Input) 中展示
+ */
 const listToText = (value: unknown): string => {
   if (!Array.isArray(value)) return '';
   return value.map((item) => String(item || '').trim()).filter(Boolean).join('\n');
 };
 
+/**
+ * 将字符串解析为数字，并限制其在 [min, max] 范围内
+ * 用于保护 "偏好专注时长"、"每日深度任务上限" 等数值，防止用户输入非法的极端数字
+ */
 const toBoundedInt = (value: string, fallback: number, min: number, max: number): number => {
   const parsed = Number(value);
   if (Number.isNaN(parsed)) return fallback;
@@ -68,10 +80,20 @@ export default function ProfileScreen() {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveMessageType, setSaveMessageType] = useState<'success' | 'error'>('success');
 
+  /**
+   * 处理退出登录
+   * 调用由 AuthContext 提供的全局 signOut 方法，清除本地 token 并跳转到登录页
+   */
   const handleLogout = async () => {
     await signOut();
   };
 
+  /**
+   * 加载当前用户的个人资料与学习习惯设置
+   * 1. 使用 token 鉴权调用 /api/v1/auth/profile
+   * 2. 如果遇到 401 状态码，主动触发登出逻辑
+   * 3. 拿到数据后，将其回填（解析转换后）到本地的 habitForm 状态机中渲染表单
+   */
   const loadProfile = useCallback(async () => {
     if (!token) return;
     setLoadingProfile(true);
@@ -128,6 +150,9 @@ export default function ProfileScreen() {
     setSaveMessage(null);
 
     try {
+      // 组装提交给后端的 Payload：
+      // 将页面上的纯文本输入，通过 parseListInput / toBoundedInt 等辅助函数
+      // 转化为符合系统要求的结构化数据（数组、受限整数）
       const payloadProfile = {
         ...profileData,
         name: profileData?.name || user.displayName || user.email || '用户',

@@ -1,5 +1,4 @@
 import { View, StyleSheet } from 'react-native';
-import { useThemeColor } from '@/hooks/use-theme-color';
 
 export default function TabBarBackground() {
     return (

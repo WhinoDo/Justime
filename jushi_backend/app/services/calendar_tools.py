@@ -6,7 +6,11 @@
 from datetime import datetime
 from typing import Optional, List, Dict
 import threading
-from smolagents import tool
+try:
+    from smolagents import tool
+except Exception:
+    def tool(func):
+        return func
 
 # 全局存储：按请求隔离待处理建议，避免并发串扰
 _pending_suggestions: Dict[str, List[dict]] = {}

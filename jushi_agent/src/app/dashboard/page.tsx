@@ -11,6 +11,7 @@ import {
   Settings,
   User,
   Database,
+  BookOpen,
   ArrowRight,
   Sparkles,
   ShieldCheck
@@ -85,6 +86,15 @@ export default function DashboardPage() {
       color: "text-indigo-200",
       bgColor: "bg-indigo-500/20",
       borderColor: "border-indigo-400/30"
+    },
+    {
+      title: "书籍分析",
+      description: "上传书籍 PDF，逐章调用 NotebookLM 生成可阅读分析页",
+      icon: BookOpen,
+      href: "/book-analysis",
+      color: "text-cyan-200",
+      bgColor: "bg-cyan-500/20",
+      borderColor: "border-cyan-400/30"
     },
     {
       title: "模型配置",

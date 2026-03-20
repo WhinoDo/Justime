@@ -1,0 +1,70 @@
+# Vue 核心知识体系 (详细解读版)
+
+- 核心基础
+    - 模板语法 (Template Syntax)
+        - 插值表达式: `{{ message }}`，用于纯文本输出
+        - 指令系统: `v-bind` (缩写:`:`), `v-on` (缩写:`@`), `v-model` (表单双向绑定)
+        - 条件渲染: `v-if` (按条件直接销毁/重建 DOM节点), `v-show` (仅切换 CSS 的 display 属性，适合高频切换)
+        - 列表渲染: `v-for` (必须配合唯一 `key` 使用，提升 Diff 性能并防止组件状态复用错误)
+    - 组件基础 (Components)
+        - 生命周期函数: `mounted` (挂载完成, 常用于发网络请求), `updated` (更新完毕), `unmounted` (卸载完成, 清除定时器/绑定事件)
+        - 组件通信 (Props): 父传子，遵循**单向数据流**原则，子组件不可直接修改 Prop。
+        - 自定义事件 (Emits): 子传父，`v-on` 监听，`$emit` (`emit('update', val)`) 触发。
+        - 插槽 (Slots): 突破父子组件结构限制。含 默认插槽、具名插槽 和 作用域插槽 (允许父组件反向访问子组件内部的局部数据渲染UI)。
+    - 逻辑处理与响应
+        - 计算属性 (Computed): 具有**缓存特性**的派生状态，仅当内部依赖项改变时才会重新计算。非常适合列表过滤、聚合操作。
+        - 侦听器 (Watch / WatchEffect): 用于监听响应式状态并执行**异步**或开销较大的副作用操作 (如搜索防抖发起 API)。
+- 深入响应式原理 (Reactivity System)
+    - Vue 2 响应式引擎 (Object.defineProperty)
+        - *原理*: 在实例初始化阶段递归遍历 `data` 数据，利用 getter/setter 劫持属性。
+        - *缺点*: 无法拦截对象属性的**新增**与**删除** (必须使用 `$set` / `$delete`)；无法监听数组使用下标带来的变化（重写了数组的 7 个变异方法来弥补）。
+    - Vue 3 响应式引擎 (Proxy)
+        - *原理*: 拦截整个对象（对象级代理）。
+        - *优势*: 原生支持检测对象的所有变动 (增/删/改/查) 以及全面的数组操作；支持 Map / Set 等 ES6 数据结构。
+        - *性能提升*: **懒代理 (Lazy Proxy)** 机制，仅在访问嵌套对象深层数据时才触发下一层的代理包装，加快页面极速初始化。
+    - 依赖收集与派发更新
+        - *Track (追踪)*: 当组件 render 函数访问响应式数据时，触发 Getter 记录依赖（Dep 登记正在运行的 Effect 订阅者）。
+        - *Trigger (触发)*: 修改数据时，触发 Setter 通知登记在该数据上的所有依赖订阅者重新执行视图更新算法。
+- Vue 3 组合式 API (Composition API)
+    - 核心机制 (Setup)
+        - `<script setup>` 语法糖: 提供更清爽的组件编写体验，无需写 `return`，导入的组件与声明的变量模板可直接使用。
+    - 响应式 API 分类
+        - `ref()`: 接受任意类型（推荐存基础数据类型 string/boolean），内部包装为对象，需通过 `.value` 操作。在模板中自动解包。
+        - `reactive()`: 仅接受对象/数组等深层次复合类型，内部基于 Proxy 生成代理对象。解构会丢失响应式（需配合 `toRefs()`）。
+    - 逻辑复用提取 (Composables)
+        - *价值*: 全面对标 React Hooks 理念，替代了 Vue 2 令人诟病的 Mixins 机制，彻底解决了“命名冲突”和“逻辑来源不清晰”的维护痛点。
+        - *示例*: `useMousePosition()` 可以将追踪鼠标坐标这一功能独立封装，跨所有组件轻易复用。
+    - 跨层级依赖注入
+        - `Provide / Inject`: 允许父级组件直接成为下面所有子孙嵌套组件的“依赖提供者”，避免噩梦般的层层 Prop-drilling 传递。
+- 全局状态管理 (State Management)
+    - Vuex (Vue 2 主导)
+        - *架构*: 包含了 State, Getters (派生), Mutations (必须是**同步**函数来修改状态), Actions (提交 Mutation 的**异步**封装)。
+    - Pinia (Vue 3 官方推荐标准)
+        - *优势*: 砍掉了冗余的 Mutations 概念（支持在 Actions 里使用 async/await 同步异步通吃直接改 State）；全面拥抱 TypeScript，提供极其丝滑的极致类型推断；没有嵌套的模块（Modules），架构是扁平并立的。
+- 客户端路由 (Vue Router v4)
+    - 核心配置
+        - 路由视图与链接: `<router-view>` 与 `<router-link>` 
+        - 动态路由匹配: 如抓取 `/users/:id` 中的深层参数
+        - 编程式导航: 使用 `router.push('/home')` 进行 JS 层面的跳转
+    - 导航守卫 (Navigation Guards)
+        - 拦截场景: 一般用于执行**登录鉴权**校验 (如检测到无 Token 请求拦截并拉回登陆页)。
+        - 守卫级别: 全局前置守卫 (`router.beforeEach`)，路由独享守卫 (`beforeEnter`)，组件内部守卫 (`onBeforeRouteUpdate`, `onBeforeRouteLeave` 防止表单未保存意外离开页面)。
+- 性能优化与进阶利器
+    - 编译时性能极速优化 (Vue 3 Compiler)
+        - 静态提升 (Static Hoisting): 不参与数据变更运算的纯静态节点被编译器提升到渲染函数之外，避免视图重刷时重复创建对象。
+        - 补丁标记 (PatchFlags): 动态内容被打上超精细标记 (比如某元素只跟踪它的 CLASS 或者 TEXT 变化)，从而在 Diff 发生时跳过昂贵的全量对比。
+    - 框架内置超能组件
+        - `<KeepAlive>`: 在页面切换时主动将组件实例留在内存中缓存不被销毁。非常适合多标签页切换，避免重复挂载拉取重复接口。
+        - `<Teleport>`: 传送门兵器。将诸如 Dialog, Modal, Toast 等绝对定位的深层嵌套弹窗，跨组件传送到 `<body>` 根节点上并渲染，一举避免 CSS 父元素 `overflow: hidden` 或 `z-index` 层叠上下文造成的样式裁切灾难。
+        - `<Transition>` / `<TransitionGroup>`: 让 Vue 接管结合纯 CSS 动画类名 (.v-enter-active 等)，几乎零代码实现原生应用般顺滑的元素进入/离开淡入淡出动效。
+    - 按需异步加载 (Code Splitting)
+        - 懒加载函数: 结合 `defineAsyncComponent` 和 Webpack/Vite 动态 `import()` 打包功能，切分出只有被点击到才向网络请求下载 JS 代码块的巨型组件。
+- 生态周边与工程化
+    - 构建与服务工具
+        - Vite: 终结旧时代 Webpack 苦等几十秒构建的极速痛点，利用浏览器原生 ES 模块特性进行冷启动，HMR 热更新基本能达到毫秒秒显。
+        - Vue CLI: 基于 Webpack 的老牌成熟稳定的脚手架构建方案（现已被 Vite 接棒）。
+    - 服务端渲染体系 (SSR & SSG)
+        - Nuxt 3: 基于 Vue 3 构建的企业级全栈/SSR框架。天然解决 SPA (单页应用) 搜索引擎 SEO 不抓取痛点，极大幅度提升首屏秒开头屏渲染性能。
+    - 超级 IDE 工具链
+        - Volar: Vue 3 官方指定的 VS Code 插件之光，代替原先的 Vetur，为开发者提供不可思议的极致模板代码 TS 类型强推断（Template Type-Checking）。
+        - Vue DevTools: 开发者浏览器中的调试神器，直接观测组件树、Pinia 状态流动与 Router 时序追踪。

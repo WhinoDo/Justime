@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TextInput, StyleSheet, View, TextInputProps, Platform } from 'react-native';
+import { TextInput, StyleSheet, View, TextInputProps } from 'react-native';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { Colors, BorderRadius, Spacing, Typography } from '@/constants/theme';
 import { ThemedText } from '@/components/themed-text';
@@ -18,7 +18,6 @@ export function Input({ label, error, containerStyle, style, ...rest }: InputPro
     const borderColor = useThemeColor({}, 'border');
     const primaryColor = useThemeColor({}, 'primary');
     const errorColor = useThemeColor({}, 'error');
-    const backgroundColor = useThemeColor({}, 'background');
     const surfaceColor = useThemeColor({}, 'surface');
 
     const activeBorderColor = error ? errorColor : (isFocused ? primaryColor : borderColor);
