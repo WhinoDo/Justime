@@ -16,7 +16,12 @@ AUTH_BUSINESS_PATH = (
 )
 
 
-def _load_auth_business_module(authenticate_error: Exception | None = None):
+def _load_auth_business_module(
+    authenticate_error: Exception | None = None,
+    available_models: list[dict] | None = None,
+    active_model_id: str | None = None,
+    provider_models_error: Exception | None = None,
+):
     fastapi_module = types.ModuleType("fastapi")
 
     class HTTPException(Exception):
@@ -60,11 +65,11 @@ def _load_auth_business_module(authenticate_error: Exception | None = None):
 
         @staticmethod
         async def get_available_models_for_user(user_id: str):
-            return []
+            return available_models or []
 
         @staticmethod
         async def get_user_active_model_id(user_id: str):
-            return None
+            return active_model_id
 
     user_service_module = types.ModuleType("app.services.user_service")
     user_service_module.UserService = _UserService
@@ -117,6 +122,29 @@ def _load_auth_business_module(authenticate_error: Exception | None = None):
     models_auth_module.LLMConfig = _Dummy
     sys.modules["app.models.auth"] = models_auth_module
 
+    if provider_models_error is not None:
+        httpx_module = types.ModuleType("httpx")
+
+        class TimeoutException(Exception):
+            pass
+
+        class _AsyncClient:
+            def __init__(self, timeout: float):
+                self.timeout = timeout
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return False
+
+            async def get(self, *args, **kwargs):
+                raise provider_models_error
+
+        httpx_module.TimeoutException = TimeoutException
+        httpx_module.AsyncClient = _AsyncClient
+        sys.modules["httpx"] = httpx_module
+
     spec = importlib.util.spec_from_file_location("auth_business_under_test", AUTH_BUSINESS_PATH)
     module = importlib.util.module_from_spec(spec)
     assert spec and spec.loader
@@ -152,6 +180,28 @@ class AuthBusinessLoggingTest(unittest.TestCase):
         self.assertFalse(result.success)
         self.assertEqual(result.message, "登录失败，请稍后重试")
         self.assertNotIn("demo@example.com", output)
+
+    def test_get_provider_models_unexpected_error_does_not_leak_raw_detail(self):
+        module = _load_auth_business_module(
+            available_models=[
+                {
+                    "id": "cfg-1",
+                    "base_url": "https://example.com",
+                    "api_key": "enc-key",
+                }
+            ],
+            active_model_id="cfg-1",
+            provider_models_error=RuntimeError(
+                "provider rejected api_key=sk-secret-demo@example.com"
+            ),
+        )
+
+        result = asyncio.run(module.AuthBusiness.get_provider_models("user-1"))
+
+        self.assertFalse(result.success)
+        self.assertEqual(result.message, "获取供应商模型失败，请稍后重试")
+        self.assertNotIn("sk-secret", result.message)
+        self.assertNotIn("demo@example.com", result.message)
 
 
 if __name__ == "__main__":

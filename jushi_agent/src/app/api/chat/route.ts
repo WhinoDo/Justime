@@ -175,6 +175,12 @@ export async function POST(request: NextRequest) {
     ) {
       throw createBadRequestError('任务难度无效')
     }
+    if (useWebSearch !== undefined && typeof useWebSearch !== 'boolean') {
+      throw createBadRequestError('网页搜索开关无效')
+    }
+    if (useOpenClaw !== undefined && typeof useOpenClaw !== 'boolean') {
+      throw createBadRequestError('OpenClaw 开关无效')
+    }
     let normalizedSessionId: string | undefined
     if (sessionId !== undefined) {
       if (typeof sessionId !== 'string') {

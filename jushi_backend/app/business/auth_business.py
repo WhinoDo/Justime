@@ -262,7 +262,8 @@ class AuthBusiness:
         except httpx.TimeoutException:
              return AuthResponse(success=False, message="连接超时，无法获取供应商模型")
         except Exception as e:
-             return AuthResponse(success=False, message=f"获取供应商模型失败: {str(e)}")
+             print(f"❌ get_provider_models error: {type(e).__name__}")
+             return AuthResponse(success=False, message="获取供应商模型失败，请稍后重试")
 
     @staticmethod
     async def update_system_config(config_id: str, payload: Dict[str, Any]) -> AuthResponse:

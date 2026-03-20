@@ -963,6 +963,29 @@ describe('POST /api/chat route', () => {
     expect(init?.status).toBe(400)
   })
 
+  it('returns 400 when useWebSearch is not a boolean', async () => {
+    process.env.NODE_ENV = 'test'
+    const fetchMock = jest.fn()
+    global.fetch = fetchMock as unknown as typeof fetch
+
+    const { POST } = await import('@/app/api/chat/route')
+
+    const request = {
+      json: async () => ({ message: 'hello', useWebSearch: 'false' }),
+      cookies: { get: () => undefined },
+      headers: { get: () => null },
+    } as any
+
+    await POST(request)
+
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(mockJson).toHaveBeenCalledTimes(1)
+    const [body, init] = mockJson.mock.calls[0]
+    expect(body.success).toBe(false)
+    expect(body.error.code).toBe('CHAT_BAD_REQUEST')
+    expect(init?.status).toBe(400)
+  })
+
   it('returns 400 when sessionId is not a string', async () => {
     process.env.NODE_ENV = 'test'
     const fetchMock = jest.fn()
