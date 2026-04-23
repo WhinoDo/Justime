@@ -3,12 +3,16 @@ RAG 服务
 封装 LlamaIndex 功能，实现文档索引和检索
 """
 
+import logging
 import os
 import time
 import hashlib
+import threading
 from io import BytesIO
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 from llama_index.core import (
     VectorStoreIndex, 
@@ -45,7 +49,6 @@ from pymongo import MongoClient
 from app.core.config import settings
 from app.services.encryption_service import encryption_service
 
-# 确保文档目录存在
 DOCS_DIR = Path("app/data/documents")
 STORAGE_DIR = Path("app/data/storage")
 SUPPORTED_DOC_EXTENSIONS = [".txt", ".md", ".pdf", ".docx", ".csv"]
@@ -58,11 +61,41 @@ RAG_OCR_LANG = (os.getenv("RAG_OCR_LANG", "chi_sim+eng") or "").strip()
 RAG_CHUNK_SIZE = int(os.getenv("RAG_CHUNK_SIZE", "300"))
 RAG_CHUNK_OVERLAP = int(os.getenv("RAG_CHUNK_OVERLAP", "30"))
 
-if not DOCS_DIR.exists():
-    DOCS_DIR.mkdir(parents=True, exist_ok=True)
+_thread_local = threading.local()
 
-if not STORAGE_DIR.exists():
-    STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+
+def set_current_user_context(user_id: str):
+    _thread_local.user_id = str(user_id or "").strip()
+
+
+def clear_current_user_context():
+    _thread_local.user_id = None
+
+
+def get_current_user_context() -> Optional[str]:
+    user_id = getattr(_thread_local, "user_id", None)
+    if isinstance(user_id, str) and user_id.strip():
+        return user_id.strip()
+    return None
+
+
+def _ensure_directory(path: Path) -> Path:
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+    except PermissionError as exc:
+        raise RuntimeError(f"目录无权限访问: {path}") from exc
+    except OSError as exc:
+        raise RuntimeError(f"目录初始化失败: {path} ({exc})") from exc
+    return path
+
+
+def get_user_docs_dir(user_id: str) -> Path:
+    target_user = str(user_id or "").strip()
+    if not target_user:
+        raise ValueError("user_id 不能为空")
+    _ensure_directory(DOCS_DIR)
+    target_dir = DOCS_DIR / target_user
+    return _ensure_directory(target_dir)
 
 
 class OcrFallbackPDFReader(BaseReader):
@@ -82,7 +115,7 @@ class OcrFallbackPDFReader(BaseReader):
 
     def _warn_ocr_disabled(self, reason: str):
         if not self._ocr_warned:
-            print(f"⚠️ OCR 不可用（{reason}），将仅使用 PDF 文本层提取")
+            logger.warning(f"OCR not available ({reason}), will use PDF text layer only")
             self._ocr_warned = True
 
     def _ocr_page(self, page_index: int, page: Any) -> str:
@@ -102,7 +135,7 @@ class OcrFallbackPDFReader(BaseReader):
                 return (pytesseract.image_to_string(image, lang=self.ocr_lang) or "").strip()
             return (pytesseract.image_to_string(image) or "").strip()
         except Exception as e:
-            print(f"⚠️ 第 {page_index + 1} 页 OCR 提取失败: {e}")
+            logger.warning(f"OCR extraction failed on page {page_index + 1}: {e}")
             return ""
 
     def load_data(self, file_path: Any, extra_info: Optional[Dict[str, Any]] = None) -> List[Document]:
@@ -130,7 +163,7 @@ class OcrFallbackPDFReader(BaseReader):
             "file_path": str(target.resolve()),
         })
         if not full_text:
-            print(f"⚠️ PDF 未提取到可用文本: {target.name}")
+            logger.warning(f"PDF extracted no usable text: {target.name}")
             return []
         return [Document(text=full_text, metadata=metadata)]
 
@@ -156,14 +189,14 @@ def _configure_llamaindex_settings() -> None:
 
     if huggingface_embedding_cls is not None:
         try:
-            print(f"🔄 正在加载本地 Embedding 模型: {DEFAULT_EMBED_MODEL}")
+            logger.info(f"Loading local Embedding model: {DEFAULT_EMBED_MODEL}")
             Settings.embed_model = huggingface_embedding_cls(model_name=DEFAULT_EMBED_MODEL)
-            print("✅ 本地 Embedding 引擎已加载")
+            logger.info("Local Embedding engine loaded successfully")
         except Exception as e:
-            print(f"⚠️ 加载 HuggingFace Embedding 失败，降级为 MockEmbedding: {e}")
+            logger.warning(f"Failed to load HuggingFace Embedding, falling back to MockEmbedding: {e}")
             Settings.embed_model = MockEmbedding(embed_dim=1024)
     else:
-        print("⚠️ 未安装 llama-index-embeddings-huggingface，降级为 MockEmbedding")
+        logger.warning("llama-index-embeddings-huggingface not installed, falling back to MockEmbedding")
         Settings.embed_model = MockEmbedding(embed_dim=1024)
 
     # 让 chunk 粒度和本地 embedding 上下文更匹配，提升检索与引用对齐度。
@@ -241,6 +274,13 @@ class RAGService:
         self.index = None
         self._last_llm_refresh_at = 0.0
         self._llm_signature = ""
+        self._initialized = False
+        self._init_error = ""
+
+    def _ensure_initialized(self) -> None:
+        if self._initialized:
+            return
+        self._initialized = True
         self._initialize_index()
 
     def _refresh_llm_if_needed(self, force: bool = False) -> None:
@@ -251,13 +291,13 @@ class RAGService:
 
         if OpenAILike is None:
             Settings.llm = None
-            print("⚠️ 未安装 OpenAILike 依赖，知识库问答将使用检索片段直出模式")
+            logger.warning("OpenAILike dependency not installed, knowledge base Q&A will use retrieval-only mode")
             return
 
         config = _resolve_llm_config_from_env() or _resolve_llm_config_from_system_configs()
         if not config:
             Settings.llm = None
-            print("⚠️ 未找到可用的已配置问答模型，知识库问答将使用检索片段直出模式")
+            logger.warning("No configured Q&A model found, knowledge base Q&A will use retrieval-only mode")
             return
 
         signature = f"{config['config_id']}|{config['model_id']}|{config['base_url']}"
@@ -272,56 +312,104 @@ class RAGService:
                 is_chat_model=True,
             )
             self._llm_signature = signature
-            print(
-                f"✅ RAG 问答模型已加载: {config['name']} ({config['model_id']}) "
+            logger.info(
+                f"RAG Q&A model loaded: {config['name']} ({config['model_id']}) "
                 f"[source={config['source']}]"
             )
         except Exception as e:
             Settings.llm = None
-            print(f"⚠️ 加载已配置问答模型失败，降级为检索片段直出: {e}")
+            logger.warning(f"Failed to load configured Q&A model, falling back to retrieval-only mode: {e}")
 
     def _initialize_index(self):
         """初始化索引"""
         try:
-            # 检查是否有持久化的索引
-            if (STORAGE_DIR / "docstore.json").exists():
-                print("📦 加载现有 RAG 索引...")
-                storage_context = StorageContext.from_defaults(persist_dir=str(STORAGE_DIR))
+            storage_dir = STORAGE_DIR.resolve()
+            docstore_path = storage_dir / "docstore.json"
+            if docstore_path.exists():
+                logger.info("Loading existing RAG index...")
+                storage_context = StorageContext.from_defaults(persist_dir=str(storage_dir))
                 self.index = load_index_from_storage(storage_context)
-            else:
-                print("🆕 创建新的 RAG 索引...")
-                self.rebuild_index()
-        except Exception as e:
-            print(f"⚠️ RAG 索引初始化失败: {e}")
+                self._init_error = ""
+                return
 
-    def rebuild_index(self) -> str:
+            docs_dir = DOCS_DIR.resolve()
+            if not docs_dir.exists():
+                logger.info("RAG documents directory does not exist yet, skipping initialization")
+                self.index = None
+                self._init_error = ""
+                return
+
+            try:
+                has_docs = any(docs_dir.iterdir())
+            except Exception as exc:
+                self.index = None
+                self._init_error = str(exc)
+                logger.warning(f"Unable to inspect RAG documents directory: {exc}")
+                return
+
+            if not has_docs:
+                logger.info("RAG documents directory is empty, skipping initialization")
+                self.index = None
+                self._init_error = ""
+                return
+
+            logger.info("Creating new RAG index...")
+            rebuild_message = self.rebuild_index()
+            if rebuild_message.startswith("重建索引失败"):
+                self._init_error = rebuild_message
+            else:
+                self._init_error = ""
+        except Exception as e:
+            self.index = None
+            self._init_error = str(e)
+            logger.error(f"RAG index initialization failed: {e}")
+
+    def rebuild_index(self, docs_dir: Optional[Path] = None, persist: bool = True) -> str:
         """重建索引"""
+        target_docs_dir = (docs_dir or DOCS_DIR).resolve()
+        persist_dir = STORAGE_DIR if docs_dir is None else STORAGE_DIR / target_docs_dir.name
+
         try:
+            if persist:
+                _ensure_directory(persist_dir)
+
+            if not target_docs_dir.exists():
+                logger.warning(f"Document directory does not exist: {target_docs_dir}")
+                self.index = None
+                self._init_error = ""
+                return "文档目录不存在"
+
             # 读取文档
-            if not any(DOCS_DIR.iterdir()):
-                print("⚠️ 文档目录为空，跳过索引构建")
+            if not any(target_docs_dir.iterdir()):
+                logger.warning("Document directory is empty, skipping index build")
+                self.index = None
+                self._init_error = ""
                 return "文档目录为空"
 
-            print(f"📖 正在通过本地 Embedding 读取目录: {DOCS_DIR}")
+            logger.info(f"Reading directory via local Embedding: {target_docs_dir}")
             pdf_extractor = _build_file_extractor()
             documents = SimpleDirectoryReader(
-                str(DOCS_DIR),
+                str(target_docs_dir),
                 recursive=True,
                 required_exts=SUPPORTED_DOC_EXTENSIONS,
                 file_extractor=pdf_extractor,
             ).load_data()
-            
+
             # 创建索引
-            print("🧠 正在生成本地向量索引...")
+            logger.info("Generating local vector index...")
             self.index = VectorStoreIndex.from_documents(documents)
-            
+            self._init_error = ""
+
             # 持久化
-            self.index.storage_context.persist(persist_dir=str(STORAGE_DIR))
-            
-            print(f"🎉 索引构建完成，共解析 {len(documents)} 个文档片段")
+            if persist:
+                self.index.storage_context.persist(persist_dir=str(persist_dir))
+
+            logger.info(f"Index build complete, parsed {len(documents)} document chunks")
             return f"成功通过本地模型索引 {len(documents)} 个文档片段"
         except Exception as e:
-            print(f"❌ 重建索引失败: {e}")
+            logger.error(f"Index rebuild failed: {e}")
+            self.index = None
+            self._init_error = str(e)
             return f"重建索引失败: {str(e)}"
 
     def _normalize_doc_path(self, file_path: Optional[str]) -> str:
@@ -416,17 +504,36 @@ class RAGService:
 
     def query_with_references(self, question: str, allow_auto_rebuild: bool = True) -> Dict[str, Any]:
         """查询知识库并返回结构化引用。"""
-        if not self.index:
-            return {
-                "answer": "知识库尚未初始化或为空，请先上传文档。",
-                "references": [],
-            }
+        target_user_id = get_current_user_context()
+        original_index = self.index
 
         try:
             self._refresh_llm_if_needed()
+            if target_user_id:
+                docs_root = get_user_docs_dir(target_user_id)
+                if not any(docs_root.iterdir()):
+                    return {"answer": "未检索到相关文档内容。", "references": []}
+
+                self.rebuild_index(docs_dir=docs_root, persist=False)
+                index_for_query = self.index
+                if index_for_query is None:
+                    if self._init_error:
+                        return {"answer": f"知识库暂不可用: {self._init_error}", "references": []}
+                    return {"answer": "知识库尚未初始化或为空，请先上传文档。", "references": []}
+            else:
+                self._ensure_initialized()
+                if not self.index:
+                    if self._init_error:
+                        return {"answer": f"知识库暂不可用: {self._init_error}", "references": []}
+                    return {
+                        "answer": "知识库尚未初始化或为空，请先上传文档。",
+                        "references": [],
+                    }
+                index_for_query = self.index
+
             nodes: List[Any] = []
             if Settings.llm is not None:
-                query_engine = self.index.as_query_engine(
+                query_engine = index_for_query.as_query_engine(
                     llm=Settings.llm,
                     similarity_top_k=RAG_SIMILARITY_TOP_K,
                 )
@@ -434,7 +541,7 @@ class RAGService:
                 answer = str(response)
                 nodes = list(getattr(response, "source_nodes", []) or [])
             else:
-                retriever = self.index.as_retriever(similarity_top_k=RAG_SIMILARITY_TOP_K)
+                retriever = index_for_query.as_retriever(similarity_top_k=RAG_SIMILARITY_TOP_K)
                 nodes = list(retriever.retrieve(question) or [])
                 if not nodes:
                     return {"answer": "未检索到相关文档内容。", "references": []}
@@ -463,11 +570,17 @@ class RAGService:
         except Exception as e:
             error_text = str(e)
             if allow_auto_rebuild and self._is_embedding_shape_mismatch(error_text):
-                print("⚠️ 检测到向量维度不一致，正在自动重建索引并重试一次查询...")
-                rebuild_msg = self.rebuild_index()
-                print(f"ℹ️ 自动重建结果: {rebuild_msg}")
+                logger.warning("Detected embedding dimension mismatch, auto-rebuilding index...")
+                if target_user_id:
+                    rebuild_msg = self.rebuild_index(docs_dir=get_user_docs_dir(target_user_id), persist=False)
+                else:
+                    rebuild_msg = self.rebuild_index()
+                logger.info(f"Auto-rebuild result: {rebuild_msg}")
                 return self.query_with_references(question, allow_auto_rebuild=False)
             return {"answer": f"查询出错: {error_text}", "references": []}
+        finally:
+            if target_user_id:
+                self.index = original_index
 
     def query(self, question: str) -> str:
         """查询知识库"""

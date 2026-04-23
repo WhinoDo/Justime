@@ -5,20 +5,15 @@
 
 from typing import Any, Dict, List, Optional, Set
 
+from app.core.normalizers import normalize_bool, normalize_capabilities, normalize_priority
+
 
 class ModelRouterService:
     _KNOWN_CAPABILITIES = {"fast", "reasoning", "classifier", "tool_call"}
 
     def _parse_capabilities(self, config: Dict[str, Any]) -> Set[str]:
         raw = config.get("capabilities")
-        result: Set[str] = set()
-        if isinstance(raw, list):
-            for item in raw:
-                if not isinstance(item, str):
-                    continue
-                normalized = item.strip().lower()
-                if normalized in self._KNOWN_CAPABILITIES:
-                    result.add(normalized)
+        result: Set[str] = set(normalize_capabilities(raw, allowed=self._KNOWN_CAPABILITIES))
 
         model_id = str(config.get("model_id") or "").lower()
         if "reasoner" in model_id or "r1" in model_id or "o1" in model_id or "o3" in model_id:
@@ -29,24 +24,10 @@ class ModelRouterService:
         return result
 
     def _priority(self, config: Dict[str, Any]) -> int:
-        try:
-            return int(config.get("priority", 100))
-        except Exception:
-            return 100
+        return normalize_priority(config.get("priority", 100), default=100)
 
     def _enabled(self, config: Dict[str, Any]) -> bool:
-        value = config.get("enabled", True)
-        if isinstance(value, bool):
-            return value
-        if value is None:
-            return True
-        if isinstance(value, str):
-            lowered = value.strip().lower()
-            if lowered in {"false", "0", "no", "n"}:
-                return False
-            if lowered in {"true", "1", "yes", "y"}:
-                return True
-        return bool(value)
+        return normalize_bool(config.get("enabled", True), default=True)
 
     def _sorted_candidates(self, configs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         valid = [c for c in configs if self._enabled(c) and c.get("api_key") and c.get("base_url") and c.get("model_id")]

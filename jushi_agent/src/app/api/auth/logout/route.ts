@@ -3,6 +3,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { clearAuthCookies } from '@/lib/api/auth-cookies'
 
 /**
  * 用户登出
@@ -15,22 +16,7 @@ export async function POST(request: NextRequest) {
       message: '登出成功'
     })
 
-    // 清除认证cookie
-    response.cookies.set('access_token', '', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 0
-    })
-
-    response.cookies.set('refresh-token', '', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 0
-    })
-
-    return response
+    return clearAuthCookies(response)
 
   } catch (error) {
     console.error('❌ 登出API错误:', error)

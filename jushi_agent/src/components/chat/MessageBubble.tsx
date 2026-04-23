@@ -32,20 +32,6 @@ export function MessageBubble({ message, onTaskCreate, onReferenceClick }: Messa
     }
   }
 
-  const getEmotionColor = (score?: number) => {
-    if (!score) return ''
-    if (score <= 3) return 'text-red-500'
-    if (score <= 6) return 'text-yellow-500'
-    return 'text-green-500'
-  }
-
-  const getEmotionLabel = (score?: number) => {
-    if (!score) return ''
-    if (score <= 3) return '重度焦虑'
-    if (score <= 6) return '中度焦虑'
-    return '状态良好'
-  }
-
   const formatTaskType = (taskType?: string) => {
     if (taskType === 'recitation') return '背诵任务'
     if (taskType === 'thinking') return '思考任务'
@@ -65,10 +51,10 @@ export function MessageBubble({ message, onTaskCreate, onReferenceClick }: Messa
     )}>
       {/* 头像 */}
       <div className={cn(
-        "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center shadow-md",
+        "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 shadow-md",
         isUser
-          ? "bg-gradient-to-br from-blue-500 to-purple-600 text-white"
-          : "bg-gradient-to-br from-emerald-500 to-teal-600 text-white"
+          ? "bg-white/15 text-white"
+          : "bg-white/10 text-emerald-100"
       )}>
         {isUser ? <User size={16} /> : <Bot size={16} />}
       </div>
@@ -80,28 +66,27 @@ export function MessageBubble({ message, onTaskCreate, onReferenceClick }: Messa
       )}>
         {/* 消息气泡 */}
         <div className={cn(
-          "relative rounded-2xl px-4 py-3 shadow-sm border max-w-full",
-          "transition-all duration-200 hover:shadow-md",
+          'relative max-w-full rounded-2xl border px-4 py-3 shadow-sm transition-all duration-200 hover:shadow-md',
           isUser
-            ? "bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-br-md"
-            : "bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-bl-md border-gray-200 dark:border-gray-700"
+            ? 'rounded-br-md border-white/10 bg-white/15 text-white'
+            : 'rounded-bl-md border-white/10 bg-white/10 text-white/90'
         )}>
           {/* 任务分析元数据（仅对非通用对话展示） */}
           {(message.timingStrategy || message.taskAnalysis) &&
             (message.taskAnalysis?.taskType !== 'general' && message.timingStrategy?.taskType !== 'general') && (
-              <div className="mb-3 flex flex-wrap items-center gap-1.5 text-[10px] md:text-xs border-b border-gray-100 dark:border-gray-700/50 pb-2">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-medium">
+              <div className="mb-3 flex flex-wrap items-center gap-1.5 border-b border-white/10 pb-2 text-[10px] md:text-xs">
+                <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/10 px-2 py-0.5 font-medium text-white/80">
                   <Brain className="w-3 h-3" />
                   {formatTaskType(message.taskAnalysis?.taskType || message.timingStrategy?.taskType)}
                 </span>
-                <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 font-medium">
+                <span className="rounded-full border border-white/10 bg-white/10 px-2 py-0.5 font-medium text-white/75">
                   难度 {message.taskAnalysis?.difficultyLevel || message.timingStrategy?.difficultyLevel || 3}
                 </span>
-                <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 font-medium">
+                <span className="rounded-full border border-white/10 bg-white/10 px-2 py-0.5 font-medium text-white/75">
                   {formatUrgency(message.taskAnalysis?.urgency || message.timingStrategy?.urgency)}
                 </span>
                 {typeof message.taskAnalysis?.confidence === 'number' && (
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 font-medium">
+                  <span className="rounded-full border border-white/10 bg-white/10 px-2 py-0.5 font-medium text-white/75">
                     {Math.round(message.taskAnalysis.confidence * 100)}%
                   </span>
                 )}
@@ -109,10 +94,10 @@ export function MessageBubble({ message, onTaskCreate, onReferenceClick }: Messa
             )}
           {/* Markdown 渲染 */}
           <div className={cn(
-            "prose prose-sm max-w-none",
+            'prose prose-sm max-w-none',
             isUser
-              ? "prose-invert prose-headings:text-white prose-p:text-white prose-strong:text-white prose-em:text-white prose-code:text-blue-100 prose-code:bg-blue-600/30"
-              : "prose-gray dark:prose-invert prose-headings:text-gray-800 dark:prose-headings:text-gray-100"
+              ? 'prose-invert prose-headings:text-white prose-p:text-white prose-strong:text-white prose-em:text-white prose-code:text-white prose-code:bg-white/10'
+              : 'prose-invert prose-headings:text-white prose-p:text-white/85 prose-strong:text-white prose-em:text-white/85 prose-code:text-white prose-code:bg-white/10'
           )}>
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
@@ -130,7 +115,7 @@ export function MessageBubble({ message, onTaskCreate, onReferenceClick }: Messa
                           <span className="font-medium">{language}</span>
                           <button
                             onClick={() => handleCopyCode(codeString)}
-                            className="flex items-center gap-1 px-2 py-1 rounded hover:bg-gray-700 transition-colors"
+                            className="flex items-center gap-1 rounded px-2 py-1 transition-colors hover:bg-gray-700"
                           >
                             {copiedCode === codeString ? (
                               <>
@@ -163,8 +148,8 @@ export function MessageBubble({ message, onTaskCreate, onReferenceClick }: Messa
                       className={cn(
                         "px-1.5 py-0.5 rounded text-sm font-mono",
                         isUser
-                          ? "bg-blue-600/30 text-blue-100"
-                          : "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+                          ? 'bg-white/10 text-white'
+                          : 'bg-white/10 text-white/90'
                       )}
                       {...props}
                     >
@@ -176,8 +161,8 @@ export function MessageBubble({ message, onTaskCreate, onReferenceClick }: Messa
                   <blockquote className={cn(
                     "border-l-4 pl-4 py-2 my-2 italic",
                     isUser
-                      ? "border-blue-300 text-blue-100"
-                      : "border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400"
+                      ? 'border-white/30 text-white/85'
+                      : 'border-white/20 text-white/70'
                   )}>
                     {children}
                   </blockquote>
@@ -194,23 +179,23 @@ export function MessageBubble({ message, onTaskCreate, onReferenceClick }: Messa
                 ),
                 table: ({ children }: any) => (
                   <div className="overflow-x-auto my-4">
-                    <table className="min-w-full border-collapse border border-gray-300 dark:border-gray-600">
+                    <table className="min-w-full border-collapse border border-white/10">
                       {children}
                     </table>
                   </div>
                 ),
                 th: ({ children }: any) => (
                   <th className={cn(
-                    "border border-gray-300 dark:border-gray-600 px-3 py-2 font-semibold text-left",
+                    'border border-white/10 px-3 py-2 text-left font-semibold',
                     isUser
-                      ? "bg-blue-600/20 text-white"
-                      : "bg-gray-50 dark:bg-gray-700"
+                      ? 'bg-white/10 text-white'
+                      : 'bg-white/5 text-white/85'
                   )}>
                     {children}
                   </th>
                 ),
                 td: ({ children }: any) => (
-                  <td className="border border-gray-300 dark:border-gray-600 px-3 py-2">
+                  <td className="border border-white/10 px-3 py-2 text-white/80">
                     {children}
                   </td>
                 )
@@ -222,8 +207,8 @@ export function MessageBubble({ message, onTaskCreate, onReferenceClick }: Messa
         </div>
 
         {!isUser && message.ragReferences && message.ragReferences.length > 0 && (
-          <div className="w-fit max-w-[100%] rounded-xl border border-blue-200/80 bg-blue-50/70 p-3 dark:border-blue-900/60 dark:bg-blue-900/20">
-            <div className="mb-2 text-xs font-medium text-blue-700 dark:text-blue-300">
+          <div className="w-fit max-w-[100%] rounded-xl border border-white/10 bg-white/10 p-3 backdrop-blur-sm">
+            <div className="mb-2 text-xs font-medium text-white/80">
               引用文档
             </div>
             <div className="flex flex-wrap gap-2">
@@ -232,11 +217,11 @@ export function MessageBubble({ message, onTaskCreate, onReferenceClick }: Messa
                   key={reference.referenceId}
                   type="button"
                   onClick={() => onReferenceClick?.(reference)}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-blue-200 bg-white px-2.5 py-1.5 text-xs text-blue-700 transition-colors hover:bg-blue-100 dark:border-blue-800 dark:bg-gray-900 dark:text-blue-300 dark:hover:bg-blue-900/40"
+                  className="inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/10 px-2.5 py-1.5 text-xs text-white/80 transition-colors hover:bg-white/15"
                 >
                   <FileText className="h-3.5 w-3.5" />
                   <span className="max-w-[180px] truncate">{reference.fileName || reference.docPath}</span>
-                  <span className="text-[10px] text-blue-500 dark:text-blue-400">
+                  <span className="text-[10px] text-white/45">
                     {reference.snippets?.length || 0} 段
                   </span>
                 </button>
@@ -251,7 +236,7 @@ export function MessageBubble({ message, onTaskCreate, onReferenceClick }: Messa
           isUser ? "flex-row-reverse" : "flex-row"
         )}>
           {/* 时间戳 */}
-          <span className="text-gray-500 dark:text-gray-400">
+          <span className="text-white/40">
             {formatTime(message.created_at)}
           </span>
 

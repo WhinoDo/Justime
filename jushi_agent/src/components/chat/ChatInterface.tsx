@@ -27,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
 
 interface ChatInterfaceProps {
   initialMessages?: Message[]
@@ -466,7 +467,6 @@ export function ChatInterface({
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        userId: authUser.id,
         title: event.title,
         description: event.description,
         start: event.start,
@@ -558,7 +558,6 @@ export function ChatInterface({
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          userId: authUser.id,
           title: task.title,
           description: task.description || `来自项目「${project?.name || '任务'}」`,
           start: startTime.toISOString(),
@@ -652,47 +651,46 @@ export function ChatInterface({
   const isEmpty = messages.length === 0
 
   return (
-    <div className="chat-interface flex h-screen relative bg-gradient-to-br from-indigo-50 via-white to-cyan-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col text-white">
       <div className="flex min-w-0 min-h-0 flex-1 flex-col">
-        {/* 聊天头部 */}
-        <div className="chat-header backdrop-blur-md bg-white/70 dark:bg-black/40 border-b border-white/20 dark:border-white/10 sticky top-0 z-40 shadow-sm">
-          <div className="chat-header-content">
+        <div className="sticky top-0 z-40 border-b border-white/10 bg-black/10 px-4 py-4 backdrop-blur-xl md:px-6">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex items-center gap-3">
               <Link href="/dashboard">
-                <Button variant="ghost" size="icon" className="mr-1 text-gray-500 hover:text-gray-900">
-                  <ChevronRight className="w-5 h-5 rotate-180" />
+                <Button variant="ghost" size="icon" className="mr-1 rounded-2xl border border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white">
+                  <ChevronRight className="h-5 w-5 rotate-180" />
                 </Button>
               </Link>
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
-                <Sparkles className="w-5 h-5 text-white" />
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/15 bg-white/15 shadow-lg shadow-black/10">
+                <Sparkles className="h-5 w-5 text-amber-200" />
               </div>
               <div>
-                <h2 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                <h2 className="text-xl font-bold tracking-tight text-white">
                   聚时智能助手
                 </h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <p className="text-sm text-white/55">
                   情绪感知 · 任务拆解 · 智能陪伴
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {/* 模型选择器 */}
               {authUser && (
                 <div className="flex items-center gap-2">
                   {selectedModel ? (
                     <Link href="/model-config?from=/chat">
-                      <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 dark:bg-blue-900/30 rounded-md border border-blue-200 dark:border-blue-800 cursor-pointer hover:bg-blue-100 transition-colors">
-                        <Bot className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                        <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                      <div className="flex cursor-pointer items-center gap-1 rounded-xl border border-white/10 bg-white/10 px-2.5 py-1.5 transition-colors hover:bg-white/15">
+                        <Bot className="h-3 w-3 text-blue-200" />
+                        <span className="text-xs font-medium text-white/80">
                           {selectedModel}
                         </span>
                       </div>
                     </Link>
                   ) : (
                     <Link href="/model-config?from=/chat">
-                      <div className="flex items-center gap-1 px-2 py-1 bg-yellow-50 dark:bg-yellow-900/20 rounded-md border border-yellow-200 dark:border-yellow-800 cursor-pointer hover:bg-yellow-100 transition-colors">
-                        <AlertTriangle className="w-3 h-3 text-yellow-600 dark:text-yellow-400" />
-                        <span className="text-xs font-medium text-yellow-700 dark:text-yellow-300">
+                      <div className="flex cursor-pointer items-center gap-1 rounded-xl border border-amber-200/20 bg-amber-500/10 px-2.5 py-1.5 transition-colors hover:bg-amber-500/15">
+                        <AlertTriangle className="h-3 w-3 text-amber-200" />
+                        <span className="text-xs font-medium text-amber-100">
                           未配置模型
                         </span>
                       </div>
@@ -707,7 +705,7 @@ export function ChatInterface({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors duration-200 text-orange-600 dark:text-orange-400"
+                  className="rounded-2xl border border-white/10 bg-white/5 text-amber-200 hover:bg-white/10 hover:text-white"
                   title="日历管理"
                 >
                   <Calendar className="w-4 h-4" />
@@ -719,7 +717,7 @@ export function ChatInterface({
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowTimeHelper(!showTimeHelper)}
-                className="hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors duration-200 text-green-600 dark:text-green-400"
+                className="rounded-2xl border border-white/10 bg-white/5 text-emerald-200 hover:bg-white/10 hover:text-white"
                 title="智能时间助手"
               >
                 <Clock className="w-4 h-4" />
@@ -730,7 +728,7 @@ export function ChatInterface({
                 variant="ghost"
                 size="sm"
                 onClick={() => setUseWebSearch(!useWebSearch)}
-                className={`transition-colors duration-200 ${useWebSearch ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500'}`}
+                className={`rounded-2xl border border-white/10 transition-colors ${useWebSearch ? 'bg-white/15 text-sky-100' : 'bg-white/5 text-white/55 hover:bg-white/10 hover:text-white'}`}
                 title={useWebSearch ? "已开启网页搜索" : "点击开启网页搜索"}
               >
                 <Globe className="w-4 h-4" />
@@ -741,7 +739,7 @@ export function ChatInterface({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors duration-200 text-purple-600 dark:text-purple-400"
+                  className="rounded-2xl border border-white/10 bg-white/5 text-violet-200 hover:bg-white/10 hover:text-white"
                   title="查看聊天记录"
                 >
                   <MessageCircle className="w-4 h-4" />
@@ -752,7 +750,7 @@ export function ChatInterface({
                 variant="ghost"
                 size="sm"
                 onClick={toggleTheme}
-                className="hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200"
+                className="rounded-2xl border border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
               >
                 {getThemeIcon()}
               </Button>
@@ -760,7 +758,7 @@ export function ChatInterface({
                 variant="outline"
                 size="sm"
                 onClick={handleClearChat}
-                className="hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-colors duration-200"
+                className="rounded-2xl border-white/10 bg-white/5 text-white/70 hover:border-red-200/40 hover:bg-red-500/10 hover:text-red-100"
                 disabled={isEmpty}
               >
                 <Trash2 className="w-4 h-4 mr-2" />
@@ -773,28 +771,28 @@ export function ChatInterface({
 
         {/* 消息容器 */}
         {/* 消息容器 */}
-        <div className="messages-container flex-1 overflow-y-auto px-4 md:px-0 scroll-smooth">
+        <div className="flex-1 overflow-y-auto px-4 py-6 md:px-6 scroll-smooth">
           {isEmpty ? (
-            <div className="flex flex-col items-center justify-center h-full text-center space-y-6">
-              <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 flex items-center justify-center">
-                <MessageCircle className="w-12 h-12 text-blue-500" />
+            <div className="flex h-full flex-col items-center justify-center space-y-6 text-center">
+              <div className="flex h-24 w-24 items-center justify-center rounded-[28px] border border-white/15 bg-white/10 shadow-2xl shadow-black/10">
+                <MessageCircle className="h-12 w-12 text-white/80" />
               </div>
               <div className="space-y-2">
-                <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
+                <h3 className="text-xl font-semibold text-white">
                   开始对话
                 </h3>
-                <p className="text-gray-500 dark:text-gray-400 max-w-md">
+                <p className="max-w-md text-white/60">
                   告诉我你现在的任务或感受，我会根据你的情绪状态提供个性化的帮助和任务拆解建议
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2 justify-center">
-                <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-sm">
+              <div className="flex flex-wrap justify-center gap-2">
+                <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-sm text-white/75">
                   情绪感知
                 </span>
-                <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-sm">
+                <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-sm text-white/75">
                   任务拆解
                 </span>
-                <span className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-sm">
+                <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-sm text-white/75">
                   智能陪伴
                 </span>
               </div>
@@ -848,81 +846,79 @@ export function ChatInterface({
                           />
                         ) : (
                           /* 概要时间表卡片 */
-                          <div className="bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-xl border border-purple-200 dark:border-purple-800 p-4 shadow-sm">
-                            <div className="flex items-center gap-2 mb-3">
-                              <div className="p-2 bg-purple-100 dark:bg-purple-800 rounded-lg">
-                                <ListChecks className="w-5 h-5 text-purple-600 dark:text-purple-300" />
+                          <div className="rounded-2xl border border-white/15 bg-white/10 p-4 shadow-xl shadow-black/10 backdrop-blur-xl">
+                            <div className="mb-3 flex items-center gap-2">
+                              <div className="rounded-xl border border-white/10 bg-white/10 p-2">
+                                <ListChecks className="h-5 w-5 text-violet-200" />
                               </div>
                               <div>
-                                <h4 className="font-semibold text-gray-900 dark:text-gray-100">
+                                <h4 className="font-semibold text-white">
                                   {decomp.project?.name || '任务分解方案'}
                                 </h4>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                <p className="text-xs text-white/50">
                                   AI 已生成概要时间表
                                 </p>
                               </div>
                             </div>
 
                             {decomp.project?.description && (
-                              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
+                              <p className="mb-3 line-clamp-2 text-sm text-white/65">
                                 {decomp.project.description}
                               </p>
                             )}
 
-                            {/* 概要统计 */}
-                            <div className="grid grid-cols-3 gap-3 mb-4">
-                              <div className="text-center p-2 bg-white/60 dark:bg-gray-800/60 rounded-lg">
-                                <div className="text-lg font-bold text-purple-600 dark:text-purple-400">
+                            <div className="mb-4 grid grid-cols-3 gap-3">
+                              <div className="rounded-xl border border-white/10 bg-white/10 p-2 text-center">
+                                <div className="text-lg font-bold text-white">
                                   {(decomp.subtasks || []).length}
                                 </div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400">子任务</div>
+                                <div className="text-xs text-white/45">子任务</div>
                               </div>
-                              <div className="text-center p-2 bg-white/60 dark:bg-gray-800/60 rounded-lg">
-                                <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                              <div className="rounded-xl border border-white/10 bg-white/10 p-2 text-center">
+                                <div className="text-lg font-bold text-white">
                                   {decomp.project?.total_days || '—'}
                                 </div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400">天</div>
+                                <div className="text-xs text-white/45">天</div>
                               </div>
-                              <div className="text-center p-2 bg-white/60 dark:bg-gray-800/60 rounded-lg">
-                                <div className="text-lg font-bold text-cyan-600 dark:text-cyan-400">
+                              <div className="rounded-xl border border-white/10 bg-white/10 p-2 text-center">
+                                <div className="text-lg font-bold text-white">
                                   {totalHours}
                                 </div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400">总工时</div>
+                                <div className="text-xs text-white/45">总工时</div>
                               </div>
                             </div>
 
-                            {/* 子任务预览列表 */}
-                            <div className="space-y-1.5 mb-4">
+                            <div className="mb-4 space-y-1.5">
                               {(decomp.subtasks || []).slice(0, 4).map((task: any, idx: number) => (
-                                <div key={idx} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                                  <span className="w-5 h-5 flex items-center justify-center bg-purple-100 dark:bg-purple-800/50 text-purple-600 dark:text-purple-300 rounded text-xs font-medium">
+                                <div key={idx} className="flex items-center gap-2 text-sm text-white/80">
+                                  <span className="flex h-5 w-5 items-center justify-center rounded bg-white/10 text-xs font-medium text-white/80">
                                     {task.order || idx + 1}
                                   </span>
                                   <span className="flex-1 truncate">{task.title}</span>
-                                  <span className="text-xs text-gray-400">{task.duration_hours}h</span>
+                                  <span className="text-xs text-white/45">{task.duration_hours}h</span>
                                 </div>
                               ))}
                               {(decomp.subtasks || []).length > 4 && (
-                                <div className="text-xs text-gray-400 dark:text-gray-500 text-center">
+                                <div className="text-center text-xs text-white/40">
                                   ... 还有 {(decomp.subtasks || []).length - 4} 个子任务
                                 </div>
                               )}
                             </div>
 
-                            {/* 操作按钮 */}
                             <div className="flex gap-2">
                               <Button
                                 size="sm"
                                 onClick={() => setExpandedDecompositionId(message.id)}
-                                className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
+                                className="flex-1 rounded-xl bg-white text-gray-900 hover:bg-white/90"
                               >
-                                <Calendar className="w-4 h-4 mr-2" />
+                                <Calendar className="mr-2 h-4 w-4" />
                                 查看详细日程安排
-                                <ChevronDown className="w-4 h-4 ml-1" />
+                                <ChevronDown className="ml-1 h-4 w-4" />
                               </Button>
                               <Button
                                 variant="outline"
                                 size="sm"
+                                className="rounded-xl border-white/15 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
                                 onClick={() => {
                                   setTaskDecomposition(null)
                                   setMultiTaskDecompositions(null)
@@ -962,7 +958,7 @@ export function ChatInterface({
 
         {/* 时间助手区域 */}
         {showTimeHelper && (
-          <div className="p-4 border-t bg-green-50/50 dark:bg-green-900/10">
+          <div className="border-t border-white/10 bg-white/[0.03] p-4">
             <TimeAwareTaskInput
               onTaskCreate={handleTimeAwareTaskCreate}
             />
@@ -970,11 +966,11 @@ export function ChatInterface({
         )}
 
         {/* 底部输入区域容器 */}
-        <div className="p-4 shrink-0 transition-all duration-300 relative">
+        <div className="relative shrink-0 p-4 transition-all duration-300 md:px-6 md:pb-6">
           {/* 悬浮的 RAG 预览面板（居中、悬浮于输入框上方） */}
           {previewOpen && selectedReference && (
             <div className="absolute bottom-[calc(100%-1rem)] left-1/2 -translate-x-1/2 w-full max-w-3xl px-4 z-50 animate-in slide-in-from-bottom-4 fade-in duration-200">
-              <div className="bg-white/90 dark:bg-gray-900/95 backdrop-blur-xl border border-gray-200 dark:border-gray-700 shadow-2xl rounded-2xl overflow-hidden h-[400px]">
+              <div className="h-[400px] overflow-hidden rounded-2xl border border-white/15 bg-black/40 shadow-2xl backdrop-blur-2xl">
                 <RagReferencePreviewPanel
                   open={previewOpen}
                   reference={selectedReference}
@@ -990,29 +986,27 @@ export function ChatInterface({
           )}
 
           {/* 原本的输入大框保持完整，textarea 在该容器内 */}
-          <div className="max-w-3xl mx-auto relative rounded-2xl bg-white/30 dark:bg-white/5 border border-white/30 dark:border-white/10 shadow-sm backdrop-blur-sm overflow-hidden transition-all duration-300 focus-within:ring-2 focus-within:ring-blue-500/20">
-            <textarea
+          <div className="relative mx-auto max-w-3xl overflow-hidden rounded-[28px] border border-white/15 bg-white/10 shadow-2xl shadow-black/15 backdrop-blur-2xl transition-all duration-300 focus-within:ring-2 focus-within:ring-white/20">
+            <Textarea
               ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder={`输入 "@" 唤起常用语，或粘贴代码快速提问`}
-              className="w-full h-32 px-6 py-4 bg-transparent text-gray-800 dark:text-gray-200 placeholder:text-gray-500 dark:placeholder:text-gray-400 text-base resize-none focus:outline-none overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400/50 scrollbar-track-transparent"
+              className="h-32 resize-none overflow-y-auto border-0 bg-transparent px-6 py-4 text-base text-white placeholder:text-white/45 focus-visible:ring-0 focus-visible:ring-offset-0"
               disabled={isLoading}
             />
 
-            {/* 底部工具栏 */}
-            <div className="flex items-center justify-between px-4 pb-3 pt-1">
-              <div className="flex items-center gap-2">
-                {/* 模型选择下拉框 */}
+            <div className="flex flex-col gap-3 border-t border-white/10 px-4 pb-4 pt-3 md:flex-row md:items-center md:justify-between">
+              <div className="flex flex-wrap items-center gap-2">
                 <Select
                   value={selectedModel}
                   onValueChange={setSelectedModel}
                 >
-                  <SelectTrigger className="h-8 border-0 bg-transparent shadow-none hover:bg-black/5 dark:hover:bg-white/5 data-[state=open]:bg-black/5 dark:data-[state=open]:bg-white/5 focus:ring-0 px-2 w-auto min-w-[120px]">
-                    <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
-                      <Bot className={modelError ? "w-4 h-4 text-red-500" : "w-4 h-4 text-blue-600 dark:text-blue-400"} />
-                      <SelectValue placeholder={modelError ? "模型拉取失败" : "加载模型中..."} />
+                  <SelectTrigger className="h-9 min-w-[150px] rounded-xl border-white/10 bg-white/5 px-3 text-white shadow-none hover:bg-white/10 focus:ring-0">
+                    <div className="flex items-center gap-1.5 text-xs text-white/75">
+                      <Bot className={modelError ? 'h-4 w-4 text-red-300' : 'h-4 w-4 text-blue-200'} />
+                      <SelectValue placeholder={modelError ? '模型拉取失败' : '加载模型中...'} />
                     </div>
                   </SelectTrigger>
                   <SelectContent className="bottom-full left-0 mb-1 origin-bottom">
@@ -1024,41 +1018,38 @@ export function ChatInterface({
                   </SelectContent>
                 </Select>
 
-                {/* 分割线 */}
-                <div className="w-px h-4 bg-gray-300 dark:bg-gray-700"></div>
-
-                {/* 深度思考 (Toggle) */}
-                <button
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setUseWebSearch(!useWebSearch)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${useWebSearch ? 'text-blue-600 bg-blue-500/10 dark:text-blue-400' : 'text-gray-500 hover:bg-black/5 dark:text-gray-400 dark:hover:bg-white/5'}`}
+                  className={`rounded-xl border border-white/10 px-3 ${useWebSearch ? 'bg-white/15 text-sky-100 hover:bg-white/20' : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'}`}
                   title="启用深度思考"
                 >
-                  <Brain className="w-4 h-4" />
+                  <Brain className="mr-1.5 h-4 w-4" />
                   <span>深度思考</span>
-                </button>
+                </Button>
               </div>
 
-              {/* 发送按钮 */}
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleSendMessage}
-                  disabled={isLoading || !input.trim()}
-                  className={`p-2 rounded-full transition-all duration-200 ${input.trim()
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 hover:bg-blue-500 hover:scale-105'
-                    : 'bg-gray-300 dark:bg-gray-700 text-gray-500 cursor-not-allowed'
-                    }`}
-                >
-                  {isLoading ? (
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <Send className="w-5 h-5" />
-                  )}
-                </button>
-              </div>
+              <Button
+                type="button"
+                onClick={handleSendMessage}
+                disabled={isLoading || !input.trim()}
+                className={`rounded-xl px-4 ${input.trim()
+                  ? 'bg-white text-gray-900 hover:bg-white/90'
+                  : 'bg-white/10 text-white/35 hover:bg-white/10'}`}
+              >
+                {isLoading ? (
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-gray-400/40 border-t-gray-900" />
+                ) : (
+                  <Send className="mr-2 h-4 w-4" />
+                )}
+                发送消息
+              </Button>
             </div>
           </div>
-          <div className="text-center mt-2">
-            <p className="text-xs text-gray-400 dark:text-gray-500">
+          <div className="mt-2 text-center">
+            <p className="text-xs text-white/40">
               内容由 AI 生成，请仔细甄别
             </p>
           </div>

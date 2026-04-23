@@ -41,8 +41,13 @@ export interface TokenPayload {
 }
 
 export class AuthService {
-  private static readonly JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
-  private static readonly JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key'
+  // 安全修复：移除硬编码密钥，强制使用环境变量
+  private static readonly JWT_SECRET = process.env.JWT_SECRET || (() => {
+    throw new Error('JWT_SECRET environment variable is required. Please set it in your .env file.')
+  })()
+  private static readonly JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || (() => {
+    throw new Error('JWT_REFRESH_SECRET environment variable is required. Please set it in your .env file.')
+  })()
   private static readonly JWT_EXPIRES_IN = '7d'
   private static readonly JWT_REFRESH_EXPIRES_IN = '30d'
 
@@ -124,7 +129,10 @@ export class AuthService {
       })
 
       await user.save()
-      console.log('✅ 用户注册成功:', data.email)
+      // 仅开发环境输出日志
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ 用户注册成功:', data.email)
+      }
 
       // 生成JWT令牌
       const token = this.generateToken(user)
@@ -225,7 +233,10 @@ export class AuthService {
       user.loginMethod = data.identifier.includes('@') ? LoginMethod.EMAIL : LoginMethod.USERNAME
       await user.updateLastActive()
 
-      console.log('✅ 用户登录成功:', data.identifier)
+      // 仅开发环境输出日志
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ 用户登录成功:', data.identifier)
+      }
 
       // 生成JWT令牌
       const tokenExpiry = data.rememberMe ? '30d' : this.JWT_EXPIRES_IN
@@ -373,7 +384,10 @@ export class AuthService {
       user.emailVerificationExpires = undefined
       await user.save()
 
-      console.log('✅ 邮箱验证成功:', user.email)
+      // 仅开发环境输出日志
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ 邮箱验证成功:', user.email)
+      }
 
       return {
         success: true,
@@ -409,10 +423,11 @@ export class AuthService {
       user.passwordResetExpires = resetExpires
       await user.save()
 
-      console.log('✅ 密码重置令牌已生成:', email)
-
-      // 这里应该发送邮件，暂时只记录日志
-      console.log('📧 密码重置链接:', `${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password?token=${resetToken}`)
+      // 仅开发环境输出日志
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ 密码重置令牌已生成:', email)
+        console.log('📧 密码重置链接:', `${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password?token=${resetToken}`)
+      }
 
       return { success: true }
 
@@ -449,7 +464,10 @@ export class AuthService {
       user.passwordResetExpires = undefined
       await user.save()
 
-      console.log('✅ 密码重置成功:', user.email)
+      // 仅开发环境输出日志
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ 密码重置成功:', user.email)
+      }
 
       return {
         success: true,

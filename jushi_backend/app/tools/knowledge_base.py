@@ -12,6 +12,17 @@ except Exception:
     def tool(func):
         return func
 
+try:
+    from app.services.rag_service import rag_service, set_current_user_context, clear_current_user_context
+except Exception:
+    rag_service = None
+
+    def set_current_user_context(user_id: str):
+        return None
+
+    def clear_current_user_context():
+        return None
+
 _pending_rag_references: Dict[str, List[dict]] = {}
 _rag_lock = threading.Lock()
 _request_local = threading.local()
@@ -20,6 +31,17 @@ _request_local = threading.local()
 def _get_current_request_id() -> str:
     request_id = getattr(_request_local, "request_id", None)
     return request_id or "default"
+
+
+def set_current_request_context(request_id: str, user_id: Optional[str] = None):
+    _request_local.request_id = request_id
+    if user_id:
+        set_current_user_context(user_id)
+
+
+def clear_current_request_context():
+    _request_local.request_id = None
+    clear_current_user_context()
 
 
 def get_pending_rag_references(request_id: Optional[str] = None) -> List[dict]:

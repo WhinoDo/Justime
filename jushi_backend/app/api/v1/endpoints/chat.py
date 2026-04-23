@@ -2,13 +2,15 @@
 聊天 API 端点
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Dict, Any
 from bson import ObjectId
 from app.models.chat import ChatRequest, ChatResponse, LLMTestRequest
+from app.models.history import SessionListResponse, MessageListResponse, CreateSessionRequest
 from app.business.chat_business import chat_business
 from app.services.security_service import SecurityService
 from app.database import db
+from app.core.validators import InputValidator
 
 router = APIRouter()
 ALLOWED_MESSAGE_UPDATE_FIELDS = {"taskDecomposition", "multiTaskDecompositions", "suggestedEvents"}
@@ -124,9 +126,6 @@ async def chat(
     return await chat_business.process_chat(request, str(current_user["_id"]))
 
 
-from typing import List, Dict, Any
-from app.models.history import SessionListResponse, MessageListResponse, CreateSessionRequest
-
 @router.get("/sessions", response_model=SessionListResponse, summary="获取会话列表")
 async def get_sessions(
     current_user: dict = Depends(SecurityService.get_current_user)
@@ -135,15 +134,23 @@ async def get_sessions(
     sessions = await chat_business.get_user_sessions(str(current_user["_id"]))
     return {"sessions": sessions}
 
+
 @router.post("/sessions", summary="创建新会话")
 async def create_session(
     request: CreateSessionRequest,
     current_user: dict = Depends(SecurityService.get_current_user)
 ) -> Dict[str, str]:
     """创建新会话"""
-    title = request.title or "新会话"
+    # 清理并验证标题
+    title = request.title.strip() if request.title else "新会话"
+    if len(title) > 200:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="会话标题不能超过200个字符"
+        )
     session_id = await chat_business.create_session(str(current_user["_id"]), title)
     return {"offset": 0, "sessionId": session_id}
+
 
 @router.get("/sessions/{session_id}/messages", response_model=MessageListResponse, summary="获取会话消息")
 async def get_session_messages(
@@ -160,9 +167,10 @@ async def get_session_messages(
     messages = await chat_business.get_session_messages(session_id, limit=safe_limit)
     return {"messages": messages}
 
+
 @router.post("/test", summary="测试LLM连接")
 async def test_llm_connection(
-    config: LLMTestRequest, 
+    config: LLMTestRequest,
     current_user: dict = Depends(SecurityService.get_current_user)
 ) -> Dict[str, Any]:
     """测试 LLM 连接"""
@@ -183,10 +191,12 @@ async def update_message(
     if not provided_fields:
         raise HTTPException(status_code=400, detail="更新内容不能为空")
 
-    disallowed_fields = provided_fields - ALLOWED_MESSAGE_UPDATE_FIELDS
+    allowed_fields = ALLOWED_MESSAGE_UPDATE_FIELDS | {"interactiveState", "processed", "feedback"}
+    disallowed_fields = provided_fields - allowed_fields
     if disallowed_fields:
         raise HTTPException(status_code=400, detail=f"不允许更新字段: {', '.join(sorted(disallowed_fields))}")
 
+    InputValidator.validate_dict_depth(updates, max_depth=3)
     _validate_message_update_types(updates)
     await _ensure_message_access(message_id, str(current_user["_id"]))
     await chat_business.update_message_interactive_state(message_id, updates)

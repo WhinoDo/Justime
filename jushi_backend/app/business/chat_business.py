@@ -1,11 +1,41 @@
 import asyncio
 import hashlib
 import json
+import logging
 from datetime import datetime, timezone
 from time import perf_counter
 import re
 from typing import Dict, Any, List, Optional
 from bson import ObjectId
+from functools import wraps
+
+# 配置日志
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
+# 重试装饰器
+def retry_on_failure(max_retries: int = 3, delay: float = 1.0, exceptions: tuple = (Exception,)):
+    """重试装饰器，用于处理临时性故障"""
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            last_exception = None
+            for attempt in range(max_retries):
+                try:
+                    return await func(*args, **kwargs)
+                except exceptions as e:
+                    last_exception = e
+                    if attempt < max_retries - 1:
+                        logger.warning(f"操作失败，第{attempt + 1}次重试: {str(e)}")
+                        await asyncio.sleep(delay * (attempt + 1))
+                    else:
+                        logger.error(f"操作失败，已达到最大重试次数{max_retries}: {str(e)}")
+            raise last_exception
+        return wrapper
+    return decorator
 from app.services.llm_service import llm_service
 from app.services.agent_service import agent_service
 from app.services.task_timing_service import task_timing_service
@@ -19,6 +49,7 @@ from app.database import db
 
 from app.services.user_service import UserService
 from app.services.encryption_service import encryption_service
+from app.core.normalizers import normalize_bool, normalize_capabilities
 
 # ... (keywords definitions remain same) ...
 CALENDAR_KEYWORDS = [
@@ -58,8 +89,8 @@ class ChatBusiness:
         session_doc = {
             "userId": user_id,
             "title": title,
-            "updatedAt": datetime.now(),
-            "createdAt": datetime.now()
+            "updatedAt": datetime.now(timezone.utc),
+            "createdAt": datetime.now(timezone.utc)
         }
         result = await db.db["chat_sessions"].insert_one(session_doc)
         return str(result.inserted_id)
@@ -70,7 +101,7 @@ class ChatBusiness:
             "sessionId": session_id,
             "role": role,
             "content": content,
-            "timestamp": datetime.now()
+            "timestamp": datetime.now(timezone.utc)
         }
         
         # Add optional fields if present
@@ -88,13 +119,13 @@ class ChatBusiness:
             message_doc["ragReferences"] = kwargs["ragReferences"]
             
         result = await db.db["chat_messages"].insert_one(message_doc)
-        
+
         # 更新会话最后更新时间和预览
         await db.db["chat_sessions"].update_one(
             {"_id": ObjectId(session_id)},
             {
                 "$set": {
-                    "updatedAt": datetime.now(),
+                    "updatedAt": datetime.now(timezone.utc),
                     "preview": content[:50] + "..." if len(content) > 50 else content
                 }
             }
@@ -256,7 +287,7 @@ class ChatBusiness:
                 usage_raw=usage.get("usageRaw") if isinstance(usage.get("usageRaw"), dict) else None
             )
         except Exception as exc:
-            print(f"⚠️ 记录模型 token 使用量失败: {exc}")
+            logger.warning(f"记录模型 token 使用量失败: {exc}")
 
     async def _build_recent_context(self, session_id: str, window_size: int) -> str:
         """按窗口读取最近会话上下文，用于思考类任务的长上下文输入"""
@@ -278,7 +309,7 @@ class ChatBusiness:
                 rendered.append(f"{role}: {content}")
             return "\n".join(rendered)
         except Exception as e:
-            print(f"⚠️ 读取会话上下文失败: {e}")
+            logger.warning(f"读取会话上下文失败: {e}")
             return ""
 
     def _wrap_task_with_timing(
@@ -632,8 +663,8 @@ class ChatBusiness:
     def _build_enhanced_task(self, user_message: str, use_web_search: bool = False) -> str:
         # ... (same as before) ...
         """构建增强任务提示，帮助 AI 识别日历需求和复杂任务"""
-        # 获取当前时间信息
-        now = datetime.now()
+        # 获取当前时间信息（使用UTC时间）
+        now = datetime.now(timezone.utc)
         weekdays = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
         current_time_str = f"{now.strftime('%Y年%m月%d日')} {weekdays[now.weekday()]} {now.strftime('%H:%M')}"
         
@@ -801,36 +832,11 @@ class ChatBusiness:
             "timeout": int(target_config.get("timeout", 60))
         }
 
-    def _normalize_capabilities(self, raw: Any) -> List[str]:
-        if not isinstance(raw, list):
-            return []
-        caps: List[str] = []
-        for item in raw:
-            if not isinstance(item, str):
-                continue
-            normalized = item.strip().lower()
-            if normalized and normalized not in caps:
-                caps.append(normalized)
-        return caps
-
     def _normalize_route_mode(self, route_mode: Optional[str]) -> str:
         value = (route_mode or "auto").strip().lower()
         if value in {"auto", "fast", "balanced", "reasoning"}:
             return value
         return "auto"
-
-    def _normalize_enabled_flag(self, raw: Any) -> bool:
-        if isinstance(raw, bool):
-            return raw
-        if raw is None:
-            return True
-        if isinstance(raw, str):
-            value = raw.strip().lower()
-            if value in {"false", "0", "no", "n"}:
-                return False
-            if value in {"true", "1", "yes", "y"}:
-                return True
-        return bool(raw)
 
     def _runtime_to_llm_config(self, runtime_config: Dict[str, Any], timeout_override: Optional[float] = None) -> LLMConfig:
         timeout_value = int(timeout_override) if timeout_override is not None else int(runtime_config.get("timeout", 60))
@@ -868,8 +874,8 @@ class ChatBusiness:
                 "base_url": base_url,
                 "timeout": int(conf.get("timeout", 60)),
                 "priority": conf.get("priority", 100),
-                "enabled": self._normalize_enabled_flag(conf.get("enabled", True)),
-                "capabilities": self._normalize_capabilities(conf.get("capabilities")),
+                "enabled": normalize_bool(conf.get("enabled", True), default=True),
+                "capabilities": normalize_capabilities(conf.get("capabilities")),
                 "is_active": bool(conf.get("id") and conf.get("id") == active_id),
             })
 
@@ -917,7 +923,9 @@ class ChatBusiness:
                 task=timed_task,
                 llm_configs=llm_configs,
                 max_steps=max_steps,
-                timeout_seconds=timeout_seconds
+                timeout_seconds=timeout_seconds,
+                request_id_prefix=f"shadow-{session_id}",
+                user_id=user_id,
             )
             if not isinstance(shadow_result, dict) or not shadow_result.get("success"):
                 return
@@ -936,9 +944,9 @@ class ChatBusiness:
                     is_primary=False,
                     usage=res.get("usage")
                 )
-            print(f"🧪 Shadow ensemble completed with {len(shadow_candidates)} models.")
+            logger.debug(f"Shadow ensemble completed with {len(shadow_candidates)} models.")
         except Exception as exc:
-            print(f"⚠️ Shadow ensemble failed: {exc}")
+            logger.warning(f"Shadow ensemble failed: {exc}")
 
     async def process_chat(self, request: ChatRequest, user_id: str) -> ChatResponse:
         started_at = datetime.now(timezone.utc)
@@ -970,7 +978,7 @@ class ChatBusiness:
         try:
             await self.save_message(session_id, "user", request.message)
         except Exception as e:
-            print(f"Failed to save user message: {e}")
+            logger.error(f"Failed to save user message: {e}")
 
         if self._should_use_openclaw(request):
             try:
@@ -1232,7 +1240,9 @@ class ChatBusiness:
                 task=timed_task,
                 llm_config=self._runtime_to_llm_config(main_runtime, timeout_override=main_timeout),
                 max_steps=agent_max_steps,
-                timeout_seconds=main_timeout
+                timeout_seconds=main_timeout,
+                request_id=f"chat-{session_id}-main",
+                user_id=user_id,
             )
             routing_meta["timing"]["mainMs"] = int((perf_counter() - main_started) * 1000)
             await self._record_usage_event(
@@ -1253,7 +1263,9 @@ class ChatBusiness:
                         task=timed_task,
                         llm_config=self._runtime_to_llm_config(fallback_runtime, timeout_override=fallback_timeout),
                         max_steps=agent_max_steps,
-                        timeout_seconds=fallback_timeout
+                        timeout_seconds=fallback_timeout,
+                        request_id=f"chat-{session_id}-fallback",
+                        user_id=user_id,
                     )
                     routing_meta["timing"]["fallbackMs"] = int((perf_counter() - fallback_started) * 1000)
                     await self._record_usage_event(
@@ -1275,7 +1287,7 @@ class ChatBusiness:
 
             # 强约束：任务分解意图必须有真实工具调用；若未调用则自动重试，不做伪兜底
             if require_real_decomposition_call and not self._has_real_task_decomposition_output(task_result):
-                print("⚠️ 首轮未检测到 suggest_task_decomposition 真实输出，开始自动重试。")
+                logger.warning("⚠️ 首轮未检测到 suggest_task_decomposition 真实输出，开始自动重试。")
                 retry_task = (
                     f"{timed_task}\n\n"
                     "【硬性约束（必须遵守）】\n"
@@ -1299,7 +1311,9 @@ class ChatBusiness:
                         task=retry_task,
                         llm_config=self._runtime_to_llm_config(retry_runtime, timeout_override=retry_timeout),
                         max_steps=agent_max_steps,
-                        timeout_seconds=retry_timeout
+                        timeout_seconds=retry_timeout,
+                        request_id=f"chat-{session_id}-decomp-retry-{retry_idx + 1}",
+                        user_id=user_id,
                     )
                     await self._record_usage_event(
                         user_id=user_id,
@@ -1313,19 +1327,19 @@ class ChatBusiness:
                     )
                     routing_meta["retryCount"] = retry_idx + 1
                     if not retry_result or not retry_result.get("success"):
-                        print(f"⚠️ 任务分解工具调用重试第 {retry_idx + 1} 次失败。")
+                        logger.warning(f"⚠️ 任务分解工具调用重试第 {retry_idx + 1} 次失败。")
                         continue
                     task_result = retry_result
                     used_runtime = retry_runtime
                     if self._has_real_task_decomposition_output(task_result):
-                        print(f"✅ 任务分解工具调用在第 {retry_idx + 1} 次重试成功。")
+                        logger.info(f"✅ 任务分解工具调用在第 {retry_idx + 1} 次重试成功。")
                         break
 
                 if not self._has_real_task_decomposition_output(task_result):
                     raise Exception("任务分解请求未成功调用 suggest_task_decomposition 工具，请重试。")
 
             if require_knowledge_retrieval_call and not self._has_retrieve_knowledge_output(task_result):
-                print("⚠️ 首轮未检测到 retrieve_knowledge 调用，开始自动重试。")
+                logger.warning("⚠️ 首轮未检测到 retrieve_knowledge 调用，开始自动重试。")
                 retry_task = (
                     f"{timed_task}\n\n"
                     "【硬性约束（必须遵守）】\n"
@@ -1344,7 +1358,9 @@ class ChatBusiness:
                         task=retry_task,
                         llm_config=self._runtime_to_llm_config(retry_runtime, timeout_override=retry_timeout),
                         max_steps=agent_max_steps,
-                        timeout_seconds=retry_timeout
+                        timeout_seconds=retry_timeout,
+                        request_id=f"chat-{session_id}-knowledge-retry-{retry_idx + 1}",
+                        user_id=user_id,
                     )
                     await self._record_usage_event(
                         user_id=user_id,
@@ -1358,11 +1374,11 @@ class ChatBusiness:
                     )
                     routing_meta["retryCount"] = max(int(routing_meta.get("retryCount") or 0), retry_idx + 1)
                     if not retry_result or not retry_result.get("success"):
-                        print(f"⚠️ 知识检索工具调用重试第 {retry_idx + 1} 次失败。")
+                        logger.warning(f"⚠️ 知识检索工具调用重试第 {retry_idx + 1} 次失败。")
                         continue
                     task_result = retry_result
                     if self._has_retrieve_knowledge_output(task_result):
-                        print(f"✅ 知识检索工具在第 {retry_idx + 1} 次重试成功调用。")
+                        logger.info(f"✅ 知识检索工具在第 {retry_idx + 1} 次重试成功调用。")
                         break
 
             # 解析 Agent 返回结果 (Main Result)
@@ -1375,8 +1391,8 @@ class ChatBusiness:
             batch_events = None
             rag_references = []
 
-            print(f"DEBUG: raw agent_result: {agent_result}")
-            print(f"DEBUG: tool_outputs: {tool_outputs}")
+            logger.debug(f"DEBUG: raw agent_result: {agent_result}")
+            logger.debug(f"DEBUG: tool_outputs: {tool_outputs}")
             for output in tool_outputs:
                 suggestion = output.get("observation")
                 if not isinstance(suggestion, dict):
@@ -1391,7 +1407,7 @@ class ChatBusiness:
                 elif suggestion_type == "task_decomposition_suggestion":
                     task_decomposition = suggestion
                     ai_content = suggestion.get("message", ai_content)
-                    print(f"DEBUG: Found task_decomposition via tool_outputs: {task_decomposition.get('project', {}).get('name')}")
+                    logger.debug(f"DEBUG: Found task_decomposition via tool_outputs: {task_decomposition.get('project', {}).get('name')}")
                 elif suggestion_type == "batch_calendar_events":
                     batch_events = suggestion
                     for event in suggestion.get("events", []):
@@ -1480,9 +1496,9 @@ class ChatBusiness:
 
                         if conflicting_events:
                             event["conflicts"] = conflicting_events
-                            print(f"⚠️ Found {len(conflicting_events)} conflicts for event '{event.get('title')}'")
+                            logger.warning(f"⚠️ Found {len(conflicting_events)} conflicts for event '{event.get('title')}'")
                 except Exception as e:
-                    print(f"❌ Conflict check failed: {e}")
+                    logger.error(f"❌ Conflict check failed: {e}")
 
             if not suggested_events and not task_decomposition and agent_result:
                 ai_content = str(agent_result)
@@ -1505,11 +1521,11 @@ class ChatBusiness:
 
                 ai_message_id = await self.save_message(session_id, "ai", ai_content, **save_kwargs)
             except Exception as e:
-                print(f"Failed to save AI message: {e}")
+                logger.error(f"Failed to save AI message: {e}")
 
-            print(f"📋 日程建议数量: {len(suggested_events)}")
-            print(f"📋 任务分解: {'有' if task_decomposition else '无'}")
-            print(f"📋 Agent 步骤数: {len(steps)}")
+            logger.info(f"日程建议数量: {len(suggested_events)}")
+            logger.info(f"任务分解: {'有' if task_decomposition else '无'}")
+            logger.info(f"Agent 步骤数: {len(steps)}")
             routing_meta["timing"]["totalMs"] = int((datetime.now(timezone.utc) - started_at).total_seconds() * 1000)
 
             response_data = {
@@ -1548,7 +1564,7 @@ class ChatBusiness:
             return ChatResponse(success=True, data=response_data)
 
         except Exception as e:
-            print(f"Chat Error: {e}")
+            logger.error(f"Chat Error: {e}")
             routing_meta["timing"]["totalMs"] = int((datetime.now(timezone.utc) - started_at).total_seconds() * 1000)
             error_text = str(e) if e else ""
             if "suggest_task_decomposition" in error_text:

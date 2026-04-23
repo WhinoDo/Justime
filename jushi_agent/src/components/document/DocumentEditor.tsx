@@ -10,14 +10,12 @@ import { useRouter } from 'next/navigation'
 
 interface DocumentEditorProps {
     eventId: string
-    userId: string
     initialContent?: string
     eventName?: string
 }
 
 export default function DocumentEditor({
     eventId,
-    userId,
     initialContent = '',
     eventName = '工作文档'
 }: DocumentEditorProps) {
@@ -66,7 +64,6 @@ export default function DocumentEditor({
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    userId,
                     eventId,
                     content
                 })
@@ -96,31 +93,35 @@ export default function DocumentEditor({
     }
 
     return (
-        <div className="flex flex-col h-full bg-white dark:bg-gray-950">
-            {/* 头部工具栏 */}
-            <div className="flex items-center justify-between px-6 py-4 border-b dark:border-gray-800">
+        <div className="flex h-full flex-col text-white">
+            <div className="flex items-center justify-between border-b border-white/10 bg-black/10 px-6 py-4 backdrop-blur-xl">
                 <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="icon" onClick={() => router.back()}>
-                        <ArrowLeft className="w-5 h-5" />
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => router.back()}
+                        className="rounded-2xl border border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
+                    >
+                        <ArrowLeft className="h-5 w-5" />
                     </Button>
                     <div>
-                        <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                        <h1 className="text-xl font-semibold text-white">
                             {eventName}
                         </h1>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                        <p className="flex items-center gap-2 text-xs text-white/55">
                             {saving ? (
-                                <span className="flex items-center text-blue-500">
-                                    <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse mr-1.5" />
+                                <span className="flex items-center text-sky-200">
+                                    <span className="mr-1.5 h-2 w-2 animate-pulse rounded-full bg-sky-200" />
                                     正在保存...
                                 </span>
                             ) : error ? (
-                                <span className="text-red-500 flex items-center">
-                                    <AlertCircle className="w-3 h-3 mr-1" />
+                                <span className="flex items-center text-red-200">
+                                    <AlertCircle className="mr-1 h-3 w-3" />
                                     {error}
                                 </span>
                             ) : lastSaved ? (
-                                <span className="text-green-600 dark:text-green-400 flex items-center">
-                                    <CheckCircle className="w-3 h-3 mr-1" />
+                                <span className="flex items-center text-emerald-200">
+                                    <CheckCircle className="mr-1 h-3 w-3" />
                                     已保存 {lastSaved.toLocaleTimeString()}
                                 </span>
                             ) : (
@@ -133,16 +134,16 @@ export default function DocumentEditor({
                 <Button
                     onClick={handleManualSave}
                     disabled={saving}
-                    variant={hasUnsavedChanges.current ? "default" : "outline"}
+                    variant={hasUnsavedChanges.current ? 'default' : 'outline'}
+                    className={hasUnsavedChanges.current ? 'rounded-2xl bg-white text-gray-900 hover:bg-white/90' : 'rounded-2xl border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'}
                 >
-                    <Save className="w-4 h-4 mr-2" />
+                    <Save className="mr-2 h-4 w-4" />
                     保存
                 </Button>
             </div>
 
-            {/* 编辑器区域 */}
-            <div className="flex-1 overflow-auto p-6" data-color-mode={theme === 'dark' ? 'dark' : 'light'}>
-                <div className="max-w-4xl mx-auto h-full shadow-sm rounded-lg overflow-hidden border dark:border-gray-700">
+            <div className="flex-1 overflow-auto p-4 md:p-6" data-color-mode={theme === 'dark' ? 'dark' : 'light'}>
+                <div className="mx-auto h-full max-w-5xl overflow-hidden rounded-[28px] border border-white/15 bg-white/10 shadow-2xl shadow-black/10 backdrop-blur-xl">
                     <MDEditor
                         value={content}
                         onChange={(val) => setContent(val || '')}

@@ -13,14 +13,30 @@ __pycache__/
 .venv/
 venv/
 env/
+jushi_backend/.venv*/
+jushi_backend/.venv_runtime/
+
+# Debug files (not for production)
+debug_*.py
 
 # Node
 node_modules/
 .next/
+.next_stale_*/
 dist/
 build/
 .agent/
 .cursor/
+.claude/
+.qoder/
+
+# Artifacts
+jushi_deploy_package.zip
+*.zip
+
+# Runtime data
+infrastructure/mongodb/data/
+jushi_backend/app/data/documents/book-analysis/
 
 # IDE
 .idea/

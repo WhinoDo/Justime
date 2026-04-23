@@ -155,7 +155,10 @@ export async function proxyToBackend(
       }
     }
 
-    console.log(`🔀 代理请求: ${method} ${backendUrl}`);
+    // 生产环境禁用调试日志
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🔀 代理请求: ${method} ${backendUrl}`);
+    }
 
     // 发送请求到后端
     const response = await fetch(backendUrl, {
@@ -184,7 +187,7 @@ export async function proxyToBackend(
       console.log(`📥 后端响应: ${response.status}`, {
         responseLength: responseData.length
       });
-    } else {
+    } else if (process.env.NODE_ENV === 'development') {
       console.log(`📥 后端响应: ${response.status}`, responseData.slice(0, 200));
     }
 
@@ -282,4 +285,108 @@ export function validateRequiredFields(
     valid: missing.length === 0,
     missing
   };
+}
+
+export function getAccessToken(request: NextRequest): string | null {
+  return request.cookies.get('access_token')?.value ?? null
+}
+
+export function resolveAuthorizationHeader(request: NextRequest): string | null {
+  const requestAuthHeader = request.headers.get('authorization')
+  if (requestAuthHeader) {
+    return requestAuthHeader.startsWith('Bearer ')
+      ? requestAuthHeader
+      : `Bearer ${requestAuthHeader}`
+  }
+
+  const authToken = getAccessToken(request)
+  if (!authToken) {
+    return null
+  }
+
+  return authToken.startsWith('Bearer ') ? authToken : `Bearer ${authToken}`
+}
+
+function resolveErrorMessage(result: any, fallbackMessage: string): string {
+  if (typeof result?.detail === 'string' && result.detail) return result.detail
+  if (typeof result?.message === 'string' && result.message) return result.message
+  if (typeof result?.error === 'string' && result.error) return result.error
+  return fallbackMessage
+}
+
+async function parseProxyResponse(response: Response): Promise<any> {
+  const text = await response.text()
+  if (!text) return null
+
+  try {
+    return JSON.parse(text)
+  } catch {
+    return text
+  }
+}
+
+export async function proxyWithAuth(
+  request: NextRequest,
+  endpoint: string,
+  options: {
+    method?: string
+    body?: any
+    successMessage: string
+    errorMessage: string
+    errorCode: string
+    cache?: RequestCache
+  }
+): Promise<NextResponse> {
+  try {
+    const authorization = resolveAuthorizationHeader(request)
+    if (!authorization) {
+      return createErrorResponse('请先登录', 'AUTHENTICATION_ERROR', 401)
+    }
+
+    const {
+      method = request.method,
+      body,
+      successMessage,
+      errorMessage,
+      errorCode,
+      cache,
+    } = options
+
+    const headers: Record<string, string> = {
+      Authorization: authorization,
+    }
+
+    let requestBody: string | undefined
+    if (body !== undefined) {
+      headers['Content-Type'] = 'application/json'
+      requestBody = typeof body === 'string' ? body : JSON.stringify(body)
+    }
+
+    let backendUrl = API_CONFIG.getFullUrl(endpoint)
+    const query = request.nextUrl.searchParams.toString()
+    if (query) {
+      backendUrl += backendUrl.includes('?') ? `&${query}` : `?${query}`
+    }
+
+    const response = await fetch(backendUrl, {
+      method,
+      headers,
+      body: requestBody,
+      credentials: 'include',
+      ...(cache ? { cache } : {}),
+    })
+
+    const result = await parseProxyResponse(response)
+    if (!response.ok) {
+      return createErrorResponse(resolveErrorMessage(result, errorMessage), errorCode, response.status)
+    }
+
+    return createSuccessResponse(result, successMessage)
+  } catch (error) {
+    return createErrorResponse(
+      error instanceof Error ? error.message : '服务器内部错误',
+      'INTERNAL_ERROR',
+      500,
+    )
+  }
 }

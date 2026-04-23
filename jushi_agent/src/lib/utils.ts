@@ -31,6 +31,34 @@ export function formatDuration(minutes: number): string {
   return remainingMinutes > 0 ? `${hours}小时${remainingMinutes}分钟` : `${hours}小时`
 }
 
+/**
+ * 生成唯一ID
+ * 使用crypto.randomUUID()（更安全）或降级为时间戳+随机数组合
+ * 格式：xxx-xxx-xxx-xxx-xxx (UUID v4) 或 xxx_timestamp_random (降级模式)
+ */
 export function generateId(): string {
-  return Math.random().toString(36).substring(2) + Date.now().toString(36)
+  // 优先使用crypto.randomUUID()（支持现代浏览器和Node.js环境）
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+
+  // 降级方案：使用更安全的组合方式
+  // 格式：前缀_时间戳_随机数_计数器
+  const timestamp = Date.now().toString(36)
+  const randomPart = Math.random().toString(36).substring(2, 11)
+
+  // 使用性能计时器增加唯一性（如果可用）
+  const perfNow = typeof performance !== 'undefined' ? performance.now().toString(36).replace('.', '') : ''
+
+  return `${timestamp}_${randomPart}_${perfNow}`
+}
+
+/**
+ * 生成短ID（用于需要较短ID的场景）
+ * 格式：时间戳+随机字符串
+ */
+export function generateShortId(): string {
+  const timestamp = Date.now().toString(36)
+  const randomPart = Math.random().toString(36).substring(2, 7)
+  return `${timestamp}${randomPart}`
 } 

@@ -6,6 +6,7 @@ import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 from bson import ObjectId
+from app.core.normalizers import normalize_bool, normalize_capabilities, normalize_priority, to_iso_datetime
 from app.services.user_service import UserService
 from app.services.encryption_service import encryption_service
 from app.database import db
@@ -13,27 +14,6 @@ from app.models.admin import AdminModel, AdminModelUpsertRequest, AdminUser, Sys
 
 class AdminBusiness:
     _ALLOWED_CAPABILITIES = {"fast", "reasoning", "classifier", "tool_call"}
-
-    @staticmethod
-    def _to_iso(value: Any) -> str:
-        if isinstance(value, datetime):
-            return value.isoformat()
-        if isinstance(value, str) and value:
-            return value
-        return datetime.utcnow().isoformat()
-
-    @staticmethod
-    def _normalize_capabilities(raw: Any) -> List[str]:
-        if not isinstance(raw, list):
-            return []
-        values: List[str] = []
-        for item in raw:
-            if not isinstance(item, str):
-                continue
-            normalized = item.strip().lower()
-            if normalized in AdminBusiness._ALLOWED_CAPABILITIES and normalized not in values:
-                values.append(normalized)
-        return values
 
     @staticmethod
     def _safe_model(config: Dict[str, Any]) -> AdminModel:
@@ -44,13 +24,13 @@ class AdminBusiness:
             model_id=str(config.get("model_id") or ""),
             base_url=str(config.get("base_url") or ""),
             temperature=float(config.get("temperature", 0.7) or 0.7),
-            capabilities=AdminBusiness._normalize_capabilities(config.get("capabilities")),
-            priority=int(config.get("priority", 100) or 100),
-            enabled=bool(config.get("enabled", True)),
+            capabilities=normalize_capabilities(config.get("capabilities"), allowed=AdminBusiness._ALLOWED_CAPABILITIES),
+            priority=normalize_priority(config.get("priority", 100), default=100),
+            enabled=normalize_bool(config.get("enabled", True), default=True),
             has_api_key=bool(config.get("api_key") or api_key_id),
             api_key_id=api_key_id or None,
             api_key_name=str(config.get("api_key_name") or "").strip() or None,
-            updated_at=AdminBusiness._to_iso(config.get("updated_at")),
+            updated_at=to_iso_datetime(config.get("updated_at")),
         )
 
     @staticmethod
@@ -93,10 +73,10 @@ class AdminBusiness:
             "api_key": encrypted_key,
             "api_key_id": api_key_id or None,
             "temperature": float(payload.temperature),
-            "capabilities": AdminBusiness._normalize_capabilities(payload.capabilities),
-            "priority": int(payload.priority),
-            "enabled": bool(payload.enabled),
-            "is_active": bool(existing.get("is_active", True)),
+            "capabilities": normalize_capabilities(payload.capabilities, allowed=AdminBusiness._ALLOWED_CAPABILITIES),
+            "priority": normalize_priority(payload.priority, default=100),
+            "enabled": normalize_bool(payload.enabled, default=True),
+            "is_active": normalize_bool(existing.get("is_active", True), default=True),
             "updated_at": now,
             "created_at": existing.get("created_at", now),
         }
@@ -111,14 +91,14 @@ class AdminBusiness:
                 email=u.get("email", ""),
                 role=u.get("role", "user"),
                 status=u.get("status", "active"),
-                access_all_models=bool(u.get("access_all_models", True)),
+                access_all_models=normalize_bool(u.get("access_all_models", True), default=True),
                 allowed_model_ids=(
                     [str(item).strip() for item in (u.get("allowed_model_ids") or []) if str(item).strip()]
                     if isinstance(u.get("allowed_model_ids"), list)
                     else []
                 ),
-                created_at=AdminBusiness._to_iso(u.get("created_at")),
-                last_login=AdminBusiness._to_iso(u.get("last_login"))
+                created_at=to_iso_datetime(u.get("created_at")),
+                last_login=to_iso_datetime(u.get("last_login"))
             ) for u in users
         ]
 

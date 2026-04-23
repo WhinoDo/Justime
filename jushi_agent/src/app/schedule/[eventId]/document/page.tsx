@@ -4,7 +4,10 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { useAuth } from '@/hooks/useAuth'
-import { Loader2 } from 'lucide-react'
+import { JushiGlassPanel } from '@/components/layout/JushiGlassPanel'
+import { JushiPageShell } from '@/components/layout/JushiPageShell'
+import { Button } from '@/components/ui/button'
+import { ArrowLeft, Loader2 } from 'lucide-react'
 
 // 动态导入 DocumentEditor 以避免 SSR 问题 (MDEditor 依赖 window)
 const DocumentEditor = dynamic(
@@ -43,7 +46,7 @@ export default function DocumentPage() {
                 setLoading(true)
 
                 // 1. 获取事件详情
-                const eventRes = await fetch(`/api/calendar/events?userId=${user.id}`)
+                const eventRes = await fetch('/api/calendar/events')
                 const eventData = await eventRes.json()
 
                 if (!eventData.success) {
@@ -57,7 +60,7 @@ export default function DocumentPage() {
                 setEvent(targetEvent)
 
                 // 2. 获取文档内容
-                const docRes = await fetch(`/api/documents?userId=${user.id}&eventId=${eventId}`)
+                const docRes = await fetch(`/api/documents?eventId=${eventId}`)
                 const docData = await docRes.json()
 
                 if (docData.success && docData.data.document) {
@@ -76,42 +79,47 @@ export default function DocumentPage() {
 
     if (authLoading || loading) {
         return (
-            <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900">
-                <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
-                    <p className="text-gray-500">加载文档中...</p>
-                </div>
-            </div>
+            <JushiPageShell fullHeight blur="xl" contentClassName="flex h-full items-center justify-center p-4" opacity={0.35}>
+                <JushiGlassPanel className="rounded-3xl px-8 py-10 text-center text-white">
+                    <div className="flex flex-col items-center gap-4">
+                        <Loader2 className="h-8 w-8 animate-spin text-white" />
+                        <p className="text-white/65">加载文档中...</p>
+                    </div>
+                </JushiGlassPanel>
+            </JushiPageShell>
         )
     }
 
     if (error || !user) {
         return (
-            <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900">
-                <div className="text-center">
-                    <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+            <JushiPageShell fullHeight blur="xl" contentClassName="flex h-full items-center justify-center p-4" opacity={0.35}>
+                <JushiGlassPanel className="max-w-md rounded-3xl px-8 py-10 text-center text-white">
+                    <h2 className="mb-2 text-xl font-semibold text-white">
                         无法加载文档
                     </h2>
-                    <p className="text-gray-500 mb-4">{error || '请先登录'}</p>
-                    <button
+                    <p className="mb-4 text-white/60">{error || '请先登录'}</p>
+                    <Button
+                        variant="ghost"
                         onClick={() => router.back()}
-                        className="text-purple-600 hover:underline"
+                        className="rounded-2xl border border-white/10 bg-white/5 text-white hover:bg-white/10"
                     >
+                        <ArrowLeft className="mr-2 h-4 w-4" />
                         返回上一页
-                    </button>
-                </div>
-            </div>
+                    </Button>
+                </JushiGlassPanel>
+            </JushiPageShell>
         )
     }
 
     return (
-        <div className="h-screen flex flex-col">
-            <DocumentEditor
-                eventId={eventId as string}
-                userId={user.id}
-                initialContent={content}
-                eventName={event?.title || '工作文档'}
-            />
-        </div>
+        <JushiPageShell fullHeight blur="lg" opacity={0.35} contentClassName="h-full p-3 md:p-4">
+            <JushiGlassPanel className="flex h-full flex-col overflow-hidden rounded-[32px] bg-white/8">
+                <DocumentEditor
+                    eventId={eventId as string}
+                    initialContent={content}
+                    eventName={event?.title || '工作文档'}
+                />
+            </JushiGlassPanel>
+        </JushiPageShell>
     )
 }

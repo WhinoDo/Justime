@@ -23,23 +23,16 @@ export default function CalendarPage() {
   const [view, setView] = useState<View>('month')
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
 
-  // 获取用户ID
-  const getUserId = () => {
-    if (user?.id) return user.id
-    return null
-  }
-
   // 加载事件
   const loadEvents = useCallback(async () => {
-    const userId = getUserId()
-    if (!userId) {
+    if (!user) {
       setLoading(false)
       return
     }
 
     try {
       setLoading(true)
-      const response = await fetch(`/api/calendar/events?userId=${userId}`)
+      const response = await fetch('/api/calendar/events')
       const data = await response.json()
 
       if (data.success) {
@@ -94,8 +87,6 @@ export default function CalendarPage() {
   // 保存事件
   const handleSaveEvent = async (eventData: Partial<CalendarEventData>) => {
     try {
-      const userId = getUserId()
-
       if (selectedEvent?._id) {
         // 更新现有事件
         const response = await fetch(`/api/calendar/events/${selectedEvent._id}`, {
@@ -117,7 +108,6 @@ export default function CalendarPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             ...eventData,
-            userId,
           }),
         })
 

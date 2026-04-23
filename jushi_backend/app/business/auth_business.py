@@ -2,55 +2,25 @@
 用户认证业务逻辑
 """
 
+import logging
 from fastapi import HTTPException
 from app.services.user_service import UserService
 from app.models.auth import (
-    RegisterRequest, LoginRequest, SafeUser, 
+    RegisterRequest, LoginRequest, SafeUser,
     UserProfile, AuthData, AuthResponse, LLMConfig
 )
 
 from datetime import timedelta, datetime
 from typing import Dict, Any
+from app.core.normalizers import normalize_bool, normalize_capabilities, normalize_priority
 from app.services.security_service import SecurityService
 from app.services.encryption_service import encryption_service
 from app.core.exceptions import UserNotFoundError, PasswordIncorrectError
 
+logger = logging.getLogger(__name__)
+
 class AuthBusiness:
     _ALLOWED_CAPABILITIES = {"fast", "reasoning", "classifier", "tool_call"}
-
-    @staticmethod
-    def _normalize_capabilities(raw: Any) -> list[str]:
-        if not isinstance(raw, list):
-            return []
-        values = []
-        for item in raw:
-            if not isinstance(item, str):
-                continue
-            normalized = item.strip().lower()
-            if normalized in AuthBusiness._ALLOWED_CAPABILITIES and normalized not in values:
-                values.append(normalized)
-        return values
-
-    @staticmethod
-    def _normalize_priority(raw: Any, default: int = 100) -> int:
-        try:
-            return max(1, min(int(raw), 999))
-        except Exception:
-            return default
-
-    @staticmethod
-    def _normalize_enabled(raw: Any, default: bool = True) -> bool:
-        if isinstance(raw, bool):
-            return raw
-        if raw is None:
-            return default
-        if isinstance(raw, str):
-            lowered = raw.strip().lower()
-            if lowered in {"true", "1", "yes", "y"}:
-                return True
-            if lowered in {"false", "0", "no", "n"}:
-                return False
-        return bool(raw)
 
     @staticmethod
     def _build_safe_user(user: dict, profile: dict) -> SafeUser:
@@ -95,66 +65,68 @@ class AuthBusiness:
 
         # Generate tokens
         access_token = SecurityService.create_access_token(data={"sub": user_id})
-        
+        refresh_token = SecurityService.create_refresh_token(data={"sub": user_id, "remember": False})
+
         return AuthResponse(
-            success=True, 
-            message="注册成功", 
+            success=True,
+            message="注册成功",
             data=AuthData(
                 user=safe_user,
-                token=access_token
+                token=access_token,
+                refreshToken=refresh_token
             )
         )
 
     @staticmethod
     async def login(payload: LoginRequest) -> AuthResponse:
+        # 检查数据库连接
+        from app.database import db
+        if db.db is None:
+            logger.error("Login failed: Database not connected")
+            raise HTTPException(status_code=503, detail="数据库连接失败，请稍后重试")
+
+        # 验证用户
         try:
             safe_identifier = UserService._mask_identifier(payload.identifier)
-            # 检查数据库连接
-            from app.database import db
-            if db.db is None:
-                print("❌ Login failed: Database not connected")
-                return AuthResponse(success=False, message="数据库连接失败，请稍后重试")
-            
-            # 验证用户
             user = await UserService.authenticate_user(payload.identifier, payload.password)
-            if not user:
-                print(f"❌ Login failed: Invalid credentials for {safe_identifier}")
-                return AuthResponse(success=False, message="用户名或密码错误")
-            
-            user_id = str(user["_id"])
-            print(f"✅ User {safe_identifier} authenticated successfully")
-            profile = await UserService.get_user_profile(user_id)
-            safe_user = AuthBusiness._build_safe_user(user, profile)
-
-            # Generate tokens
-            # 根据 rememberMe 设置过期时间
-            if payload.rememberMe:
-                access_token_expires = timedelta(days=30)
-            else:
-                access_token_expires = timedelta(days=1)
-                
-            access_token = SecurityService.create_access_token(
-                data={"sub": user_id},
-                expires_delta=access_token_expires
-            )
-
-            return AuthResponse(
-                success=True, 
-                message="登录成功", 
-                data=AuthData(
-                    user=safe_user,
-                    token=access_token
-                )
-            )
         except UserNotFoundError:
-             print(f"❌ Login failed: User {safe_identifier} not found")
-             return AuthResponse(success=False, message="账号不存在")
+            logger.warning(f"Login failed: User {safe_identifier} not found")
+            raise HTTPException(status_code=404, detail="账号不存在")
         except PasswordIncorrectError:
-             print(f"❌ Login failed: Password incorrect for {safe_identifier}")
-             return AuthResponse(success=False, message="密码错误")
-        except Exception as e:
-            print(f"❌ Login error for {safe_identifier}: {type(e).__name__}")
-            return AuthResponse(success=False, message="登录失败，请稍后重试")
+            logger.warning(f"Login failed: Password incorrect for {safe_identifier}")
+            raise HTTPException(status_code=401, detail="密码错误")
+
+        user_id = str(user["_id"])
+        logger.info(f"User {safe_identifier} authenticated successfully")
+        profile = await UserService.get_user_profile(user_id)
+        safe_user = AuthBusiness._build_safe_user(user, profile)
+
+        # Generate tokens
+        if payload.rememberMe:
+            access_token_expires = timedelta(days=30)
+            refresh_token_expires = timedelta(days=30)
+        else:
+            access_token_expires = timedelta(days=1)
+            refresh_token_expires = timedelta(days=7)
+
+        access_token = SecurityService.create_access_token(
+            data={"sub": user_id},
+            expires_delta=access_token_expires
+        )
+        refresh_token = SecurityService.create_refresh_token(
+            data={"sub": user_id, "remember": bool(payload.rememberMe)},
+            expires_delta=refresh_token_expires
+        )
+
+        return AuthResponse(
+            success=True,
+            message="登录成功",
+            data=AuthData(
+                user=safe_user,
+                token=access_token,
+                refreshToken=refresh_token
+            )
+        )
 
     @staticmethod
     async def get_llm_config(user_id: str) -> AuthResponse:
@@ -172,21 +144,21 @@ class AuthBusiness:
         # 3. 如果没有激活的，尝试使用第一个
         if not target_config and system_configs:
             target_config = system_configs[0]
-            
-        if target_config:
-            # 解密 API Key
-            encrypted_key = target_config.get("api_key", "")
-            plain_key = encryption_service.decrypt(encrypted_key) if encrypted_key else ""
-            
-            config = LLMConfig(
-                modelId=target_config.get("model_id"),
-                baseUrl=target_config.get("base_url"),
-                apiKey=plain_key if plain_key else None,
-                temperature=target_config.get("temperature", 0.7)
-            )
-            return AuthResponse(success=True, message="获取用户配置成功", data=AuthData(llmConfig=config))
 
-        return AuthResponse(success=False, message="平台尚未配置可用的 AI 模型，请联系管理员添加。")
+        if not target_config:
+            raise HTTPException(status_code=404, detail="平台尚未配置可用的 AI 模型，请联系管理员添加。")
+
+        # 解密 API Key
+        encrypted_key = target_config.get("api_key", "")
+        plain_key = encryption_service.decrypt(encrypted_key) if encrypted_key else ""
+
+        config = LLMConfig(
+            modelId=target_config.get("model_id"),
+            baseUrl=target_config.get("base_url"),
+            apiKey=plain_key if plain_key else None,
+            temperature=target_config.get("temperature", 0.7)
+        )
+        return AuthResponse(success=True, message="获取用户配置成功", data=AuthData(llmConfig=config))
 
 
     @staticmethod
@@ -206,9 +178,9 @@ class AuthBusiness:
                 "apiKey": None, # Never return any API keys to the frontend in B2C
                 "isActive": c.get("id") == active_id,
                 "temperature": c.get("temperature", 0.7),
-                "capabilities": AuthBusiness._normalize_capabilities(c.get("capabilities")),
-                "priority": AuthBusiness._normalize_priority(c.get("priority", 100), default=100),
-                "enabled": AuthBusiness._normalize_enabled(c.get("enabled", True), default=True)
+                "capabilities": normalize_capabilities(c.get("capabilities")),
+                "priority": normalize_priority(c.get("priority", 100), default=100),
+                "enabled": normalize_bool(c.get("enabled", True), default=True)
             })
             
         return AuthResponse(success=True, message="获取配置列表成功", data={"configs": safe_configs})
@@ -218,81 +190,81 @@ class AuthBusiness:
         """从 LLM 供应商动态获取可用的模型列表"""
         system_configs = await UserService.get_available_models_for_user(user_id)
         active_id = await UserService.get_user_active_model_id(user_id)
-        
+
         target_config = None
         if active_id and system_configs:
             target_config = next((c for c in system_configs if c.get("id") == active_id), None)
         if not target_config and system_configs:
             target_config = system_configs[0]
-            
+
         if not target_config:
-            return AuthResponse(success=False, message="系统未配置模型")
-            
+            raise HTTPException(status_code=404, detail="系统未配置模型")
+
         base_url = target_config.get("base_url")
         encrypted_key = target_config.get("api_key", "")
         plain_key = encryption_service.decrypt(encrypted_key) if encrypted_key else ""
-        
+
         if not base_url or not plain_key:
-             return AuthResponse(success=False, message="系统模型配置缺失（URL或Key不存在）")
-             
+            raise HTTPException(status_code=400, detail="系统模型配置缺失（URL或Key不存在）")
+
         # Normalize baseUrl for models endpoint
         testing_url = base_url
         if not testing_url.endswith("/v1"):
-             testing_url = f"{testing_url.rstrip('/')}/v1"
+            testing_url = f"{testing_url.rstrip('/')}/v1"
         testing_url = f"{testing_url}/models"
-        
+
+        import httpx
+
         try:
-             import httpx
-             async with httpx.AsyncClient(timeout=10.0) as client:
-                 response = await client.get(
-                     testing_url,
-                     headers={
-                         "Authorization": f"Bearer {plain_key}",
-                         "Content-Type": "application/json"
-                     }
-                 )
-                 
-                 if response.status_code == 200:
-                     data = response.json()
-                     models = data.get("data", [])
-                     model_ids = [m.get("id") for m in models if isinstance(m, dict) and m.get("id")]
-                     return AuthResponse(success=True, message="获取供应商模型成功", data={"models": model_ids})
-                 else:
-                     return AuthResponse(success=False, message=f"获取失败，供应商返回 {response.status_code}")
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.get(
+                    testing_url,
+                    headers={
+                        "Authorization": f"Bearer {plain_key}",
+                        "Content-Type": "application/json"
+                    }
+                )
         except httpx.TimeoutException:
-             return AuthResponse(success=False, message="连接超时，无法获取供应商模型")
+            raise HTTPException(status_code=504, detail="连接超时，无法获取供应商模型")
         except Exception as e:
-             print(f"❌ get_provider_models error: {type(e).__name__}")
-             return AuthResponse(success=False, message="获取供应商模型失败，请稍后重试")
+            raise HTTPException(status_code=502, detail=f"获取供应商模型失败: {str(e)}")
+
+        if response.status_code != 200:
+            raise HTTPException(status_code=response.status_code, detail=f"获取失败，供应商返回 {response.status_code}")
+
+        data = response.json()
+        models = data.get("data", [])
+        model_ids = [m.get("id") for m in models if isinstance(m, dict) and m.get("id")]
+        return AuthResponse(success=True, message="获取供应商模型成功", data={"models": model_ids})
 
     @staticmethod
     async def update_system_config(config_id: str, payload: Dict[str, Any]) -> AuthResponse:
         """更新系统模型配置的可调参数（当前支持 temperature）"""
         if not isinstance(payload, dict):
-            return AuthResponse(success=False, message="请求参数格式错误")
+            raise HTTPException(status_code=400, detail="请求参数格式错误")
 
         updates: Dict[str, Any] = {}
         if "temperature" in payload:
             temperature = payload.get("temperature")
             if isinstance(temperature, bool) or not isinstance(temperature, (int, float)):
-                return AuthResponse(success=False, message="temperature 必须是数字")
+                raise HTTPException(status_code=400, detail="temperature 必须是数字")
             if temperature < 0 or temperature > 2:
-                return AuthResponse(success=False, message="temperature 必须在 0.0 ~ 2.0 之间")
+                raise HTTPException(status_code=400, detail="temperature 必须在 0.0 ~ 2.0 之间")
             updates["temperature"] = float(temperature)
 
         if not updates:
-            return AuthResponse(success=False, message="没有可更新的参数")
+            raise HTTPException(status_code=400, detail="没有可更新的参数")
 
         from app.database import db
         if db.db is None:
-            return AuthResponse(success=False, message="数据库未连接")
+            raise HTTPException(status_code=503, detail="数据库未连接")
 
         result = await db.db.system_llm_configs.update_one(
             {"id": config_id},
             {"$set": updates}
         )
         if result.matched_count == 0:
-            return AuthResponse(success=False, message=f"未找到配置 {config_id}")
+            raise HTTPException(status_code=404, detail=f"未找到配置 {config_id}")
 
         return AuthResponse(success=True, message="更新配置成功")
 
@@ -301,10 +273,10 @@ class AuthBusiness:
         """设置激活配置"""
         available = await UserService.get_available_models_for_user(user_id)
         if not any(str(c.get("id") or "") == config_id for c in available):
-            return AuthResponse(success=False, message="无权访问该模型配置")
+            raise HTTPException(status_code=403, detail="无权访问该模型配置")
         if await UserService.set_active_model_id(user_id, config_id):
             return AuthResponse(success=True, message="设置激活成功")
-        return AuthResponse(success=False, message="设置失败")
+        raise HTTPException(status_code=500, detail="设置失败")
 
     @staticmethod
     async def get_llm_daily_usage(user_id: str, days: int = 14, scope: str = "primary") -> Dict[str, Any]:
@@ -540,7 +512,7 @@ class AuthBusiness:
     async def get_profile(user_id: str) -> AuthResponse:
         user = await UserService.get_user_by_id(user_id)
         if not user:
-            return AuthResponse(success=False, message="用户不存在")
+            raise HTTPException(status_code=404, detail="用户不存在")
 
         profile = await UserService.get_user_profile(user_id)
         safe_user = AuthBusiness._build_safe_user(user, profile)
@@ -550,11 +522,11 @@ class AuthBusiness:
     async def update_profile(user_id: str, profile_payload: dict) -> AuthResponse:
         user = await UserService.get_user_by_id(user_id)
         if not user:
-            return AuthResponse(success=False, message="用户不存在")
+            raise HTTPException(status_code=404, detail="用户不存在")
 
         success = await UserService.update_user_profile(user_id, profile_payload or {})
         if not success:
-            return AuthResponse(success=False, message="更新资料失败")
+            raise HTTPException(status_code=500, detail="更新资料失败")
 
         refreshed_user = await UserService.get_user_by_id(user_id)
         profile = await UserService.get_user_profile(user_id)

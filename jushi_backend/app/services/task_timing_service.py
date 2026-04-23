@@ -3,11 +3,14 @@
 根据任务类型与难度，动态分配对话时长、触发频率与 Agent 执行参数。
 """
 
+import logging
 import hashlib
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
 from app.database import db
+
+logger = logging.getLogger(__name__)
 
 
 class TaskTimingService:
@@ -248,7 +251,7 @@ class TaskTimingService:
                 }
             )
         except Exception as exc:
-            print(f"⚠️ 保存任务时间策略失败: {exc}")
+            logger.warning(f"Failed to save task timing strategy: {exc}")
 
         return payload
 
@@ -292,7 +295,7 @@ class TaskTimingService:
                 }
             )
         except Exception as exc:
-            print(f"⚠️ 记录任务执行统计失败: {exc}")
+            logger.warning(f"Failed to record task execution stats: {exc}")
 
 
 task_timing_service = TaskTimingService()

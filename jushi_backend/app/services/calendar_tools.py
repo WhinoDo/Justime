@@ -3,6 +3,7 @@
 为 AI Agent 提供日历事件建议能力
 """
 
+import logging
 from datetime import datetime
 from typing import Optional, List, Dict
 import threading
@@ -11,6 +12,9 @@ try:
 except Exception:
     def tool(func):
         return func
+
+# 初始化日志
+logger = logging.getLogger(__name__)
 
 # 全局存储：按请求隔离待处理建议，避免并发串扰
 _pending_suggestions: Dict[str, List[dict]] = {}
@@ -65,7 +69,7 @@ def _store_suggestion(suggestion: dict):
             bucket = []
             _pending_suggestions[request_id] = bucket
         bucket.append(suggestion)
-    print(f"📅 已存储日历建议[{request_id}]: {suggestion.get('event', {}).get('title', 'Unknown')}")
+    logger.debug(f"Stored calendar suggestion [{request_id}]: {suggestion.get('event', {}).get('title', 'Unknown')}")
 
 
 
@@ -327,7 +331,7 @@ def create_batch_calendar_events(
             }
             created_events.append(event_data)
         except Exception as e:
-            print(f"⚠️ 跳过无效事件: {e}")
+            logger.warning(f"Skipping invalid event: {e}")
             continue
     
     batch_result = {

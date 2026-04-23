@@ -64,7 +64,7 @@ cd jushi
 
 ### Option B: Upload Zip
 
-If you packed your project using `scripts/pack_project.sh`:
+If you packed your project using `scripts/release/pack_project.sh`:
 1.  **Local**: `scp jushi_deploy_package.zip root@<IP>:/tmp/`
 2.  **Server**:
     ```bash

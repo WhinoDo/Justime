@@ -1,9 +1,13 @@
+import logging
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 from passlib.context import CryptContext
 from app.database import db
 from bson import ObjectId
 from app.core.exceptions import UserNotFoundError, PasswordIncorrectError, AuthenticationError
+
+# 初始化日志
+logger = logging.getLogger(__name__)
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -82,66 +86,62 @@ class UserService:
     @staticmethod
     async def authenticate_user(identifier: str, password: str) -> Optional[Dict[str, Any]]:
         safe_identifier = UserService._mask_identifier(identifier)
-        print(f"🔐 Authenticating user: {safe_identifier}")
-        print("🔑 Received password from client: [REDACTED]")
-        
+        logger.debug(f"Authenticating user: {safe_identifier}")
         if db.db is None:
-            print("❌ Database not connected")
+            logger.error("Database not connected")
             return None
-            
+
         # Check by email or username
         user = await UserService.get_user_by_email(identifier)
         if not user:
-            print(f"  User not found by email, trying username...")
+            logger.debug(f"User not found by email, trying username...")
             user = await UserService.get_user_by_username(identifier)
-            
+
         if not user:
-            print(f"❌ User not found: {safe_identifier}")
             raise UserNotFoundError(f"User {safe_identifier} not found")
-        
+
         safe_email = UserService._mask_identifier(user.get("email", ""))
-        print(f"  Found user: {safe_email}, role: {user.get('role', 'N/A')}")
-            
+        logger.debug(f"Found user: {safe_email}, role: {user.get('role', 'N/A')}")
         # 优先检查 hashed_password
         hashed_password = user.get("hashed_password")
         if hashed_password:
-            print(f"  Verifying hashed password...")
+            logger.debug("Verifying hashed password...")
             try:
                 if UserService.verify_password(password, hashed_password):
-                    print(f"✅ Password verified successfully")
+                    logger.debug("Password verified successfully")
                     return user
                 else:
-                    print(f"❌ Password mismatch")
+                    logger.warning("Password mismatch")
                     raise PasswordIncorrectError("Password verification failed")
             except AuthenticationError:
                 raise
             except Exception as e:
-                print(f"❌ Password verification error: {type(e).__name__}: {e}")
+                logger.error(f"Password verification error: {type(e).__name__}: {e}")
                 raise PasswordIncorrectError("Password verification error")
         else:
-            print(f"⚠️ No hashed_password field found for user")
-        
+            logger.warning("No hashed_password field found for user")
+
         # 兼容旧数据或直接存储的明文密码（仅作为修复手段）
         old_password = user.get("password")
         if old_password:
-            print(f"  Checking plain text password (legacy)...")
+            logger.debug("Checking plain text password (legacy)...")
             if old_password == password:
                 # 如果匹配，建议并执行自动升级到哈希密码
-                print(f"⚠️ Plain text password matched. Upgrading to hash...")
+                logger.info("Plain text password matched. Upgrading to hash...")
                 new_hashed = UserService.get_password_hash(password)
                 await db.db.users.update_one(
                     {"_id": user["_id"]},
                     {"$set": {"hashed_password": new_hashed}, "$unset": {"password": ""}}
                 )
-                print(f"✅ Password upgraded to hash")
+                logger.info("Password upgraded to hash")
                 return user
             else:
-                print(f"❌ Plain text password mismatch")
+                logger.warning("Plain text password mismatch")
                 raise PasswordIncorrectError("Legacy password verification failed")
         else:
-            print(f"❌ No password field found at all")
+            logger.error("No password field found at all")
             raise PasswordIncorrectError("User has no password set")
-            
+
         return None
 
     @staticmethod
@@ -177,7 +177,7 @@ class UserService:
             )
             return result.modified_count > 0 or result.matched_count > 0
         except Exception as e:
-            print(f"Error updating user config: {e}")
+            logger.error(f"Error updating user config: {e}")
             return False
 
     @staticmethod
@@ -435,7 +435,7 @@ class UserService:
 
             return True
         except Exception as e:
-            print(f"Error recording model token usage: {e}")
+            logger.error(f"Error recording model token usage: {e}")
             return False
 
     @staticmethod
@@ -463,7 +463,7 @@ class UserService:
             )
             return await cursor.to_list(length=5000)
         except Exception as e:
-            print(f"Error fetching model token usage: {e}")
+            logger.error(f"Error fetching model token usage: {e}")
             return []
 
     @staticmethod
@@ -525,7 +525,7 @@ class UserService:
             cursor = db.db["llm_usage_events"].aggregate(pipeline)
             return await cursor.to_list(length=10000)
         except Exception as e:
-            print(f"Error fetching model session usage: {e}")
+            logger.error(f"Error fetching model session usage: {e}")
             return []
 
     @staticmethod
@@ -549,7 +549,7 @@ class UserService:
             profile.setdefault("habits", {})
             return profile
         except Exception as e:
-            print(f"Error get user profile: {e}")
+            logger.error(f"Error get user profile: {e}")
             return default_profile
 
     @staticmethod
@@ -581,5 +581,5 @@ class UserService:
             result = await db.db.users.update_one({"_id": oid}, update_doc)
             return result.modified_count > 0 or result.matched_count > 0
         except Exception as e:
-            print(f"Error update user profile: {e}")
+            logger.error(f"Error update user profile: {e}")
             return False

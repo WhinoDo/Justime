@@ -34,7 +34,6 @@ export function TaskSelector({ tasks, onTaskAdded }: TaskSelectorProps) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: user.id,
           title: task.title,
           description: task.description,
           start: task.startTime || new Date().toISOString(),

@@ -8,8 +8,9 @@ from typing import Any, Optional
 
 from bson import ObjectId
 from pymongo import ReturnDocument
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
+from app.api.deps import parse_object_id
 from app.database import db
 from app.models.calendar import (
     CalendarEventCreate,
@@ -93,14 +94,12 @@ async def get_event(
     current_user: dict = Depends(SecurityService.get_current_user)
 ):
     user_id = str(current_user["_id"])
-    try:
-        oid = ObjectId(event_id)
-    except Exception:
-        raise HTTPException(status_code=400, detail="无效的事件ID")
+    # 使用验证器验证 ObjectId
+    oid = parse_object_id(event_id, "事件ID")
 
     event = await db.db["calendar_events"].find_one({"_id": oid, "userId": user_id})
     if not event:
-        raise HTTPException(status_code=404, detail="事件不存在")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="事件不存在")
 
     return {"success": True, "data": {"event": _serialize_event(event)}}
 
@@ -136,25 +135,23 @@ async def update_event(
     current_user: dict = Depends(SecurityService.get_current_user)
 ):
     user_id = str(current_user["_id"])
-    try:
-        oid = ObjectId(event_id)
-    except Exception:
-        raise HTTPException(status_code=400, detail="无效的事件ID")
+    # 使用验证器验证 ObjectId
+    oid = parse_object_id(event_id, "事件ID")
 
     update_data = payload.dict(exclude_unset=True)
     if not update_data:
-        raise HTTPException(status_code=400, detail="没有可更新的字段")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="没有可更新的字段")
 
     # 若更新了时间，进行校验
     if "start" in update_data or "end" in update_data:
         existing = await db.db["calendar_events"].find_one({"_id": oid, "userId": user_id})
         if not existing:
-            raise HTTPException(status_code=404, detail="事件不存在")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="事件不存在")
 
         new_start = update_data.get("start", existing.get("start"))
         new_end = update_data.get("end", existing.get("end"))
         if new_start >= new_end:
-            raise HTTPException(status_code=400, detail="结束时间必须晚于开始时间")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="结束时间必须晚于开始时间")
 
     update_data["updatedAt"] = datetime.utcnow()
 
@@ -165,7 +162,7 @@ async def update_event(
     )
 
     if not result:
-        raise HTTPException(status_code=404, detail="事件不存在")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="事件不存在")
 
     return {
         "success": True,
@@ -180,14 +177,12 @@ async def delete_event(
     current_user: dict = Depends(SecurityService.get_current_user)
 ):
     user_id = str(current_user["_id"])
-    try:
-        oid = ObjectId(event_id)
-    except Exception:
-        raise HTTPException(status_code=400, detail="无效的事件ID")
+    # 使用验证器验证 ObjectId
+    oid = parse_object_id(event_id, "事件ID")
 
     result = await db.db["calendar_events"].delete_one({"_id": oid, "userId": user_id})
     if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="事件不存在")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="事件不存在")
 
     return {"success": True, "message": "事件删除成功"}
 
@@ -203,25 +198,34 @@ async def create_youtube_summary_job(
     current_user: dict = Depends(SecurityService.get_current_user),
 ):
     user_id = str(current_user["_id"])
-    try:
-        event_oid = ObjectId(event_id)
-    except Exception:
-        raise HTTPException(status_code=400, detail="无效的事件ID")
+    # 使用验证器验证 ObjectId
+    event_oid = parse_object_id(event_id, "事件ID")
 
     event = await db.db["calendar_events"].find_one({"_id": event_oid, "userId": user_id})
     if not event:
-        raise HTTPException(status_code=404, detail="事件不存在")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="事件不存在")
 
     if await youtube_summary_service.has_active_job(event_id=event_id, user_id=user_id):
-        raise HTTPException(status_code=409, detail="当前事件已有进行中的解析任务")
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="当前事件已有进行中的解析任务")
 
-    resource_indexes = payload.resourceIndexes if payload else None
+    # 验证资源索引
+    resource_indexes = None
+    if payload and payload.resourceIndexes:
+        # 验证索引值
+        for idx in payload.resourceIndexes:
+            if not isinstance(idx, int) or idx < 0:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="资源索引必须是非负整数"
+                )
+        resource_indexes = payload.resourceIndexes
+
     youtube_resources = youtube_summary_service.extract_youtube_resources(
         resources=event.get("resources"),
         resource_indexes=resource_indexes,
     )
     if not youtube_resources:
-        raise HTTPException(status_code=400, detail="相关资源中未找到 YouTube 链接")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="相关资源中未找到 YouTube 链接")
 
     job_id = await youtube_summary_service.create_job(
         event_id=event_id,
@@ -256,13 +260,17 @@ async def get_youtube_summary_job_status(
     current_user: dict = Depends(SecurityService.get_current_user),
 ):
     user_id = str(current_user["_id"])
+    # 验证 event_id 和 job_id
+    parse_object_id(event_id, "事件ID")
+    validated_job_id = parse_object_id(job_id, "任务ID")
+
     job = await youtube_summary_service.get_job(
-        job_id=job_id,
+        job_id=str(validated_job_id),
         event_id=event_id,
         user_id=user_id,
     )
     if not job:
-        raise HTTPException(status_code=404, detail="任务不存在")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="任务不存在")
 
     processed = int(job.get("processedUrls") or 0)
     total = int(job.get("totalUrls") or 0)

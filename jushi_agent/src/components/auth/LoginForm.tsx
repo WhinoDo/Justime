@@ -89,12 +89,12 @@ export function LoginForm({ onSuccess, onSwitchToRegister, redirectTo }: LoginFo
   }
 
   return (
-    <Card className="w-full max-w-md mx-auto bg-transparent border-none shadow-none text-gray-100">
+    <Card className="w-full max-w-md mx-auto border border-white/8 bg-transparent shadow-none text-gray-100">
       <CardHeader>
         <CardTitle className="text-center text-2xl font-bold text-white">
           登录账户
         </CardTitle>
-        <p className="text-center text-gray-200">
+        <p className="text-center text-white/75">
           欢迎回来，请登录您的账户
         </p>
       </CardHeader>
@@ -119,16 +119,16 @@ export function LoginForm({ onSuccess, onSwitchToRegister, redirectTo }: LoginFo
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* 用户名/邮箱 */}
           <div className="space-y-2">
-            <Label htmlFor="identifier" className="text-gray-100">用户名或邮箱 *</Label>
+            <Label htmlFor="identifier" className="text-white/85">用户名或邮箱 *</Label>
             <div className="relative">
-              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
+              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/50" />
               <Input
                 id="identifier"
                 type="text"
                 placeholder="请输入用户名或邮箱"
                 value={formData.identifier}
                 onChange={(e) => handleInputChange('identifier', e.target.value)}
-                className="pl-10 bg-white/80 backdrop-blur-sm text-gray-900 placeholder:text-gray-500 border-white/30 focus-visible:ring-orange-400"
+                className="pl-10 bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-orange-300 focus-visible:border-orange-300/70"
                 disabled={isSubmitting}
               />
             </div>
@@ -136,23 +136,23 @@ export function LoginForm({ onSuccess, onSwitchToRegister, redirectTo }: LoginFo
 
           {/* 密码 */}
           <div className="space-y-2">
-            <Label htmlFor="password" className="text-gray-100">密码 *</Label>
+            <Label htmlFor="password" className="text-white/85">密码 *</Label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
+              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/50" />
               <Input
                 id="password"
                 type={showPassword ? 'text' : 'password'}
                 placeholder="请输入密码"
                 value={formData.password}
                 onChange={(e) => handleInputChange('password', e.target.value)}
-                className="pl-10 pr-10 bg-white/80 backdrop-blur-sm text-gray-900 placeholder:text-gray-500 border-white/30 focus-visible:ring-orange-400"
+                className="pl-10 pr-10 bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-orange-300 focus-visible:border-orange-300/70"
                 disabled={isSubmitting}
               />
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="absolute right-2 top-1/2 transform -translate-y-1/2"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-white/70 hover:bg-white/10 hover:text-white"
                 onClick={() => setShowPassword(!showPassword)}
                 disabled={isSubmitting}
               >
@@ -170,7 +170,7 @@ export function LoginForm({ onSuccess, onSwitchToRegister, redirectTo }: LoginFo
               disabled={isSubmitting}
               className="border-white/50 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500"
             />
-            <Label htmlFor="rememberMe" className="text-sm text-gray-200">
+            <Label htmlFor="rememberMe" className="text-sm text-white/75">
               记住我（30天内免登录）
             </Label>
           </div>
@@ -210,7 +210,7 @@ export function LoginForm({ onSuccess, onSwitchToRegister, redirectTo }: LoginFo
             </Button>
           </div>
 
-          <div className="text-sm text-gray-200">
+          <div className="text-sm text-white/75">
             还没有账户？
             <Button
               variant="link"

@@ -146,12 +146,12 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
 
 
   return (
-    <Card className="w-full max-w-md mx-auto bg-transparent border-none shadow-none text-gray-100">
+    <Card className="w-full max-w-md mx-auto border border-white/8 bg-transparent shadow-none text-gray-100">
       <CardHeader>
         <CardTitle className="text-center text-2xl font-bold text-white">
           创建账户
         </CardTitle>
-        <p className="text-center text-gray-200">
+        <p className="text-center text-white/75">
           注册新账户，开始使用聚时AI助手
         </p>
       </CardHeader>
@@ -176,16 +176,16 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* 邮箱 */}
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-gray-100">邮箱地址 *</Label>
+            <Label htmlFor="email" className="text-white/85">邮箱地址 *</Label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
+              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/50" />
               <Input
                 id="email"
                 type="email"
                 placeholder="请输入邮箱地址"
                 value={formData.email}
                 onChange={(e) => handleInputChange('email', e.target.value)}
-                className="pl-10 bg-white/80 backdrop-blur-sm text-gray-900 placeholder:text-gray-500 border-white/30 focus-visible:ring-orange-400"
+                className="pl-10 bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-orange-300 focus-visible:border-orange-300/70"
                 disabled={isSubmitting}
               />
             </div>
@@ -193,36 +193,36 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
 
           {/* 用户名 */}
           <div className="space-y-2">
-            <Label htmlFor="username" className="text-gray-100">用户名（可选）</Label>
+            <Label htmlFor="username" className="text-white/85">用户名（可选）</Label>
             <div className="relative">
-              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
+              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/50" />
               <Input
                 id="username"
                 type="text"
                 placeholder="请输入用户名"
                 value={formData.username}
                 onChange={(e) => handleInputChange('username', e.target.value)}
-                className="pl-10 bg-white/80 backdrop-blur-sm text-gray-900 placeholder:text-gray-500 border-white/30 focus-visible:ring-orange-400"
+                className="pl-10 bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-orange-300 focus-visible:border-orange-300/70"
                 disabled={isSubmitting}
               />
             </div>
-            <p className="text-xs text-gray-300">
+            <p className="text-xs text-white/65">
               用户名可用于登录，只能包含字母、数字、下划线和连字符
             </p>
           </div>
 
           {/* 显示名称 */}
           <div className="space-y-2">
-            <Label htmlFor="displayName" className="text-gray-100">显示名称（可选）</Label>
+            <Label htmlFor="displayName" className="text-white/85">显示名称（可选）</Label>
             <div className="relative">
-              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
+              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/50" />
               <Input
                 id="displayName"
                 type="text"
                 placeholder="请输入显示名称"
                 value={formData.displayName}
                 onChange={(e) => handleInputChange('displayName', e.target.value)}
-                className="pl-10 bg-white/80 backdrop-blur-sm text-gray-900 placeholder:text-gray-500 border-white/30 focus-visible:ring-orange-400"
+                className="pl-10 bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-orange-300 focus-visible:border-orange-300/70"
                 disabled={isSubmitting}
               />
             </div>
@@ -230,16 +230,16 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
 
           {/* 手机号 */}
           <div className="space-y-2">
-            <Label htmlFor="phone" className="text-gray-100">手机号（可选）</Label>
+            <Label htmlFor="phone" className="text-white/85">手机号（可选）</Label>
             <div className="relative">
-              <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
+              <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/50" />
               <Input
                 id="phone"
                 type="tel"
                 placeholder="请输入手机号"
                 value={formData.phone}
                 onChange={(e) => handleInputChange('phone', e.target.value)}
-                className="pl-10 bg-white/80 backdrop-blur-sm text-gray-900 placeholder:text-gray-500 border-white/30 focus-visible:ring-orange-400"
+                className="pl-10 bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-orange-300 focus-visible:border-orange-300/70"
                 disabled={isSubmitting}
               />
             </div>
@@ -247,54 +247,54 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
 
           {/* 密码 */}
           <div className="space-y-2">
-            <Label htmlFor="password" className="text-gray-100">密码 *</Label>
+            <Label htmlFor="password" className="text-white/85">密码 *</Label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
+              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/50" />
               <Input
                 id="password"
                 type={showPassword ? 'text' : 'password'}
                 placeholder="请输入密码（至少6个字符）"
                 value={formData.password}
                 onChange={(e) => handleInputChange('password', e.target.value)}
-                className="pl-10 pr-10 bg-white/80 backdrop-blur-sm text-gray-900 placeholder:text-gray-500 border-white/30 focus-visible:ring-orange-400"
+                className="pl-10 pr-10 bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-orange-300 focus-visible:border-orange-300/70"
                 disabled={isSubmitting}
               />
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 hover:bg-transparent"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-white/70 hover:bg-white/10 hover:text-white"
                 onClick={() => setShowPassword(!showPassword)}
                 disabled={isSubmitting}
               >
-                {showPassword ? <EyeOff className="h-4 w-4 text-gray-600" /> : <Eye className="h-4 w-4 text-gray-600" />}
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </Button>
             </div>
           </div>
 
           {/* 确认密码 */}
           <div className="space-y-2">
-            <Label htmlFor="confirmPassword" className="text-gray-100">确认密码 *</Label>
+            <Label htmlFor="confirmPassword" className="text-white/85">确认密码 *</Label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
+              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/50" />
               <Input
                 id="confirmPassword"
                 type={showConfirmPassword ? 'text' : 'password'}
                 placeholder="请再次输入密码"
                 value={formData.confirmPassword}
                 onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                className="pl-10 pr-10 bg-white/80 backdrop-blur-sm text-gray-900 placeholder:text-gray-500 border-white/30 focus-visible:ring-orange-400"
+                className="pl-10 pr-10 bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-orange-300 focus-visible:border-orange-300/70"
                 disabled={isSubmitting}
               />
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 hover:bg-transparent"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-white/70 hover:bg-white/10 hover:text-white"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 disabled={isSubmitting}
               >
-                {showConfirmPassword ? <EyeOff className="h-4 w-4 text-gray-600" /> : <Eye className="h-4 w-4 text-gray-600" />}
+                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </Button>
             </div>
           </div>
@@ -323,13 +323,13 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
         <div className="relative">
           <Separator className="bg-white/20" />
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="bg-transparent px-2 text-sm text-gray-300">或</span>
+            <span className="bg-transparent px-2 text-sm text-white/65">或</span>
           </div>
         </div>
 
         {/* 底部链接 */}
         <div className="text-center">
-          <div className="text-sm text-gray-200">
+          <div className="text-sm text-white/75">
             已有账户？
             <Button
               variant="link"
@@ -342,7 +342,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
         </div>
 
         {/* 服务条款 */}
-        <div className="text-xs text-gray-300 text-center">
+        <div className="text-xs text-white/65 text-center">
           注册即表示您同意我们的
           <Button variant="link" className="p-0 h-auto text-xs text-orange-300 hover:text-orange-200 ml-1">
             服务条款

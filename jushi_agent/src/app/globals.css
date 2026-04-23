@@ -92,67 +92,6 @@
   }
 }
 
-/* 聊天界面样式 */
-.chat-interface {
-  @apply flex h-screen flex-col bg-gradient-to-br from-orange-50 via-white to-yellow-50;
-
-  .dark & {
-    @apply from-stone-900 via-stone-800 to-stone-900;
-  }
-}
-
-.chat-header {
-  @apply relative border-b bg-white/80 backdrop-blur-lg p-4 shadow-sm;
-
-  .dark & {
-    @apply bg-gray-900/80 border-gray-800;
-  }
-}
-
-.chat-header::before {
-  content: '';
-  @apply absolute inset-0 bg-gradient-to-r from-orange-500/5 to-yellow-500/5;
-
-  .dark & {
-    @apply from-orange-500/10 to-yellow-500/10;
-  }
-}
-
-.chat-header-content {
-  @apply relative z-10 flex items-center justify-between;
-}
-
-.messages-container {
-  @apply flex-1 overflow-y-auto space-y-6;
-  /* 自定义滚动条 */
-  scrollbar-width: thin;
-  scrollbar-color: rgb(203 213 225) transparent;
-}
-
-.messages-container::-webkit-scrollbar {
-  @apply w-2;
-}
-
-.messages-container::-webkit-scrollbar-track {
-  @apply bg-transparent;
-}
-
-.messages-container::-webkit-scrollbar-thumb {
-  @apply bg-gray-300 rounded-full;
-
-  .dark & {
-    @apply bg-gray-600;
-  }
-}
-
-.messages-container::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-400;
-
-  .dark & {
-    @apply bg-gray-500;
-  }
-}
-
 /* 打字动画 */
 .typing-indicator {
   @apply flex items-center gap-2 px-4 py-3 bg-white rounded-2xl shadow-sm;
@@ -174,44 +113,6 @@
 
 .typing-dot:nth-child(3) {
   animation-delay: 0.2s;
-}
-
-/* 输入区域 */
-.input-form {
-  @apply relative border-t bg-white/80 backdrop-blur-lg p-4 shadow-lg;
-  @apply dark:bg-gray-900/80 dark:border-gray-800;
-}
-
-.input-form::before {
-  content: '';
-  @apply absolute inset-0 bg-gradient-to-r from-orange-500/5 to-yellow-500/5;
-
-  .dark & {
-    @apply from-orange-500/10 to-yellow-500/10;
-  }
-}
-
-.input-container {
-  @apply relative z-10 flex gap-3 items-end;
-}
-
-.input-textarea {
-  @apply flex-1 min-h-[44px] max-h-[120px] px-4 py-3 border border-gray-200;
-  @apply bg-white/90 backdrop-blur-sm text-sm resize-none rounded-2xl;
-  @apply focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500;
-  @apply transition-all duration-200 shadow-sm hover:shadow-md;
-
-  .dark & {
-    @apply bg-gray-800/90 border-gray-700 text-gray-100;
-  }
-}
-
-.send-button {
-  @apply px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600;
-  @apply text-white font-medium rounded-2xl shadow-md;
-  @apply hover:shadow-lg hover:scale-105 active:scale-95;
-  @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100;
-  @apply transition-all duration-200 flex items-center gap-2;
 }
 
 /* 情绪输入区域 */
@@ -357,29 +258,3 @@
   }
 }
 
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .chat-interface {
-    @apply h-screen;
-  }
-
-  .messages-container {
-    @apply p-4 space-y-4;
-  }
-
-  .input-form {
-    @apply p-3;
-  }
-
-  .input-container {
-    @apply gap-2;
-  }
-
-  .input-textarea {
-    @apply px-3 py-2 text-sm;
-  }
-
-  .send-button {
-    @apply px-4 py-2 text-sm;
-  }
-}

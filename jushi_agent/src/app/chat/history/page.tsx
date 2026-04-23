@@ -1,17 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import ChatHistoryPanel, { ChatSession } from '@/components/chat/ChatHistoryPanel'
 import {
   MessageCircle,
   ArrowLeft,
-  User,
   Loader2,
   Clock,
   ExternalLink,
-  ChevronRight
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'

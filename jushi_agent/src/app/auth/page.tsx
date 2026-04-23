@@ -3,13 +3,13 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Sparkles } from 'lucide-react'
-import Link from 'next/link'
+import { Sparkles } from 'lucide-react'
 
-// 导入真正的认证组件
+import { AuthPageShell, AuthStateShell } from '@/components/auth/AuthPageShell'
 import { LoginForm } from '@/components/auth/LoginForm'
 import { RegisterForm } from '@/components/auth/RegisterForm'
 import { useAuth } from '@/hooks/useAuth'
+import { useAuthRedirect } from '@/hooks/useAuthRedirect'
 
 function AuthContent() {
   const searchParams = useSearchParams()
@@ -32,12 +32,11 @@ function AuthContent() {
     }
   }, [searchParams])
 
-  useEffect(() => {
-    // 如果已经登录，重定向到目标页面
-    if (isAuthenticated && !isLoading) {
-      window.location.href = redirectTo
-    }
-  }, [isAuthenticated, isLoading, redirectTo])
+  useAuthRedirect({
+    isLoading,
+    isAuthenticated,
+    redirectTo,
+  })
 
   const handleAuthSuccess = (user: any) => {
     console.log('认证成功:', user)
@@ -54,88 +53,35 @@ function AuthContent() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      <AuthStateShell>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">加载中...</p>
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-white" />
+          <p className="mt-4 text-white/65">加载中...</p>
         </div>
-      </div>
+      </AuthStateShell>
     )
   }
 
   if (isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      <AuthStateShell>
         <div className="text-center">
           <div className="animate-pulse">
-            <Sparkles className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+            <Sparkles className="mx-auto mb-4 h-12 w-12 text-amber-200" />
           </div>
-          <p className="text-gray-600">已登录，正在跳转...</p>
+          <p className="text-white/65">已登录，正在跳转...</p>
         </div>
-      </div>
+      </AuthStateShell>
     )
   }
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden">
-      {/* 全屏背景图 */}
-      <div className="absolute inset-0 z-0">
-        <img
-          src="/images/jushi_login_bg.png"
-          alt="Jushi Background"
-          className="w-full h-full object-cover"
-        />
-        {/* 黑色遮罩，确保文字可读性 */}
-        <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px]"></div>
-      </div>
-
-      {/* 磨砂玻璃容器 - 增强版 */}
-      <div className="relative z-10 w-full max-w-md animate-slide-in">
-        <div className="bg-white/10 backdrop-blur-2xl border border-white/20 shadow-2xl rounded-3xl p-8 space-y-6 text-white transform hover:scale-[1.01] transition-all duration-500">
-
-          {/* 返回按钮 */}
-          <div className="flex justify-start">
-            <Link href="/">
-              <Button variant="ghost" size="sm" className="flex items-center gap-2 text-white hover:bg-white/20 hover:text-white">
-                <ArrowLeft className="h-4 w-4" />
-                返回首页
-              </Button>
-            </Link>
-          </div>
-
-          {/* 品牌标识 */}
-          <div className="text-center">
-            <div className="flex items-center justify-center mb-6">
-              <div className="w-20 h-20 bg-gradient-to-br from-orange-400/90 to-yellow-600/90 rounded-2xl shadow-xl flex items-center justify-center transform hover:rotate-6 transition-all duration-300 border border-white/30 backdrop-blur-md">
-                <Sparkles className="h-10 w-10 text-white animate-pulse" />
-              </div>
-            </div>
-            <h1 className="text-3xl font-bold text-white mb-2 drop-shadow-md tracking-wide">
-              {mode === 'login' ? '登录到聚时' : '加入聚时'}
-            </h1>
-            <p className="text-gray-100 font-medium tracking-wide opacity-90">
-              智能对话 · 情绪分析 · 任务规划
-            </p>
-          </div>
-
-          {/* 认证表单容器 */}
-          <div className="bg-white/90 backdrop-blur-xl rounded-2xl p-1 shadow-inner text-gray-900">
-            {mode === 'login' ? (
-              <LoginForm
-                onSuccess={handleAuthSuccess}
-                onSwitchToRegister={() => setMode('register')}
-                redirectTo={redirectTo}
-              />
-            ) : (
-              <RegisterForm
-                onSuccess={handleAuthSuccess}
-                onSwitchToLogin={() => setMode('login')}
-                redirectTo={redirectTo}
-              />
-            )}
-          </div>
-
-          <div className="text-center mt-2">
+    <AuthPageShell
+      title={mode === 'login' ? '登录到聚时' : '加入聚时'}
+      subtitle="智能对话 · 情绪分析 · 任务规划"
+      footer={(
+        <>
+          <div className="mt-2 text-center">
             <Button
               variant="link"
               className="text-white hover:text-orange-200"
@@ -145,25 +91,38 @@ function AuthContent() {
             </Button>
           </div>
 
-          {/* 底部信息 */}
-          <div className="text-center mt-4 text-xs text-gray-200 drop-shadow">
+          <div className="mt-4 text-center text-xs text-gray-200 drop-shadow">
             <p>© 2024 聚时AI助手. 保留所有权利.</p>
           </div>
-        </div>
-      </div>
-    </div>
+        </>
+      )}
+    >
+      {mode === 'login' ? (
+        <LoginForm
+          onSuccess={handleAuthSuccess}
+          onSwitchToRegister={() => setMode('register')}
+          redirectTo={redirectTo}
+        />
+      ) : (
+        <RegisterForm
+          onSuccess={handleAuthSuccess}
+          onSwitchToLogin={() => setMode('login')}
+          redirectTo={redirectTo}
+        />
+      )}
+    </AuthPageShell>
   )
 }
 
 export default function AuthPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      <AuthStateShell>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">加载中...</p>
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-white" />
+          <p className="mt-4 text-white/65">加载中...</p>
         </div>
-      </div>
+      </AuthStateShell>
     }>
       <AuthContent />
     </Suspense>

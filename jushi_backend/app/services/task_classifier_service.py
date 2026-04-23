@@ -4,11 +4,14 @@
 """
 
 import json
+import logging
 import re
 from typing import Any, Dict, Optional
 
 from app.core.config import LLMConfig
 from app.services.llm_service import llm_service
+
+logger = logging.getLogger(__name__)
 
 
 class TaskClassifierService:
@@ -187,7 +190,7 @@ class TaskClassifierService:
             normalized.update(usage_meta)
             return normalized
         except Exception as exc:
-            print(f"⚠️ 任务分类模型调用失败: {exc}")
+            logger.warning(f"Task classification model call failed: {exc}")
             return {
                 "source": "heuristic",
                 "confidence": 0.0,

@@ -4,7 +4,7 @@
 
 from typing import List, Optional
 from pydantic_settings import BaseSettings
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 
 class LLMConfig(BaseModel):
@@ -53,6 +53,12 @@ class Settings(BaseSettings):
     DASHSCOPE_BASE_URL: str = "https://dashscope.aliyuncs.com/api/v1"
     DASHSCOPE_ASR_MODEL: str = "paraformer-v2"
     DASHSCOPE_ASR_TIMEOUT_SECONDS: int = 900
+    ALIYUN_AK_ID: str = ""
+    ALIYUN_AK_SECRET: str = ""
+    ALIYUN_NLS_REGION_ID: str = "cn-shanghai"
+    ALIYUN_NLS_DOMAIN: str = "nls-meta.cn-shanghai.aliyuncs.com"
+    ALIYUN_NLS_API_VERSION: str = "2019-02-28"
+    ALIYUN_NLS_ACTION: str = "CreateToken"
     ALIYUN_OSS_ENDPOINT: str = ""
     ALIYUN_OSS_BUCKET: str = ""
     ALIYUN_OSS_ACCESS_KEY_ID: str = ""
@@ -75,6 +81,7 @@ class Settings(BaseSettings):
     # JWT配置
     JWT_SECRET: str = ""
     JWT_REFRESH_SECRET: str = ""
+    ENCRYPTION_SECRET: str = ""
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7天
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 30  # 30天
@@ -96,7 +103,18 @@ class Settings(BaseSettings):
         "你是 Jushi 项目的特种任务执行代理。优先给出可执行、简洁、中文结果；"
         "如果任务信息不足，明确说明缺失项，不要编造。"
     )
-    
+
+    @model_validator(mode="after")
+    def validate_required_secrets(self):
+        missing_fields = [
+            field
+            for field in ("JWT_SECRET", "JWT_REFRESH_SECRET", "ENCRYPTION_SECRET")
+            if not str(getattr(self, field, "") or "").strip()
+        ]
+        if missing_fields:
+            missing = ", ".join(missing_fields)
+            raise ValueError(f"缺少关键安全配置: {missing}")
+        return self
     class Config:
         env_file = ".env"
         case_sensitive = True

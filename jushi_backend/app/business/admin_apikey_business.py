@@ -6,6 +6,7 @@ import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+from app.core.normalizers import to_iso_datetime
 from app.database import db
 from app.models.admin_apikey import AdminApiKey, AdminApiKeyUpsertRequest
 from app.services.encryption_service import encryption_service
@@ -15,20 +16,12 @@ class AdminApiKeyBusiness:
     COLLECTION = "system_api_keys"
 
     @staticmethod
-    def _to_iso(value: Any) -> str:
-        if isinstance(value, datetime):
-            return value.isoformat()
-        if isinstance(value, str) and value:
-            return value
-        return datetime.utcnow().isoformat()
-
-    @staticmethod
     def _safe_apikey(config: Dict[str, Any]) -> AdminApiKey:
         return AdminApiKey(
             id=str(config.get("id") or ""),
             name=str(config.get("name") or "系统 API Key"),
             has_api_key=bool(config.get("api_key")),
-            updated_at=AdminApiKeyBusiness._to_iso(config.get("updated_at")),
+            updated_at=to_iso_datetime(config.get("updated_at")),
         )
 
     @staticmethod

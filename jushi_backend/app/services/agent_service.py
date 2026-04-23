@@ -4,6 +4,7 @@ Agent 服务层
 """
 
 import asyncio
+import logging
 from typing import Optional, List, Any, Dict
 try:
     from smolagents import CodeAgent, LiteLLMModel, DuckDuckGoSearchTool
@@ -23,12 +24,18 @@ from app.services.calendar_tools import (
     CALENDAR_TOOLS,
     get_pending_suggestions,
     clear_pending_suggestions,
+    set_current_request_context as set_calendar_request_context,
+    clear_current_request_context as clear_calendar_request_context,
 )
+
+logger = logging.getLogger(__name__)
 
 try:
     from app.tools.knowledge_base import (
         get_pending_rag_references,
         clear_pending_rag_references,
+        set_current_request_context,
+        clear_current_request_context,
     )
 except Exception:
     def get_pending_rag_references(request_id: Optional[str] = None) -> List[dict]:
@@ -36,6 +43,22 @@ except Exception:
 
     def clear_pending_rag_references(request_id: Optional[str] = None):
         return None
+
+    def set_current_request_context(request_id: str, user_id: Optional[str] = None):
+        return None
+
+    def clear_current_request_context():
+        return None
+
+
+def _run_agent_with_context(agent: CodeAgent, final_task: str, request_id: str, user_id: Optional[str]):
+    set_calendar_request_context(request_id)
+    set_current_request_context(request_id, user_id)
+    try:
+        return agent.run(final_task, return_full_result=True)
+    finally:
+        clear_current_request_context()
+        clear_calendar_request_context()
 
 
 class AgentService:
@@ -82,42 +105,41 @@ class AgentService:
                 api_key=api_key,
                 api_base=api_base
             )
-            print(f"✅ LLM 模型初始化成功: {config.name} ({target_model_id})")
+            logger.info(f"LLM model initialized: {config.name} ({target_model_id})")
             return model
         except Exception as e:
-            print(f"❌ LLM 模型初始化失败 [{config.name}]: {e}")
+            logger.error(f"LLM model initialization failed [{config.name}]: {e}")
             return None
-    
+
     def _init_default_tools(self) -> List:
         """初始化默认工具"""
         tools = []
         if not SMOLAGENTS_AVAILABLE:
             return tools
-        
         # 加载搜索工具
         try:
             tools.append(DuckDuckGoSearchTool())
-            print("✅ 已加载工具: DuckDuckGoSearchTool")
+            logger.debug("Loaded tool: DuckDuckGoSearchTool")
         except Exception as e:
-            print(f"⚠️ 加载 DuckDuckGoSearchTool 失败: {e}")
+            logger.warning(f"Failed to load DuckDuckGoSearchTool: {e}")
 
         # 加载 RAG 工具
         try:
             from app.tools.knowledge_base import retrieve_knowledge
             tools.append(retrieve_knowledge)
-            print("✅ 已加载工具: retrieve_knowledge")
+            logger.debug("Loaded tool: retrieve_knowledge")
         except Exception as e:
-            print(f"⚠️ 加载 RAG 工具失败: {e}")
-        
+            logger.warning(f"Failed to load RAG tool: {e}")
+
         # 加载日历工具
         try:
             for tool in CALENDAR_TOOLS:
                 tools.append(tool)
                 tool_name = tool.name if hasattr(tool, 'name') else tool.__name__
-                print(f"✅ 已加载工具: {tool_name}")
+                logger.debug(f"Loaded tool: {tool_name}")
         except Exception as e:
-            print(f"⚠️ 加载日历工具失败: {e}")
-        
+            logger.warning(f"Failed to load calendar tools: {e}")
+
         return tools
     
     async def _fetch_db_configs(self) -> Dict[str, LLMConfig]:
@@ -271,19 +293,16 @@ class AgentService:
             
         if not model:
             return None
-        
+
         # 确保默认工具已初始化
         if not self._default_tools:
             self._default_tools = self._init_default_tools()
-        
+
         agent_tools = tools if tools is not None else self._default_tools
-        
+
         # 调试: 打印工具列表
-        print(f"🔧 Agent 工具列表 ({len(agent_tools)} 个):")
-        for t in agent_tools:
-            tool_name = t.name if hasattr(t, 'name') else getattr(t, '__name__', str(t))
-            print(f"   - {tool_name}")
-        
+        logger.debug(f"Agent tools ({len(agent_tools)}): {[t.name if hasattr(t, 'name') else getattr(t, '__name__', str(t)) for t in agent_tools]}")
+
         try:
             agent = CodeAgent(
                 tools=agent_tools,
@@ -293,7 +312,7 @@ class AgentService:
             )
             return agent
         except Exception as e:
-            print(f"❌ 创建 Agent 失败: {e}")
+            logger.error(f"Failed to create Agent: {e}")
             return None
     
     def _get_default_system_prompt(self) -> str:
@@ -403,14 +422,16 @@ class AgentService:
         }
     
     async def run_task(
-        self, 
+        self,
         task: str,
         tools: Optional[List] = None,
         max_steps: int = 10,
         timeout_seconds: Optional[float] = None,
         provider: Optional[str] = None,
         llm_config: Optional[LLMConfig] = None,
-        system_prompt: Optional[str] = None
+        system_prompt: Optional[str] = None,
+        request_id: Optional[str] = None,
+        user_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         执行 Agent 任务
@@ -427,7 +448,7 @@ class AgentService:
         """
         if llm_config:
             model = self._create_model(llm_config)
-            print(f"🚀 使用动态配置执行任务: {llm_config.model_id}")
+            logger.debug(f"Using dynamic config for task: {llm_config.model_id}")
         else:
             model = await self.get_model(provider)
             
@@ -436,9 +457,11 @@ class AgentService:
                 "success": False,
                 "error": f"LLM 模型不可用，请检查配置"
             }
-        # 运行前清空 default 桶，防止残留数据串扰
-        clear_pending_suggestions("default")
-        clear_pending_rag_references("default")
+        effective_request_id = str(request_id or "default").strip() or "default"
+
+        # 运行前清空请求桶，防止残留数据串扰
+        clear_pending_suggestions(effective_request_id)
+        clear_pending_rag_references(effective_request_id)
 
         try:
             agent = await self.create_agent(
@@ -463,7 +486,12 @@ class AgentService:
             loop = asyncio.get_event_loop()
             run_future = loop.run_in_executor(
                 None,
-                lambda: agent.run(final_task, return_full_result=True)
+                lambda: _run_agent_with_context(
+                    agent=agent,
+                    final_task=final_task,
+                    request_id=effective_request_id,
+                    user_id=user_id,
+                ),
             )
             if timeout_seconds and timeout_seconds > 0:
                 result = await asyncio.wait_for(run_future, timeout=timeout_seconds)
@@ -475,7 +503,7 @@ class AgentService:
             tool_outputs = []
             
             # 方法1: 从全局 default 桶获取工具输出
-            pending = get_pending_suggestions("default")
+            pending = get_pending_suggestions(effective_request_id)
             for suggestion in pending:
                 suggestion_type = suggestion.get("type")
                 if suggestion_type in ["calendar_event_suggestion", "task_decomposition_suggestion", "batch_calendar_events"]:
@@ -489,9 +517,9 @@ class AgentService:
                         "tool_name": tool_name,
                         "observation": suggestion
                     })
-            clear_pending_suggestions("default")  # 清空缓存
+            clear_pending_suggestions(effective_request_id)  # 清空缓存
 
-            rag_pending = get_pending_rag_references("default")
+            rag_pending = get_pending_rag_references(effective_request_id)
             for observation in rag_pending:
                 if isinstance(observation, dict):
                     tool_outputs.append(
@@ -500,7 +528,7 @@ class AgentService:
                             "observation": observation,
                         }
                     )
-            clear_pending_rag_references("default")
+            clear_pending_rag_references(effective_request_id)
             
             # 方法2: 从 agent.memory 或 agent.steps 提取 (通用方法)
             # Smolagents 可能将步骤存储在 memory.steps 或 logs 中
@@ -512,7 +540,7 @@ class AgentService:
             elif hasattr(agent, "logs"):
                  extracted_steps = list(agent.logs) if hasattr(agent.logs, '__iter__') else []
             
-            print(f"🕵️ Found {len(extracted_steps)} steps in agent history")
+            logger.debug(f"Found {len(extracted_steps)} steps in agent history")
             
             # 已从方法1收集到的 type 集合，用于方法2去重
             seen_types = set(
@@ -557,7 +585,7 @@ class AgentService:
                                 "observation": obs_data
                             })
                             seen_types.add(obs_type)
-                            print(f"✅ Extracted {obs_type} from step.action_output (fallback 1)")
+                            logger.debug(f"Extracted {obs_type} from step.action_output (fallback 1)")
 
                 if has_tool_calls:
                         if hasattr(step, "observations") and step.observations:
@@ -588,13 +616,13 @@ class AgentService:
                                 "observation": obs
                             })
                             seen_types.add(obs_type)
-                            print(f"✅ Extracted {obs_type} from step observation dict (fallback 2)")
-                
+                            logger.debug(f"Extracted {obs_type} from step observation dict (fallback 2)")
+
                 steps.append(step_data)
-            
+
             usage_summary = self._extract_usage_summary_from_steps(extracted_steps)
 
-            print(f"📝 收集到 {len(steps)} 个执行步骤, {len(tool_outputs)} 个工具输出")
+            logger.debug(f"Collected {len(steps)} execution steps, {len(tool_outputs)} tool outputs")
             
             return {
                 "success": True,
@@ -606,17 +634,17 @@ class AgentService:
             }
             
         except asyncio.TimeoutError:
-            print(f"❌ Agent 任务执行超时: timeout={timeout_seconds}s")
-            clear_pending_suggestions("default")
-            clear_pending_rag_references("default")
+            logger.error(f"Agent task execution timeout: {timeout_seconds}s")
+            clear_pending_suggestions(effective_request_id)
+            clear_pending_rag_references(effective_request_id)
             return {
                 "success": False,
                 "error": f"Agent 执行超时（{timeout_seconds}s）"
             }
         except Exception as e:
-            print(f"❌ Agent 任务执行失败: {e}")
-            clear_pending_suggestions("default")
-            clear_pending_rag_references("default")
+            logger.error(f"Agent task execution failed: {e}")
+            clear_pending_suggestions(effective_request_id)
+            clear_pending_rag_references(effective_request_id)
             return {
                 "success": False,
                 "error": str(e)
@@ -628,7 +656,9 @@ class AgentService:
         tools: Optional[List] = None,
         max_steps: int = 10,
         timeout_seconds: Optional[float] = None,
-        system_prompt: Optional[str] = None
+        system_prompt: Optional[str] = None,
+        request_id_prefix: Optional[str] = None,
+        user_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         并行执行 Agent 任务
@@ -636,7 +666,7 @@ class AgentService:
         if not llm_configs:
             return {"success": False, "error": "No LLM configs provided"}
 
-        print(f"🚀 Starting parallel execution on {len(llm_configs)} models...")
+        logger.info(f"Starting parallel execution on {len(llm_configs)} models")
         
         # Create coroutines for each config
         coroutines = [
@@ -647,9 +677,11 @@ class AgentService:
                 provider=config.model_id,
                 max_steps=max_steps,
                 timeout_seconds=timeout_seconds,
-                system_prompt=system_prompt
+                system_prompt=system_prompt,
+                request_id=f"{request_id_prefix or 'shadow'}-{idx}",
+                user_id=user_id,
             )
-            for config in llm_configs
+            for idx, config in enumerate(llm_configs)
         ]
         
         # Run in parallel

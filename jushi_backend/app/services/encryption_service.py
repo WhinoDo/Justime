@@ -5,15 +5,18 @@
 
 import base64
 import hashlib
+import logging
 from cryptography.fernet import Fernet
 from app.core.config import settings
 
+logger = logging.getLogger(__name__)
+
+
 class EncryptionService:
     def __init__(self):
-        # 使用 JWT_SECRET 派生一个稳定的加密密钥
+        # 使用独立的 ENCRYPTION_SECRET 派生稳定加密密钥
         # Fernet 需要 32 字节的 url-safe base64 key
-        # 我们对 JWT_SECRET 进行 SHA256 哈希 (32字节)，然后 base64 编码
-        secret = settings.JWT_SECRET or "default-insecure-secret-please-change"
+        secret = settings.ENCRYPTION_SECRET
         key = base64.urlsafe_b64encode(hashlib.sha256(secret.encode()).digest())
         self.fernet = Fernet(key)
 
@@ -32,7 +35,7 @@ class EncryptionService:
         except Exception:
             # 如果解密失败（例如密钥变更或数据损坏），返回空或原始值
             # 为了安全起见，通常返回空或抛出异常
-            print("⚠️ 解密失败，可能是密钥变更或数据损坏")
+            logger.warning("Decryption failed, possibly due to key change or data corruption")
             return ""
 
 # 全局加密服务实例

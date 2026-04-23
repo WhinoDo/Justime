@@ -3,9 +3,10 @@
  * 现在将请求转发到后端Python服务
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { API_CONFIG } from '@/lib/api/config'
 import { createErrorResponse, createSuccessResponse } from '@/lib/api/proxy'
+import { setAuthCookies } from '@/lib/api/auth-cookies'
 
 /**
  * 用户注册
@@ -31,24 +32,13 @@ export async function POST(request: NextRequest) {
       return createErrorResponse(data.detail || data.error || '注册失败', 'REGISTER_ERROR', response.status)
     }
 
-    // 设置HTTP-only cookie
     const nextResponse = createSuccessResponse(data.data ?? data, data.message || '注册成功')
 
-    if (data.success && data.data?.token) {
-      nextResponse.cookies.set('access_token', data.data.token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 7 * 24 * 60 * 60 // 7天
-      })
-    }
-
-    if (data.success && data.data?.refreshToken) {
-      nextResponse.cookies.set('refresh-token', data.data.refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 30 * 24 * 60 * 60 // 30天
+    if (data.success) {
+      setAuthCookies(nextResponse, {
+        accessToken: data.data?.token,
+        refreshToken: data.data?.refreshToken,
+        rememberMe: false,
       })
     }
 
