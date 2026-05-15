@@ -1,0 +1,239 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  code-quality:
+    name: Code Quality Gate
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            jushi_agent/package-lock.json
+            mobile/jushi_mobile/package-lock.json
+      
+      - name: Frontend - Install dependencies
+        working-directory: jushi_agent
+        run: npm ci
+      
+      - name: Frontend - Lint
+        working-directory: jushi_agent
+        run: npm run lint
+      
+      - name: Frontend - Type Check
+        working-directory: jushi_agent
+        run: npx tsc --noEmit
+      
+      - name: Mobile - Install dependencies
+        working-directory: mobile/jushi_mobile
+        run: npm ci
+      
+      - name: Mobile - Lint
+        working-directory: mobile/jushi_mobile
+        run: npm run lint
+      
+      - name: Mobile - Type Check
+        working-directory: mobile/jushi_mobile
+        run: npx tsc --noEmit
+
+  frontend-tests:
+    name: Frontend Tests (jushi_agent)
+    runs-on: ubuntu-latest
+    needs: [code-quality]
+    
+    defaults:
+      run:
+        working-directory: jushi_agent
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: jushi_agent/package-lock.json
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run tests with coverage
+        run: npm test -- --coverage --passWithNoTests
+      
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: jushi_agent/coverage/
+          retention-days: 7
+      
+      - name: Build check
+        run: npm run build
+
+  mobile-tests:
+    name: Mobile Tests (jushi_mobile)
+    runs-on: ubuntu-latest
+    needs: [code-quality]
+    
+    defaults:
+      run:
+        working-directory: mobile/jushi_mobile
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: mobile/jushi_mobile/package-lock.json
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Type check
+        run: npx tsc --noEmit
+
+  backend-tests:
+    name: Backend Tests (jushi_backend)
+    runs-on: ubuntu-latest
+    needs: [code-quality]
+    
+    services:
+      mongodb:
+        image: mongo:7.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ ping: 1 })'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    defaults:
+      run:
+        working-directory: jushi_backend
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+          cache-dependency-path: jushi_backend/requirements.txt
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-cov httpx
+      
+      - name: Run tests with coverage
+        env:
+          JWT_SECRET: test-jwt-secret-key-at-least-32-characters-long!
+          JWT_REFRESH_SECRET: test-refresh-secret-key-at-least-32-characters-long!
+          ENCRYPTION_SECRET: test-encryption-secret-key-at-least-32-characters-long!
+          CSRF_SECRET: test-csrf-secret-key-at-least-32-characters-long!
+          DEBUG: "true"
+          MONGODB_URI: mongodb://localhost:27017/jushi_test
+          MONGODB_DB_NAME: jushi_test
+        run: |
+          pytest tests/ -v --tb=short --cov=app --cov-report=xml --cov-report=term-missing
+      
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: jushi_backend/coverage.xml
+          retention-days: 7
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: [code-quality]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+  ci-gate:
+    name: CI Gate
+    runs-on: ubuntu-latest
+    needs: [code-quality, frontend-tests, mobile-tests, backend-tests, security-scan]
+    if: always()
+    
+    steps:
+      - name: Check all jobs passed
+        run: |
+          echo "=========================================="
+          echo "         CI Pipeline Summary"
+          echo "=========================================="
+          echo ""
+          echo "Code Quality:    ${{ needs.code-quality.result }}"
+          echo "Frontend Tests:  ${{ needs.frontend-tests.result }}"
+          echo "Mobile Tests:    ${{ needs.mobile-tests.result }}"
+          echo "Backend Tests:   ${{ needs.backend-tests.result }}"
+          echo "Security Scan:   ${{ needs.security-scan.result }}"
+          echo ""
+          
+          if [ "${{ needs.code-quality.result }}" != "success" ]; then
+            echo "::error::Code quality gate failed"
+            exit 1
+          fi
+          
+          if [ "${{ needs.frontend-tests.result }}" != "success" ]; then
+            echo "::error::Frontend tests failed"
+            exit 1
+          fi
+          
+          if [ "${{ needs.mobile-tests.result }}" != "success" ]; then
+            echo "::error::Mobile tests failed"
+            exit 1
+          fi
+          
+          if [ "${{ needs.backend-tests.result }}" != "success" ]; then
+            echo "::error::Backend tests failed"
+            exit 1
+          fi
+          
+          if [ "${{ needs.security-scan.result }}" != "success" ]; then
+            echo "::warning::Security scan completed with findings"
+          fi
+          
+          echo "=========================================="
+          echo "✅ All CI gates passed!"
+          echo "=========================================="
