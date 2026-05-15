@@ -1,8 +1,9 @@
 import { SubTask, UserProfile, DecompositionStrategy } from '@/types'
+import { EXTERNAL_API_ENDPOINTS } from '@/lib/api/config'
 
 export class TaskDecomposer {
   private apiKey: string
-  private baseURL: string = 'https://api.siliconflow.cn/v1'
+  private baseURL: string = EXTERNAL_API_ENDPOINTS.SILICONFLOW.BASE_URL
 
   constructor() {
     this.apiKey = process.env.SILICONFLOW_API_KEY || 'test-api-key'

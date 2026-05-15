@@ -60,11 +60,99 @@ export interface Message {
   emotion_score?: number
   created_at: string
   suggestedEvents?: SuggestedCalendarEvent[]
-  timingStrategy?: any
-  taskAnalysis?: any
-  taskDecomposition?: any
-  multiTaskDecompositions?: any[]
+  timingStrategy?: TimingStrategy
+  taskAnalysis?: TaskAnalysis
+  taskDecomposition?: TaskDecomposition
+  multiTaskDecompositions?: TaskDecomposition[]
   ragReferences?: RagReference[]
+}
+
+export interface TimingStrategy {
+  profileKey: string
+  taskType: 'recitation' | 'thinking' | 'general'
+  difficultyLevel: number
+  urgency: 'low' | 'medium' | 'high'
+  interactionDurationSeconds: number
+  intervalSeconds: number
+  maxSteps: number
+  timeoutSeconds: number
+  contextWindowMessages: number
+  nextSuggestedAt: string
+  strategySource: string
+  analysisMeta?: TaskAnalysis
+}
+
+export interface TaskAnalysis {
+  source?: 'llm' | 'heuristic' | string
+  confidence?: number
+  reason?: string
+  taskType?: 'recitation' | 'thinking' | 'general'
+  difficultyLevel?: number
+  urgency?: 'low' | 'medium' | 'high'
+}
+
+export interface TaskDecompositionProject {
+  name: string
+  description?: string
+  total_days?: number
+  start_date?: string
+  subtask_count?: number
+}
+
+export interface TaskDecomposition {
+  success?: boolean
+  type?: string
+  project?: TaskDecompositionProject
+  projectTitle?: string
+  projectDescription?: string
+  subtasks: SubtaskItem[]
+  estimatedTotalHours?: number
+  confidence?: number
+  reasoning?: string
+  message?: string
+}
+
+export interface SubtaskItem {
+  id: string
+  title: string
+  description?: string
+  startTime?: string
+  endTime?: string
+  duration_hours?: number
+  priority?: 'high' | 'medium' | 'low'
+  category?: string
+  dependencies?: string[]
+  order?: number
+  resources?: Array<{ title: string; url: string; type?: string }>
+}
+
+export interface ModelConfig {
+  modelId: string
+  name?: string
+  enabled?: boolean
+  isActive?: boolean
+}
+
+export interface MessageFromAPI {
+  _id: string
+  role: 'user' | 'assistant'
+  content: string
+  timestamp: string
+  taskDecomposition?: TaskDecomposition
+  multiTaskDecompositions?: TaskDecomposition[]
+  suggestedEvents?: SuggestedCalendarEvent[]
+  timingStrategy?: TimingStrategy
+  taskAnalysis?: TaskAnalysis
+  ragReferences?: RagReference[]
+  emotion_score?: number
+}
+
+export interface EventConflict {
+  eventId: string
+  eventTitle: string
+  startTime: string
+  endTime: string
+  overlapMinutes: number
 }
 
 export interface SuggestedCalendarEvent {
@@ -73,12 +161,12 @@ export interface SuggestedCalendarEvent {
   description?: string
   start: string
   end: string
-  type?: string
-  priority?: string
+  type?: 'task' | 'meeting' | 'reminder' | 'deadline' | 'other'
+  priority?: 'low' | 'medium' | 'high' | 'urgent'
   location?: string
   allDay?: boolean
   aiGenerated?: boolean
-  conflicts?: any[]
+  conflicts?: EventConflict[]
   resources?: Array<{ title: string; url: string; type?: string }>
 }
 
@@ -134,14 +222,16 @@ export interface GrowthNote {
 }
 
 // API响应类型
+export interface APIError {
+  code: string
+  message: string
+  details?: string | Record<string, unknown>
+}
+
 export interface APIResponse<T> {
   success: boolean
   data?: T
-  error?: {
-    code: string
-    message: string
-    details?: any
-  }
+  error?: APIError
   timestamp: string
 }
 

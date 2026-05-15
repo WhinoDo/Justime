@@ -21,6 +21,7 @@ import {
     DialogTitle
 } from '@/components/ui/dialog'
 import { useToast } from '@/components/ui/use-toast'
+import { API_ENDPOINTS } from '@/lib/api/endpoints'
 
 interface AdminApiKey {
     id: string
@@ -57,7 +58,7 @@ export default function AdminApiKeysPage() {
 
     const fetchApiKeys = async () => {
         try {
-            const response = await fetch('/api/admin/apikeys')
+            const response = await fetch(API_ENDPOINTS.ADMIN.API_KEYS)
             const result = await response.json()
             if (!response.ok) throw new Error(result.error || result.message || '获取 API Key 列表失败')
             setKeys(Array.isArray(result?.data) ? result.data : [])
@@ -114,7 +115,7 @@ export default function AdminApiKeysPage() {
         setSaving(true)
         try {
             const isEdit = !!editingKey
-            const endpoint = isEdit ? `/api/admin/apikeys/${editingKey.id}` : '/api/admin/apikeys'
+            const endpoint = isEdit ? API_ENDPOINTS.ADMIN.API_KEY(editingKey.id) : API_ENDPOINTS.ADMIN.API_KEYS
             const method = isEdit ? 'PUT' : 'POST'
             const payload: Record<string, unknown> = {
                 id: form.id.trim() || undefined,
@@ -152,7 +153,7 @@ export default function AdminApiKeysPage() {
     const handleDelete = async (key: AdminApiKey) => {
         if (!confirm(`确定要删除 API Key "${key.name}" 吗？`)) return
         try {
-            const response = await fetch(`/api/admin/apikeys/${key.id}`, { method: 'DELETE' })
+            const response = await fetch(API_ENDPOINTS.ADMIN.API_KEY(key.id), { method: 'DELETE' })
             const result = await response.json()
             if (!response.ok) throw new Error(result.error || result.message || '删除 API Key 失败')
             toast({

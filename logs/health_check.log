@@ -1,0 +1,80 @@
+
+==================================================
+健康检查报告 - 2026-04-23 23:52:57
+==================================================
+
+🔶 BACKEND: unhealthy
+   - status_code: 502
+   - response_time_ms: 3311.429
+
+✅ MONGODB: healthy
+
+✅ DISK: healthy
+   - total_gb: 1907.53
+   - used_gb: 898.19
+   - free_gb: 1009.34
+   - usage_percent: 47.09
+
+==================================================
+健康检查报告 - 2026-04-23 23:56:12
+==================================================
+
+🔶 BACKEND: unhealthy
+   - status_code: 502
+   - response_time_ms: 3178.472
+
+✅ MONGODB: healthy
+
+✅ DISK: healthy
+   - total_gb: 1907.53
+   - used_gb: 898.19
+   - free_gb: 1009.34
+   - usage_percent: 47.09
+
+==================================================
+健康检查报告 - 2026-04-24 08:05:04
+==================================================
+
+🔶 BACKEND: unhealthy
+   - status_code: 502
+   - response_time_ms: 3023.1690000000003
+
+✅ MONGODB: healthy
+
+✅ DISK: healthy
+   - total_gb: 1907.53
+   - used_gb: 901.17
+   - free_gb: 1006.36
+   - usage_percent: 47.24
+
+==================================================
+健康检查报告 - 2026-04-24 08:10:04
+==================================================
+
+🔶 BACKEND: unhealthy
+   - status_code: 502
+   - response_time_ms: 3487.117
+
+✅ MONGODB: healthy
+
+✅ DISK: healthy
+   - total_gb: 1907.53
+   - used_gb: 901.17
+   - free_gb: 1006.36
+   - usage_percent: 47.24
+
+==================================================
+健康检查报告 - 2026-04-24 08:13:12
+==================================================
+
+🔶 BACKEND: unhealthy
+   - status_code: 502
+   - response_time_ms: 2920.576
+
+✅ MONGODB: healthy
+
+✅ DISK: healthy
+   - total_gb: 1907.53
+   - used_gb: 901.16
+   - free_gb: 1006.38
+   - usage_percent: 47.24

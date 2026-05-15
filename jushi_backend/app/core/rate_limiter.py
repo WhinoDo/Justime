@@ -37,18 +37,29 @@ class RateLimiter:
         # 线程锁
         self._lock = Lock()
 
+    @staticmethod
+    def _validate_ip(ip_str: str) -> str:
+        import re
+        ip_str = ip_str.strip()
+        ipv4_pattern = r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$'
+        ipv6_pattern = r'^\[?[0-9a-fA-F:]+\]?$'
+        if re.match(ipv4_pattern, ip_str) or re.match(ipv6_pattern, ip_str):
+            return ip_str
+        return ""
+
     def _get_client_key(self, request: Request, user_id: Optional[str] = None) -> str:
         """获取客户端唯一标识"""
-        # 优先使用用户ID
         if user_id:
             return f"user:{user_id}"
 
-        # 其次使用IP地址
-        client_ip = request.client.host if request.client else "unknown"
-        # 考虑代理情况
+        client_ip = ""
         forwarded = request.headers.get("X-Forwarded-For")
         if forwarded:
-            client_ip = forwarded.split(",")[0].strip()
+            first_ip = forwarded.split(",")[0].strip()
+            client_ip = self._validate_ip(first_ip)
+
+        if not client_ip:
+            client_ip = request.client.host if request.client else "unknown"
 
         return f"ip:{client_ip}"
 
@@ -134,11 +145,16 @@ class RateLimitMiddleware:
     限流中间件
     """
 
-    # 不同路径的限流配置
     PATH_LIMITS = {
-        "/api/chat": (30, 500),      # 聊天接口：每分钟30次，每小时500次
-        "/api/auth/login": (5, 20),   # 登录接口：每分钟5次，每小时20次
-        "/api/upload": (10, 100),     # 上传接口：每分钟10次，每小时100次
+        "/api/v1/chat": (30, 500),
+        "/api/v1/auth/login": (5, 20),
+        "/api/v1/auth/register": (3, 10),
+        "/api/v1/auth/refresh": (10, 50),
+        "/api/v1/calendar": (20, 200),
+        "/api/v1/agent": (20, 300),
+        "/api/v1/book-analysis": (10, 50),
+        "/api/v1/speech": (10, 100),
+        "/api/v1/admin": (30, 300),
     }
 
     def __init__(self, app):

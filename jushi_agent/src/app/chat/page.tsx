@@ -1,12 +1,38 @@
 'use client'
 
-import { ChatInterface } from '@/components/chat/ChatInterface'
 import { useAuth } from '@/hooks/useAuth'
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { Loader2 } from 'lucide-react'
-import { ChatSidebar } from '@/components/chat/ChatSidebar'
 import { JushiGlassPanel } from '@/components/layout/JushiGlassPanel'
 import { JushiPageShell } from '@/components/layout/JushiPageShell'
+import dynamic from 'next/dynamic'
+
+const ChatInterface = dynamic(
+  () => import('@/components/chat/ChatInterface').then((mod) => mod.ChatInterface),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-white" />
+          <p className="text-sm text-white/60">Loading Chat Interface...</p>
+        </div>
+      </div>
+    ),
+  }
+)
+
+const ChatSidebar = dynamic(
+  () => import('@/components/chat/ChatSidebar').then((mod) => mod.ChatSidebar),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-white/50" />
+      </div>
+    ),
+  }
+)
 
 export default function ChatPage() {
   const { user, isLoading } = useAuth()

@@ -242,17 +242,16 @@ class InputValidator:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="密码不能为空"
             )
-        if len(password) < 6:
+        if len(password) < 8:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="密码至少需要6个字符"
+                detail="密码至少需要8个字符"
             )
         if len(password) > 128:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="密码不能超过128个字符"
             )
-        # 检查是否包含空白字符
         if password.strip() != password:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -511,6 +510,90 @@ class InputValidator:
                 detail=f"文件大小不能超过{max_size_mb:.0f}MB"
             )
         return size
+
+    @staticmethod
+    def sanitize_mongo_query_value(value: Any) -> Any:
+        """
+        清理 MongoDB 查询值，防止 NoSQL 注入
+
+        Args:
+            value: 要清理的值
+
+        Returns:
+            清理后的安全值
+
+        Raises:
+            HTTPException: 如果检测到危险的查询操作符
+        """
+        if value is None:
+            return value
+        
+        if isinstance(value, dict):
+            dangerous_operators = {
+                '$where', '$expr', '$jsonSchema', '$comment',
+                '$function', '$accumulator'
+            }
+            for key in value.keys():
+                key_str = str(key)
+                if key_str.startswith('$') and key_str in dangerous_operators:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"检测到非法查询操作符: {key_str}"
+                    )
+                if key_str.startswith('$') and not key_str.startswith('$'):
+                    pass
+            return {
+                k: InputValidator.sanitize_mongo_query_value(v)
+                for k, v in value.items()
+            }
+        
+        if isinstance(value, list):
+            return [InputValidator.sanitize_mongo_query_value(item) for item in value]
+        
+        if isinstance(value, str):
+            for dangerous_char in ('\x00', '\u0000'):
+                if dangerous_char in value:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="检测到非法字符"
+                    )
+        
+        return value
+
+    @staticmethod
+    def validate_mongo_projection(projection: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        验证 MongoDB 投影，防止通过投影进行注入
+
+        Args:
+            projection: MongoDB 投影字典
+
+        Returns:
+            验证后的投影字典
+
+        Raises:
+            HTTPException: 如果检测到危险的投影操作
+        """
+        if not projection:
+            return projection
+        
+        safe_projection = {}
+        for key, value in projection.items():
+            if key.startswith('$'):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"投影字段名不能以 $ 开头: {key}"
+                )
+            if not isinstance(value, (bool, int, 0, 1)):
+                if isinstance(value, dict):
+                    safe_value = InputValidator.sanitize_mongo_query_value(value)
+                else:
+                    safe_value = bool(value) if value is not None else False
+            else:
+                safe_value = value
+            safe_projection[key] = safe_value
+        
+        return safe_projection
 
 
 # 创建全局验证器实例

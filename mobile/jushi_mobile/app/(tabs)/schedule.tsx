@@ -30,6 +30,7 @@ import {
   ScheduleEventDetail,
   ScheduleEventUpdatePayload,
 } from '@/components/schedule/EventDetailSheet';
+import { CreateEventModal } from '@/components/schedule/CreateEventModal';
 
 // Configure Locale for Calendar (Simplified Chinese)
 LocaleConfig.locales['zh'] = {
@@ -76,6 +77,8 @@ export default function ScheduleScreen() {
   const [batchDeleteMode, setBatchDeleteMode] = useState(false);
   const [selectedEventIds, setSelectedEventIds] = useState<Set<string>>(new Set());
   const [batchDeleting, setBatchDeleting] = useState(false);
+  const [createModalVisible, setCreateModalVisible] = useState(false);
+  const [creatingEvent, setCreatingEvent] = useState(false);
 
   /**
    * 切换日历下方的视图模式
@@ -339,6 +342,41 @@ export default function ScheduleScreen() {
       throw error;
     } finally {
       setSavingEvent(false);
+    }
+  };
+
+  /**
+   * 创建新日程
+   */
+  const handleCreateEvent = async (payload: ScheduleEventUpdatePayload) => {
+    if (!token) return;
+    setCreatingEvent(true);
+    try {
+      const response = await fetch(`${baseUrl}/api/v1/calendar/events`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.detail || result.message || '创建失败');
+      }
+
+      const newEvent = result.data?.event as CalendarEvent | undefined;
+      if (newEvent) {
+        setEvents((prev) => [...prev, newEvent]);
+      } else {
+        await loadEvents();
+      }
+      setCreateModalVisible(false);
+    } catch (error) {
+      console.error('创建日程失败:', error);
+      throw error;
+    } finally {
+      setCreatingEvent(false);
     }
   };
 
@@ -619,6 +657,13 @@ export default function ScheduleScreen() {
         onDelete={handleDeleteEvent}
         onSave={handleUpdateEvent}
       />
+      <CreateEventModal
+        visible={createModalVisible}
+        onClose={() => setCreateModalVisible(false)}
+        onCreate={handleCreateEvent}
+        loading={creatingEvent}
+        defaultDate={selectedDate}
+      />
       <View style={styles.calendarContainer}>
         <Calendar
           key={selectedDate} // Force re-render to jump to new date
@@ -669,6 +714,15 @@ export default function ScheduleScreen() {
           <IconSymbol name="chevron.down" size={16} color={Colors.light.text} style={{ marginLeft: 4, marginTop: 2 }} />
         </TouchableOpacity>
         <View style={styles.headerActions}>
+          <Button
+            variant="ghost"
+            size="sm"
+            title=""
+            icon={<IconSymbol name="plus" size={20} color={Colors.light.primary} />}
+            onPress={() => setCreateModalVisible(true)}
+            disabled={batchDeleting || batchDeleteMode}
+            style={styles.headerActionButton}
+          />
           {batchDeleteMode ? (
             <>
               <Button

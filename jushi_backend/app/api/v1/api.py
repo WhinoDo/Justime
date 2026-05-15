@@ -5,7 +5,7 @@ API v1 路由聚合
 import logging
 
 from fastapi import APIRouter
-from app.api.v1.endpoints import health, auth, chat, admin, admin_apikeys, agent, calendar, speech, book_analysis
+from app.api.v1.endpoints import health, auth, chat, admin, admin_apikeys, agent, calendar, speech, book_analysis, documents
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +19,7 @@ api_router.include_router(admin.router, prefix="/admin", tags=["后台管理"])
 api_router.include_router(admin_apikeys.router, prefix="/admin", tags=["后台管理/API Key"])
 api_router.include_router(agent.router, prefix="/agent", tags=["AI Agent"])
 api_router.include_router(calendar.router, prefix="/calendar", tags=["日历管理"])
+api_router.include_router(documents.router, prefix="/documents", tags=["工作文档"])
 api_router.include_router(book_analysis.router, prefix="/book-analysis", tags=["书籍分析"])
 api_router.include_router(speech.router, prefix="/speech", tags=["语音服务"])
 

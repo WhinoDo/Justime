@@ -22,10 +22,15 @@ export function AuthGuard({
   requireAuth = true,
   showLoginPrompt = true
 }: AuthGuardProps) {
-  const { user, isLoading, isAuthenticated } = useAuth()
+  const { isLoading, isAuthenticated } = useAuth()
   const router = useRouter()
 
-  // 如果正在加载，显示加载状态
+  useEffect(() => {
+    if (!isLoading && requireAuth && !isAuthenticated && redirectTo && !fallback && !showLoginPrompt) {
+      router.push(redirectTo)
+    }
+  }, [isLoading, isAuthenticated, requireAuth, redirectTo, fallback, showLoginPrompt, router])
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -37,19 +42,12 @@ export function AuthGuard({
     )
   }
 
-  // 如果需要认证但未登录
   if (requireAuth && !isAuthenticated) {
-    // 如果提供了自定义fallback，使用它
     if (fallback) {
       return <>{fallback}</>
     }
 
-    // 如果需要重定向
     if (redirectTo) {
-      useEffect(() => {
-        router.push(redirectTo)
-      }, [router, redirectTo])
-
       return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
           <div className="text-center space-y-4">

@@ -2,8 +2,11 @@
  * 认证状态管理Hook
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { SafeUser, LoginData, RegisterData } from '@/types/auth'
+import { API_ENDPOINTS } from '@/lib/api/endpoints'
+
+const TOKEN_VALIDATE_INTERVAL = 5 * 60 * 1000
 
 export interface AuthState {
   user: SafeUser | null
@@ -17,67 +20,90 @@ export function useAuth() {
     isLoading: true,
     isAuthenticated: false
   })
+  const validateTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  // 检查认证状态
+  const clearAuthState = useCallback(() => {
+    setAuthState({
+      user: null,
+      isLoading: false,
+      isAuthenticated: false
+    })
+  }, [])
+
+  const setAuthenticated = useCallback((user: SafeUser) => {
+    setAuthState({
+      user,
+      isLoading: false,
+      isAuthenticated: true
+    })
+  }, [])
+
   const checkAuth = useCallback(async () => {
     try {
-      const response = await fetch('/api/auth/me', {
+      const response = await fetch(API_ENDPOINTS.AUTH.ME, {
         credentials: 'include'
       })
 
       if (response.ok) {
         const data = await response.json()
-        if (data.success) {
-          setAuthState({
-            user: data.data.user,
-            isLoading: false,
-            isAuthenticated: true
-          })
+        if (data.success && data.data?.user) {
+          setAuthenticated(data.data.user)
           return data.data.user
         }
       }
 
-      // 如果获取用户信息失败，尝试刷新令牌
-      const refreshResponse = await fetch('/api/auth/refresh', {
-        method: 'POST',
-        credentials: 'include'
-      })
+      if (response.status === 401) {
+        const refreshResponse = await fetch(API_ENDPOINTS.AUTH.REFRESH, {
+          method: 'POST',
+          credentials: 'include'
+        })
 
-      if (refreshResponse.ok) {
-        const refreshData = await refreshResponse.json()
-        if (refreshData.success) {
-          setAuthState({
-            user: refreshData.data.user,
-            isLoading: false,
-            isAuthenticated: true
-          })
-          return refreshData.data.user
+        if (refreshResponse.ok) {
+          const refreshData = await refreshResponse.json()
+          if (refreshData.success && refreshData.data?.user) {
+            setAuthenticated(refreshData.data.user)
+            return refreshData.data.user
+          }
         }
+
+        clearAuthState()
+        return null
       }
 
-      // 认证失败
-      setAuthState({
-        user: null,
-        isLoading: false,
-        isAuthenticated: false
-      })
+      clearAuthState()
       return null
 
     } catch (error) {
       console.error('检查认证状态失败:', error)
-      setAuthState({
-        user: null,
-        isLoading: false,
-        isAuthenticated: false
-      })
+      clearAuthState()
       return null
     }
-  }, [])
+  }, [setAuthenticated, clearAuthState])
+
+  const validateTokenAlive = useCallback(async () => {
+    if (!authState.isAuthenticated) return
+    try {
+      const response = await fetch(API_ENDPOINTS.AUTH.ME, {
+        credentials: 'include'
+      })
+      if (!response.ok) {
+        const refreshResponse = await fetch(API_ENDPOINTS.AUTH.REFRESH, {
+          method: 'POST',
+          credentials: 'include'
+        })
+        if (!refreshResponse.ok) {
+          clearAuthState()
+        }
+      }
+    } catch {
+      // network error, don't logout
+    }
+  }, [authState.isAuthenticated, clearAuthState])
 
   // 登录
   const login = useCallback(async (data: LoginData) => {
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch(API_ENDPOINTS.AUTH.LOGIN, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -108,7 +134,7 @@ export function useAuth() {
   // 注册
   const register = useCallback(async (data: RegisterData) => {
     try {
-      const response = await fetch('/api/auth/register', {
+      const response = await fetch(API_ENDPOINTS.AUTH.REGISTER, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -145,7 +171,7 @@ export function useAuth() {
   // 登出
   const logout = useCallback(async () => {
     try {
-      await fetch('/api/auth/logout', {
+      await fetch(API_ENDPOINTS.AUTH.LOGOUT, {
         method: 'POST',
         credentials: 'include'
       })
@@ -164,6 +190,60 @@ export function useAuth() {
     }
   }, [])
 
+  // 忘记密码
+  const forgotPassword = useCallback(async (email: string) => {
+    try {
+      const response = await fetch(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ email })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        return {
+          success: true,
+          message: result.message,
+          resetLink: result.data?.resetUrl
+        }
+      } else {
+        return { success: false, error: result.message || result.detail || '发送重置链接失败' }
+      }
+    } catch (error) {
+      console.error('忘记密码请求失败:', error)
+      return { success: false, error: '发送请求时发生错误' }
+    }
+  }, [])
+
+  // 重置密码
+  const resetPassword = useCallback(async (token: string, newPassword: string) => {
+    try {
+      const response = await fetch(API_ENDPOINTS.AUTH.RESET_PASSWORD, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ token, new_password: newPassword })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        return { success: true, message: result.message }
+      } else {
+        return { success: false, error: result.message || result.detail || '密码重置失败' }
+      }
+    } catch (error) {
+      console.error('重置密码请求失败:', error)
+      return { success: false, error: '重置密码时发生错误' }
+    }
+  }, [])
+
   // 更新用户信息
   const updateUser = useCallback((updatedUser: Partial<SafeUser>) => {
     setAuthState(prev => ({
@@ -178,21 +258,31 @@ export function useAuth() {
     return await checkAuth()
   }, [authState.isAuthenticated, checkAuth])
 
-  // 初始化时检查认证状态
   useEffect(() => {
     checkAuth()
   }, [checkAuth])
 
+  useEffect(() => {
+    if (authState.isAuthenticated) {
+      validateTimerRef.current = setInterval(validateTokenAlive, TOKEN_VALIDATE_INTERVAL)
+    }
+    return () => {
+      if (validateTimerRef.current) {
+        clearInterval(validateTimerRef.current)
+        validateTimerRef.current = null
+      }
+    }
+  }, [authState.isAuthenticated, validateTokenAlive])
+
   return {
-    // 状态
     user: authState.user,
     isLoading: authState.isLoading,
     isAuthenticated: authState.isAuthenticated,
-
-    // 方法
     login,
     register,
     logout,
+    forgotPassword,
+    resetPassword,
     updateUser,
     refreshUser,
     checkAuth

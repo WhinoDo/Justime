@@ -8,12 +8,18 @@ from typing import Any, Dict, List, Optional
 
 from app.core.normalizers import to_iso_datetime
 from app.database import db
-from app.models.admin_apikey import AdminApiKey, AdminApiKeyUpsertRequest
+from app.models.admin_apikey import AdminApiKey, AdminApiKeyCreated, AdminApiKeyUpsertRequest
 from app.services.encryption_service import encryption_service
 
 
 class AdminApiKeyBusiness:
     COLLECTION = "system_api_keys"
+
+    @staticmethod
+    def mask_api_key(api_key: str) -> str:
+        if not api_key or len(api_key) <= 8:
+            return "****" if api_key else ""
+        return f"{api_key[:4]}****{api_key[-4:]}"
 
     @staticmethod
     def _safe_apikey(config: Dict[str, Any]) -> AdminApiKey:
@@ -63,18 +69,24 @@ class AdminApiKeyBusiness:
         return [AdminApiKeyBusiness._safe_apikey(doc) for doc in docs]
 
     @staticmethod
-    async def create_apikey(payload: AdminApiKeyUpsertRequest) -> Optional[AdminApiKey]:
+    async def create_apikey(payload: AdminApiKeyUpsertRequest) -> Optional[AdminApiKeyCreated]:
         if db.db is None:
             return None
         doc = AdminApiKeyBusiness._build_doc(payload)
         if await db.db[AdminApiKeyBusiness.COLLECTION].find_one({"id": doc["id"]}):
             doc["id"] = f"{doc['id']}-{int(datetime.utcnow().timestamp())}"
 
+        plain_key = payload.api_key.strip() if payload.api_key else ""
         await db.db[AdminApiKeyBusiness.COLLECTION].insert_one(doc)
         created = await db.db[AdminApiKeyBusiness.COLLECTION].find_one({"id": doc["id"]})
         if not created:
             return None
-        return AdminApiKeyBusiness._safe_apikey(created)
+        return AdminApiKeyCreated(
+            id=str(created.get("id") or ""),
+            name=str(created.get("name") or "系统 API Key"),
+            api_key=plain_key,
+            updated_at=to_iso_datetime(created.get("updated_at")),
+        )
 
     @staticmethod
     async def update_apikey(key_id: str, payload: AdminApiKeyUpsertRequest) -> Optional[AdminApiKey]:

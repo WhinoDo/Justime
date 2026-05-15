@@ -1,3 +1,5 @@
+import { setNodeEnv } from '@/test-utils/env'
+
 const mockNextResponseJson = jest.fn()
 
 jest.mock('next/server', () => ({
@@ -22,12 +24,12 @@ describe('proxyToBackend', () => {
   beforeEach(() => {
     jest.resetModules()
     mockNextResponseJson.mockReset()
-    process.env.NODE_ENV = originalNodeEnv
+    setNodeEnv(originalNodeEnv ?? 'test')
   })
 
   afterAll(() => {
     global.fetch = originalFetch
-    process.env.NODE_ENV = originalNodeEnv
+    setNodeEnv(originalNodeEnv ?? 'test')
   })
 
   it('keeps full cookie token when token contains "="', async () => {
@@ -364,7 +366,7 @@ describe('proxyToBackend', () => {
   })
 
   it('does not expose _debugUrl in production 422 responses', async () => {
-    process.env.NODE_ENV = 'production'
+    setNodeEnv('production')
     const backendHeaders = new Headers({ 'content-type': 'application/json' })
     global.fetch = jest.fn().mockResolvedValue({
       status: 422,
@@ -426,7 +428,7 @@ describe('proxyToBackend', () => {
 
     await proxyToBackend(request, '/api/v1/chat/sessions', {
       method: 'POST',
-      body: false,
+      body: 'false',
       requireAuth: false,
     })
 
@@ -436,7 +438,7 @@ describe('proxyToBackend', () => {
   })
 
   it('does not log backend response body in production', async () => {
-    process.env.NODE_ENV = 'production'
+    setNodeEnv('production')
     const backendHeaders = new Headers({ 'content-type': 'application/json' })
     global.fetch = jest.fn().mockResolvedValue({
       status: 200,

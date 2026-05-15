@@ -12,6 +12,16 @@ import { Colors, Spacing } from '@/constants/theme';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColor } from '@/hooks/use-theme-color';
 
+type ProfileFormState = {
+  displayName: string;
+  bio: string;
+  phone: string;
+  location: string;
+  website: string;
+  department: string;
+  jobTitle: string;
+};
+
 type HabitFormState = {
   occupation: string;
   currentStudyFocus: string;
@@ -23,6 +33,16 @@ type HabitFormState = {
   maxFocusSessionsPerDay: string;
   planningPreference: string;
   notes: string;
+};
+
+const DEFAULT_PROFILE_FORM: ProfileFormState = {
+  displayName: '',
+  bio: '',
+  phone: '',
+  location: '',
+  website: '',
+  department: '',
+  jobTitle: '',
 };
 
 const DEFAULT_HABIT_FORM: HabitFormState = {
@@ -73,6 +93,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const backgroundColor = useThemeColor({}, 'background');
 
+  const [profileForm, setProfileForm] = useState<ProfileFormState>(DEFAULT_PROFILE_FORM);
   const [habitForm, setHabitForm] = useState<HabitFormState>(DEFAULT_HABIT_FORM);
   const [profileData, setProfileData] = useState<Record<string, any>>({});
   const [loadingProfile, setLoadingProfile] = useState(false);
@@ -119,6 +140,15 @@ export default function ProfileScreen() {
       const habits = profile?.habits || {};
 
       setProfileData(profile);
+      setProfileForm({
+        displayName: profile.displayName || user?.displayName || '',
+        bio: profile.bio || '',
+        phone: profile.phone || '',
+        location: profile.location || '',
+        website: profile.website || '',
+        department: profile.department || '',
+        jobTitle: profile.jobTitle || '',
+      });
       setHabitForm({
         occupation: habits.occupation || '',
         currentStudyFocus: habits.currentStudyFocus || '',
@@ -156,8 +186,14 @@ export default function ProfileScreen() {
       const payloadProfile = {
         ...profileData,
         name: profileData?.name || user.displayName || user.email || '用户',
-        displayName: profileData?.displayName || user.displayName || '',
+        displayName: profileForm.displayName.trim() || user.displayName || '',
         email: profileData?.email || user.email || '',
+        bio: profileForm.bio.trim(),
+        phone: profileForm.phone.trim(),
+        location: profileForm.location.trim(),
+        website: profileForm.website.trim(),
+        department: profileForm.department.trim(),
+        jobTitle: profileForm.jobTitle.trim(),
         habits: {
           occupation: habitForm.occupation.trim(),
           currentStudyFocus: habitForm.currentStudyFocus.trim(),
@@ -193,6 +229,15 @@ export default function ProfileScreen() {
       const savedProfile = result?.data?.user?.profile || payloadProfile;
       const savedHabits = savedProfile?.habits || payloadProfile.habits;
       setProfileData(savedProfile);
+      setProfileForm({
+        displayName: savedProfile.displayName || user?.displayName || '',
+        bio: savedProfile.bio || '',
+        phone: savedProfile.phone || '',
+        location: savedProfile.location || '',
+        website: savedProfile.website || '',
+        department: savedProfile.department || '',
+        jobTitle: savedProfile.jobTitle || '',
+      });
       setHabitForm({
         occupation: savedHabits.occupation || '',
         currentStudyFocus: savedHabits.currentStudyFocus || '',
@@ -245,25 +290,79 @@ export default function ProfileScreen() {
         <View style={styles.header}>
           <View style={styles.avatarPlaceholder}>
             <ThemedText type="title" style={{ color: 'white' }}>
-              {user.displayName?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U'}
+              {profileForm.displayName?.[0]?.toUpperCase() || user.displayName?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U'}
             </ThemedText>
           </View>
-          <ThemedText type="heading">{user.displayName || '用户'}</ThemedText>
+          <ThemedText type="heading">{profileForm.displayName || user.displayName || '用户'}</ThemedText>
           <ThemedText type="caption" style={{ color: Colors.light.textSecondary }}>{user.email}</ThemedText>
         </View>
 
         <View style={styles.section}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>个性化习惯与学习方向</ThemedText>
+          <ThemedText type="subtitle" style={styles.sectionTitle}>基本信息</ThemedText>
           <Card variant="outlined" style={styles.formCard}>
             {loadingProfile ? (
               <View style={styles.loadingRow}>
                 <ActivityIndicator size="small" color={Colors.light.primary} />
                 <ThemedText type="caption" style={{ marginLeft: Spacing.sm, color: Colors.light.textSecondary }}>
-                  正在加载个性化信息...
+                  正在加载个人信息...
                 </ThemedText>
               </View>
             ) : null}
 
+            <Input
+              label="显示名称"
+              value={profileForm.displayName}
+              onChangeText={(value) => setProfileForm((prev) => ({ ...prev, displayName: value }))}
+              placeholder="您的显示名称"
+            />
+            <Input
+              label="个人简介"
+              value={profileForm.bio}
+              onChangeText={(value) => setProfileForm((prev) => ({ ...prev, bio: value }))}
+              placeholder="介绍一下自己..."
+              multiline
+              style={styles.multilineInput}
+            />
+            <Input
+              label="手机号码"
+              value={profileForm.phone}
+              onChangeText={(value) => setProfileForm((prev) => ({ ...prev, phone: value }))}
+              placeholder="例如：13800138000"
+              keyboardType="phone-pad"
+            />
+            <Input
+              label="所在位置"
+              value={profileForm.location}
+              onChangeText={(value) => setProfileForm((prev) => ({ ...prev, location: value }))}
+              placeholder="例如：北京市"
+            />
+            <Input
+              label="个人网站"
+              value={profileForm.website}
+              onChangeText={(value) => setProfileForm((prev) => ({ ...prev, website: value }))}
+              placeholder="https://..."
+              keyboardType="url"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <Input
+              label="部门"
+              value={profileForm.department}
+              onChangeText={(value) => setProfileForm((prev) => ({ ...prev, department: value }))}
+              placeholder="例如：研发部"
+            />
+            <Input
+              label="职位"
+              value={profileForm.jobTitle}
+              onChangeText={(value) => setProfileForm((prev) => ({ ...prev, jobTitle: value }))}
+              placeholder="例如：高级工程师"
+            />
+          </Card>
+        </View>
+
+        <View style={styles.section}>
+          <ThemedText type="subtitle" style={styles.sectionTitle}>个性化习惯与学习方向</ThemedText>
+          <Card variant="outlined" style={styles.formCard}>
             <Input
               label="工作角色"
               value={habitForm.occupation}
@@ -346,7 +445,7 @@ export default function ProfileScreen() {
             ) : null}
 
             <Button
-              title="保存个性化信息"
+              title="保存全部信息"
               onPress={handleSaveHabits}
               loading={savingProfile}
               disabled={savingProfile || loadingProfile}
@@ -373,9 +472,9 @@ export default function ProfileScreen() {
           <Card variant="outlined" style={styles.menuItem}>
             <Button
               variant="ghost"
-              title="知识库管理 (开发中)"
+              title="知识库管理"
               icon={<IconSymbol name="folder" size={20} color={Colors.light.text} />}
-              disabled
+              onPress={() => router.push('/settings/knowledge')}
               style={styles.menuButton}
             />
           </Card>

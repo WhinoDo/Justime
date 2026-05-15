@@ -1,0 +1,50 @@
+# Jushi 项目定时任务配置
+# 编辑: crontab -e
+# 查看: crontab -l
+# 日志目录: /Users/zhuyuxuan/Desktop/Code/jushi/logs/
+
+# ========== 环境变量 ==========
+SHELL=/bin/bash
+PATH=/Users/zhuyuxuan/.nvm/versions/node/v23.7.0/bin:/Users/zhuyuxuan/.pyenv/shims:/usr/local/bin:/usr/bin:/bin
+PROJECT_DIR=/Users/zhuyuxuan/Desktop/Code/jushi
+PYTHON=/Users/zhuyuxuan/.pyenv/shims/python3
+LOG_DIR=/Users/zhuyuxuan/Desktop/Code/jushi/logs
+
+# ========== 健康检查任务 ==========
+
+# 后端服务健康检查（每 5 分钟）
+*/5 * * * * cd $PROJECT_DIR/scripts/cron && $PYTHON health_check.py >> $LOG_DIR/cron.log 2>&1
+
+# ========== 数据库任务 ==========
+
+# MongoDB 数据库备份（每天凌晨 2 点）
+0 2 * * * cd $PROJECT_DIR/scripts/cron && $PYTHON backup_db.py >> $LOG_DIR/backup.log 2>&1
+
+# ========== 清理任务 ==========
+
+# 清理临时文件（每天凌晨 3 点）
+0 3 * * * cd $PROJECT_DIR/scripts/cron && $PYTHON cleanup_temp.py >> $LOG_DIR/cleanup.log 2>&1
+
+# 清理过期日志（每周日凌晨 4 点）
+0 4 * * 0 find $LOG_DIR -name "*.log" -mtime +30 -exec gzip {} \; 2>/dev/null
+
+# ========== 代码优化任务 ==========
+
+# 启动代码优化 Agent（每 30 分钟）
+*/30 * * * * cd $PROJECT_DIR/scripts/cron && $PYTHON code_optimizer_agent.py >> $LOG_DIR/code_optimizer.log 2>&1
+
+# 代码优化 Agent（每周一凌晨 5 点，深度扫描）
+0 5 * * 1 cd $PROJECT_DIR/scripts/cron && $PYTHON code_optimizer_agent.py --deep >> $LOG_DIR/code_optimizer.log 2>&1
+
+# ========== Multica Agent 监控任务 ==========
+
+# Multica Issue 状态监控（每 10 分钟）
+*/10 * * * * $PROJECT_DIR/scripts/cron/multica_issue_monitor.sh >> $LOG_DIR/multica_monitor.log 2>&1
+
+# ========== 监控告警任务 ==========
+
+# 磁盘空间检查（每小时整点）
+0 * * * * df -h $PROJECT_DIR | awk 'NR==2 {if($5+0>80) print "⚠️ 磁盘使用率: "$5" "$6}' >> $LOG_DIR/disk_monitor.log 2>&1
+
+# 内存使用检查（每小时）
+5 * * * * vm_stat | perl -ne '/page size of (\d+)/ and $ps=$1; /Pages free:\s+(\d+)/ and printf "Free: %.2f GB\n", $1*$ps/1073741824' >> $LOG_DIR/memory_monitor.log 2>&1

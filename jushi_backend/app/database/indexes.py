@@ -95,7 +95,25 @@ async def ensure_indexes():
     可在应用启动时调用
     """
     try:
-        client = AsyncIOMotorClient(settings.MONGODB_URI)
+        client_options = {
+            "maxPoolSize": settings.MONGODB_MAX_POOL_SIZE,
+            "minPoolSize": settings.MONGODB_MIN_POOL_SIZE,
+            "maxIdleTimeMS": settings.MONGODB_MAX_IDLE_TIME_MS,
+            "connectTimeoutMS": settings.MONGODB_CONNECT_TIMEOUT_MS,
+            "serverSelectionTimeoutMS": settings.MONGODB_SERVER_SELECTION_TIMEOUT_MS,
+            "socketTimeoutMS": settings.MONGODB_SOCKET_TIMEOUT_MS,
+            "retryWrites": True,
+            "retryReads": True,
+        }
+        
+        valid_read_preferences = {
+            "primary", "primaryPreferred", "secondary", "secondaryPreferred", "nearest"
+        }
+        read_pref = settings.MONGODB_READ_PREFERENCE
+        if read_pref in valid_read_preferences:
+            client_options["readPreference"] = read_pref
+        
+        client = AsyncIOMotorClient(settings.MONGODB_URI, **client_options)
         db = client[settings.MONGODB_DB_NAME]
 
         await create_indexes(db)

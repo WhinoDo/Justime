@@ -4,12 +4,17 @@ ENV NODE_ENV=production
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
+RUN useradd --create-home --shell /bin/bash appuser \
+    && chown -R appuser:appuser /app
+
+COPY --chown=appuser:appuser package.json package-lock.json ./
 RUN npm ci
 
-COPY . .
+COPY --chown=appuser:appuser . .
 
 RUN npm run build
+
+USER appuser
 
 EXPOSE 3000
 

@@ -3,6 +3,7 @@ Agent 业务逻辑层
 处理 Agent 相关的业务逻辑，支持多 LLM 提供者
 """
 
+from fastapi import HTTPException, status
 from typing import Optional, List, Dict, Any
 
 from app.services.agent_service import agent_service
@@ -85,45 +86,43 @@ class AgentBusiness:
         Returns:
             Agent 执行响应
         """
-        # 验证请求
         if not request.task or not request.task.strip():
-            return AgentRunResponse(
-                success=False,
-                error="任务描述不能为空"
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="任务描述不能为空"
             )
         
-        # 调用服务层执行任务
         result = await self.service.run_task(
             task=request.task,
             max_steps=request.max_steps or 10,
             provider=request.provider
         )
         
-        # 构建响应
-        if result["success"]:
-            steps = None
-            if result.get("steps"):
-                steps = [
-                    AgentStep(
-                        step_number=s["step_number"],
-                        thought=s.get("thought"),
-                        action=s.get("action"),
-                        observation=s.get("observation")
-                    )
-                    for s in result["steps"]
-                ]
-            
-            return AgentRunResponse(
-                success=True,
-                result=result["result"],
-                steps=steps,
-                provider=result.get("provider")
+        if not result.get("success"):
+            error_msg = result.get("error", "Agent 任务执行失败")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=error_msg
             )
-        else:
-            return AgentRunResponse(
-                success=False,
-                error=result.get("error", "未知错误")
-            )
+        
+        steps = None
+        if result.get("steps"):
+            steps = [
+                AgentStep(
+                    step_number=s["step_number"],
+                    thought=s.get("thought"),
+                    action=s.get("action"),
+                    observation=s.get("observation")
+                )
+                for s in result["steps"]
+            ]
+        
+        return AgentRunResponse(
+            success=True,
+            result=result["result"],
+            steps=steps,
+            provider=result.get("provider")
+        )
 
 
 # 创建全局业务实例

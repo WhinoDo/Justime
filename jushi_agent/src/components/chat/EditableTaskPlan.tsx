@@ -9,14 +9,9 @@ import {
     ChevronDown, ChevronUp, Sparkles, Edit3, Save, X,
     CheckCircle, Bot, Link as LinkIcon, ExternalLink
 } from 'lucide-react'
+import { TaskDecomposition, SubtaskItem } from '@/types'
 
-interface EditableSubtask {
-    id: string
-    title: string
-    duration_hours: number
-    order: number
-    description: string
-    resources?: Array<{ title: string; url: string }>
+interface EditableSubtask extends SubtaskItem {
     selected: boolean
     isEditing: boolean
 }
@@ -26,26 +21,6 @@ interface EditableProject {
     description: string
     total_days: number
     start_date: string
-}
-
-interface TaskDecomposition {
-    success: boolean
-    type: string
-    project: {
-        name: string
-        description?: string
-        total_days: number
-        start_date: string
-        subtask_count: number
-    }
-    subtasks: Array<{
-        title: string
-        duration_hours: number
-        order: number
-        description?: string
-        resources?: Array<{ title: string; url: string }>
-    }>
-    message: string
 }
 
 interface EditableTaskPlanProps {
@@ -192,7 +167,7 @@ export function EditableTaskPlan({
     }
 
     const selectedCount = subtasks.filter(t => t.selected).length
-    const totalHours = subtasks.filter(t => t.selected).reduce((sum, t) => sum + t.duration_hours, 0)
+    const totalHours = subtasks.filter(t => t.selected).reduce((sum, t) => sum + (t.duration_hours || 0), 0)
 
     return (
         <div className="bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-xl border border-purple-200 dark:border-purple-800 p-4 mt-3 shadow-sm">

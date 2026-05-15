@@ -76,7 +76,7 @@ class AgentService:
     def _create_model(self, config: LLMConfig) -> Optional[LiteLLMModel]:
         """根据配置创建 LLM 模型"""
         if not SMOLAGENTS_AVAILABLE:
-            print(f"⚠️ Smolagents 不可用，跳过模型初始化: {SMOLAGENTS_IMPORT_ERROR}")
+            logger.warning(f"Smolagents 不可用，跳过模型初始化: {SMOLAGENTS_IMPORT_ERROR}")
             return None
         try:
             # 特殊处理 DeepSeek 的 model_id (litellm 要求 deepseek/ 前缀)
@@ -281,7 +281,7 @@ class AgentService:
     ) -> Optional[CodeAgent]:
         """创建 Agent 实例"""
         if not SMOLAGENTS_AVAILABLE:
-            print(f"⚠️ 无法创建 Agent，Smolagents 未安装: {SMOLAGENTS_IMPORT_ERROR}")
+            logger.warning(f"无法创建 Agent，Smolagents 未安装: {SMOLAGENTS_IMPORT_ERROR}")
             return None
         if system_prompt is None:
             system_prompt = self._get_default_system_prompt()

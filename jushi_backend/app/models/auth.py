@@ -10,7 +10,7 @@ from pydantic import BaseModel, EmailStr, Field, field_validator, model_validato
 class RegisterRequest(BaseModel):
     """用户注册请求"""
     email: EmailStr = Field(..., description="邮箱地址")
-    password: str = Field(..., min_length=6, max_length=128, description="密码，至少 6 位")
+    password: str = Field(..., min_length=8, max_length=128, description="密码，至少 8 位")
     username: Optional[str] = Field(None, max_length=50, description="用户名，可选")
     display_name: Optional[str] = Field(None, max_length=100, description="显示名称，可选")
     phone: Optional[str] = Field(None, max_length=20, description="手机号，可选")
@@ -21,11 +21,10 @@ class RegisterRequest(BaseModel):
         """验证密码强度"""
         if not v or not v.strip():
             raise ValueError('密码不能为空')
-        if len(v) < 6:
-            raise ValueError('密码至少需要6个字符')
+        if len(v) < 8:
+            raise ValueError('密码至少需要8个字符')
         if len(v) > 128:
             raise ValueError('密码不能超过128个字符')
-        # 检查空白字符
         if v.strip() != v:
             raise ValueError('密码不能包含首尾空白字符')
         return v
@@ -200,4 +199,29 @@ class ProfileUpdateRequest(BaseModel):
                 if len(v[key]) > max_len:
                     raise ValueError(f'{key}长度不能超过{max_len}个字符')
 
+        return v
+
+
+class ForgotPasswordRequest(BaseModel):
+    """忘记密码请求"""
+    email: EmailStr = Field(..., description="邮箱地址")
+
+
+class ResetPasswordRequest(BaseModel):
+    """重置密码请求"""
+    token: str = Field(..., min_length=1, description="重置令牌")
+    new_password: str = Field(..., min_length=8, max_length=128, description="新密码，至少 8 位")
+
+    @field_validator('new_password')
+    @classmethod
+    def validate_new_password(cls, v: str) -> str:
+        """验证新密码强度"""
+        if not v or not v.strip():
+            raise ValueError('密码不能为空')
+        if len(v) < 8:
+            raise ValueError('密码至少需要8个字符')
+        if len(v) > 128:
+            raise ValueError('密码不能超过128个字符')
+        if v.strip() != v:
+            raise ValueError('密码不能包含首尾空白字符')
         return v

@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { API_ENDPOINTS } from '@/lib/api/endpoints'
 
 export interface ChatSessionSummary {
   _id: string
@@ -37,7 +38,7 @@ export function useChatSessions({
       setLoading(true)
       setError(null)
 
-      const response = await fetch('/api/chat/sessions')
+      const response = await fetch(API_ENDPOINTS.CHAT.SESSIONS)
       const result = await response.json()
 
       if (result.sessions) {

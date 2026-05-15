@@ -42,6 +42,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useToast } from '@/components/ui/use-toast'
 import { useAuth } from '@/hooks/useAuth'
+import { API_ENDPOINTS } from '@/lib/api/endpoints'
 
 interface AdminUser {
     id: string
@@ -78,7 +79,7 @@ export default function UserManagementPage() {
 
     const fetchUsers = async () => {
         try {
-            const response = await fetch('/api/admin/users')
+            const response = await fetch(API_ENDPOINTS.ADMIN.USERS)
             const result = await response.json()
             if (!response.ok) {
                 throw new Error(result.error || result.message || '获取用户列表失败')
@@ -106,7 +107,7 @@ export default function UserManagementPage() {
         if (!confirm('确定要删除该用户吗？此操作无法撤销。')) return
 
         try {
-            const response = await fetch(`/api/admin/users/${userId}`, {
+            const response = await fetch(API_ENDPOINTS.ADMIN.USER(userId), {
                 method: 'DELETE'
             })
             const result = await response.json()
@@ -135,7 +136,7 @@ export default function UserManagementPage() {
 
     const handleUpdateRole = async (userId: string, role: 'admin' | 'user') => {
         try {
-            const response = await fetch(`/api/admin/users/${userId}/role`, {
+            const response = await fetch(API_ENDPOINTS.ADMIN.USER_ROLE(userId), {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ role })
@@ -159,7 +160,7 @@ export default function UserManagementPage() {
 
     const handleUpdateStatus = async (userId: string, status: 'active' | 'banned') => {
         try {
-            const response = await fetch(`/api/admin/users/${userId}/status`, {
+            const response = await fetch(API_ENDPOINTS.ADMIN.USER_STATUS(userId), {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status })
@@ -189,7 +190,7 @@ export default function UserManagementPage() {
         setModelDialogOpen(true)
 
         try {
-            const response = await fetch('/api/admin/models')
+            const response = await fetch(API_ENDPOINTS.ADMIN.MODELS)
             const result = await response.json()
             if (!response.ok) throw new Error(result.error || result.message || '获取模型列表失败')
             const rows = Array.isArray(result?.data) ? result.data : []
@@ -228,7 +229,7 @@ export default function UserManagementPage() {
 
         setModelDialogSaving(true)
         try {
-            const response = await fetch(`/api/admin/users/${selectedUser.id}/models`, {
+            const response = await fetch(API_ENDPOINTS.ADMIN.USER_MODELS(selectedUser.id), {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

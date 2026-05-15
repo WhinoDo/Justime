@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+import tempfile
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
@@ -11,8 +13,13 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from app.models.book_analysis import BookAnalysisChapterUpdateRequest
 from app.services.book_analysis_service import book_analysis_service
 from app.services.security_service import SecurityService
+from app.core.config import settings
+from app.core.validators import InputValidator
 
 router = APIRouter()
+
+CHUNK_SIZE = 64 * 1024
+MAX_FILE_SIZE = settings.MAX_FILE_SIZE
 
 
 @router.post("/projects", summary="创建书籍分析项目")
@@ -23,14 +30,46 @@ async def create_book_analysis_project(
 ) -> Dict[str, Any]:
     if not file.filename:
         raise HTTPException(status_code=400, detail="文件名不能为空")
-    content = await file.read()
-    project = await book_analysis_service.create_project(
-        user_id=str(current_user["_id"]),
-        filename=file.filename,
-        content=content,
-        title=title,
+    
+    safe_filename = InputValidator.validate_filename(
+        file.filename,
+        allowed_extensions=InputValidator.ALLOWED_DOC_EXTENSIONS
     )
-    return {"success": True, "data": {"project": project}, "message": "书籍分析项目已创建"}
+    
+    tmp_path: Optional[Path] = None
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=safe_filename) as tmp:
+            tmp_path = Path(tmp.name)
+            file_size = 0
+            while True:
+                chunk = await file.read(CHUNK_SIZE)
+                if not chunk:
+                    break
+                file_size += len(chunk)
+                if file_size > MAX_FILE_SIZE:
+                    tmp_path.unlink(missing_ok=True)
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"文件大小超过限制 ({MAX_FILE_SIZE // (1024 * 1024)}MB)"
+                    )
+                tmp.write(chunk)
+        
+        content = tmp_path.read_bytes()
+        
+        project = await book_analysis_service.create_project(
+            user_id=str(current_user["_id"]),
+            filename=safe_filename,
+            content=content,
+            title=title,
+        )
+        return {"success": True, "data": {"project": project}, "message": "书籍分析项目已创建"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if tmp_path and tmp_path.exists():
+            tmp_path.unlink(missing_ok=True)
 
 
 @router.get("/projects", summary="获取书籍分析项目列表")

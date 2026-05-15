@@ -17,6 +17,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login
 class SecurityService:
     ACCESS_TOKEN_TYPE = "access"
     REFRESH_TOKEN_TYPE = "refresh"
+    PASSWORD_RESET_TOKEN_TYPE = "password_reset"
 
     @staticmethod
     def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
@@ -61,6 +62,30 @@ class SecurityService:
         try:
             payload = jwt.decode(token, settings.JWT_REFRESH_SECRET, algorithms=[settings.JWT_ALGORITHM])
             if payload.get("type") != SecurityService.REFRESH_TOKEN_TYPE:
+                return None
+            return payload
+        except jwt.PyJWTError:
+            return None
+
+    @staticmethod
+    def create_password_reset_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
+        """创建密码重置令牌"""
+        to_encode = data.copy()
+        if expires_delta:
+            expire = datetime.utcnow() + expires_delta
+        else:
+            expire = datetime.utcnow() + timedelta(hours=1)
+
+        to_encode.update({"exp": expire, "type": SecurityService.PASSWORD_RESET_TOKEN_TYPE})
+        encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+        return encoded_jwt
+
+    @staticmethod
+    def decode_password_reset_token(token: str) -> Optional[Dict[str, Any]]:
+        """解码并验证密码重置令牌"""
+        try:
+            payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+            if payload.get("type") != SecurityService.PASSWORD_RESET_TOKEN_TYPE:
                 return None
             return payload
         except jwt.PyJWTError:

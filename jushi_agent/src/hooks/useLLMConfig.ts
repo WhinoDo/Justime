@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { API_ENDPOINTS } from '@/lib/api/endpoints'
 
 export interface LLMConfig {
     apiKey: string
@@ -35,7 +36,7 @@ export function useLLMConfig() {
     useEffect(() => {
         const loadConfig = async () => {
             try {
-                const response = await fetch('/api/auth/llm-config', {
+                const response = await fetch(API_ENDPOINTS.AUTH.LLM_CONFIG, {
                     headers: { 'Cache-Control': 'no-cache' },
                     credentials: 'include'
                 })
@@ -76,7 +77,7 @@ export function useLLMConfig() {
                 temperature: newConfig.temperature
             }
 
-            const response = await fetch('/api/auth/llm-config', {
+            const response = await fetch(API_ENDPOINTS.AUTH.LLM_CONFIG, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json'
@@ -112,7 +113,7 @@ export function useLLMConfig() {
                 temperature: DEFAULT_CONFIG.temperature
             }
 
-            const response = await fetch('/api/auth/llm-config', {
+            const response = await fetch(API_ENDPOINTS.AUTH.LLM_CONFIG, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json'
@@ -151,7 +152,7 @@ export function useLLMConfigs() {
     const loadConfigs = useCallback(async () => {
         setIsLoading(true)
         try {
-            const response = await fetch('/api/auth/llm-configs', {
+            const response = await fetch(API_ENDPOINTS.AUTH.LLM_CONFIGS, {
                 headers: { 'Cache-Control': 'no-cache' },
                 credentials: 'include'
             })
@@ -178,7 +179,7 @@ export function useLLMConfigs() {
     const addConfig = async (newConfig: Partial<ConfigItem>) => {
         setIsLoading(true)
         try {
-            const response = await fetch('/api/auth/llm-configs', {
+            const response = await fetch(API_ENDPOINTS.AUTH.LLM_CONFIGS, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newConfig),
@@ -196,7 +197,7 @@ export function useLLMConfigs() {
     const updateConfig = async (id: string, updates: Partial<ConfigItem>) => {
         setIsLoading(true)
         try {
-            const response = await fetch(`/api/auth/llm-configs/${id}`, {
+            const response = await fetch(API_ENDPOINTS.AUTH.LLM_CONFIG_DETAIL(id), {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updates),
@@ -213,7 +214,7 @@ export function useLLMConfigs() {
     const deleteConfig = async (id: string) => {
         setIsLoading(true)
         try {
-            const response = await fetch(`/api/auth/llm-configs/${id}`, {
+            const response = await fetch(API_ENDPOINTS.AUTH.LLM_CONFIG_DETAIL(id), {
                 method: 'DELETE',
                 credentials: 'include'
             })
@@ -228,7 +229,7 @@ export function useLLMConfigs() {
     const setActiveConfig = async (id: string) => {
         setIsLoading(true)
         try {
-            const response = await fetch(`/api/auth/llm-configs/${id}/active`, {
+            const response = await fetch(API_ENDPOINTS.AUTH.LLM_CONFIG_ACTIVE(id), {
                 method: 'PUT',
                 credentials: 'include'
             })

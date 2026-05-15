@@ -7,6 +7,7 @@ import { useTheme } from 'next-themes'
 import { Save, AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useRouter } from 'next/navigation'
+import { API_ENDPOINTS } from '@/lib/api/endpoints'
 
 interface DocumentEditorProps {
     eventId: string
@@ -58,7 +59,7 @@ export default function DocumentEditor({
         setError(null)
 
         try {
-            const response = await fetch('/api/documents', {
+            const response = await fetch(API_ENDPOINTS.DOCUMENTS.BASE, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/select'
 import { CalendarEventData } from './BigCalendar'
 import { format } from 'date-fns'
+import { API_ENDPOINTS } from '@/lib/api/endpoints'
 
 interface EventDialogProps {
   open: boolean
@@ -157,7 +158,7 @@ export function EventDialog({
   }, [])
 
   const pollJobStatus = async (eventId: string, jobId: string) => {
-    const response = await fetch(`/api/calendar/events/${eventId}/youtube-summary/jobs/${jobId}`, {
+    const response = await fetch(API_ENDPOINTS.CALENDAR.EVENT_YOUTUBE_SUMMARY_JOB(eventId, jobId), {
       cache: 'no-store'
     })
     const result = await response.json()
@@ -221,7 +222,7 @@ export function EventDialog({
     setYoutubeBusy(true)
     setYoutubeMessage('正在创建解析任务...')
     try {
-      const response = await fetch(`/api/calendar/events/${event._id}/youtube-summary/jobs`, {
+      const response = await fetch(API_ENDPOINTS.CALENDAR.EVENT_YOUTUBE_SUMMARY_JOBS(event._id), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

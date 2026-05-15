@@ -20,8 +20,10 @@ export async function POST(request: NextRequest) {
       tokenValue?: string,
       options?: { allowLegacyPlusBearerSeparator?: boolean }
     ): string | undefined => {
-      const hasUnsafeTokenChars = (value: string): boolean =>
-        /[\s\x00-\x1F\x7F-\x9F\u2028\u2029]/u.test(value)
+      const hasUnsafeTokenChars = (value: string): boolean => {
+        const unsafeCharRegex = new RegExp('[\\s\\x00-\\x1F\\x7F-\\x9F\\u2028\\u2029]', 'u')
+        return unsafeCharRegex.test(value)
+      }
 
       const MAX_TOKEN_DECODE_DEPTH = 8
       const hasUnsafeEncodedTokenChars = (value: string): boolean => {

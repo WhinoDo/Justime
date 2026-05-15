@@ -15,6 +15,14 @@ class AdminApiKey(BaseModel):
     updated_at: Optional[str] = Field(None, description="更新时间")
 
 
+class AdminApiKeyCreated(BaseModel):
+    """创建 API Key 后的响应（包含完整密钥）"""
+    id: str = Field(..., description="API Key 配置ID")
+    name: str = Field(..., description="显示名称")
+    api_key: str = Field(..., description="完整的 API Key（仅创建时返回）")
+    updated_at: Optional[str] = Field(None, description="更新时间")
+
+
 class AdminApiKeyUpsertRequest(BaseModel):
     """创建/更新 API Key 请求"""
     id: Optional[str] = Field(None, description="配置ID，不填时自动生成")

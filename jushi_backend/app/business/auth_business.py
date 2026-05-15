@@ -3,11 +3,14 @@
 """
 
 import logging
+import secrets
+from bson import ObjectId
 from fastapi import HTTPException
 from app.services.user_service import UserService
 from app.models.auth import (
     RegisterRequest, LoginRequest, SafeUser,
-    UserProfile, AuthData, AuthResponse, LLMConfig
+    UserProfile, AuthData, AuthResponse, LLMConfig,
+    ForgotPasswordRequest, ResetPasswordRequest
 )
 
 from datetime import timedelta, datetime
@@ -532,5 +535,84 @@ class AuthBusiness:
         profile = await UserService.get_user_profile(user_id)
         safe_user = AuthBusiness._build_safe_user(refreshed_user or user, profile)
         return AuthResponse(success=True, message="更新资料成功", data=AuthData(user=safe_user))
+
+    @staticmethod
+    async def forgot_password(email: str) -> AuthResponse:
+        """处理忘记密码请求，生成重置 token"""
+        from app.database import db
+        from app.core.config import settings
+        
+        if db.db is None:
+            raise HTTPException(status_code=503, detail="数据库连接失败")
+        
+        user = await UserService.get_user_by_email(email)
+        if not user:
+            raise HTTPException(status_code=404, detail="该邮箱未注册")
+        
+        user_id = str(user["_id"])
+        
+        reset_token = secrets.token_urlsafe(32)
+        expires_at = datetime.utcnow() + timedelta(minutes=15)
+        
+        await db.db.password_reset_tokens.delete_many({"user_id": user_id})
+        
+        await db.db.password_reset_tokens.insert_one({
+            "user_id": user_id,
+            "token": reset_token,
+            "expires_at": expires_at,
+            "created_at": datetime.utcnow(),
+            "used": False
+        })
+        
+        reset_url = f"/auth/reset-password?token={reset_token}"
+        
+        return AuthResponse(
+            success=True,
+            message="重置链接已生成",
+            data={
+                "resetUrl": reset_url,
+                "expiresIn": 900,
+                "note": "生产环境中此链接应通过邮件发送给用户"
+            }
+        )
+
+    @staticmethod
+    async def reset_password(token: str, new_password: str) -> AuthResponse:
+        """通过重置 token 设置新密码"""
+        from app.database import db
+        
+        if db.db is None:
+            raise HTTPException(status_code=503, detail="数据库连接失败")
+        
+        token_doc = await db.db.password_reset_tokens.find_one({
+            "token": token,
+            "used": False,
+            "expires_at": {"$gt": datetime.utcnow()}
+        })
+        
+        if not token_doc:
+            raise HTTPException(status_code=400, detail="重置链接无效或已过期")
+        
+        user_id = token_doc["user_id"]
+        
+        hashed_password = UserService.get_password_hash(new_password)
+        
+        result = await db.db.users.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$set": {"hashed_password": hashed_password, "updated_at": datetime.utcnow()}}
+        )
+        
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="用户不存在")
+        
+        await db.db.password_reset_tokens.update_one(
+            {"_id": token_doc["_id"]},
+            {"$set": {"used": True, "used_at": datetime.utcnow()}}
+        )
+        
+        return AuthResponse(
+            success=True,
+            message="密码重置成功，请使用新密码登录"
+        )
 
 auth_business = AuthBusiness()

@@ -1,17 +1,40 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-// import { BigCalendar, CalendarEventData } from '@/components/calendar/BigCalendar'
-import { BigCalendar } from '@/components/calendar/BigCalendar'
-import type { CalendarEventData } from '@/components/calendar/BigCalendar' // Assuming type export needs adjustment or use import type
-import { EventDialog } from '@/components/calendar/EventDialog'
+import dynamic from 'next/dynamic'
+import type { CalendarEventData } from '@/components/calendar/BigCalendar'
 import { Button } from '@/components/ui/button'
 import { Plus, ArrowLeft, RefreshCw, MessageCircle, Calendar as CalendarIcon, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { SlotInfo, View } from 'react-big-calendar'
-import { DaySchedulePanel } from '@/components/calendar/DaySchedulePanel'
 import { JushiBackground } from '@/components/ui/JushiBackground'
+import { API_ENDPOINTS } from '@/lib/api/endpoints'
+
+const BigCalendar = dynamic(
+  () => import('@/components/calendar/BigCalendar').then((mod) => mod.BigCalendar),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
+          <p className="text-sm text-white/60">Loading Calendar...</p>
+        </div>
+      </div>
+    ),
+  }
+)
+
+const EventDialog = dynamic(
+  () => import('@/components/calendar/EventDialog').then((mod) => mod.EventDialog),
+  { ssr: false }
+)
+
+const DaySchedulePanel = dynamic(
+  () => import('@/components/calendar/DaySchedulePanel').then((mod) => mod.DaySchedulePanel),
+  { ssr: false }
+)
 
 export default function CalendarPage() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth()
@@ -32,7 +55,7 @@ export default function CalendarPage() {
 
     try {
       setLoading(true)
-      const response = await fetch('/api/calendar/events')
+      const response = await fetch(API_ENDPOINTS.CALENDAR.EVENTS)
       const data = await response.json()
 
       if (data.success) {
@@ -89,7 +112,7 @@ export default function CalendarPage() {
     try {
       if (selectedEvent?._id) {
         // 更新现有事件
-        const response = await fetch(`/api/calendar/events/${selectedEvent._id}`, {
+        const response = await fetch(API_ENDPOINTS.CALENDAR.EVENT(selectedEvent._id), {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(eventData),
@@ -103,7 +126,7 @@ export default function CalendarPage() {
         }
       } else {
         // 创建新事件
-        const response = await fetch('/api/calendar/events', {
+        const response = await fetch(API_ENDPOINTS.CALENDAR.EVENTS, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -127,7 +150,7 @@ export default function CalendarPage() {
   // 删除事件
   const handleDeleteEvent = async (eventId: string) => {
     try {
-      const response = await fetch(`/api/calendar/events/${eventId}`, {
+      const response = await fetch(API_ENDPOINTS.CALENDAR.EVENT(eventId), {
         method: 'DELETE',
       })
 

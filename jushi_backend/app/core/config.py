@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     # 服务器配置
     HOST: str = "127.0.0.1"
     PORT: int = 8080
-    DEBUG: bool = True
+    DEBUG: bool = False
 
     # 兼容旧环境变量（已废弃，不再作为模型来源）
     LLM_MODEL_ID: str = ""
@@ -78,6 +78,15 @@ class Settings(BaseSettings):
     MONGODB_URI: str = "mongodb://localhost:27017/jushi-agent"
     MONGODB_DB_NAME: str = "jushi-agent"
     
+    # Redis配置
+    REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_PASSWORD: Optional[str] = None
+    REDIS_MAX_CONNECTIONS: int = 10
+    REDIS_SOCKET_TIMEOUT: int = 5
+    REDIS_SOCKET_CONNECT_TIMEOUT: int = 5
+    REDIS_RETRY_ON_TIMEOUT: bool = True
+    REDIS_HEALTH_CHECK_INTERVAL: int = 30
+    
     # JWT配置
     JWT_SECRET: str = ""
     JWT_REFRESH_SECRET: str = ""
@@ -94,6 +103,22 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3001",
         "http://192.168.1.4:3000"
     ]
+    ALLOWED_METHODS: List[str] = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+    ALLOWED_HEADERS: List[str] = [
+        "Content-Type",
+        "Authorization",
+        "X-CSRF-Token",
+        "Accept",
+        "Accept-Language",
+        "Content-Language",
+    ]
+    
+    # CSRF配置
+    CSRF_ENABLED: bool = True
+    CSRF_SECRET: str = ""
+    CSRF_TOKEN_EXPIRE_HOURS: int = 24
+    CSRF_COOKIE_NAME: str = "csrf_token"
+    CSRF_HEADER_NAME: str = "X-CSRF-Token"
 
     # OpenClaw 特殊任务链路配置
     OPENCLAW_ENABLED: bool = False
@@ -104,16 +129,55 @@ class Settings(BaseSettings):
         "如果任务信息不足，明确说明缺失项，不要编造。"
     )
 
+    # Redis 配置
+    REDIS_URL: str = ""
+    REDIS_MAX_CONNECTIONS: int = 10
+
+    # MongoDB 连接池配置
+    MONGODB_MAX_POOL_SIZE: int = 50
+    MONGODB_MIN_POOL_SIZE: int = 5
+    MONGODB_MAX_IDLE_TIME_MS: int = 60000
+    MONGODB_CONNECT_TIMEOUT_MS: int = 5000
+    MONGODB_SERVER_SELECTION_TIMEOUT_MS: int = 5000
+    MONGODB_SOCKET_TIMEOUT_MS: int = 30000
+    
+    # MongoDB Read Preference 配置
+    # 可选值: primary, primaryPreferred, secondary, secondaryPreferred, nearest
+    MONGODB_READ_PREFERENCE: str = "primary"
+
+    # 文件上传配置
+    MAX_FILE_SIZE: int = 50 * 1024 * 1024
+    CHUNKED_UPLOAD_THRESHOLD: int = 10 * 1024 * 1024
+    CHUNK_SIZE: int = 1024 * 1024
+
     @model_validator(mode="after")
     def validate_required_secrets(self):
+        required_secrets = ["JWT_SECRET", "JWT_REFRESH_SECRET", "ENCRYPTION_SECRET"]
+        if self.CSRF_ENABLED:
+            required_secrets.append("CSRF_SECRET")
+        
         missing_fields = [
             field
-            for field in ("JWT_SECRET", "JWT_REFRESH_SECRET", "ENCRYPTION_SECRET")
+            for field in required_secrets
             if not str(getattr(self, field, "") or "").strip()
         ]
         if missing_fields:
             missing = ", ".join(missing_fields)
             raise ValueError(f"缺少关键安全配置: {missing}")
+        
+        weak_secrets = []
+        min_secret_length = 32
+        for field in required_secrets:
+            value = str(getattr(self, field, "") or "").strip()
+            if len(value) < min_secret_length:
+                weak_secrets.append(f"{field} (长度 {len(value)} < {min_secret_length})")
+        
+        if weak_secrets:
+            raise ValueError(f"安全密钥强度不足，请使用至少 {min_secret_length} 字符的密钥: {', '.join(weak_secrets)}")
+        
+        if not self.DEBUG and "*" in self.ALLOWED_ORIGINS:
+            raise ValueError("生产环境禁止使用 allow_origins=['*']，请配置具体的允许源")
+        
         return self
     class Config:
         env_file = ".env"

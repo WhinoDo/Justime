@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,7 +19,6 @@ import {
   CheckCircle,
   RefreshCw
 } from 'lucide-react'
-import { ForgotPasswordForm } from './ForgotPasswordForm'
 
 interface LoginFormProps {
   onSuccess?: (user: any) => void
@@ -26,12 +26,9 @@ interface LoginFormProps {
   redirectTo?: string
 }
 
-type ViewMode = 'login' | 'forgot-password'
-
 export function LoginForm({ onSuccess, onSwitchToRegister, redirectTo }: LoginFormProps) {
   const { login, isLoading } = useAuth()
-
-  const [viewMode, setViewMode] = useState<ViewMode>('login')
+  const router = useRouter()
 
   const [formData, setFormData] = useState({
     identifier: '',
@@ -91,15 +88,6 @@ export function LoginForm({ onSuccess, onSwitchToRegister, redirectTo }: LoginFo
     } finally {
       setIsSubmitting(false)
     }
-  }
-
-  // 如果是忘记密码视图，显示忘记密码表单
-  if (viewMode === 'forgot-password') {
-    return (
-      <ForgotPasswordForm
-        onBackToLogin={() => setViewMode('login')}
-      />
-    )
   }
 
   return (
@@ -209,13 +197,13 @@ export function LoginForm({ onSuccess, onSwitchToRegister, redirectTo }: LoginFo
           </Button>
         </form>
 
-        {/* 底部链接 */}
+{/* 底部链接 */}
         <div className="text-center space-y-2">
           <div className="text-sm">
             <Button
               variant="link"
               className="p-0 h-auto text-orange-300 hover:text-orange-200"
-              onClick={() => setViewMode('forgot-password')}
+              onClick={() => router.push('/auth/forgot-password')}
             >
               忘记密码？
             </Button>

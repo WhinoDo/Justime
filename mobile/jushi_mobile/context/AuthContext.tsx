@@ -1,6 +1,9 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getConfiguredApiBaseUrl, isManualApiBaseUrlEnabled } from '@/constants/app-config';
+import { getConfiguredApiBaseUrl, isManualApiBaseUrlEnabled, getApiBaseUrl } from '@/constants/app-config';
+import { API_ENDPOINTS } from '@/constants/api-endpoints';
+
+const TOKEN_VALIDATE_INTERVAL = 5 * 60 * 1000;
 
 const STORAGE_KEYS = {
   token: '@jushi/token',
@@ -47,7 +50,7 @@ const safeParseUser = (value: string): AuthUser | null => {
 };
 
 const getDefaultBaseUrl = () => {
-  return normalizeBaseUrl(getConfiguredApiBaseUrl()) || 'http://127.0.0.1:8080';
+  return getApiBaseUrl();
 };
 
 const DEFAULT_BASE_URL = getDefaultBaseUrl();
@@ -60,6 +63,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [baseUrl, setBaseUrlState] = useState<string>(DEFAULT_BASE_URL);
   const [loading, setLoading] = useState<boolean>(true);
+  const validateTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const validateToken = async (
+    tokenToValidate: string,
+    targetBaseUrl: string
+  ): Promise<{ valid: boolean; user?: AuthUser }> => {
+    try {
+      const response = await fetch(`${targetBaseUrl}${API_ENDPOINTS.AUTH.ME}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${tokenToValidate}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        return { valid: false };
+      }
+
+      const result = await response.json();
+      if (result.success && result.data?.user) {
+        const serverUser = result.data.user;
+        return {
+          valid: true,
+          user: {
+            id: serverUser.id,
+            email: serverUser.email,
+            displayName: serverUser.displayName || serverUser.email,
+          },
+        };
+      }
+
+      return { valid: false };
+    } catch (error) {
+      console.error('Token validation failed:', error);
+      return { valid: false };
+    }
+  };
 
   useEffect(() => {
     let settled = false;
@@ -77,10 +118,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           AsyncStorage.getItem(STORAGE_KEYS.baseUrl),
         ]);
 
+        let currentBaseUrl = DEFAULT_BASE_URL;
+        if (MANUAL_API_BASE_URL_ENABLED && savedBaseUrl) {
+          const cleanSaved = normalizeBaseUrl(savedBaseUrl);
+          currentBaseUrl = cleanSaved || DEFAULT_BASE_URL;
+        }
+        setBaseUrlState(currentBaseUrl);
+        if (!MANUAL_API_BASE_URL_ENABLED) {
+          await AsyncStorage.setItem(STORAGE_KEYS.baseUrl, DEFAULT_BASE_URL);
+        }
+
         const parsedUser = savedUser ? safeParseUser(savedUser) : null;
         if (savedToken && parsedUser) {
-          setToken(savedToken);
-          setUser(parsedUser);
+          const validation = await validateToken(savedToken, currentBaseUrl);
+          if (validation.valid && validation.user) {
+            setToken(savedToken);
+            setUser(validation.user);
+            await AsyncStorage.setItem(STORAGE_KEYS.user, JSON.stringify(validation.user));
+          } else {
+            await AsyncStorage.multiRemove([STORAGE_KEYS.token, STORAGE_KEYS.user]);
+          }
         } else {
           const invalidKeys: string[] = [];
           if (savedToken) invalidKeys.push(STORAGE_KEYS.token);
@@ -88,15 +145,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (invalidKeys.length) {
             await AsyncStorage.multiRemove(invalidKeys);
           }
-        }
-        if (MANUAL_API_BASE_URL_ENABLED) {
-          if (savedBaseUrl) {
-            const cleanSaved = normalizeBaseUrl(savedBaseUrl);
-            setBaseUrlState(cleanSaved || DEFAULT_BASE_URL);
-          }
-        } else {
-          setBaseUrlState(DEFAULT_BASE_URL);
-          await AsyncStorage.setItem(STORAGE_KEYS.baseUrl, DEFAULT_BASE_URL);
         }
       } catch (error) {
         console.error('Auth hydrate failed:', error);
@@ -124,7 +172,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     try {
       const targetBaseUrl = normalizeBaseUrl(overrideBaseUrl || baseUrl) || DEFAULT_BASE_URL;
-      const response = await fetch(`${targetBaseUrl}/api/v1/auth/login`, {
+      const response = await fetch(`${targetBaseUrl}${API_ENDPOINTS.AUTH.LOGIN}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identifier, password, rememberMe: true }),
@@ -167,7 +215,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     try {
       const targetBaseUrl = normalizeBaseUrl(overrideBaseUrl || baseUrl) || DEFAULT_BASE_URL;
-      const response = await fetch(`${targetBaseUrl}/api/v1/auth/register`, {
+      const response = await fetch(`${targetBaseUrl}${API_ENDPOINTS.AUTH.REGISTER}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -210,6 +258,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     await AsyncStorage.multiRemove([STORAGE_KEYS.token, STORAGE_KEYS.user]);
   };
+
+  const validateTokenAlive = useCallback(async () => {
+    if (!token) return;
+    try {
+      const response = await fetch(`${baseUrl}${API_ENDPOINTS.AUTH.ME}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!response.ok) {
+        await signOut();
+      }
+    } catch {
+      // network error, don't logout
+    }
+  }, [token, baseUrl]);
+
+  useEffect(() => {
+    if (token) {
+      validateTimerRef.current = setInterval(validateTokenAlive, TOKEN_VALIDATE_INTERVAL);
+    }
+    return () => {
+      if (validateTimerRef.current) {
+        clearInterval(validateTimerRef.current);
+        validateTimerRef.current = null;
+      }
+    };
+  }, [token, validateTokenAlive]);
 
   const value = useMemo(
     () => ({

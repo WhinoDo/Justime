@@ -54,7 +54,8 @@ class UserService:
         try:
             oid = ObjectId(user_id) if isinstance(user_id, str) else user_id
             return await db.db.users.find_one({"_id": oid})
-        except:
+        except (ValueError, TypeError, Exception) as e:
+            logger.debug(f"Invalid user_id format: {e}")
             return None
 
     @staticmethod
@@ -157,11 +158,11 @@ class UserService:
         if db.db is None:
             return False
         try:
-            # Handle both string ID and ObjectId
             oid = ObjectId(user_id) if isinstance(user_id, str) else user_id
             result = await db.db.users.delete_one({"_id": oid})
             return result.deleted_count > 0
-        except:
+        except (ValueError, TypeError, Exception) as e:
+            logger.debug(f"Failed to delete user: {e}")
             return False
 
     @staticmethod
@@ -582,4 +583,27 @@ class UserService:
             return result.modified_count > 0 or result.matched_count > 0
         except Exception as e:
             logger.error(f"Error update user profile: {e}")
+            return False
+
+    @staticmethod
+    async def update_password(user_id: str, new_password: str) -> bool:
+        """更新用户密码"""
+        if db.db is None:
+            return False
+        try:
+            oid = ObjectId(user_id) if isinstance(user_id, str) else user_id
+            hashed_password = UserService.get_password_hash(new_password)
+            result = await db.db.users.update_one(
+                {"_id": oid},
+                {
+                    "$set": {
+                        "hashed_password": hashed_password,
+                        "updated_at": datetime.utcnow()
+                    },
+                    "$unset": {"password": ""}
+                }
+            )
+            return result.modified_count > 0 or result.matched_count > 0
+        except Exception as e:
+            logger.error(f"Error updating password: {e}")
             return False

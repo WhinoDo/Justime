@@ -40,6 +40,14 @@ export const API_CONFIG = {
   }
 };
 
+// 外部API服务配置
+export const EXTERNAL_API_ENDPOINTS = {
+  SILICONFLOW: {
+    BASE_URL: 'https://api.siliconflow.cn/v1',
+    CHAT_COMPLETIONS: 'https://api.siliconflow.cn/v1/chat/completions',
+  },
+} as const;
+
 // CORS配置
 export const CORS_CONFIG = {
   // 允许的来源

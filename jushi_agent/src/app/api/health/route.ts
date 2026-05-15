@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { EXTERNAL_API_ENDPOINTS } from '@/lib/api/config'
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,7 +12,7 @@ export async function GET(request: NextRequest) {
     let apiTestResult = '未测试'
     if (apiKey) {
       try {
-        const response = await fetch('https://api.siliconflow.cn/v1/chat/completions', {
+        const response = await fetch(EXTERNAL_API_ENDPOINTS.SILICONFLOW.CHAT_COMPLETIONS, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${apiKey}`,

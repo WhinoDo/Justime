@@ -5,6 +5,25 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { API_CONFIG, DEFAULT_HEADERS, ApiResponse } from './config';
+import { APIResponse } from '@/types';
+
+type ProxyBody = string | Record<string, unknown> | FormData;
+
+interface ProxyOptions {
+  method?: string;
+  body?: ProxyBody;
+  headers?: Record<string, string>;
+  requireAuth?: boolean;
+}
+
+interface ProxyWithAuthOptions {
+  method?: string;
+  body?: ProxyBody;
+  successMessage: string;
+  errorMessage: string;
+  errorCode: string;
+  cache?: RequestCache;
+}
 
 function normalizeAuthToken(token: string | null): string | null {
   if (!token) {
@@ -44,12 +63,7 @@ function normalizeAuthToken(token: string | null): string | null {
 export async function proxyToBackend(
   request: NextRequest,
   endpoint: string,
-  options: {
-    method?: string;
-    body?: any;
-    headers?: Record<string, string>;
-    requireAuth?: boolean;
-  } = {}
+  options: ProxyOptions = {}
 ): Promise<NextResponse> {
   try {
     const {
@@ -171,13 +185,13 @@ export async function proxyToBackend(
 
     // 获取响应数据
     const responseData = await response.text();
-    let data: any;
+    let data: unknown;
 
     try {
       data = JSON.parse(responseData);
       // 仅在非生产环境保留 422 调试 URL，避免生产暴露内部地址细节
       if (response.status === 422 && process.env.NODE_ENV !== 'production') {
-        data._debugUrl = backendUrl;
+        (data as Record<string, unknown>)._debugUrl = backendUrl;
       }
     } catch {
       data = responseData;
@@ -232,7 +246,7 @@ export function createErrorResponse(
   message: string,
   code: string = 'INTERNAL_ERROR',
   status: number = 500,
-  details?: any
+  details?: string | Record<string, unknown>
 ): NextResponse {
   return NextResponse.json(
     {
@@ -250,7 +264,7 @@ export function createErrorResponse(
  * 创建标准化的成功响应
  */
 export function createSuccessResponse(
-  data: any,
+  data: unknown,
   message?: string,
   status: number = 200
 ): NextResponse {
@@ -307,14 +321,14 @@ export function resolveAuthorizationHeader(request: NextRequest): string | null 
   return authToken.startsWith('Bearer ') ? authToken : `Bearer ${authToken}`
 }
 
-function resolveErrorMessage(result: any, fallbackMessage: string): string {
+function resolveErrorMessage(result: Record<string, unknown> | null, fallbackMessage: string): string {
   if (typeof result?.detail === 'string' && result.detail) return result.detail
   if (typeof result?.message === 'string' && result.message) return result.message
   if (typeof result?.error === 'string' && result.error) return result.error
   return fallbackMessage
 }
 
-async function parseProxyResponse(response: Response): Promise<any> {
+async function parseProxyResponse(response: Response): Promise<unknown> {
   const text = await response.text()
   if (!text) return null
 
@@ -328,14 +342,7 @@ async function parseProxyResponse(response: Response): Promise<any> {
 export async function proxyWithAuth(
   request: NextRequest,
   endpoint: string,
-  options: {
-    method?: string
-    body?: any
-    successMessage: string
-    errorMessage: string
-    errorCode: string
-    cache?: RequestCache
-  }
+  options: ProxyWithAuthOptions
 ): Promise<NextResponse> {
   try {
     const authorization = resolveAuthorizationHeader(request)
@@ -378,7 +385,7 @@ export async function proxyWithAuth(
 
     const result = await parseProxyResponse(response)
     if (!response.ok) {
-      return createErrorResponse(resolveErrorMessage(result, errorMessage), errorCode, response.status)
+      return createErrorResponse(resolveErrorMessage(result as Record<string, unknown> | null, errorMessage), errorCode, response.status)
     }
 
     return createSuccessResponse(result, successMessage)

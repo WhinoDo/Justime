@@ -3,11 +3,15 @@ import { Keyboard, KeyboardEvent, LayoutAnimation, Platform } from 'react-native
 
 import { useAuth } from '@/context/AuthContext';
 import { isManualApiBaseUrlEnabled } from '@/constants/app-config';
+import { API_ENDPOINTS } from '@/constants/api-endpoints';
 import type {
   AddTaskResult,
   ChatMessage,
   ChatModelOption,
   ChatSessionSummary,
+  RawModelConfig,
+  RawChatMessage,
+  RawSessionData,
   SuggestedEvent,
   TaskDecomposition,
   TaskItem,
@@ -39,7 +43,7 @@ const normalizeModelCapabilities = (raw: unknown): string[] => {
   return labels;
 };
 
-const normalizeModelOptions = (rawItems: any[]): ChatModelOption[] => {
+const normalizeModelOptions = (rawItems: RawModelConfig[]): ChatModelOption[] => {
   const models: ChatModelOption[] = [];
   const seenIds = new Set<string>();
 
@@ -69,7 +73,7 @@ const toLegacyDecomposition = (decomposition: TaskDecomposition): TaskDecomposit
   subtasks: Array.isArray(decomposition.subtasks) ? decomposition.subtasks : [],
 });
 
-const toChatMessage = (raw: any): ChatMessage => {
+const toChatMessage = (raw: RawChatMessage): ChatMessage => {
   const rawRole = String(raw?.role || '').toLowerCase();
   const role: 'user' | 'assistant' = rawRole === 'user' ? 'user' : 'assistant';
   const timestampValue = raw?.timestamp ? String(raw.timestamp) : new Date().toISOString();
@@ -255,7 +259,7 @@ export function useChatScreenLogic() {
     const timeout = setTimeout(() => controller.abort(), 8000);
 
     try {
-      const response = await fetch(`${targetBaseUrl}/api/v1/health/`, {
+      const response = await fetch(`${targetBaseUrl}${API_ENDPOINTS.HEALTH}`, {
         method: 'GET',
         signal: controller.signal,
       });
@@ -289,7 +293,7 @@ export function useChatScreenLogic() {
     if (!token) return;
     setSessionsLoading(true);
     try {
-      const response = await fetch(`${baseUrl}/api/v1/chat/sessions`, {
+      const response = await fetch(`${baseUrl}${API_ENDPOINTS.CHAT.SESSIONS}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -304,7 +308,7 @@ export function useChatScreenLogic() {
 
       const rawSessions = Array.isArray(result?.sessions) ? result.sessions : [];
       const mapped = rawSessions
-        .map((item: any) => ({
+        .map((item: RawSessionData) => ({
           id: String(item?._id || item?.id || ''),
           title: String(item?.title || item?.preview || '未命名对话'),
           preview: item?.preview ? String(item.preview) : undefined,
@@ -329,7 +333,7 @@ export function useChatScreenLogic() {
     setModelError(null);
 
     try {
-      const response = await fetch(`${baseUrl}/api/v1/auth/llm-configs`, {
+      const response = await fetch(`${baseUrl}${API_ENDPOINTS.AUTH.LLM_CONFIGS}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -388,7 +392,7 @@ export function useChatScreenLogic() {
     setCreatingSession(true);
     setError(null);
     try {
-      const response = await fetch(`${baseUrl}/api/v1/chat/sessions`, {
+      const response = await fetch(`${baseUrl}${API_ENDPOINTS.CHAT.SESSIONS}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -425,7 +429,7 @@ export function useChatScreenLogic() {
     setLoadingSessionId(targetSession.id);
     setError(null);
     try {
-      const response = await fetch(`${baseUrl}/api/v1/chat/sessions/${targetSession.id}/messages`, {
+      const response = await fetch(`${baseUrl}${API_ENDPOINTS.CHAT.SESSION_MESSAGES(targetSession.id)}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -439,7 +443,7 @@ export function useChatScreenLogic() {
       }
 
       const rawMessages = Array.isArray(result?.messages) ? result.messages : [];
-      setMessages(rawMessages.map((item: any) => toChatMessage(item)));
+      setMessages(rawMessages.map((item: RawChatMessage) => toChatMessage(item)));
       setSessionId(targetSession.id);
       setActivePlanIndexes({});
       setHistoryVisible(false);
@@ -488,7 +492,7 @@ export function useChatScreenLogic() {
     setError(null);
 
     try {
-      const response = await fetch(`${baseUrl}/api/v1/chat/`, {
+      const response = await fetch(`${baseUrl}${API_ENDPOINTS.CHAT.BASE}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -565,7 +569,7 @@ export function useChatScreenLogic() {
       return;
     }
 
-    await fetch(`${baseUrl}/api/v1/chat/messages/${messageId}`, {
+    await fetch(`${baseUrl}${API_ENDPOINTS.CHAT.MESSAGE(messageId)}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -599,7 +603,7 @@ export function useChatScreenLogic() {
     setEventActionKey(actionKey);
 
     try {
-      const response = await fetch(`${baseUrl}/api/v1/calendar/events`, {
+      const response = await fetch(`${baseUrl}${API_ENDPOINTS.CALENDAR.EVENTS}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -704,7 +708,7 @@ export function useChatScreenLogic() {
         return { success: false };
       }
 
-      const response = await fetch(`${baseUrl}/api/v1/calendar/events`, {
+      const response = await fetch(`${baseUrl}${API_ENDPOINTS.CALENDAR.EVENTS}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

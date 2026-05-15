@@ -3,12 +3,19 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/toaster";
+import { PWAInstallBanner } from "@/components/PWAInstallBanner";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "聚时 - 焦虑缓解与任务规划助手",
   description: "专为大学生设计的情绪-任务双驱动智能助手，基于情绪状态提供个性化任务拆解和心理支持",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "聚时",
+  },
 };
 
 export const viewport: Viewport = {
@@ -38,6 +45,7 @@ export default function RootLayout({
         >
           {children}
           <Toaster />
+          <PWAInstallBanner />
         </ThemeProvider>
       </body>
     </html>

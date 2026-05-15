@@ -79,3 +79,35 @@ export type ChatModelOption = {
   capabilities?: string[];
   isDefault: boolean;
 };
+
+export type RawModelConfig = {
+  modelId?: string;
+  model_id?: string;
+  id?: string;
+  name?: string;
+  modelName?: string;
+  capabilities?: unknown[];
+  is_default?: boolean;
+  isDefault?: boolean;
+  isActive?: boolean;
+  enabled?: boolean;
+};
+
+export type RawChatMessage = {
+  _id?: string;
+  id?: string;
+  role?: string;
+  content?: string;
+  timestamp?: string;
+  suggestedEvents?: SuggestedEvent[];
+  taskDecomposition?: TaskDecomposition | null;
+  multiTaskDecompositions?: TaskDecomposition[] | null;
+};
+
+export type RawSessionData = {
+  _id?: string;
+  id?: string;
+  title?: string;
+  preview?: string;
+  updatedAt?: string;
+};

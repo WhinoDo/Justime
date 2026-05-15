@@ -1,3 +1,5 @@
+import { setNodeEnv } from '@/test-utils/env'
+
 const mockJson = jest.fn()
 
 jest.mock('next/server', () => ({
@@ -28,12 +30,12 @@ describe('POST /api/chat route', () => {
   })
 
   afterAll(() => {
-    process.env.NODE_ENV = originalNodeEnv
+    setNodeEnv(originalNodeEnv ?? 'test')
     global.fetch = originalFetch
   })
 
   it('hides backend error details in production', async () => {
-    process.env.NODE_ENV = 'production'
+    setNodeEnv('production')
     global.fetch = jest.fn().mockResolvedValue({
       ok: false,
       status: 500,
@@ -58,7 +60,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('does not log backend error details in production', async () => {
-    process.env.NODE_ENV = 'production'
+    setNodeEnv('production')
     global.fetch = jest.fn().mockResolvedValue({
       ok: false,
       status: 500,
@@ -87,7 +89,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('redacts message preview in production forwarding logs', async () => {
-    process.env.NODE_ENV = 'production'
+    setNodeEnv('production')
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -119,7 +121,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('does not expose backend host in production logs', async () => {
-    process.env.NODE_ENV = 'production'
+    setNodeEnv('production')
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -150,7 +152,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('normalizes lowercase bearer authorization header before forwarding', async () => {
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
 
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
@@ -177,7 +179,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('does not forward authorization header when bearer uses plus separator', async () => {
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
 
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
@@ -204,7 +206,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('normalizes lowercase bearer token from cookie before forwarding', async () => {
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
 
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
@@ -231,7 +233,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('decodes url-encoded bearer token from cookie before forwarding', async () => {
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
 
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
@@ -258,7 +260,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('decodes plus-encoded bearer token from cookie before forwarding', async () => {
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
 
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
@@ -285,7 +287,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('preserves literal plus signs inside cookie bearer token payload', async () => {
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
 
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
@@ -312,7 +314,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('does not forward malformed bare bearer header', async () => {
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
 
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
@@ -339,7 +341,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('falls back to authorization header when cookie token is placeholder text', async () => {
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
 
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
@@ -366,7 +368,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('falls back to authorization header when cookie token is bearer placeholder text', async () => {
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
 
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
@@ -393,7 +395,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('falls back to authorization header when cookie token is quoted bearer placeholder text', async () => {
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
 
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
@@ -420,7 +422,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('falls back to authorization header when cookie token contains newline whitespace', async () => {
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
 
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
@@ -447,7 +449,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('falls back to authorization header when cookie token is too long', async () => {
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
 
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
@@ -475,7 +477,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('falls back to authorization header when cookie token contains null-byte control char', async () => {
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
 
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
@@ -502,7 +504,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('does not forward authorization header when bearer token contains null-byte control char', async () => {
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
 
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
@@ -529,7 +531,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('does not forward authorization header when bearer token contains double-encoded newline', async () => {
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
 
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
@@ -556,7 +558,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('does not forward authorization header when bearer token contains triple-encoded newline', async () => {
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
 
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
@@ -583,7 +585,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('does not forward authorization header when bearer token contains quadruple-encoded newline', async () => {
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
 
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
@@ -610,7 +612,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('does not forward authorization header when bearer token contains nonuple-encoded newline', async () => {
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
 
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
@@ -637,7 +639,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('does not forward authorization header when bearer token contains encoded unicode line separator', async () => {
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
 
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
@@ -664,7 +666,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('does not forward authorization header when bearer token contains encoded unicode next-line control char', async () => {
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
 
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
@@ -691,7 +693,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('does not forward authorization header when bearer token is quoted placeholder text', async () => {
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
 
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
@@ -718,7 +720,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('returns 400 when message is blank after trim', async () => {
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
     global.fetch = jest.fn() as unknown as typeof fetch
 
     const { POST } = await import('@/app/api/chat/route')
@@ -739,7 +741,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('accepts message when trimmed length is exactly 1000', async () => {
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
 
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
@@ -772,7 +774,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('accepts openclaw command when command payload length is exactly 1000', async () => {
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
 
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
@@ -807,7 +809,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('returns 400 when openclaw command has no payload', async () => {
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
     global.fetch = jest.fn() as unknown as typeof fetch
 
     const { POST } = await import('@/app/api/chat/route')
@@ -828,7 +830,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('returns 400 when request json is invalid', async () => {
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
     global.fetch = jest.fn() as unknown as typeof fetch
 
     const { POST } = await import('@/app/api/chat/route')
@@ -851,7 +853,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('returns 400 when request json parsing throws type error', async () => {
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
     global.fetch = jest.fn() as unknown as typeof fetch
 
     const { POST } = await import('@/app/api/chat/route')
@@ -874,7 +876,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('returns 400 when request payload is null', async () => {
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
     global.fetch = jest.fn() as unknown as typeof fetch
 
     const { POST } = await import('@/app/api/chat/route')
@@ -895,7 +897,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('returns 400 when runtimeModelId is not a string', async () => {
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
     const fetchMock = jest.fn()
     global.fetch = fetchMock as unknown as typeof fetch
 
@@ -918,7 +920,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('returns 400 when runtimeModelId is blank after trim', async () => {
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
     const fetchMock = jest.fn()
     global.fetch = fetchMock as unknown as typeof fetch
 
@@ -941,7 +943,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('returns 400 when difficultyLevel is out of range', async () => {
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
     const fetchMock = jest.fn()
     global.fetch = fetchMock as unknown as typeof fetch
 
@@ -964,7 +966,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('returns 400 when useWebSearch is not a boolean', async () => {
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
     const fetchMock = jest.fn()
     global.fetch = fetchMock as unknown as typeof fetch
 
@@ -987,7 +989,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('returns 400 when sessionId is not a string', async () => {
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
     const fetchMock = jest.fn()
     global.fetch = fetchMock as unknown as typeof fetch
 
@@ -1010,7 +1012,7 @@ describe('POST /api/chat route', () => {
   })
 
   it('returns 500 when backend success response json is invalid', async () => {
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => {

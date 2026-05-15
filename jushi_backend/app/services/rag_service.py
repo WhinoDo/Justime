@@ -230,11 +230,25 @@ def _resolve_llm_config_from_system_configs() -> dict | None:
     """从后台 system_llm_configs 读取当前可用问答模型。"""
     client = None
     try:
-        client = MongoClient(
-            settings.MONGODB_URI,
-            serverSelectionTimeoutMS=1500,
-            connectTimeoutMS=1500,
-        )
+        client_options = {
+            "maxPoolSize": settings.MONGODB_MAX_POOL_SIZE,
+            "minPoolSize": settings.MONGODB_MIN_POOL_SIZE,
+            "maxIdleTimeMS": settings.MONGODB_MAX_IDLE_TIME_MS,
+            "connectTimeoutMS": settings.MONGODB_CONNECT_TIMEOUT_MS,
+            "serverSelectionTimeoutMS": settings.MONGODB_SERVER_SELECTION_TIMEOUT_MS,
+            "socketTimeoutMS": settings.MONGODB_SOCKET_TIMEOUT_MS,
+            "retryWrites": True,
+            "retryReads": True,
+        }
+        
+        valid_read_preferences = {
+            "primary", "primaryPreferred", "secondary", "secondaryPreferred", "nearest"
+        }
+        read_pref = settings.MONGODB_READ_PREFERENCE
+        if read_pref in valid_read_preferences:
+            client_options["readPreference"] = read_pref
+        
+        client = MongoClient(settings.MONGODB_URI, **client_options)
         db = client[settings.MONGODB_DB_NAME]
         cursor = db.system_llm_configs.find(
             {"enabled": {"$ne": False}}

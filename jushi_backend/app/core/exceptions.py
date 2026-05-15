@@ -8,6 +8,9 @@ from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 import logging
 
+from app.models.common import ErrorResponse
+from app.core.log_sanitizer import sanitize_error_message
+
 logger = logging.getLogger(__name__)
 
 
@@ -23,6 +26,11 @@ class UserNotFoundError(AuthenticationError):
 
 class PasswordIncorrectError(AuthenticationError):
     """Password incorrect during authentication"""
+    pass
+
+
+class CSRFError(Exception):
+    """CSRF token validation error"""
     pass
 
 
@@ -95,7 +103,6 @@ def _get_friendly_error_message(field: str, message: str, error_type: str) -> st
     """
     friendly_field = _get_friendly_field_name(field)
 
-    # 错误类型映射
     if error_type in ("value_error.missing", "missing"):
         return f"{friendly_field}不能为空"
     elif "email" in error_type:
@@ -115,11 +122,9 @@ def _get_friendly_error_message(field: str, message: str, error_type: str) -> st
     elif "datetime" in error_type:
         return f"{friendly_field}日期时间格式无效"
 
-    # 如果消息本身就是中文，直接返回
     if any('\u4e00' <= c <= '\u9fff' for c in message):
         return message
 
-    # 默认消息
     return f"{friendly_field}格式无效"
 
 
@@ -127,14 +132,12 @@ def _format_validation_errors(errors: list) -> list:
     """格式化验证错误"""
     formatted_errors = []
     for error in errors:
-        # 获取字段路径
         loc = error.get("loc", [])
         field = ".".join(str(l) for l in loc if l not in ("body", "query", "path", "header"))
 
         message = error.get("msg", "验证失败")
         error_type = error.get("type", "")
 
-        # 转换为友好消息
         friendly_message = _get_friendly_error_message(field, message, error_type)
         formatted_errors.append({
             "field": field,
@@ -151,11 +154,23 @@ def setup_exception_handlers(app: FastAPI):
     @app.exception_handler(HTTPException)
     async def http_exception_handler(request: Request, exc: HTTPException):
         """HTTP异常处理器"""
+        from app.core.config import settings
+        
+        if settings.DEBUG:
+            error_detail = exc.detail
+        else:
+            sensitive_keywords = ['token', 'secret', 'password', 'key', 'auth', 'credential']
+            detail_lower = str(exc.detail).lower()
+            if any(keyword in detail_lower for keyword in sensitive_keywords):
+                error_detail = "请求处理失败"
+            else:
+                error_detail = exc.detail
+        
         return JSONResponse(
             status_code=exc.status_code,
             content={
                 "success": False,
-                "error": exc.detail,
+                "error": error_detail,
                 "code": exc.status_code
             }
         )
@@ -166,12 +181,12 @@ def setup_exception_handlers(app: FastAPI):
         formatted_errors = _format_validation_errors(exc.errors())
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content={
-                "success": False,
-                "error": "请求参数验证失败",
-                "details": formatted_errors,
-                "code": 422
-            }
+            content=ErrorResponse(
+                success=False,
+                error="请求参数验证失败",
+                code=422,
+                details=formatted_errors
+            ).model_dump()
         )
 
     @app.exception_handler(ValidationError)
@@ -180,12 +195,12 @@ def setup_exception_handlers(app: FastAPI):
         formatted_errors = _format_validation_errors(exc.errors())
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content={
-                "success": False,
-                "error": "数据验证失败",
-                "details": formatted_errors,
-                "code": 422
-            }
+            content=ErrorResponse(
+                success=False,
+                error="数据验证失败",
+                code=422,
+                details=formatted_errors
+            ).model_dump()
         )
 
     @app.exception_handler(AuthenticationError)
@@ -201,26 +216,49 @@ def setup_exception_handlers(app: FastAPI):
             headers={"WWW-Authenticate": "Bearer"}
         )
 
+    @app.exception_handler(CSRFError)
+    async def csrf_error_handler(request: Request, exc: CSRFError):
+        """CSRF 错误处理器"""
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={
+                "success": False,
+                "error": str(exc) if str(exc) else "CSRF 验证失败",
+                "code": 403
+            }
+        )
+
     @app.exception_handler(ValueError)
     async def value_error_handler(request: Request, exc: ValueError):
         """值错误处理器"""
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
-            content={
-                "success": False,
-                "error": str(exc),
-                "code": 400
-            }
+            content=ErrorResponse(
+                success=False,
+                error=str(exc),
+                code=400
+            ).model_dump()
         )
 
     @app.exception_handler(Exception)
     async def global_exception_handler(request: Request, exc: Exception):
         """全局异常处理器"""
-        logger.error(f"未处理的异常: {type(exc).__name__}: {str(exc)}", exc_info=True)
+        sanitized_error = sanitize_error_message(f"{type(exc).__name__}: {str(exc)}")
+        logger.error(f"未处理的异常: {sanitized_error}", exc_info=True)
 
-        # 在生产环境中不暴露详细错误信息
         from app.core.config import settings
-        error_detail = str(exc) if settings.DEBUG else "服务器内部错误"
+        if settings.DEBUG:
+            error_detail = str(exc)
+        else:
+            error_detail = "服务器内部错误"
+            if isinstance(exc, ValueError):
+                error_detail = sanitize_error_message(str(exc))
+            elif isinstance(exc, KeyError):
+                error_detail = "请求参数错误"
+            elif "timeout" in str(type(exc).__name__).lower():
+                error_detail = "请求超时，请稍后重试"
+            elif "connection" in str(exc).lower():
+                error_detail = "服务连接失败，请稍后重试"
 
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -30,6 +30,7 @@ import {
     DialogTitle
 } from '@/components/ui/dialog'
 import { useToast } from '@/components/ui/use-toast'
+import { API_ENDPOINTS } from '@/lib/api/endpoints'
 
 interface AdminModel {
     id: string
@@ -120,8 +121,8 @@ export default function AdminModelsPage() {
     const fetchData = async () => {
         try {
             const [modelsResp, keysResp] = await Promise.all([
-                fetch('/api/admin/models'),
-                fetch('/api/admin/apikeys'),
+                fetch(API_ENDPOINTS.ADMIN.MODELS),
+                fetch(API_ENDPOINTS.ADMIN.API_KEYS),
             ])
             const modelsResult = await modelsResp.json()
             const keysResult = await keysResp.json()
@@ -254,7 +255,7 @@ export default function AdminModelsPage() {
         setSaving(true)
         try {
             const isEdit = !!editingModel
-            const endpoint = isEdit ? `/api/admin/models/${editingModel.id}` : '/api/admin/models'
+            const endpoint = isEdit ? API_ENDPOINTS.ADMIN.MODEL(editingModel.id) : API_ENDPOINTS.ADMIN.MODELS
             const method = isEdit ? 'PUT' : 'POST'
 
             const response = await fetch(endpoint, {
@@ -285,7 +286,7 @@ export default function AdminModelsPage() {
     const handleDelete = async (model: AdminModel) => {
         if (!confirm(`确定要删除模型 "${model.name}" 吗？`)) return
         try {
-            const response = await fetch(`/api/admin/models/${model.id}`, { method: 'DELETE' })
+            const response = await fetch(API_ENDPOINTS.ADMIN.MODEL(model.id), { method: 'DELETE' })
             const result = await response.json()
             if (!response.ok) throw new Error(result.error || result.message || '删除模型失败')
             toast({
@@ -304,7 +305,7 @@ export default function AdminModelsPage() {
 
     const handleToggleEnabled = async (model: AdminModel, enabled: boolean) => {
         try {
-            const response = await fetch(`/api/admin/models/${model.id}`, {
+            const response = await fetch(API_ENDPOINTS.ADMIN.MODEL(model.id), {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

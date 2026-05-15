@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Colors, Spacing } from '@/constants/theme';
+import { getApiBaseUrl } from '@/constants/app-config';
 import { useThemeColor } from '@/hooks/use-theme-color';
 
 type AuthMode = 'login' | 'register';
@@ -90,7 +91,7 @@ export default function AuthOverlay({
                 label="后端地址"
                 value={baseUrlInput}
                 onChangeText={onBaseUrlChange}
-                placeholder="http://127.0.0.1:8080"
+                placeholder={getApiBaseUrl()}
                 autoCapitalize="none"
                 autoCorrect={false}
               />

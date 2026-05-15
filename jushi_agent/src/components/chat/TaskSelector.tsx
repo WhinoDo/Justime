@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Calendar, Clock, CheckCircle2, Plus } from 'lucide-react'
 import { TaskItem } from '@/lib/ai/task-planner'
 import { useAuth } from '@/hooks/useAuth'
+import { API_ENDPOINTS } from '@/lib/api/endpoints'
 
 interface TaskSelectorProps {
   tasks: TaskItem[]
@@ -28,7 +29,7 @@ export function TaskSelector({ tasks, onTaskAdded }: TaskSelectorProps) {
     setAddingTasks(prev => new Set(prev).add(taskId))
 
     try {
-      const response = await fetch('/api/calendar/events', {
+      const response = await fetch(API_ENDPOINTS.CALENDAR.EVENTS, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

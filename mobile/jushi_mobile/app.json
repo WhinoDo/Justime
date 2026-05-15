@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "jushimobile",
+    "host": "jushi.app",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
@@ -33,7 +34,6 @@
         {
           "gradleJvmArgs": "-Xmx2048m -XX:MaxMetaspaceSize=512m --add-opens=java.base/java.lang=ALL-UNNAMED",
           "gradleParallel": true,
-          "javaHome": "/Users/zhuyuxuan/Library/Java/JavaVirtualMachines/ms-17.0.16/Contents/Home",
           "extraMavenRepos": [
             "https://www.jitpack.io"
           ],
@@ -60,8 +60,10 @@
       "reactCompiler": false
     },
     "extra": {
-      "apiBaseUrl": "https://gemological-envyingly-hulda.ngrok-free.dev",
-      "allowManualApiBaseUrl": false
+      "apiBaseUrl": "",
+      "allowManualApiBaseUrl": true,
+      "env": "development",
+      "debug": true
     }
   }
 }

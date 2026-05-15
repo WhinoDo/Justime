@@ -8,24 +8,27 @@ import mimetypes
 from urllib.parse import quote
 from pathlib import Path
 from typing import List, Dict, Any
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Query, status
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Query, status, Form
 from fastapi.responses import FileResponse
-from llama_index.core import SimpleDirectoryReader
+from pydantic import BaseModel, Field
 from app.services.rag_service import (
     rag_service,
     DOCS_DIR,
     get_user_docs_dir,
-    set_current_user_context,
-    clear_current_user_context,
 )
 from app.services.security_service import SecurityService
+from app.services.upload_service import (
+    chunked_upload_manager,
+    generate_upload_id,
+)
 from app.core.validators import InputValidator
+from app.core.config import settings
 
 router = APIRouter()
 
-# 文件大小限制 (50MB)
-MAX_FILE_SIZE = 50 * 1024 * 1024
-
+MAX_FILE_SIZE = settings.MAX_FILE_SIZE
+CHUNKED_UPLOAD_THRESHOLD = settings.CHUNKED_UPLOAD_THRESHOLD
+DEFAULT_CHUNK_SIZE = settings.CHUNK_SIZE
 TEXT_FILE_EXTENSIONS = {
     ".txt", ".md", ".csv", ".json", ".yaml", ".yml", ".xml",
     ".html", ".htm", ".log", ".ini", ".py", ".js", ".ts", ".tsx", ".jsx"
@@ -74,12 +77,15 @@ def _extract_document_text(file_path: Path) -> str:
         raise ValueError("文件不可预览或内容为空 (如果是扫描件，请确保 Tesseract OCR 已正确安装)")
     return "\n\n".join(parts)
 
+CHUNK_SIZE = 64 * 1024
+
+
 @router.post("/upload", summary="上传文档")
 async def upload_document(
     file: UploadFile = File(...),
     current_user: dict = Depends(SecurityService.get_current_user)
 ) -> Dict[str, Any]:
-    """上传文档到知识库"""
+    """上传文档到知识库（流式写入，避免全量内存占用）"""
     try:
         if not file.filename:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="文件名不能为空")
@@ -87,20 +93,30 @@ async def upload_document(
         user_id = str(current_user["_id"])
         user_docs_dir = get_user_docs_dir(user_id)
 
-        # 验证文件名安全性
         safe_filename = InputValidator.validate_filename(
             file.filename,
             allowed_extensions=InputValidator.ALLOWED_DOC_EXTENSIONS
         )
 
-        # 检查文件大小
-        content = await file.read()
-        file_size = len(content)
-        InputValidator.validate_file_size(file_size, MAX_FILE_SIZE)
-
         file_path = user_docs_dir / safe_filename
+        file_size = 0
+
         with open(file_path, "wb") as buffer:
-            buffer.write(content)
+            while True:
+                chunk = await file.read(CHUNK_SIZE)
+                if not chunk:
+                    break
+                file_size += len(chunk)
+                if file_size > MAX_FILE_SIZE:
+                    buffer.close()
+                    file_path.unlink(missing_ok=True)
+                    raise HTTPException(
+                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                        detail=f"文件大小超过限制 ({MAX_FILE_SIZE // (1024 * 1024)}MB)"
+                    )
+                buffer.write(chunk)
+
+        InputValidator.validate_file_size(file_size, MAX_FILE_SIZE)
 
         return {
             "success": True,
@@ -225,18 +241,270 @@ async def delete_document(
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
-@router.post("/rebuild", summary="重建索引")
+@router.post("/rebuild", summary="重建索引（异步）")
 async def rebuild_index(
     current_user: dict = Depends(SecurityService.get_current_user)
 ) -> Dict[str, Any]:
-    """手动触发索引重建"""
+    """异步触发索引重建，立即返回任务ID，不阻塞API"""
     try:
+        from app.services.knowledge_task_service import knowledge_task_service
+
         user_id = str(current_user["_id"])
         user_docs_dir = get_user_docs_dir(user_id)
-        set_current_user_context(user_id)
-        result = rag_service.rebuild_index(docs_dir=user_docs_dir)
-        return {"success": True, "message": result}
+
+        task_id = await knowledge_task_service.start_rebuild_task(
+            user_id=user_id,
+            docs_dir=user_docs_dir,
+        )
+
+        return {
+            "success": True,
+            "message": "索引重建任务已创建，请通过任务ID查询状态",
+            "task_id": task_id,
+            "status_endpoint": f"/api/v1/knowledge/rebuild/status/{task_id}",
+        }
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-    finally:
-        clear_current_user_context()
+
+
+@router.get("/rebuild/status/{task_id}", summary="查询索引重建状态")
+async def get_rebuild_status(
+    task_id: str,
+    current_user: dict = Depends(SecurityService.get_current_user)
+) -> Dict[str, Any]:
+    """查询异步索引重建任务的状态"""
+    try:
+        from app.services.knowledge_task_service import knowledge_task_service
+
+        status_data = await knowledge_task_service.get_task_status(task_id)
+        if not status_data:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="任务不存在或已过期")
+
+        user_id = str(current_user["_id"])
+        if status_data.get("user_id") != user_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权访问此任务")
+
+        return {
+            "success": True,
+            "task_id": task_id,
+            "status": status_data.get("status"),
+            "message": status_data.get("message"),
+            "created_at": status_data.get("created_at"),
+            "started_at": status_data.get("started_at"),
+            "completed_at": status_data.get("completed_at"),
+            "error": status_data.get("error"),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+class ChunkedUploadInitRequest(BaseModel):
+    filename: str = Field(..., description="文件名")
+    total_size: int = Field(..., ge=1, description="文件总大小（字节）")
+    chunk_size: int = Field(DEFAULT_CHUNK_SIZE, ge=1024, description="分片大小（字节）")
+
+
+class ChunkedUploadCompleteRequest(BaseModel):
+    upload_id: str = Field(..., description="上传会话ID")
+
+
+@router.post("/chunked/init", summary="初始化分片上传")
+async def init_chunked_upload(
+    request: ChunkedUploadInitRequest,
+    current_user: dict = Depends(SecurityService.get_current_user)
+) -> Dict[str, Any]:
+    """初始化分片上传会话，返回 upload_id 和分片信息"""
+    try:
+        user_id = str(current_user["_id"])
+        
+        if request.total_size > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"文件大小超过限制 ({MAX_FILE_SIZE // (1024 * 1024)}MB)"
+            )
+        
+        upload_id = generate_upload_id(user_id, request.filename)
+        
+        upload_info = await chunked_upload_manager.init_upload(
+            upload_id=upload_id,
+            filename=request.filename,
+            total_size=request.total_size,
+            chunk_size=request.chunk_size,
+            user_id=user_id,
+        )
+        
+        return {
+            "success": True,
+            "upload_id": upload_id,
+            "total_chunks": upload_info["total_chunks"],
+            "chunk_size": upload_info["chunk_size"],
+            "total_size": upload_info["total_size"],
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.post("/chunked/chunk", summary="上传分片")
+async def upload_chunk(
+    upload_id: str = Form(..., description="上传会话ID"),
+    chunk_index: int = Form(..., ge=0, description="分片索引"),
+    chunk: UploadFile = File(..., description="分片数据"),
+    current_user: dict = Depends(SecurityService.get_current_user)
+) -> Dict[str, Any]:
+    """上传单个分片"""
+    try:
+        user_id = str(current_user["_id"])
+        
+        upload_status = await chunked_upload_manager.get_upload_status(upload_id)
+        if not upload_status:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="上传会话不存在或已过期"
+            )
+        
+        if upload_status.get("user_id") != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="无权访问此上传会话"
+            )
+        
+        chunk_data = await chunk.read()
+        
+        result = await chunked_upload_manager.upload_chunk(
+            upload_id=upload_id,
+            chunk_index=chunk_index,
+            chunk_data=chunk_data,
+        )
+        
+        return {
+            "success": True,
+            **result
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.post("/chunked/complete", summary="完成分片上传")
+async def complete_chunked_upload(
+    request: ChunkedUploadCompleteRequest,
+    current_user: dict = Depends(SecurityService.get_current_user)
+) -> Dict[str, Any]:
+    """完成分片上传，合并所有分片为最终文件"""
+    try:
+        user_id = str(current_user["_id"])
+        
+        upload_status = await chunked_upload_manager.get_upload_status(request.upload_id)
+        if not upload_status:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="上传会话不存在或已过期"
+            )
+        
+        if upload_status.get("user_id") != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="无权访问此上传会话"
+            )
+        
+        user_docs_dir = get_user_docs_dir(user_id)
+        
+        result = await chunked_upload_manager.complete_upload(
+            upload_id=request.upload_id,
+            target_dir=user_docs_dir,
+        )
+        
+        return {
+            "success": True,
+            "message": f"文件 {result['filename']} 上传成功",
+            "filename": result["filename"],
+            "size": result["size"],
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.get("/chunked/status/{upload_id}", summary="查询分片上传状态")
+async def get_chunked_upload_status(
+    upload_id: str,
+    current_user: dict = Depends(SecurityService.get_current_user)
+) -> Dict[str, Any]:
+    """查询分片上传会话的状态和进度"""
+    try:
+        user_id = str(current_user["_id"])
+        
+        upload_status = await chunked_upload_manager.get_upload_status(upload_id)
+        if not upload_status:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="上传会话不存在或已过期"
+            )
+        
+        if upload_status.get("user_id") != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="无权访问此上传会话"
+            )
+        
+        uploaded_chunks = len(upload_status.get("uploaded_chunks", []))
+        total_chunks = upload_status.get("total_chunks", 0)
+        progress = (uploaded_chunks / total_chunks * 100) if total_chunks > 0 else 0
+        
+        return {
+            "success": True,
+            "upload_id": upload_id,
+            "filename": upload_status.get("filename"),
+            "total_size": upload_status.get("total_size"),
+            "chunk_size": upload_status.get("chunk_size"),
+            "total_chunks": total_chunks,
+            "uploaded_chunks": uploaded_chunks,
+            "progress": progress,
+            "status": upload_status.get("status"),
+            "created_at": upload_status.get("created_at"),
+            "updated_at": upload_status.get("updated_at"),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.delete("/chunked/{upload_id}", summary="取消分片上传")
+async def cancel_chunked_upload(
+    upload_id: str,
+    current_user: dict = Depends(SecurityService.get_current_user)
+) -> Dict[str, Any]:
+    """取消分片上传，清理临时文件"""
+    try:
+        user_id = str(current_user["_id"])
+        
+        upload_status = await chunked_upload_manager.get_upload_status(upload_id)
+        if not upload_status:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="上传会话不存在或已过期"
+            )
+        
+        if upload_status.get("user_id") != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="无权访问此上传会话"
+            )
+        
+        await chunked_upload_manager.cancel_upload(upload_id)
+        
+        return {
+            "success": True,
+            "message": "上传已取消，临时文件已清理"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

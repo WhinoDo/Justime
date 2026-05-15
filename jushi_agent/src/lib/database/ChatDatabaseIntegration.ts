@@ -3,7 +3,14 @@
  */
 
 // 导入类型定义
-import type { EmotionAnalysis, TaskData } from './models/Conversation'
+import type { EmotionAnalysis } from '@/types'
+
+// 本地定义 TaskData 类型（原模型文件已移除）
+export interface TaskData {
+  id: string
+  title: string
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled'
+}
 
 export interface ChatUser {
   id: string

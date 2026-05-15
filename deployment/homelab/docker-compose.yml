@@ -1,3 +1,15 @@
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-healthcheck-defaults: &healthcheck-defaults
+  interval: 30s
+  timeout: 10s
+  retries: 5
+  start_period: 30s
+
 services:
   gateway:
     image: caddy:2
@@ -17,12 +29,23 @@ services:
       - ./data/caddy/data:/data
       - ./data/caddy/config:/config
       - ./data/logs/caddy:/var/log/caddy
+    tmpfs:
+      - /tmp:rw,size=64m
     healthcheck:
       test: ["CMD", "caddy", "validate", "--config", "/etc/caddy/Caddyfile"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      <<: *healthcheck-defaults
       start_period: 10s
+    init: true
+    stop_grace_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+    logging: *logging
 
   frontend:
     build:
@@ -55,10 +78,21 @@ services:
           "-e",
           "fetch('http://127.0.0.1:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
         ]
-      interval: 30s
-      timeout: 10s
-      retries: 5
+      <<: *healthcheck-defaults
       start_period: 40s
+    init: true
+    stop_grace_period: 15s
+    tmpfs:
+      - /tmp:rw,size=128m
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+    logging: *logging
 
   backend:
     build:
@@ -102,6 +136,8 @@ services:
     volumes:
       - ./data/logs/backend:/app/logs
       - ./data/backend/output:/app/output
+    tmpfs:
+      - /tmp:rw,size=128m
     healthcheck:
       test:
         [
@@ -110,24 +146,44 @@ services:
           "-c",
           "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/api/v1/health/').status == 200 else 1)",
         ]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
+      <<: *healthcheck-defaults
+    init: true
+    stop_grace_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+    logging: *logging
 
   mongodb:
     image: mongo:7
     container_name: jushi-mongodb
     restart: unless-stopped
     command: ["mongod", "--bind_ip_all"]
+    shm_size: 256m
     volumes:
       - ./data/mongodb:/data/db
+    tmpfs:
+      - /tmp:rw,size=128m
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
+      <<: *healthcheck-defaults
       start_period: 20s
+    init: true
+    stop_grace_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+    logging: *logging
 
   redis:
     image: redis:7-alpine
@@ -136,12 +192,25 @@ services:
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - ./data/redis:/data
+    tmpfs:
+      - /tmp:rw,size=32m
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 30s
       timeout: 5s
       retries: 5
       start_period: 10s
+    init: true
+    stop_grace_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+    logging: *logging
 
   openclaw:
     image: node:24-bookworm-slim
@@ -157,6 +226,8 @@ services:
     volumes:
       - ./data/openclaw:/var/lib/openclaw
       - ./data/logs/openclaw:/var/log/openclaw
+    tmpfs:
+      - /tmp:rw,size=128m
     command:
       - /bin/sh
       - -lc
@@ -189,7 +260,16 @@ services:
         exec openclaw gateway run --allow-unconfigured --bind lan --auth token --port 18789 --token "${OPENCLAW_GATEWAY_TOKEN}" --ws-log compact
     healthcheck:
       test: ["CMD-SHELL", "openclaw gateway call health --url ws://127.0.0.1:18789 --token \"$OPENCLAW_GATEWAY_TOKEN\" --timeout 5000 >/dev/null 2>&1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
+      <<: *healthcheck-defaults
       start_period: 45s
+    init: true
+    stop_grace_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+    logging: *logging

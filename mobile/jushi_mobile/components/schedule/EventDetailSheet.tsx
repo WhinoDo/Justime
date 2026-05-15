@@ -11,6 +11,7 @@ import {
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
+import { useRouter } from 'expo-router';
 
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -193,6 +194,7 @@ export function EventDetailSheet({
   onDelete,
   onSave,
 }: EventDetailSheetProps) {
+  const router = useRouter();
   const surfaceColor = useThemeColor({}, 'surface');
   const borderColor = useThemeColor({}, 'border');
   const secondaryTextColor = useThemeColor({}, 'textSecondary');
@@ -794,6 +796,33 @@ export function EventDetailSheet({
                       </ThemedText>
                     )}
                   </Card>
+
+                  <Card variant="outlined" style={styles.sectionCard}>
+                    <TouchableOpacity
+                      style={styles.documentButton}
+                      onPress={() => {
+                        onClose();
+                        router.push({
+                          pathname: '/settings/document' as const,
+                          params: {
+                            eventId: event.id,
+                            eventName: event.title,
+                          },
+                        } as any);
+                      }}
+                    >
+                      <View style={styles.documentButtonContent}>
+                        <MaterialIcons name="description" size={24} color={Colors.light.primary} />
+                        <View style={styles.documentButtonTextWrap}>
+                          <ThemedText type="defaultSemiBold">工作文档</ThemedText>
+                          <ThemedText type="caption" style={{ color: Colors.light.textSecondary }}>
+                            记录工作内容、笔记和待办事项
+                          </ThemedText>
+                        </View>
+                      </View>
+                      <MaterialIcons name="chevron-right" size={24} color={Colors.light.textSecondary} />
+                    </TouchableOpacity>
+                  </Card>
                 </>
               )}
             </ScrollView>
@@ -1059,6 +1088,21 @@ const styles = StyleSheet.create({
   resourceEmptyText: {
     color: Colors.light.textSecondary,
     marginBottom: Spacing.xs,
+  },
+  documentButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.sm,
+  },
+  documentButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  documentButtonTextWrap: {
+    marginLeft: Spacing.md,
+    flex: 1,
   },
   footer: {
     borderTopWidth: 1,

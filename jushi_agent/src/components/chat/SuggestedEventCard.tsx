@@ -20,6 +20,7 @@ import {
     ExternalLink
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { API_ENDPOINTS } from '@/lib/api/endpoints'
 
 // 事件类型映射 - 视觉升级
 const EVENT_TYPE_STYLES: Record<string, { label: string; className: string; icon?: any }> = {
@@ -223,7 +224,7 @@ export function SuggestedEventCard({ event, onConfirm, onDismiss }: SuggestedEve
                                     setIsLoading(true);
                                     try {
                                         await Promise.all(event.conflicts!.map((c: any) =>
-                                            fetch(`/api/calendar/events/${c._id}`, { method: 'DELETE' })
+                                            fetch(API_ENDPOINTS.CALENDAR.EVENT(c._id), { method: 'DELETE' })
                                         ));
                                         await handleConfirm();
                                     } catch (err) {

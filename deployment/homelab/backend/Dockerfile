@@ -15,12 +15,16 @@ RUN apt-get update \
     && apt-get update \
     && apt-get install -y --no-install-recommends nodejs \
     && npm install -g openclaw@2026.3.11 \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --create-home --shell /bin/bash appuser \
+    && chown -R appuser:appuser /app
 
 COPY requirements-homelab.txt ./requirements-homelab.txt
 RUN pip install -r requirements-homelab.txt
 
-COPY . .
+COPY --chown=appuser:appuser . .
+
+USER appuser
 
 EXPOSE 8080
 

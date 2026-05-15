@@ -6,7 +6,8 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, Response, Query, HTTPException, status, Request
 from app.business.auth_business import auth_business
 from app.models.auth import (
-    RegisterRequest, LoginRequest, AuthResponse, LLMConfig, AuthData, SafeUser, UserProfile, ProfileUpdateRequest
+    RegisterRequest, LoginRequest, AuthResponse, LLMConfig, AuthData, SafeUser, UserProfile, ProfileUpdateRequest,
+    ForgotPasswordRequest, ResetPasswordRequest
 )
 from app.services.security_service import SecurityService
 from typing import Dict, Any
@@ -14,6 +15,24 @@ from app.core.config import settings
 from app.services.user_service import UserService
 
 router = APIRouter()
+
+
+def _generate_csrf_token() -> str:
+    """生成 CSRF token"""
+    import secrets
+    import hmac
+    import hashlib
+    from datetime import datetime
+    
+    timestamp = int(datetime.utcnow().timestamp())
+    random_bytes = secrets.token_hex(16)
+    payload = f"{timestamp}:{random_bytes}"
+    signature = hmac.new(
+        settings.CSRF_SECRET.encode(),
+        payload.encode(),
+        hashlib.sha256
+    ).hexdigest()
+    return f"{payload}:{signature}"
 
 
 def _cookie_security_settings() -> tuple[bool, str]:
@@ -296,3 +315,51 @@ async def get_llm_presets() -> Dict[str, Any]:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
     return {"success": True, "data": presets}
+
+
+@router.get("/csrf-token", summary="获取 CSRF Token")
+async def get_csrf_token(response: Response) -> Dict[str, Any]:
+    """
+    获取 CSRF Token
+    
+    该端点生成一个 CSRF token 并设置到 cookie 中。
+    前端需要在后续的 POST/PUT/DELETE/PATCH 请求中，
+    从 cookie 读取该 token 并通过 X-CSRF-Token 请求头发送。
+    """
+    if not settings.CSRF_ENABLED:
+        return {"success": True, "message": "CSRF 防护未启用", "data": None}
+    
+    csrf_token = _generate_csrf_token()
+    secure, same_site = _cookie_security_settings()
+    
+    response.set_cookie(
+        key=settings.CSRF_COOKIE_NAME,
+        value=csrf_token,
+        httponly=False,
+        secure=secure,
+        samesite=same_site,
+        path="/",
+        max_age=settings.CSRF_TOKEN_EXPIRE_HOURS * 60 * 60
+    )
+    
+    return {
+        "success": True,
+        "message": "CSRF Token 已设置",
+        "data": {
+            "cookieName": settings.CSRF_COOKIE_NAME,
+            "headerName": settings.CSRF_HEADER_NAME,
+            "expiresInHours": settings.CSRF_TOKEN_EXPIRE_HOURS
+        }
+    }
+
+
+@router.post("/forgot-password", response_model=AuthResponse, summary="忘记密码 — 发送重置链接")
+async def forgot_password(payload: ForgotPasswordRequest) -> AuthResponse:
+    """根据邮箱生成密码重置 token 并返回重置链接（生产环境应通过邮件发送）"""
+    return await auth_business.forgot_password(payload.email)
+
+
+@router.post("/reset-password", response_model=AuthResponse, summary="重置密码")
+async def reset_password(payload: ResetPasswordRequest, response: Response) -> AuthResponse:
+    """通过重置 token 设置新密码"""
+    return await auth_business.reset_password(payload.token, payload.new_password)

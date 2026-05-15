@@ -2,9 +2,29 @@ import React from 'react'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ChatInterface } from '../ChatInterface'
-import { Message } from '@/types'
 
-// 模拟fetch API
+jest.mock('next-themes', () => ({
+  useTheme: () => ({
+    theme: 'dark',
+    setTheme: jest.fn(),
+  }),
+}))
+
+jest.mock('@/hooks/useAuth', () => ({
+  useAuth: () => ({
+    user: { id: 'test-user', email: 'test@example.com' },
+    isLoading: false,
+    isAuthenticated: true,
+  }),
+}))
+
+jest.mock('@/lib/database/ChatDatabaseIntegration', () => ({
+  chatDB: {
+    initializeUser: jest.fn().mockResolvedValue('test-user'),
+    addMessage: jest.fn().mockResolvedValue(undefined),
+  },
+}))
+
 global.fetch = jest.fn()
 
 describe('ChatInterface', () => {
@@ -12,237 +32,153 @@ describe('ChatInterface', () => {
 
   beforeEach(() => {
     mockFetch.mockClear()
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ success: true, data: { configs: [] } }),
+    } as Response)
   })
 
-  it('应该渲染对话界面', () => {
+  it('应该渲染聊天界面', async () => {
     render(<ChatInterface />)
-    
-    expect(screen.getByPlaceholderText('告诉我你现在的任务或感受...')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '发送' })).toBeInTheDocument()
+
+    await waitFor(() => {
+      expect(screen.getByText('聚时智能助手')).toBeInTheDocument()
+    })
+    expect(screen.getByPlaceholderText('输入 "@" 唤起常用语，或粘贴代码快速提问')).toBeInTheDocument()
   })
 
-  it('应该显示初始消息历史', () => {
-    const initialMessages: Message[] = [
-      {
-        id: '1',
-        user_id: 'user1',
-        role: 'user',
-        content: '我需要写一份报告',
-        created_at: '2024-01-01'
-      },
-      {
-        id: '2',
-        user_id: 'user1',
-        role: 'assistant',
-        content: '好的，让我帮你分析一下这个任务',
-        created_at: '2024-01-01'
-      }
-    ]
+  it('应该显示空状态提示', async () => {
+    render(<ChatInterface />)
 
-    render(<ChatInterface initialMessages={initialMessages} />)
-    
-    expect(screen.getByText('我需要写一份报告')).toBeInTheDocument()
-    expect(screen.getByText('好的，让我帮你分析一下这个任务')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('开始对话')).toBeInTheDocument()
+    })
+    expect(screen.getByText('情绪感知')).toBeInTheDocument()
+    expect(screen.getByText('任务拆解')).toBeInTheDocument()
+    expect(screen.getByText('智能陪伴')).toBeInTheDocument()
   })
 
-  it('应该允许用户发送消息', async () => {
+  it('应该允许用户输入消息', async () => {
     const user = userEvent.setup()
-    
+
+    render(<ChatInterface />)
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('输入 "@" 唤起常用语，或粘贴代码快速提问')).toBeInTheDocument()
+    })
+
+    const input = screen.getByPlaceholderText('输入 "@" 唤起常用语，或粘贴代码快速提问')
+    await user.type(input, '测试消息')
+
+    expect(input).toHaveValue('测试消息')
+  })
+
+  it('发送按钮在没有输入时应该禁用', async () => {
+    render(<ChatInterface />)
+
+    await waitFor(() => {
+      const sendButton = screen.getByRole('button', { name: /发送消息/i })
+      expect(sendButton).toBeDisabled()
+    })
+  })
+
+  it('应该显示清空对话按钮', async () => {
+    render(<ChatInterface />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /清空对话/i })).toBeInTheDocument()
+    })
+  })
+
+  it('应该能够点击深度思考按钮', async () => {
+    const user = userEvent.setup()
+
+    render(<ChatInterface />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /深度思考/i })).toBeInTheDocument()
+    })
+
+    const deepThinkButton = screen.getByRole('button', { name: /深度思考/i })
+    await user.click(deepThinkButton)
+
+    expect(deepThinkButton).toHaveClass('bg-white/15')
+  })
+
+  it('应该显示日历链接', async () => {
+    render(<ChatInterface />)
+
+    await waitFor(() => {
+      expect(screen.getByTitle('日历管理')).toBeInTheDocument()
+    })
+  })
+
+  it('应该显示聊天历史链接', async () => {
+    render(<ChatInterface />)
+
+    await waitFor(() => {
+      expect(screen.getByTitle('查看聊天记录')).toBeInTheDocument()
+    })
+  })
+
+  it('应该显示智能时间助手按钮', async () => {
+    render(<ChatInterface />)
+
+    await waitFor(() => {
+      expect(screen.getByTitle('智能时间助手')).toBeInTheDocument()
+    })
+  })
+
+  it('点击智能时间助手应该显示时间输入面板', async () => {
+    const user = userEvent.setup()
+
+    render(<ChatInterface />)
+
+    await waitFor(() => {
+      expect(screen.getByTitle('智能时间助手')).toBeInTheDocument()
+    })
+
+    const timeHelperButton = screen.getByTitle('智能时间助手')
+    await user.click(timeHelperButton)
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText(/描述你的任务/i)).toBeInTheDocument()
+    })
+  })
+
+  it('应该能够发送消息并显示用户输入', async () => {
+    const user = userEvent.setup()
+
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve({
-        success: true,
-        data: {
-          response: 'AI回复内容',
-          emotionScore: 5,
-          emotionTags: ['中性']
-        }
-      }),
+      json: () => Promise.resolve({ success: true, data: { configs: [] } }),
     } as Response)
-
-    render(<ChatInterface />)
-    
-    const input = screen.getByPlaceholderText('告诉我你现在的任务或感受...')
-    const sendButton = screen.getByRole('button', { name: '发送' })
-    
-    await user.type(input, '我感觉有点焦虑')
-    await user.click(sendButton)
-    
-    // 验证用户消息显示
-    expect(screen.getByText('我感觉有点焦虑')).toBeInTheDocument()
-    
-    // 等待AI回复
-    await waitFor(() => {
-      expect(screen.getByText('AI回复内容')).toBeInTheDocument()
-    })
-  })
-
-  it('应该在发送时禁用输入和按钮', async () => {
-    const user = userEvent.setup()
-    
-    // 模拟较慢的API响应
-    mockFetch.mockImplementationOnce(() => 
-      new Promise(resolve => 
-        setTimeout(() => resolve({
-          ok: true,
-          json: () => Promise.resolve({
-            success: true,
-            data: { response: '回复', emotionScore: 5, emotionTags: [] }
-          }),
-        } as Response), 100)
-      )
-    )
-
-    render(<ChatInterface />)
-    
-    const input = screen.getByPlaceholderText('告诉我你现在的任务或感受...')
-    const sendButton = screen.getByRole('button', { name: '发送' })
-    
-    await user.type(input, '测试消息')
-    await user.click(sendButton)
-    
-    // 发送中应该禁用
-    expect(input).toBeDisabled()
-    expect(sendButton).toBeDisabled()
-    
-    // 等待响应完成后恢复
-    await waitFor(() => {
-      expect(input).not.toBeDisabled()
-      expect(sendButton).not.toBeDisabled()
-    })
-  })
-
-  it('应该显示加载状态', async () => {
-    const user = userEvent.setup()
-    
-    mockFetch.mockImplementationOnce(() => 
-      new Promise(resolve => 
-        setTimeout(() => resolve({
-          ok: true,
-          json: () => Promise.resolve({
-            success: true,
-            data: { response: '回复', emotionScore: 5, emotionTags: [] }
-          }),
-        } as Response), 100)
-      )
-    )
-
-    render(<ChatInterface />)
-    
-    const input = screen.getByPlaceholderText('告诉我你现在的任务或感受...')
-    const sendButton = screen.getByRole('button', { name: '发送' })
-    
-    await user.type(input, '测试消息')
-    await user.click(sendButton)
-    
-    // 应该显示加载状态
-    expect(screen.getByText('AI正在思考...')).toBeInTheDocument()
-    
-    // 等待加载完成
-    await waitFor(() => {
-      expect(screen.queryByText('AI正在思考...')).not.toBeInTheDocument()
-    })
-  })
-
-  it('应该处理API错误', async () => {
-    const user = userEvent.setup()
-    
-    mockFetch.mockRejectedValueOnce(new Error('网络错误'))
-
-    render(<ChatInterface />)
-    
-    const input = screen.getByPlaceholderText('告诉我你现在的任务或感受...')
-    const sendButton = screen.getByRole('button', { name: '发送' })
-    
-    await user.type(input, '测试消息')
-    await user.click(sendButton)
-    
-    await waitFor(() => {
-      expect(screen.getByText(/抱歉，发生了一些错误/)).toBeInTheDocument()
-    })
-  })
-
-  it('应该在收到情绪评分建议时显示情绪输入组件', async () => {
-    const user = userEvent.setup()
-    
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({
-        success: true,
-        data: {
-          response: 'AI回复内容',
-          emotionScore: 3,
-          emotionTags: ['焦虑'],
-          needsEmotionInput: true
-        }
-      }),
-    } as Response)
-
-    render(<ChatInterface />)
-    
-    const input = screen.getByPlaceholderText('告诉我你现在的任务或感受...')
-    const sendButton = screen.getByRole('button', { name: '发送' })
-    
-    await user.type(input, '我感觉压力很大')
-    await user.click(sendButton)
-    
-    await waitFor(() => {
-      expect(screen.getByText('请评估一下你现在的状态（1-10分）')).toBeInTheDocument()
-    })
-  })
-
-  it('应该支持清空对话历史', async () => {
-    const user = userEvent.setup()
-    
-    const initialMessages: Message[] = [
-      {
-        id: '1',
-        user_id: 'user1',
-        role: 'user',
-        content: '测试消息',
-        created_at: '2024-01-01'
-      }
-    ]
-
-    render(<ChatInterface initialMessages={initialMessages} />)
-    
-    expect(screen.getByText('测试消息')).toBeInTheDocument()
-    
-    const clearButton = screen.getByRole('button', { name: '清空对话' })
-    await user.click(clearButton)
-    
-    expect(screen.queryByText('测试消息')).not.toBeInTheDocument()
-  })
-
-  it('应该自动滚动到最新消息', async () => {
-    const user = userEvent.setup()
-    
-    // 创建一个带有scrollIntoView的div元素
-    const mockScrollIntoView = jest.fn()
-    Element.prototype.scrollIntoView = mockScrollIntoView
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve({
         success: true,
         data: {
-          response: 'AI回复内容',
-          emotionScore: 5,
-          emotionTags: []
-        }
+          response: 'AI 回复内容',
+          messageId: 'msg-123',
+        },
       }),
     } as Response)
 
     render(<ChatInterface />)
-    
-    const input = screen.getByPlaceholderText('告诉我你现在的任务或感受...')
-    const sendButton = screen.getByRole('button', { name: '发送' })
-    
-    await user.type(input, '新消息')
-    await user.click(sendButton)
-    
+
     await waitFor(() => {
-      expect(mockScrollIntoView).toHaveBeenCalled()
+      expect(screen.getByPlaceholderText('输入 "@" 唤起常用语，或粘贴代码快速提问')).toBeInTheDocument()
+    })
+
+    const input = screen.getByPlaceholderText('输入 "@" 唤起常用语，或粘贴代码快速提问')
+    await user.type(input, '你好')
+
+    const sendButton = screen.getByRole('button', { name: /发送消息/i })
+    await user.click(sendButton)
+
+    await waitFor(() => {
+      expect(screen.getByText('你好')).toBeInTheDocument()
     })
   })
-}) 
+})

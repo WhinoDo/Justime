@@ -3,9 +3,13 @@
 
   cd /Users/zhuyuxuan/Desktop/Code/jushi/mobile/jushi_mobile
 
-  2. 设置后端地址（用你当前 ngrok）
+  2. 设置后端地址（根据你的环境配置）
 
-  export EXPO_PUBLIC_API_BASE_URL="https://gemological-envyingly-hulda.ngrok-free.dev"
+  # 本地开发
+  export EXPO_PUBLIC_API_BASE_URL="http://127.0.0.1:8080"
+  
+  # 或远程服务器
+  # export EXPO_PUBLIC_API_BASE_URL="https://your-api-server.com"
 
   3. 生成 Android 原生工程
 

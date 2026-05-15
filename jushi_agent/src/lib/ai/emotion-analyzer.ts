@@ -1,5 +1,6 @@
 import { OpenAI } from 'openai'
 import { EmotionAnalysis } from '@/types'
+import { EXTERNAL_API_ENDPOINTS } from '@/lib/api/config'
 
 export class EmotionAnalyzer {
   private client: OpenAI | null = null
@@ -9,7 +10,7 @@ export class EmotionAnalyzer {
     if (process.env.SILICONFLOW_API_KEY && process.env.SILICONFLOW_API_KEY !== 'test-api-key') {
       this.client = new OpenAI({
         apiKey: process.env.SILICONFLOW_API_KEY,
-        baseURL: "https://api.siliconflow.cn/v1",
+        baseURL: EXTERNAL_API_ENDPOINTS.SILICONFLOW.BASE_URL,
       })
       console.log('情绪分析器: API客户端初始化成功')
     } else {

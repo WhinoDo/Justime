@@ -8,6 +8,7 @@ import { JushiGlassPanel } from '@/components/layout/JushiGlassPanel'
 import { JushiPageShell } from '@/components/layout/JushiPageShell'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Loader2 } from 'lucide-react'
+import { API_ENDPOINTS } from '@/lib/api/endpoints'
 
 // 动态导入 DocumentEditor 以避免 SSR 问题 (MDEditor 依赖 window)
 const DocumentEditor = dynamic(
@@ -46,7 +47,7 @@ export default function DocumentPage() {
                 setLoading(true)
 
                 // 1. 获取事件详情
-                const eventRes = await fetch('/api/calendar/events')
+                const eventRes = await fetch(API_ENDPOINTS.CALENDAR.EVENTS)
                 const eventData = await eventRes.json()
 
                 if (!eventData.success) {
@@ -60,7 +61,7 @@ export default function DocumentPage() {
                 setEvent(targetEvent)
 
                 // 2. 获取文档内容
-                const docRes = await fetch(`/api/documents?eventId=${eventId}`)
+                const docRes = await fetch(API_ENDPOINTS.DOCUMENTS.BY_EVENT(Array.isArray(eventId) ? eventId[0] : eventId))
                 const docData = await docRes.json()
 
                 if (docData.success && docData.data.document) {

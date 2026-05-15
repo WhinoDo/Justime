@@ -1,25 +1,11 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Button } from '@/components/ui/button'
-// EmotionScoreInput removed
-import { MessageBubble } from './MessageBubble'
-import { Message, RagReference, SuggestedCalendarEvent } from '@/types'
-import { generateId } from '@/lib/utils'
-import { Send, Trash2, Sparkles, MessageCircle, Sun, Moon, Monitor, Clock, AlertTriangle, Bot, Calendar, ChevronRight, Globe, Brain, ListChecks, ChevronDown } from 'lucide-react'
-import { useTheme } from 'next-themes'
-import { useEffect as useEffectTheme } from 'react'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { TaskSelector } from './TaskSelector'
-import { SuggestedEventCard } from './SuggestedEventCard'
-import { EditableTaskPlan } from './EditableTaskPlan'
-import { TaskItem } from '@/lib/ai/task-planner'
-import { TimeAwareTaskInput } from './TimeAwareTaskInput'
-import { chatDB } from '@/lib/database/ChatDatabaseIntegration'
-import { ThinkingLoader } from './ThinkingLoader'
-import { MessageType } from '@/types/auth'
-import { RagReferencePreviewPanel, RagPreviewTab, RagFullContentState } from './RagReferencePreviewPanel'
-import { useAuth } from '@/hooks/useAuth'
+import { useTheme } from 'next-themes'
+
+import { Button } from '@/components/ui/button'
 import {
   Select,
   SelectContent,
@@ -28,10 +14,40 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { Message, RagReference, SuggestedCalendarEvent, TaskDecomposition, TimingStrategy, TaskAnalysis, SubtaskItem, MessageFromAPI, ModelConfig } from '@/types'
+import { MessageType } from '@/types/auth'
+import { generateId } from '@/lib/utils'
+import { Send, Trash2, Sparkles, MessageCircle, Sun, Moon, Monitor, Clock, AlertTriangle, Bot, Calendar, ChevronRight, Globe, Brain, ListChecks, ChevronDown, Loader2 } from 'lucide-react'
+import { TaskSelector } from './TaskSelector'
+import { SuggestedEventCard } from './SuggestedEventCard'
+import { EditableTaskPlan } from './EditableTaskPlan'
+import { TaskItem } from '@/lib/ai/task-planner'
+import { TimeAwareTaskInput } from './TimeAwareTaskInput'
+import { chatDB } from '@/lib/database/ChatDatabaseIntegration'
+import { ThinkingLoader } from './ThinkingLoader'
+import { RagReferencePreviewPanel, RagPreviewTab, RagFullContentState } from './RagReferencePreviewPanel'
+import { useAuth } from '@/hooks/useAuth'
+import { API_ENDPOINTS } from '@/lib/api/endpoints'
+
+const MessageBubble = dynamic(
+  () => import('./MessageBubble').then((mod) => mod.MessageBubble),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex gap-3 max-w-[85%] mr-auto animate-pulse">
+        <div className="h-8 w-8 rounded-full bg-white/10" />
+        <div className="flex-1 space-y-2 py-2">
+          <div className="h-4 w-3/4 rounded bg-white/10" />
+          <div className="h-4 w-1/2 rounded bg-white/10" />
+        </div>
+      </div>
+    ),
+  }
+)
 
 interface ChatInterfaceProps {
   initialMessages?: Message[]
-  onTaskCreate?: (task: any) => void
+  onTaskCreate?: (task: SubtaskItem) => void
   sessionId?: string | null
   onSessionChange?: (sessionId: string) => void
 }
@@ -60,13 +76,13 @@ export function ChatInterface({
   const [modelError, setModelError] = useState<string | null>(null)
   const [suggestedEvents, setSuggestedEvents] = useState<SuggestedCalendarEvent[]>([])
   const [eventMessageId, setEventMessageId] = useState<string | null>(null)
-  const [taskDecomposition, setTaskDecomposition] = useState<any>(null)
+  const [taskDecomposition, setTaskDecomposition] = useState<TaskDecomposition | null>(null)
   const [decompositionMessageId, setDecompositionMessageId] = useState<string | null>(null)
-  const [multiTaskDecompositions, setMultiTaskDecompositions] = useState<any[] | null>(null)
+  const [multiTaskDecompositions, setMultiTaskDecompositions] = useState<TaskDecomposition[] | null>(null)
   const [expandedDecompositionId, setExpandedDecompositionId] = useState<string | null>(null)
   const [useWebSearch, setUseWebSearch] = useState(false)
-  const [timingStrategy, setTimingStrategy] = useState<any | null>(null)
-  const [taskAnalysis, setTaskAnalysis] = useState<any | null>(null)
+  const [timingStrategy, setTimingStrategy] = useState<TimingStrategy | null>(null)
+  const [taskAnalysis, setTaskAnalysis] = useState<TaskAnalysis | null>(null)
   const [selectedReference, setSelectedReference] = useState<RagReference | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<RagPreviewTab>('snippets')
@@ -85,14 +101,13 @@ export function ChatInterface({
           setSelectedReference(null)
           setPreviewOpen(false)
 
-          const res = await fetch(`/api/chat/sessions/${sessionId}/messages`)
+          const res = await fetch(API_ENDPOINTS.CHAT.SESSION_MESSAGES(sessionId))
           const data = await res.json()
 
           if (data.messages && Array.isArray(data.messages)) {
-            // 转换消息格式
-            const formattedMessages: Message[] = data.messages.map((msg: any) => ({
+            const formattedMessages: Message[] = data.messages.map((msg: MessageFromAPI) => ({
               id: msg._id,
-              user_id: msg.role === 'user' ? 'current-user' : 'ai',
+              user_id: msg.role === 'user' ? (authUser?.id || 'anonymous') : 'ai',
               role: msg.role === 'user' ? 'user' : 'assistant',
               content: msg.content,
               created_at: msg.timestamp,
@@ -149,10 +164,10 @@ export function ChatInterface({
 
     setFullContentLoadingPath(docPath)
     try {
-      const response = await fetch(
-        `/api/knowledge/content?path=${encodeURIComponent(docPath)}&max_chars=20000`,
-        { credentials: 'include' }
-      )
+       const response = await fetch(
+         API_ENDPOINTS.KNOWLEDGE.CONTENT(docPath),
+         { credentials: 'include' }
+       )
       const payload = await response.json()
 
       if (!response.ok || !payload.success) {
@@ -205,16 +220,15 @@ export function ChatInterface({
   // 加载可用的供应商模型 (改为从后台配置的系统模型列表中加载)
   const loadProviderModels = useCallback(async () => {
     try {
-      const response = await fetch('/api/auth/llm-configs', {
+      const response = await fetch(API_ENDPOINTS.AUTH.LLM_CONFIGS, {
         credentials: 'include',
         cache: 'no-store'
       })
       const result = await response.json()
 
       if (result.success && result.data?.configs && Array.isArray(result.data.configs)) {
-        // 只展示启用的配置
-        const activeConfigs = result.data.configs.filter((c: any) => c.enabled !== false)
-        const models = activeConfigs.map((c: any) => ({
+        const activeConfigs = result.data.configs.filter((c: ModelConfig) => c.enabled !== false)
+        const models = activeConfigs.map((c: ModelConfig) => ({
           id: c.modelId,
           name: c.name || c.modelId
         }))
@@ -223,8 +237,7 @@ export function ChatInterface({
         if (models.length > 0) {
           setSelectedModel(prev => {
             if (!prev || !models.find((m: { id: string, name: string }) => m.id === prev)) {
-              // 尝试选中当前用户的默认启用模型
-              const defaultActive = activeConfigs.find((c: any) => c.isActive)
+              const defaultActive = activeConfigs.find((c: ModelConfig) => c.isActive)
               if (defaultActive) return defaultActive.modelId
               return models[0].id
             }
@@ -241,7 +254,7 @@ export function ChatInterface({
     }
   }, [])
 
-  useEffectTheme(() => {
+  useEffect(() => {
     setMounted(true)
 
     // 初始化数据库用户会话
@@ -284,7 +297,7 @@ export function ChatInterface({
 
     const userMessage: Message = {
       id: generateId(),
-      user_id: 'current-user', // TODO: 从认证系统获取
+      user_id: authUser?.id || 'anonymous',
       role: 'user',
       content: input.trim(),
       task_id: currentTaskId,
@@ -308,7 +321,7 @@ export function ChatInterface({
         timestamp: new Date().toISOString()
       })
 
-      const response = await fetch('/api/chat', {
+      const response = await fetch(API_ENDPOINTS.CHAT.BASE, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -356,7 +369,7 @@ export function ChatInterface({
 
         const assistantMessage: Message = {
           id: data.data?.messageId || generateId(),
-          user_id: 'current-user',
+          user_id: authUser?.id || 'anonymous',
           role: 'assistant',
           content: responseContent,
           task_id: currentTaskId,
@@ -433,7 +446,7 @@ export function ChatInterface({
       console.error('聊天API错误:', error)
       const errorMessage: Message = {
         id: generateId(),
-        user_id: 'current-user',
+        user_id: authUser?.id || 'anonymous',
         role: 'assistant',
         content: error instanceof Error ? error.message : '抱歉，发生了一些错误，请稍后重试',
         created_at: new Date().toISOString()
@@ -461,7 +474,7 @@ export function ChatInterface({
       throw new Error('请先登录')
     }
 
-    const response = await fetch('/api/calendar/events', {
+    const response = await fetch(API_ENDPOINTS.CALENDAR.EVENTS, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -496,7 +509,7 @@ export function ChatInterface({
 
       // 持久化到后端
       try {
-        await fetch(`/api/chat/messages/${messageId}`, {
+        await fetch(API_ENDPOINTS.CHAT.MESSAGE(messageId), {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ suggestedEvents: null })
@@ -526,7 +539,7 @@ export function ChatInterface({
   }
 
   // 确认任务分解方案，批量创建日程
-  const handleConfirmDecomposition = async (project: any, selectedTasks: any[], messageId?: string) => {
+  const handleConfirmDecomposition = async (project: { name?: string; description?: string; start_date?: string }, selectedTasks: SubtaskItem[], messageId?: string) => {
     if (!authUser?.id) {
       throw new Error('请先登录')
     }
@@ -552,7 +565,7 @@ export function ChatInterface({
       const endTime = new Date(startTime)
       endTime.setHours(currentHour + durationHours, 0, 0, 0)
 
-      const response = await fetch('/api/calendar/events', {
+    const response = await fetch(API_ENDPOINTS.CALENDAR.EVENTS, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -578,7 +591,6 @@ export function ChatInterface({
       currentHour += durationHours
     }
 
-    // 清空任务分解状态 (全局)
     console.log('🧹 handleConfirmDecomposition: clearing state, messageId =', messageId)
     setTaskDecomposition(null)
     setDecompositionMessageId(null)
@@ -595,7 +607,7 @@ export function ChatInterface({
 
       // 2. 调用后端 API 持久化状态
       try {
-        await fetch(`/api/chat/messages/${messageId}`, {
+        await fetch(API_ENDPOINTS.CHAT.MESSAGE(messageId), {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json'
@@ -832,8 +844,9 @@ export function ChatInterface({
                     <div className="ml-11 mt-2">
                       {(() => {
                         const decomp = message.taskDecomposition || taskDecomposition
+                        if (!decomp) return null
                         const isExpanded = expandedDecompositionId === message.id
-                        const totalHours = (decomp.subtasks || []).reduce((sum: number, t: any) => sum + (t.duration_hours || 0), 0)
+                        const totalHours = (decomp.subtasks || []).reduce((sum: number, t: { duration_hours?: number }) => sum + (t.duration_hours || 0), 0)
 
                         return isExpanded ? (
                           <EditableTaskPlan
@@ -845,7 +858,6 @@ export function ChatInterface({
                             }}
                           />
                         ) : (
-                          /* 概要时间表卡片 */
                           <div className="rounded-2xl border border-white/15 bg-white/10 p-4 shadow-xl shadow-black/10 backdrop-blur-xl">
                             <div className="mb-3 flex items-center gap-2">
                               <div className="rounded-xl border border-white/10 bg-white/10 p-2">
@@ -889,7 +901,7 @@ export function ChatInterface({
                             </div>
 
                             <div className="mb-4 space-y-1.5">
-                              {(decomp.subtasks || []).slice(0, 4).map((task: any, idx: number) => (
+                              {(decomp.subtasks || []).slice(0, 4).map((task: SubtaskItem, idx: number) => (
                                 <div key={idx} className="flex items-center gap-2 text-sm text-white/80">
                                   <span className="flex h-5 w-5 items-center justify-center rounded bg-white/10 text-xs font-medium text-white/80">
                                     {task.order || idx + 1}

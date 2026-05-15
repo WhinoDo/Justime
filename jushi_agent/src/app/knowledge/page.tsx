@@ -15,8 +15,20 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
+import dynamic from 'next/dynamic'
+import { API_ENDPOINTS } from '@/lib/api/endpoints'
+
+const MarkdownPreview = dynamic(
+    () => import('@/components/knowledge/MarkdownPreview').then((mod) => mod.MarkdownPreview),
+    {
+        ssr: false,
+        loading: () => (
+            <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-white/50" />
+            </div>
+        )
+    }
+)
 
 interface DocumentFile {
     name: string
@@ -61,7 +73,7 @@ export default function KnowledgeBasePage() {
     const loadFiles = async () => {
         try {
             setLoading(true)
-            const res = await fetch('/api/knowledge/files')
+            const res = await fetch(API_ENDPOINTS.KNOWLEDGE.FILES)
             const data = await res.json()
             if (data.success) {
                 setFiles(data.files)
@@ -96,7 +108,7 @@ export default function KnowledgeBasePage() {
             const formData = new FormData()
             formData.append('file', file)
 
-            const res = await fetch('/api/knowledge/upload', {
+            const res = await fetch(API_ENDPOINTS.KNOWLEDGE.UPLOAD, {
                 method: 'POST',
                 body: formData,
             })
@@ -130,7 +142,7 @@ export default function KnowledgeBasePage() {
         if (!confirm(`确定要删除 ${filename} 吗？`)) return
 
         try {
-            const res = await fetch(`/api/knowledge/files/${filename}`, {
+            const res = await fetch(API_ENDPOINTS.KNOWLEDGE.FILE(filename), {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' }
             })
@@ -164,7 +176,7 @@ export default function KnowledgeBasePage() {
     const handleRebuild = async () => {
         try {
             setRebuilding(true)
-            const res = await fetch('/api/knowledge/rebuild', {
+            const res = await fetch(API_ENDPOINTS.KNOWLEDGE.REBUILD, {
                 method: 'POST',
             })
             const data = await res.json()
@@ -197,7 +209,7 @@ export default function KnowledgeBasePage() {
 
     const openPreview = async (filename: string) => {
         const pdfPreview = isPdfFile(filename)
-        const rawUrl = pdfPreview ? `/api/knowledge/raw?path=${encodeURIComponent(filename)}` : ''
+        const rawUrl = pdfPreview ? API_ENDPOINTS.KNOWLEDGE.RAW(filename) : ''
 
         setPreviewState({
             open: true,
@@ -217,7 +229,7 @@ export default function KnowledgeBasePage() {
         }
 
         try {
-            const response = await fetch(`/api/knowledge/content?path=${encodeURIComponent(filename)}&max_chars=20000`, {
+            const response = await fetch(API_ENDPOINTS.KNOWLEDGE.CONTENT(filename), {
                 credentials: 'include',
             })
             const payload = await response.json()
@@ -474,11 +486,7 @@ export default function KnowledgeBasePage() {
                                         <span>{previewState.error}</span>
                                     </div>
                                 ) : isMarkdownFile(previewState.fileName) ? (
-                                    <article className="prose prose-invert prose-sm max-w-none break-words">
-                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                            {previewState.content || '暂无内容'}
-                                        </ReactMarkdown>
-                                    </article>
+                                    <MarkdownPreview content={previewState.content || '暂无内容'} />
                                 ) : (
                                     <pre className="whitespace-pre-wrap break-words text-sm leading-6 text-white/90 font-mono">
                                         {previewState.content || '暂无内容'}

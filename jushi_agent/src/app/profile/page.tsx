@@ -18,6 +18,7 @@ import {
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
+import { API_ENDPOINTS } from '@/lib/api/endpoints'
 
 export default function ProfilePage() {
     const { user, isAuthenticated, logout, isLoading, updateUser } = useAuth()
@@ -55,7 +56,7 @@ export default function ProfilePage() {
         setIsHabitLoading(true)
         setHabitSaveMessage(null)
         try {
-            const response = await fetch('/api/auth/profile', { credentials: 'include' })
+            const response = await fetch(API_ENDPOINTS.AUTH.PROFILE, { credentials: 'include' })
             const result = await response.json()
             if (!result.success) return
 
@@ -106,7 +107,7 @@ export default function ProfilePage() {
                 }
             }
 
-            const response = await fetch('/api/auth/profile', {
+            const response = await fetch(API_ENDPOINTS.AUTH.PROFILE, {
                 method: 'PUT',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },

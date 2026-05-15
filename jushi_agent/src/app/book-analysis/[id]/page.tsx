@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { BookAnalysisProject } from '@/types/book-analysis'
+import { API_ENDPOINTS } from '@/lib/api/endpoints'
 
 function statusLabel(status: string) {
   switch (status) {
@@ -66,7 +67,7 @@ export default function BookAnalysisDetailPage({ params }: { params: { id: strin
   const loadProject = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`/api/book-analysis/projects/${params.id}`, { cache: 'no-store' })
+      const response = await fetch(API_ENDPOINTS.BOOK_ANALYSIS.PROJECT(params.id), { cache: 'no-store' })
       const result = await response.json()
       if (!response.ok || !result.success) {
         throw new Error(result?.detail || result?.error || '获取项目失败')
@@ -148,7 +149,7 @@ export default function BookAnalysisDetailPage({ params }: { params: { id: strin
               刷新
             </Button>
             {project.exportHtmlPath && (
-              <a href={`/api/knowledge/raw?path=${encodeURIComponent(project.exportHtmlPath)}`} target="_blank" rel="noreferrer">
+              <a href={API_ENDPOINTS.KNOWLEDGE.RAW(project.exportHtmlPath)} target="_blank" rel="noreferrer">
                 <Button className="bg-emerald-500 text-white hover:bg-emerald-400">
                   <Download className="mr-2 h-4 w-4" />
                   打开导出 HTML
@@ -166,7 +167,7 @@ export default function BookAnalysisDetailPage({ params }: { params: { id: strin
             </CardHeader>
             <CardContent>
               <iframe
-                src={`/api/knowledge/raw?path=${encodeURIComponent(project.sourcePath)}`}
+                src={API_ENDPOINTS.KNOWLEDGE.RAW(project.sourcePath)}
                 className="h-[78vh] w-full rounded-2xl border-0 bg-white"
                 title={project.title}
               />

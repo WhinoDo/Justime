@@ -10,6 +10,7 @@ import { BarChart3, Bot, ChevronLeft, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { JushiBackground } from '@/components/ui/JushiBackground'
+import { API_ENDPOINTS } from '@/lib/api/endpoints'
 
 // Usage Types
 interface DailyUsagePoint {
@@ -103,7 +104,7 @@ function ModelConfigContent() {
     setUsageLoading(true)
     setUsageError(null)
     try {
-      const response = await fetch(`/api/auth/llm-usage/daily?days=${usageDays}&scope=${usageScope}`, {
+      const response = await fetch(API_ENDPOINTS.AUTH.LLM_USAGE_DAILY(usageDays, usageScope), {
         credentials: 'include',
         cache: 'no-store'
       })

@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { Button } from '@/components/ui/button'
-import ChatHistoryPanel, { ChatSession } from '@/components/chat/ChatHistoryPanel'
 import {
   MessageCircle,
   ArrowLeft,
@@ -14,11 +13,28 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { JushiBackground } from '@/components/ui/JushiBackground'
+import dynamic from 'next/dynamic'
+import type { ChatSessionSummary } from '@/hooks/useChatSessions'
+
+const ChatHistoryPanel = dynamic(
+  () => import('@/components/chat/ChatHistoryPanel'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-64 items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-white/50" />
+          <p className="text-sm text-white/60">Loading History...</p>
+        </div>
+      </div>
+    ),
+  }
+)
 
 export default function ChatHistoryPage() {
   const { user, isAuthenticated, isLoading } = useAuth()
   const router = useRouter()
-  const [selectedSession, setSelectedSession] = useState<ChatSession | null>(null)
+  const [selectedSession, setSelectedSession] = useState<ChatSessionSummary | null>(null)
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -145,7 +161,7 @@ export default function ChatHistoryPage() {
                     <div className="bg-black/20 rounded-xl p-4 border border-white/5">
                       <h4 className="text-xs font-bold text-white/40 uppercase mb-2">Preview</h4>
                       <p className="text-white/80 text-sm italic line-clamp-6 leading-relaxed">
-                        "{selectedSession.preview || 'No preview available...'}"
+                        &ldquo;{selectedSession.preview || 'No preview available...'}&rdquo;
                       </p>
                     </div>
                   </div>

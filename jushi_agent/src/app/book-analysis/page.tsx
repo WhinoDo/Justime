@@ -18,6 +18,7 @@ import { JushiBackground } from '@/components/ui/JushiBackground'
 import { useToast } from '@/components/ui/use-toast'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { API_ENDPOINTS } from '@/lib/api/endpoints'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
@@ -95,7 +96,7 @@ export default function BookAnalysisPage() {
   const loadProjects = async (preserveSelection = true) => {
     try {
       setLoading(true)
-      const response = await fetch('/api/book-analysis/projects', { cache: 'no-store' })
+      const response = await fetch(API_ENDPOINTS.BOOK_ANALYSIS.PROJECTS, { cache: 'no-store' })
       const result = await response.json()
       if (!response.ok || !result.success) {
         throw new Error(result?.detail || result?.error || '获取项目列表失败')
@@ -153,7 +154,7 @@ export default function BookAnalysisPage() {
         formData.append('title', draftTitle.trim())
       }
 
-      const response = await fetch('/api/book-analysis/projects', {
+      const response = await fetch(API_ENDPOINTS.BOOK_ANALYSIS.PROJECTS, {
         method: 'POST',
         body: formData,
       })
@@ -229,7 +230,7 @@ export default function BookAnalysisPage() {
 
     try {
       setSaving(true)
-      const response = await fetch(`/api/book-analysis/projects/${selectedProject.id}/chapters`, {
+      const response = await fetch(API_ENDPOINTS.BOOK_ANALYSIS.PROJECT_CHAPTERS(selectedProject.id), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -282,7 +283,7 @@ export default function BookAnalysisPage() {
     }
     try {
       setStarting(true)
-      const response = await fetch(`/api/book-analysis/projects/${selectedProject.id}/run`, {
+      const response = await fetch(API_ENDPOINTS.BOOK_ANALYSIS.PROJECT_RUN(selectedProject.id), {
         method: 'POST',
       })
       const result = await response.json()

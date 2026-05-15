@@ -1,0 +1,82 @@
+[2026-05-15 13:21:51] ===== Multica Issue 监控 + 自动 Rerun 启动 =====
+[2026-05-15 13:21:51] [DAEMON] Daemon:      running (pid 37707, uptime 2h33m16s)
+Agents:      claude, codex, opencode, openclaw
+Workspaces:  1
+[2026-05-15 13:21:51] [INFO] 发现 8 个 in_progress Issue
+[2026-05-15 13:21:51] [INFO] 当前活跃 agent 进程数: 0
+0
+[2026-05-15 13:21:51] [RERUN] JUS-36: 最近 run 已完成但 Issue 未关闭，自动 rerun
+[2026-05-15 13:21:51] [RERUN] JUS-33: 最近 run 已完成但 Issue 未关闭，自动 rerun
+[2026-05-15 13:21:51] [RERUN] JUS-32: 最近 run 已完成但 Issue 未关闭，自动 rerun
+[2026-05-15 13:21:51] [RERUN] JUS-31: 最近 run 已完成但 Issue 未关闭，自动 rerun
+[2026-05-15 13:21:51] [RERUN] JUS-26: 最近 run 已完成但 Issue 未关闭，自动 rerun
+[2026-05-15 13:21:51] [RERUN] JUS-24: 最近 run 已完成但 Issue 未关闭，自动 rerun
+[2026-05-15 13:21:51] [RERUN] JUS-22: 最近 run 已完成但 Issue 未关闭，自动 rerun
+[2026-05-15 13:21:51] [RERUN] JUS-19: 最近 run 已完成但 Issue 未关闭，自动 rerun
+[2026-05-15 13:21:51] [ACTION] 需要 rerun 的 Issue: JUS-36 JUS-33 JUS-32 JUS-31 JUS-26 JUS-24 JUS-22 JUS-19 (共 8 个)
+[2026-05-15 13:22:00] ===== Multica Issue 监控 + 自动 Rerun 启动 =====
+[2026-05-15 13:22:00] [DAEMON] Daemon:      running (pid 37707, uptime 2h33m26s)
+Agents:      claude, codex, opencode, openclaw
+Workspaces:  1
+[2026-05-15 13:22:00] [INFO] 发现 8 个 in_progress Issue
+[2026-05-15 13:22:00] [INFO] 当前活跃 agent 进程数: 0
+0
+[2026-05-15 13:22:00] [RERUN] JUS-36: 最近 run 已完成但 Issue 未关闭，自动 rerun
+[2026-05-15 13:22:00] [RERUN] JUS-33: 最近 run 已完成但 Issue 未关闭，自动 rerun
+[2026-05-15 13:22:01] [RERUN] JUS-32: 最近 run 已完成但 Issue 未关闭，自动 rerun
+[2026-05-15 13:22:01] [RERUN] JUS-31: 最近 run 已完成但 Issue 未关闭，自动 rerun
+[2026-05-15 13:22:01] [RERUN] JUS-26: 最近 run 已完成但 Issue 未关闭，自动 rerun
+[2026-05-15 13:22:01] [RERUN] JUS-24: 最近 run 已完成但 Issue 未关闭，自动 rerun
+[2026-05-15 13:22:01] [RERUN] JUS-22: 最近 run 已完成但 Issue 未关闭，自动 rerun
+[2026-05-15 13:22:01] [RERUN] JUS-19: 最近 run 已完成但 Issue 未关闭，自动 rerun
+[2026-05-15 13:22:01] [ACTION] 需要 rerun 的 Issue: JUS-36 JUS-33 JUS-32 JUS-31 JUS-26 JUS-24 JUS-22 JUS-19 (共 8 个)
+[2026-05-15 13:22:19] ===== Multica Issue 监控 + 自动 Rerun 启动 =====
+[2026-05-15 13:22:19] [DAEMON] Daemon:      running (pid 37707, uptime 2h33m45s)
+Agents:      claude, codex, opencode, openclaw
+Workspaces:  1
+[2026-05-15 13:22:19] [INFO] 发现 8 个 in_progress Issue
+[2026-05-15 13:22:19] [INFO] 当前活跃 agent 进程数: 0
+[2026-05-15 13:22:19] [RERUN] JUS-36: 最近 run 已完成但 Issue 未关闭，自动 rerun
+[2026-05-15 13:22:19] [RERUN] JUS-33: 最近 run 已完成但 Issue 未关闭，自动 rerun
+[2026-05-15 13:22:20] [RERUN] JUS-32: 最近 run 已完成但 Issue 未关闭，自动 rerun
+[2026-05-15 13:22:20] [RERUN] JUS-31: 最近 run 已完成但 Issue 未关闭，自动 rerun
+[2026-05-15 13:22:20] [RERUN] JUS-26: 最近 run 已完成但 Issue 未关闭，自动 rerun
+[2026-05-15 13:22:20] [RERUN] JUS-24: 最近 run 已完成但 Issue 未关闭，自动 rerun
+[2026-05-15 13:22:20] [RERUN] JUS-22: 最近 run 已完成但 Issue 未关闭，自动 rerun
+[2026-05-15 13:22:20] [RERUN] JUS-19: 最近 run 已完成但 Issue 未关闭，自动 rerun
+[2026-05-15 13:22:20] [ACTION] 需要 rerun 的 Issue: JUS-36 JUS-33 JUS-32 JUS-31 JUS-26 JUS-24 JUS-22 JUS-19 (共 8 个)
+[2026-05-15 13:22:20] [RERUN] JUS-36 → queued
+[2026-05-15 13:22:20] [RERUN] JUS-33 → queued
+[2026-05-15 13:22:20] [RERUN] JUS-32 → queued
+[2026-05-15 13:22:20] [DEFER] JUS-31: 并发数已达上限，等待下一轮调度
+[2026-05-15 13:22:20] [DEFER] JUS-26: 并发数已达上限，等待下一轮调度
+[2026-05-15 13:22:20] [DEFER] JUS-24: 并发数已达上限，等待下一轮调度
+[2026-05-15 13:22:20] [DEFER] JUS-22: 并发数已达上限，等待下一轮调度
+[2026-05-15 13:22:20] [DEFER] JUS-19: 并发数已达上限，等待下一轮调度
+[2026-05-15 13:22:20] [DONE] 本轮触发 3 个 rerun
+[2026-05-15 13:22:20] ===== 监控检查完成 =====
+[2026-05-15 13:44:33] ===== Multica Issue 监控 + 自动 Rerun 启动 =====
+[2026-05-15 13:44:33] [DAEMON] Daemon:      running (pid 37707, uptime 2h55m58s)
+Agents:      claude, codex, opencode, openclaw
+Workspaces:  1
+[2026-05-15 13:44:33] [INFO] 发现 8 个 in_progress Issue
+[2026-05-15 13:44:33] [INFO] 当前活跃 agent 进程数: 0
+[2026-05-15 13:44:33] [RERUN] JUS-36: 最近 run 已完成但 Issue 未关闭，自动 rerun
+[2026-05-15 13:44:33] [RERUN] JUS-33: 最近 run 已完成但 Issue 未关闭，自动 rerun
+[2026-05-15 13:44:33] [RERUN] JUS-32: 最近 run 已完成但 Issue 未关闭，自动 rerun
+[2026-05-15 13:44:33] [RERUN] JUS-31: 最近 run 已完成但 Issue 未关闭，自动 rerun
+[2026-05-15 13:44:33] [RERUN] JUS-26: 最近 run 已完成但 Issue 未关闭，自动 rerun
+[2026-05-15 13:44:33] [RERUN] JUS-24: 最近 run 已完成但 Issue 未关闭，自动 rerun
+[2026-05-15 13:44:33] [RERUN] JUS-22: 最近 run 已完成但 Issue 未关闭，自动 rerun
+[2026-05-15 13:44:33] [RERUN] JUS-19: 最近 run 已完成但 Issue 未关闭，自动 rerun
+[2026-05-15 13:44:33] [ACTION] 需要 rerun 的 Issue: JUS-36 JUS-33 JUS-32 JUS-31 JUS-26 JUS-24 JUS-22 JUS-19 (共 8 个)
+[2026-05-15 13:44:33] [RERUN] JUS-36 → queued
+[2026-05-15 13:44:33] [RERUN] JUS-33 → queued
+[2026-05-15 13:44:33] [RERUN] JUS-32 → queued
+[2026-05-15 13:44:33] [DEFER] JUS-31: 并发数已达上限，等待下一轮调度
+[2026-05-15 13:44:33] [DEFER] JUS-26: 并发数已达上限，等待下一轮调度
+[2026-05-15 13:44:33] [DEFER] JUS-24: 并发数已达上限，等待下一轮调度
+[2026-05-15 13:44:33] [DEFER] JUS-22: 并发数已达上限，等待下一轮调度
+[2026-05-15 13:44:33] [DEFER] JUS-19: 并发数已达上限，等待下一轮调度
+[2026-05-15 13:44:33] [DONE] 本轮触发 3 个 rerun
+[2026-05-15 13:44:33] ===== 监控检查完成 =====

@@ -13,7 +13,13 @@ from typing import Optional
 from contextvars import ContextVar
 from pythonjsonlogger import jsonlogger
 
-# 请求ID上下文变量
+from app.core.log_sanitizer import (
+    sanitize_url,
+    sanitize_error_message,
+    sanitize_data,
+    sanitize_headers,
+)
+
 request_id_var: ContextVar[Optional[str]] = ContextVar('request_id', default=None)
 
 
@@ -100,7 +106,7 @@ def setup_logging(json_output: bool = False, log_level: str = "INFO"):
 class LoggingMiddleware:
     """
     日志中间件
-    为每个请求添加请求ID和日志记录
+    为每个请求添加请求ID和日志记录，自动脱敏敏感数据
     """
 
     def __init__(self, app, exclude_paths: list = None):
@@ -115,31 +121,29 @@ class LoggingMiddleware:
         from fastapi import Request
         request = Request(scope, receive=receive)
 
-        # 跳过排除的路径
         if any(request.url.path.startswith(path) for path in self.exclude_paths):
             await self.app(scope, receive, send)
             return
 
-        # 生成请求ID
         request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())[:8]
         set_request_id(request_id)
 
-        # 获取日志器
         logger = logging.getLogger(__name__)
 
         start_time = time.time()
 
-        # 记录请求开始
+        sanitized_path = sanitize_url(request.url.path)
+        client_ip = request.client.host if request.client else "-"
+
         logger.info(
-            f"Request started: {request.method} {request.url.path}",
+            f"Request started: {request.method} {sanitized_path}",
             extra={
                 "method": request.method,
-                "path": request.url.path,
-                "client_ip": request.client.host if request.client else "-",
+                "path": sanitized_path,
+                "client_ip": client_ip,
             }
         )
 
-        # 处理响应
         response_status = None
 
         async def send_wrapper(message):
@@ -151,26 +155,25 @@ class LoggingMiddleware:
         try:
             await self.app(scope, receive, send_wrapper)
 
-            # 记录请求完成
             duration = time.time() - start_time
             logger.info(
-                f"Request completed: {request.method} {request.url.path} - {response_status} ({duration:.3f}s)",
+                f"Request completed: {request.method} {sanitized_path} - {response_status} ({duration:.3f}s)",
                 extra={
                     "method": request.method,
-                    "path": request.url.path,
+                    "path": sanitized_path,
                     "status_code": response_status,
                     "duration_ms": round(duration * 1000, 2),
                 }
             )
 
         except Exception as e:
-            # 记录请求失败
             duration = time.time() - start_time
+            error_msg = sanitize_error_message(str(e))
             logger.error(
-                f"Request failed: {request.method} {request.url.path} - {type(e).__name__}: {str(e)}",
+                f"Request failed: {request.method} {sanitized_path} - {type(e).__name__}: {error_msg}",
                 extra={
                     "method": request.method,
-                    "path": request.url.path,
+                    "path": sanitized_path,
                     "error_type": type(e).__name__,
                     "duration_ms": round(duration * 1000, 2),
                 },
@@ -179,7 +182,6 @@ class LoggingMiddleware:
             raise
 
         finally:
-            # 清理请求ID
             request_id_var.set(None)
 
 
