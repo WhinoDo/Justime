@@ -72,3 +72,18 @@ class AdminModelUpsertRequest(BaseModel):
     capabilities: List[str] = Field(default_factory=list, description="能力标签")
     priority: int = Field(100, ge=1, le=999, description="优先级")
     enabled: bool = Field(True, description="是否启用")
+
+
+class TestConnectionRequest(BaseModel):
+    """测试 API 连接请求"""
+    base_url: str = Field(..., min_length=1, description="模型服务地址")
+    api_key: Optional[str] = Field(None, description="供应商API Key")
+    api_key_id: Optional[str] = Field(None, description="引用的系统 API Key ID")
+    model_id: str = Field(..., min_length=1, description="模型ID")
+
+
+class TestConnectionResult(BaseModel):
+    """测试 API 连接结果"""
+    success: bool = Field(..., description="连接是否成功")
+    message: str = Field(..., description="结果消息")
+    latency_ms: Optional[int] = Field(None, description="响应延迟(毫秒)")

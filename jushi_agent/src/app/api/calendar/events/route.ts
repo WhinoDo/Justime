@@ -7,12 +7,10 @@
 import { NextRequest } from 'next/server'
 import { proxyToBackend, createErrorResponse } from '@/lib/api/proxy'
 
-// GET - 获取事件列表
 export async function GET(request: NextRequest) {
   return proxyToBackend(request, '/calendar/events')
 }
 
-// POST - 创建新事件
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()

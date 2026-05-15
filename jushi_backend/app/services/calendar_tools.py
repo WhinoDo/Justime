@@ -16,6 +16,9 @@ except Exception:
 # 初始化日志
 logger = logging.getLogger(__name__)
 
+# 初始化日志
+logger = logging.getLogger(__name__)
+
 # 全局存储：按请求隔离待处理建议，避免并发串扰
 _pending_suggestions: Dict[str, List[dict]] = {}
 _suggestions_lock = threading.Lock()

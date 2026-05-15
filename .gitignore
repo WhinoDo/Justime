@@ -13,6 +13,7 @@ __pycache__/
 .venv/
 venv/
 env/
+.venv*/
 jushi_backend/.venv*/
 jushi_backend/.venv_runtime/
 
@@ -34,7 +35,7 @@ build/
 jushi_deploy_package.zip
 *.zip
 
-# Runtime data
+# Data directories
 infrastructure/mongodb/data/
 jushi_backend/app/data/documents/book-analysis/
 
@@ -46,3 +47,9 @@ jushi_backend/app/data/documents/book-analysis/
 
 # Large generated exports
 jushi_backend/app/data/documents/**/exports/
+
+# Misc
+.superpowers/
+.windsurf/
+architecture_workbench/
+"node_modules 2/"

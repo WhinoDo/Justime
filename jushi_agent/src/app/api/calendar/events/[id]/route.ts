@@ -8,7 +8,6 @@
 import { NextRequest } from 'next/server'
 import { proxyToBackend, createErrorResponse } from '@/lib/api/proxy'
 
-// GET - 获取事件详情
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -16,7 +15,6 @@ export async function GET(
   return proxyToBackend(request, `/calendar/events/${params.id}`)
 }
 
-// PUT - 更新事件
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -48,7 +46,6 @@ export async function PUT(
   }
 }
 
-// DELETE - 删除事件
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }

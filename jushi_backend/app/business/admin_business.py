@@ -2,6 +2,7 @@
 管理后台业务逻辑
 """
 
+import os
 import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -249,5 +250,136 @@ class AdminBusiness:
             total_conversations=total_conversations,
             version="1.0.0"
         )
+
+    @staticmethod
+    async def test_connection(
+        base_url: str,
+        api_key: Optional[str],
+        api_key_id: Optional[str],
+        model_id: str,
+    ) -> Dict[str, Any]:
+        """
+        测试 API 连接
+        
+        Returns:
+            Dict with keys: success, message, latency_ms
+        """
+        import httpx
+        import time
+        import logging
+
+        logger = logging.getLogger(__name__)
+
+        # 解析实际使用的 API Key
+        actual_api_key = ""
+        
+        # 优先使用直接传入的 api_key
+        if api_key and api_key.strip():
+            actual_api_key = api_key.strip()
+        # 否则尝试从系统 API Key 中获取
+        elif api_key_id and api_key_id.strip() and db.db is not None:
+            key_doc = await db.db.system_api_keys.find_one({"id": api_key_id.strip()})
+            if key_doc and key_doc.get("api_key"):
+                encrypted = key_doc.get("api_key", "")
+                actual_api_key = encryption_service.decrypt(encrypted)
+
+        logger.info(f"测试连接: base_url={base_url}, model_id={model_id}, has_api_key={bool(actual_api_key)}")
+
+        if not actual_api_key:
+            return {
+                "success": False,
+                "message": "未提供有效的 API Key",
+                "latency_ms": None,
+            }
+
+        # 规范化 base_url：OpenAI 兼容接口一般为 .../v1/chat/completions
+        normalized_url = base_url.strip().rstrip("/")
+        if not normalized_url.endswith("/v1"):
+            normalized_url = f"{normalized_url}/v1"
+
+        actual_headers = {
+            "Authorization": f"Bearer {actual_api_key}",
+            "Content-Type": "application/json",
+        }
+        
+        # 使用一个简单的请求来测试连接
+        payload = {
+            "model": model_id.strip(),
+            "messages": [{"role": "user", "content": "Hi"}],
+            "max_tokens": 5,
+        }
+
+        start_time = time.time()
+
+        # 临时移除代理环境变量（ALL_PROXY=socks… 且无 socksio 会报错）；测试结束在 finally 中恢复。
+        _proxy_keys = (
+            "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY",
+            "http_proxy", "https_proxy", "all_proxy", "no_proxy",
+        )
+        _saved_proxy: Dict[str, str] = {}
+        try:
+            for _k in _proxy_keys:
+                if _k in os.environ:
+                    _saved_proxy[_k] = os.environ.pop(_k)
+
+            try:
+                logger.info(f"发送请求到: {normalized_url}/chat/completions")
+                transport = httpx.AsyncHTTPTransport(retries=0)
+                async with httpx.AsyncClient(
+                    transport=transport,
+                    timeout=15.0,
+                    trust_env=False,
+                ) as client:
+                    response = await client.post(
+                        f"{normalized_url}/chat/completions",
+                        headers=actual_headers,
+                        json=payload,
+                    )
+                elapsed_ms = int((time.time() - start_time) * 1000)
+                logger.info(f"收到响应: status={response.status_code}, elapsed={elapsed_ms}ms")
+
+                if response.status_code == 200:
+                    return {
+                        "success": True,
+                        "message": f"连接成功 (HTTP {response.status_code})",
+                        "latency_ms": elapsed_ms,
+                    }
+
+                try:
+                    error_body = response.json()
+                    error_msg = error_body.get("error", {}).get("message", response.text[:100])
+                except Exception:
+                    error_msg = response.text[:100] if response.text else f"HTTP {response.status_code}"
+                return {
+                    "success": False,
+                    "message": f"连接失败: {error_msg}",
+                    "latency_ms": elapsed_ms,
+                }
+            except httpx.TimeoutException:
+                elapsed_ms = int((time.time() - start_time) * 1000)
+                logger.error(f"连接超时: {elapsed_ms}ms")
+                return {
+                    "success": False,
+                    "message": "连接超时，请检查网络或服务地址",
+                    "latency_ms": elapsed_ms,
+                }
+            except httpx.ConnectError as e:
+                elapsed_ms = int((time.time() - start_time) * 1000)
+                logger.error(f"连接错误: {str(e)}")
+                return {
+                    "success": False,
+                    "message": f"无法连接到服务: {str(e)[:100]}",
+                    "latency_ms": elapsed_ms,
+                }
+            except Exception as e:
+                elapsed_ms = int((time.time() - start_time) * 1000)
+                logger.error(f"测试异常: {type(e).__name__}: {str(e)}", exc_info=True)
+                return {
+                    "success": False,
+                    "message": f"测试失败: {str(e)[:100]}",
+                    "latency_ms": elapsed_ms,
+                }
+        finally:
+            os.environ.update(_saved_proxy)
 
 admin_business = AdminBusiness()

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, Trash2, Edit2, Loader2 } from 'lucide-react'
+import { Plus, Trash2, Edit2, Loader2, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -95,6 +95,8 @@ export default function AdminModelsPage() {
     const [apiKeys, setApiKeys] = useState<AdminApiKey[]>([])
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
+    const [testing, setTesting] = useState(false)
+    const [testResult, setTestResult] = useState<{ success: boolean; message: string; latencyMs?: number } | null>(null)
     const [dialogOpen, setDialogOpen] = useState(false)
     const [editingModel, setEditingModel] = useState<AdminModel | null>(null)
     const [form, setForm] = useState<ModelFormState>(emptyForm)
@@ -156,6 +158,7 @@ export default function AdminModelsPage() {
             api_key_mode: apiKeys.length > 0 ? 'reference' : 'manual',
             api_key_id: apiKeys.length > 0 ? apiKeys[0].id : ''
         })
+        setTestResult(null)
         setDialogOpen(true)
     }
 
@@ -175,6 +178,7 @@ export default function AdminModelsPage() {
             priority: String(model.priority ?? 100),
             enabled: !!model.enabled
         })
+        setTestResult(null)
         setDialogOpen(true)
     }
 
@@ -325,6 +329,61 @@ export default function AdminModelsPage() {
                 description: error instanceof Error ? error.message : '请稍后重试',
                 variant: 'destructive'
             })
+        }
+    }
+
+    const handleTestConnection = async () => {
+        if (!form.base_url.trim() || !form.model_id.trim()) {
+            toast({
+                title: '表单不完整',
+                description: '请填写服务地址和模型ID',
+                variant: 'destructive'
+            })
+            return
+        }
+
+        const hasKey = form.api_key_mode === 'reference' ? !!form.api_key_id : !!form.api_key.trim()
+        if (!hasKey) {
+            toast({
+                title: 'API Key 未配置',
+                description: '请先配置 API Key',
+                variant: 'destructive'
+            })
+            return
+        }
+
+        setTesting(true)
+        setTestResult(null)
+        try {
+            const payload: Record<string, unknown> = {
+                base_url: form.base_url.trim(),
+                model_id: form.model_id.trim()
+            }
+            if (form.api_key_mode === 'reference') {
+                payload.api_key_id = form.api_key_id
+            } else {
+                payload.api_key = form.api_key.trim()
+            }
+
+            const response = await fetch('/api/admin/models/test', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            const result = await response.json()
+
+            setTestResult({
+                success: result.success,
+                message: result.message || (result.success ? '连接成功' : '连接失败'),
+                latencyMs: result.latency_ms
+            })
+        } catch (error) {
+            setTestResult({
+                success: false,
+                message: error instanceof Error ? error.message : '测试请求失败'
+            })
+        } finally {
+            setTesting(false)
         }
     }
 
@@ -513,6 +572,34 @@ export default function AdminModelsPage() {
                                 <Input className="bg-black/20 border-white/20 text-white placeholder:text-white/50 focus-visible:ring-white/30 focus-visible:border-white/40 focus-visible:ring-offset-0" value={form.api_key} type="password" onChange={(e) => setForm((s) => ({ ...s, api_key: e.target.value }))} autoComplete="new-password" />
                             </div>
                         )}
+
+                        <div className="sm:col-span-2 space-y-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="border-blue-400/40 bg-blue-500/10 text-blue-200 hover:bg-blue-500/20 hover:text-blue-100 gap-2"
+                                onClick={handleTestConnection}
+                                disabled={testing}
+                            >
+                                {testing ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                    <Zap className="w-4 h-4" />
+                                )}
+                                测试连接
+                            </Button>
+                            {testResult && (
+                                <div className={`p-3 rounded-md text-sm ${testResult.success ? 'bg-green-500/20 border border-green-400/30 text-green-200' : 'bg-red-500/20 border border-red-400/30 text-red-200'}`}>
+                                    <div className="flex items-center gap-2">
+                                        <span>{testResult.success ? '✓' : '✗'}</span>
+                                        <span>{testResult.message}</span>
+                                        {testResult.latencyMs !== undefined && (
+                                            <span className="text-white/60">({testResult.latencyMs}ms)</span>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
 
                         <div className="space-y-1">
                             <p className="text-sm text-white/70">Temperature</p>

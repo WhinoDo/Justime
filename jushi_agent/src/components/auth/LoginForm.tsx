@@ -18,6 +18,7 @@ import {
   CheckCircle,
   RefreshCw
 } from 'lucide-react'
+import { ForgotPasswordForm } from './ForgotPasswordForm'
 
 interface LoginFormProps {
   onSuccess?: (user: any) => void
@@ -25,8 +26,12 @@ interface LoginFormProps {
   redirectTo?: string
 }
 
+type ViewMode = 'login' | 'forgot-password'
+
 export function LoginForm({ onSuccess, onSwitchToRegister, redirectTo }: LoginFormProps) {
   const { login, isLoading } = useAuth()
+
+  const [viewMode, setViewMode] = useState<ViewMode>('login')
 
   const [formData, setFormData] = useState({
     identifier: '',
@@ -86,6 +91,15 @@ export function LoginForm({ onSuccess, onSwitchToRegister, redirectTo }: LoginFo
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  // 如果是忘记密码视图，显示忘记密码表单
+  if (viewMode === 'forgot-password') {
+    return (
+      <ForgotPasswordForm
+        onBackToLogin={() => setViewMode('login')}
+      />
+    )
   }
 
   return (
@@ -201,10 +215,7 @@ export function LoginForm({ onSuccess, onSwitchToRegister, redirectTo }: LoginFo
             <Button
               variant="link"
               className="p-0 h-auto text-orange-300 hover:text-orange-200"
-              onClick={() => {
-                // TODO: 实现忘记密码功能
-                alert('忘记密码功能即将上线')
-              }}
+              onClick={() => setViewMode('forgot-password')}
             >
               忘记密码？
             </Button>
