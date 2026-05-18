@@ -1,70 +1,50 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect } from 'react'
-import { API_ENDPOINTS } from '@/lib/api/endpoints'
+import { useState, useRef, useCallback, useEffect } from 'react'
 
-/**
- * SSE Event types from backend
- */
-export type SSEEventType = 'start' | 'token' | 'metadata' | 'usage' | 'done' | 'error' | 'resume'
+// SSE 事件类型
+export type SSEEventType = 'start' | 'token' | 'metadata' | 'usage' | 'done' | 'error'
 
+// SSE 事件接口
 export interface SSEEvent {
   event: SSEEventType
   id?: string
-  content?: string
-  message_id?: string
-  conversation_id?: string
-  metadata?: {
-    ragReferences?: Array<{
-      referenceId: string
-      docPath: string
-      fileName: string
-      score: number
-      snippets: string[]
-      queries: string[]
-    }>
-    timingStrategy?: Record<string, unknown>
-    taskAnalysis?: Record<string, unknown>
-    suggestedEvents?: Array<Record<string, unknown>>
-    taskDecomposition?: Record<string, unknown>
-  }
-  usage?: {
-    promptTokens: number
-    completionTokens: number
-    totalTokens: number
-  }
-  error?: string
+  data: Record<string, unknown>
 }
 
-export interface SSEChatOptions {
+// SSE 连接状态
+export type SSEConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error'
+
+// Hook 配置
+export interface UseSSEChatConfig {
+  endpoint: string
   onToken?: (token: string, messageId?: string) => void
-  onMetadata?: (metadata: SSEEvent['metadata']) => void
-  onUsage?: (usage: SSEEvent['usage']) => void
-  onDone?: (messageId?: string) => void
+  onMetadata?: (metadata: Record<string, unknown>) => void
+  onUsage?: (usage: { promptTokens: number; completionTokens: number; totalTokens: number }) => void
+  onDone?: (messageId: string, fullContent: string) => void
   onError?: (error: string) => void
-  onStart?: (conversationId: string) => void
+  onStart?: (conversationId: string, messageId: string) => void
   maxRetries?: number
   retryDelay?: number
 }
 
-export interface SSEChatState {
-  isConnected: boolean
+// Hook 返回值
+export interface UseSSEChatReturn {
+  connectionState: SSEConnectionState
   isStreaming: boolean
-  error: string | null
-  lastEventId: string | null
   content: string
+  error: string | null
   messageId: string | null
-  conversationId: string | null
-  metadata: SSEEvent['metadata'] | null
-  usage: SSEEvent['usage'] | null
+  lastEventId: string | null
+  sendMessage: (message: string, sessionId?: string, modelId?: string) => Promise<void>
+  stop: () => void
+  reconnect: () => Promise<void>
+  reset: () => void
 }
 
-/**
- * Custom hook for SSE streaming chat
- * Handles connection, event parsing, reconnection, and error handling
- */
-export function useSSEChat(options: SSEChatOptions = {}) {
+export function useSSEChat(config: UseSSEChatConfig): UseSSEChatReturn {
   const {
+    endpoint,
     onToken,
     onMetadata,
     onUsage,
@@ -73,334 +53,282 @@ export function useSSEChat(options: SSEChatOptions = {}) {
     onStart,
     maxRetries = 3,
     retryDelay = 1000,
-  } = options
+  } = config
 
-  const [state, setState] = useState<SSEChatState>({
-    isConnected: false,
-    isStreaming: false,
-    error: null,
-    lastEventId: null,
-    content: '',
-    messageId: null,
-    conversationId: null,
-    metadata: null,
-    usage: null,
-  })
+  const [connectionState, setConnectionState] = useState<SSEConnectionState>('disconnected')
+  const [isStreaming, setIsStreaming] = useState(false)
+  const [content, setContent] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [messageId, setMessageId] = useState<string | null>(null)
+  const [lastEventId, setLastEventId] = useState<string | null>(null)
 
   const abortControllerRef = useRef<AbortController | null>(null)
   const retryCountRef = useRef(0)
-  const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null)
+  const contentRef = useRef('')
+  const pendingRequestRef = useRef<{ message: string; sessionId?: string; modelId?: string } | null>(null)
 
-  /**
-   * Parse SSE event from raw text
-   */
-  const parseSSEEvent = useCallback((rawEvent: string): SSEEvent | null => {
-    const lines = rawEvent.split('\n')
-    let data: string | null = null
-    let id: string | null = null
-
-    for (const line of lines) {
-      if (line.startsWith('data:')) {
-        data = line.slice(5).trim()
-      } else if (line.startsWith('id:')) {
-        id = line.slice(3).trim()
-      }
-    }
-
-    if (!data) return null
-
+  // 解析 SSE 事件
+  const parseSSEEvent = (line: string): SSEEvent | null => {
+    if (!line.startsWith('data:')) return null
+    
+    const dataStr = line.slice(5).trim()
+    if (!dataStr) return null
+    
     try {
-      const parsed = JSON.parse(data) as SSEEvent
-      if (id) {
-        parsed.id = id
+      const parsed = JSON.parse(dataStr)
+      return {
+        event: parsed.event || 'token',
+        id: parsed.id,
+        data: parsed,
       }
-      return parsed
-    } catch (e) {
-      console.warn('Failed to parse SSE event:', data, e)
+    } catch {
       return null
     }
-  }, [])
+  }
 
-  /**
-   * Handle individual SSE event
-   */
+  // 处理 SSE 事件
   const handleEvent = useCallback((event: SSEEvent) => {
-    // Update last event ID for reconnection
+    // 更新 lastEventId
     if (event.id) {
-      setState(prev => ({ ...prev, lastEventId: event.id }))
+      setLastEventId(event.id)
     }
 
     switch (event.event) {
       case 'start':
-        setState(prev => ({
-          ...prev,
-          isConnected: true,
-          isStreaming: true,
-          conversationId: event.conversation_id || null,
-          messageId: event.message_id || null,
-        }))
-        if (event.conversation_id) {
-          onStart?.(event.conversation_id)
+        setMessageId(event.data.messageId as string || null)
+        if (onStart && event.data.conversationId && event.data.messageId) {
+          onStart(event.data.conversationId as string, event.data.messageId as string)
         }
         break
 
       case 'token':
-        if (event.content) {
-          setState(prev => ({
-            ...prev,
-            content: prev.content + event.content,
-            messageId: event.message_id || prev.messageId,
-          }))
-          onToken?.(event.content, event.message_id)
+        const token = event.data.content as string
+        if (token) {
+          contentRef.current += token
+          setContent(contentRef.current)
+          onToken?.(token, event.data.messageId as string)
         }
         break
 
       case 'metadata':
-        setState(prev => ({
-          ...prev,
-          metadata: event.metadata || null,
-        }))
-        onMetadata?.(event.metadata)
+        onMetadata?.(event.data)
         break
 
       case 'usage':
-        setState(prev => ({
-          ...prev,
-          usage: event.usage || null,
-        }))
-        onUsage?.(event.usage)
+        if (event.data.promptTokens !== undefined) {
+          onUsage?.({
+            promptTokens: event.data.promptTokens as number,
+            completionTokens: event.data.completionTokens as number,
+            totalTokens: event.data.totalTokens as number,
+          })
+        }
         break
 
       case 'done':
-        setState(prev => ({
-          ...prev,
-          isStreaming: false,
-          isConnected: false,
-        }))
-        onDone?.(state.messageId || undefined)
+        setIsStreaming(false)
+        setConnectionState('disconnected')
+        if (event.data.messageId) {
+          onDone?.(event.data.messageId as string, contentRef.current)
+        }
         break
 
       case 'error':
-        setState(prev => ({
-          ...prev,
-          isStreaming: false,
-          error: event.error || 'Unknown error',
-        }))
-        onError?.(event.error || 'Unknown error')
+        const errorMsg = (event.data.message as string) || '未知错误'
+        setError(errorMsg)
+        setIsStreaming(false)
+        setConnectionState('error')
+        onError?.(errorMsg)
         break
-
-      default:
-        console.warn('Unknown SSE event type:', event.event)
     }
-  }, [onToken, onMetadata, onUsage, onDone, onError, onStart, state.messageId])
+  }, [onToken, onMetadata, onUsage, onDone, onError, onStart])
 
-  /**
-   * Process SSE stream
-   */
-  const processStream = useCallback(async (response: Response) => {
-    const reader = response.body?.getReader()
-    if (!reader) {
-      throw new Error('Response body is not readable')
-    }
-
-    readerRef.current = reader
-    const decoder = new TextDecoder()
-    let buffer = ''
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read()
-
-        if (done) {
-          // Process any remaining buffer
-          if (buffer.trim()) {
-            const event = parseSSEEvent(buffer)
-            if (event) {
-              handleEvent(event)
-            }
-          }
-          break
-        }
-
-        buffer += decoder.decode(value, { stream: true })
-
-        // Split by double newline to get complete events
-        const events = buffer.split('\n\n')
-        buffer = events.pop() || '' // Keep incomplete event in buffer
-
-        for (const rawEvent of events) {
-          if (rawEvent.trim() && !rawEvent.startsWith(':')) {
-            // Skip heartbeat comments
-            const event = parseSSEEvent(rawEvent)
-            if (event) {
-              handleEvent(event)
-            }
-          }
-        }
-      }
-    } finally {
-      reader.releaseLock()
-      readerRef.current = null
-    }
-  }, [parseSSEEvent, handleEvent])
-
-  /**
-   * Send a streaming chat message
-   */
+  // 发送消息
   const sendMessage = useCallback(async (
     message: string,
-    payload: Record<string, unknown> = {}
+    sessionId?: string,
+    modelId?: string
   ) => {
-    // Reset state for new message
-    setState(prev => ({
-      ...prev,
-      content: '',
-      error: null,
-      metadata: null,
-      usage: null,
-      isStreaming: true,
-    }))
+    // 重置状态
+    setContent('')
+    contentRef.current = ''
+    setError(null)
+    setMessageId(null)
     retryCountRef.current = 0
+    pendingRequestRef.current = { message, sessionId, modelId }
 
-    // Create abort controller for this request
+    await connect(message, sessionId, modelId)
+  }, [endpoint])
+
+  // 连接 SSE
+  const connect = async (
+    message: string,
+    sessionId?: string,
+    modelId?: string,
+    resumeEventId?: string
+  ) => {
+    setConnectionState('connecting')
+    setIsStreaming(true)
+
+    // 取消之前的请求
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
     abortControllerRef.current = new AbortController()
-    const signal = abortControllerRef.current.signal
 
-    const attemptRequest = async (attempt: number): Promise<void> => {
-      try {
-        const headers: HeadersInit = {
-          'Content-Type': 'application/json',
-          'Accept': 'text/event-stream',
-        }
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      }
 
-        // Add Last-Event-ID for reconnection
-        if (state.lastEventId) {
-          headers['Last-Event-ID'] = state.lastEventId
-        }
+      // 断点续传
+      if (resumeEventId || lastEventId) {
+        headers['Last-Event-ID'] = resumeEventId || lastEventId || ''
+      }
 
-        const response = await fetch(API_ENDPOINTS.CHAT.STREAM, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            message,
-            stream: true,
-            ...payload,
-          }),
-          signal,
-        })
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          message,
+          sessionId,
+          runtimeModelId: modelId,
+        }),
+        signal: abortControllerRef.current.signal,
+      })
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}))
-          throw new Error(errorData.detail || errorData.error || `HTTP ${response.status}`)
-        }
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
 
-        // Check content type for SSE
-        const contentType = response.headers.get('content-type') || ''
-        if (!contentType.includes('text/event-stream')) {
-          // Fall back to non-streaming response
-          const data = await response.json()
-          if (data.success && data.data?.response) {
-            setState(prev => ({
-              ...prev,
-              content: data.data.response,
-              isStreaming: false,
-              messageId: data.data.messageId,
-              metadata: {
-                ragReferences: data.data.ragReferences,
-                timingStrategy: data.data.timingStrategy,
-                taskAnalysis: data.data.taskAnalysis,
-                suggestedEvents: data.data.suggestedEvents,
-                taskDecomposition: data.data.taskDecomposition,
-              },
-            }))
-            onDone?.(data.data.messageId)
-          } else {
-            throw new Error(data.error?.message || 'Failed to get response')
+      setConnectionState('connected')
+
+      const reader = response.body?.getReader()
+      if (!reader) {
+        throw new Error('无法获取响应流')
+      }
+
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          // 跳过心跳注释
+          if (line.startsWith(':')) continue
+          
+          const event = parseSSEEvent(line)
+          if (event) {
+            handleEvent(event)
           }
-          return
         }
+      }
 
-        // Process SSE stream
-        await processStream(response)
-        retryCountRef.current = 0 // Reset on success
-
-      } catch (error) {
-        // Don't retry if aborted
-        if ((error as Error).name === 'AbortError') {
-          return
+      // 处理剩余的 buffer
+      if (buffer.trim()) {
+        if (!buffer.startsWith(':')) {
+          const event = parseSSEEvent(buffer)
+          if (event) {
+            handleEvent(event)
+          }
         }
+      }
 
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        // 用户主动取消，不视为错误
+        return
+      }
 
-        // Check if we should retry
-        if (attempt < maxRetries) {
-          console.warn(`SSE connection failed, retrying (${attempt + 1}/${maxRetries})...`)
-          const delay = retryDelay * Math.pow(2, attempt) // Exponential backoff
-          await new Promise(resolve => setTimeout(resolve, delay))
-          return attemptRequest(attempt + 1)
+      const errorMsg = err instanceof Error ? err.message : '连接失败'
+      
+      // 重试逻辑
+      if (retryCountRef.current < maxRetries) {
+        retryCountRef.current++
+        const delay = retryDelay * Math.pow(2, retryCountRef.current - 1) // 指数退避
+        
+        console.log(`SSE 连接失败，${delay}ms 后重试 (${retryCountRef.current}/${maxRetries})`)
+        
+        await new Promise(resolve => setTimeout(resolve, delay))
+        
+        if (pendingRequestRef.current) {
+          await connect(
+            pendingRequestRef.current.message,
+            pendingRequestRef.current.sessionId,
+            pendingRequestRef.current.modelId,
+            lastEventId || undefined
+          )
         }
-
-        // Max retries exceeded
-        setState(prev => ({
-          ...prev,
-          isStreaming: false,
-          error: errorMessage,
-        }))
-        onError?.(errorMessage)
+      } else {
+        setError(errorMsg)
+        setConnectionState('error')
+        setIsStreaming(false)
+        onError?.(errorMsg)
       }
     }
+  }
 
-    await attemptRequest(0)
-  }, [state.lastEventId, maxRetries, retryDelay, processStream, onDone, onError])
-
-  /**
-   * Cancel ongoing stream
-   */
-  const cancel = useCallback(() => {
+  // 停止流
+  const stop = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
       abortControllerRef.current = null
     }
-    if (readerRef.current) {
-      readerRef.current.cancel()
-      readerRef.current = null
-    }
-    setState(prev => ({
-      ...prev,
-      isStreaming: false,
-      isConnected: false,
-    }))
+    setIsStreaming(false)
+    setConnectionState('disconnected')
   }, [])
 
-  /**
-   * Reset state
-   */
-  const reset = useCallback(() => {
-    cancel()
-    setState({
-      isConnected: false,
-      isStreaming: false,
-      error: null,
-      lastEventId: null,
-      content: '',
-      messageId: null,
-      conversationId: null,
-      metadata: null,
-      usage: null,
-    })
-  }, [cancel])
+  // 重连
+  const reconnect = useCallback(async () => {
+    if (!pendingRequestRef.current || !lastEventId) {
+      return
+    }
+    
+    retryCountRef.current = 0
+    await connect(
+      pendingRequestRef.current.message,
+      pendingRequestRef.current.sessionId,
+      pendingRequestRef.current.modelId,
+      lastEventId
+    )
+  }, [lastEventId])
 
-  // Cleanup on unmount
+  // 重置
+  const reset = useCallback(() => {
+    stop()
+    setContent('')
+    contentRef.current = ''
+    setError(null)
+    setMessageId(null)
+    setLastEventId(null)
+    pendingRequestRef.current = null
+    retryCountRef.current = 0
+  }, [stop])
+
+  // 清理
   useEffect(() => {
     return () => {
-      cancel()
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
     }
-  }, [cancel])
+  }, [])
 
   return {
-    ...state,
+    connectionState,
+    isStreaming,
+    content,
+    error,
+    messageId,
+    lastEventId,
     sendMessage,
-    cancel,
+    stop,
+    reconnect,
     reset,
   }
 }

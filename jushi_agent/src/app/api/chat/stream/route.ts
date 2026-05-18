@@ -1,313 +1,146 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
-/**
- * SSE Streaming Chat API Route Handler
- * Proxies SSE streaming requests to the backend Python service
- *
- * This route handler:
- * 1. Forwards the request to the backend SSE endpoint
- * 2. Streams the SSE response back to the client
- * 3. Handles authentication via cookies or Authorization header
- * 4. Supports Last-Event-ID for reconnection
- */
-
-const MAX_AUTH_TOKEN_LENGTH = 4096
-
-/**
- * Normalize and validate auth token
- */
-function normalizeAuthToken(
-  tokenValue?: string,
-  options?: { allowLegacyPlusBearerSeparator?: boolean }
-): string | undefined {
-  const hasUnsafeTokenChars = (value: string): boolean => {
-    const unsafeCharRegex = new RegExp('[\\s\\x00-\\x1F\\x7F-\\x9F\\u2028\\u2029]', 'u')
-    return unsafeCharRegex.test(value)
-  }
-
-  const MAX_TOKEN_DECODE_DEPTH = 8
-  const hasUnsafeEncodedTokenChars = (value: string): boolean => {
-    let currentValue = value
-
-    for (let depth = 0; depth < MAX_TOKEN_DECODE_DEPTH; depth += 1) {
-      if (hasUnsafeTokenChars(currentValue)) {
-        return true
-      }
-
-      if (!/%[0-9a-f]{2}/i.test(currentValue)) {
-        return false
-      }
-
-      try {
-        const decodedValue = decodeURIComponent(currentValue)
-        if (decodedValue === currentValue) {
-          return false
-        }
-        currentValue = decodedValue
-      } catch {
-        return true
-      }
-    }
-
-    if (/%[0-9a-f]{2}/i.test(currentValue)) {
-      return true
-    }
-
-    return hasUnsafeTokenChars(currentValue)
-  }
-
-  const sanitizeToken = (candidate?: string): string | undefined => {
-    if (!candidate) {
-      return undefined
-    }
-
-    const trimmedCandidate = candidate.trim()
-    if (!trimmedCandidate) {
-      return undefined
-    }
-
-    if (hasUnsafeTokenChars(trimmedCandidate)) {
-      return undefined
-    }
-
-    if (hasUnsafeEncodedTokenChars(trimmedCandidate)) {
-      return undefined
-    }
-
-    if (trimmedCandidate.length > MAX_AUTH_TOKEN_LENGTH) {
-      return undefined
-    }
-
-    return trimmedCandidate
-  }
-
-  if (!tokenValue) {
-    return undefined
-  }
-
-  const trimmedToken = tokenValue.trim()
-  if (!trimmedToken) {
-    return undefined
-  }
-
-  const unquotedToken = trimmedToken.replace(/^(['"])(.*)\1$/, '$2').trim()
-  if (!unquotedToken) {
-    return undefined
-  }
-
-  if (/^(undefined|null)$/i.test(unquotedToken)) {
-    return undefined
-  }
-
-  const bearerMatch = unquotedToken.match(/^Bearer(?:\s+(.+))?$/i)
-  if (bearerMatch) {
-    const bearerPayload = bearerMatch[1]?.trim()
-    if (!bearerPayload) {
-      return undefined
-    }
-    const normalizedBearerPayload = bearerPayload.replace(/^(['"])(.*)\1$/, '$2').trim()
-    if (!normalizedBearerPayload || /^(undefined|null)$/i.test(normalizedBearerPayload)) {
-      return undefined
-    }
-    return sanitizeToken(normalizedBearerPayload)
-  }
-
-  const legacyPlusBearerMatch = options?.allowLegacyPlusBearerSeparator
-    ? unquotedToken.match(/^Bearer\+(.+)$/i)
-    : null
-  if (legacyPlusBearerMatch) {
-    const bearerPayload = legacyPlusBearerMatch[1]?.trim()
-    if (!bearerPayload) {
-      return undefined
-    }
-    const normalizedBearerPayload = bearerPayload.replace(/^(['"])(.*)\1$/, '$2').trim()
-    if (!normalizedBearerPayload || /^(undefined|null)$/i.test(normalizedBearerPayload)) {
-      return undefined
-    }
-    return sanitizeToken(normalizedBearerPayload)
-  }
-
-  if (/^Bearer/i.test(unquotedToken)) {
-    return undefined
-  }
-
-  return sanitizeToken(unquotedToken)
-}
-
-/**
- * Get backend URL from environment
- */
-function getBackendUrl(): string {
-  const baseUrl = (
-    process.env.BACKEND_INTERNAL_URL ||
-    process.env.NEXT_PUBLIC_BACKEND_URL ||
-    process.env.NEXT_PUBLIC_API_BASE_URL ||
-    'http://127.0.0.1:8080'
-  ).replace(/\/+$/, '')
-
-  return `${baseUrl}/api/v1/chat/stream`
-}
+// 后端 SSE 端点
+const BACKEND_STREAM_URL = process.env.BACKEND_URL || 'http://localhost:8000'
+const SSE_ENDPOINT = `${BACKEND_STREAM_URL}/api/v1/chat/stream`
 
 export async function POST(request: NextRequest) {
   try {
-    // Parse request body
-    let body: unknown
-    try {
-      body = await request.json()
-    } catch (error) {
-      if (error instanceof SyntaxError || error instanceof TypeError) {
-        return new Response(JSON.stringify({ error: '请求体格式无效' }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        })
-      }
-      throw error
-    }
-
-    if (!body || typeof body !== 'object' || Array.isArray(body)) {
-      return new Response(JSON.stringify({ error: '请求体格式无效' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    }
-
-    const parsedBody = body as Record<string, unknown>
-    const { message } = parsedBody
-
-    // Validate message
-    if (!message || typeof message !== 'string') {
-      return new Response(JSON.stringify({ error: '消息内容无效' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    }
-
-    // Get auth token
-    const rawCookieToken = request.cookies.get('access_token')?.value
-    let cookieToken = rawCookieToken
-    if (rawCookieToken) {
-      try {
-        cookieToken = decodeURIComponent(rawCookieToken)
-      } catch {
-        cookieToken = rawCookieToken
-      }
-    }
-
-    const authorizationHeader = request.headers.get('authorization')
-    const cookieAuthToken = normalizeAuthToken(cookieToken, { allowLegacyPlusBearerSeparator: true })
-    const bearerTokenFromHeader = normalizeAuthToken(authorizationHeader || undefined)
-    const authToken = cookieAuthToken || bearerTokenFromHeader
-
-    // Build headers for backend request
-    const headers: HeadersInit = {
+    // 获取请求体
+    const body = await request.json()
+    
+    // 获取认证信息
+    const authHeader = request.headers.get('authorization')
+    const cookieHeader = request.headers.get('cookie')
+    
+    // 获取 Last-Event-ID（断点续传）
+    const lastEventId = request.headers.get('last-event-id')
+    
+    // 构建请求头
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Accept': 'text/event-stream',
-      'Cache-Control': 'no-cache',
     }
-
-    if (authToken) {
-      headers['Authorization'] = `Bearer ${authToken}`
+    
+    if (authHeader) {
+      headers['Authorization'] = authHeader
     }
-
-    // Forward Last-Event-ID for reconnection support
-    const lastEventId = request.headers.get('Last-Event-ID')
+    
+    if (cookieHeader) {
+      headers['Cookie'] = cookieHeader
+    }
+    
     if (lastEventId) {
       headers['Last-Event-ID'] = lastEventId
     }
-
-    const backendUrl = getBackendUrl()
-
-    console.log('SSE Stream API: Forwarding request to backend:', {
-      backendUrl,
-      hasAuthToken: !!authToken,
-      hasLastEventId: !!lastEventId,
-      messageLength: message.length,
-    })
-
-    // Make request to backend
-    const response = await fetch(backendUrl, {
+    
+    // 转发请求到后端
+    const response = await fetch(SSE_ENDPOINT, {
       method: 'POST',
       headers,
       body: JSON.stringify(body),
     })
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ detail: response.statusText }))
-      console.error('SSE Stream API: Backend error:', response.status, errorData)
-      return new Response(JSON.stringify({
-        error: errorData.detail || errorData.error || `HTTP ${response.status}`,
-      }), {
-        status: response.status,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    }
-
-    // Check if response is SSE stream
+    
+    // 检查响应类型
     const contentType = response.headers.get('content-type') || ''
-    if (!contentType.includes('text/event-stream')) {
-      // Not a stream, return as JSON
-      const data = await response.json()
-      return new Response(JSON.stringify(data), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    }
-
-    // Stream the SSE response back to client
-    // Create a TransformStream to handle the streaming
-    const { readable, writable } = new TransformStream()
-
-    // Pipe the backend response to the client
-    const writer = writable.getWriter()
-    const reader = response.body?.getReader()
-
-    if (!reader) {
-      return new Response(JSON.stringify({ error: 'Backend response not readable' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    }
-
-    // Start streaming in background
-    ;(async () => {
+    
+    if (!response.ok) {
+      // 非 2xx 响应，返回错误
+      const errorText = await response.text()
+      let errorData
       try {
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) {
-            await writer.close()
-            break
-          }
-          await writer.write(value)
-        }
-      } catch (error) {
-        console.error('SSE Stream API: Streaming error:', error)
-        try {
-          await writer.abort(error as Error)
-        } catch {
-          // Writer may already be closed
-        }
+        errorData = JSON.parse(errorText)
+      } catch {
+        errorData = { error: errorText }
       }
-    })()
-
-    // Return SSE stream to client
-    return new Response(readable, {
+      
+      return NextResponse.json(
+        { error: errorData.detail || errorData.error || '请求失败' },
+        { status: response.status }
+      )
+    }
+    
+    if (!contentType.includes('text/event-stream')) {
+      // 非 SSE 响应，直接返回
+      const data = await response.text()
+      return new NextResponse(data, {
+        status: response.status,
+        headers: {
+          'Content-Type': contentType,
+        },
+      })
+    }
+    
+    // SSE 响应 - 流式转发
+    const reader = response.body?.getReader()
+    
+    if (!reader) {
+      return NextResponse.json(
+        { error: '无法获取响应流' },
+        { status: 500 }
+      )
+    }
+    
+    // 创建 TransformStream 用于流式响应
+    const stream = new ReadableStream({
+      async start(controller) {
+        const decoder = new TextDecoder()
+        const encoder = new TextEncoder()
+        
+        try {
+          while (true) {
+            const { done, value } = await reader.read()
+            
+            if (done) {
+              controller.close()
+              break
+            }
+            
+            const chunk = decoder.decode(value, { stream: true })
+            controller.enqueue(encoder.encode(chunk))
+          }
+        } catch (error) {
+          console.error('SSE stream error:', error)
+          controller.error(error)
+        }
+      },
+      
+      async cancel() {
+        // 客户端断开连接时取消后端请求
+        await reader.cancel()
+      },
+    })
+    
+    // 返回 SSE 流式响应
+    return new NextResponse(stream, {
       status: 200,
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache, no-transform',
         'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type, Last-Event-ID',
+        'X-Accel-Buffering': 'no', // 禁用 nginx 缓冲
       },
     })
-
+    
   } catch (error) {
-    console.error('SSE Stream API Error:', error)
-    return new Response(JSON.stringify({
-      error: error instanceof Error ? error.message : 'Internal server error',
-    }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    console.error('SSE proxy error:', error)
+    
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : '服务器内部错误' },
+      { status: 500 }
+    )
   }
+}
+
+// 处理 OPTIONS 请求（CORS 预检）
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, Last-Event-ID',
+      'Access-Control-Max-Age': '86400',
+    },
+  })
 }
