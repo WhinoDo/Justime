@@ -337,6 +337,11 @@ async def chat_stream(
     - done: 完成信号
     - error: 错误信息
 
+    断点续传支持：
+    - 客户端通过 Last-Event-ID 请求头传递上次接收到的事件 ID
+    - 事件 ID 格式：{sessionId}:{messageId}:{tokenIndex}
+    - 服务端从 Redis 恢复流上下文，从断点继续推送
+
     安全措施：
     - CORS: 仅允许配置的来源，不使用 "*"
     - 心跳: 每15秒发送心跳保持连接
@@ -357,10 +362,16 @@ async def chat_stream(
     # 获取允许的来源（安全CORS）
     allowed_origin = _get_allowed_origin(http_request)
 
+    # 解析 Last-Event-ID 请求头（断点续传）
+    last_event_id = http_request.headers.get("Last-Event-ID", "")
+    if last_event_id:
+        logger.info(f"SSE resume request with Last-Event-ID: {last_event_id}")
+
     # 创建流式生成器
     stream_generator = chat_business.process_chat_stream(
         request=request,
         user_id=str(current_user["_id"]),
+        last_event_id=last_event_id,
     )
 
     # 包装心跳生成器
@@ -376,6 +387,6 @@ async def chat_stream(
             "X-Accel-Buffering": "no",  # 禁用 nginx 缓冲
             "Access-Control-Allow-Origin": allowed_origin,  # 安全CORS，不使用 "*"
             "Access-Control-Allow-Credentials": "true",
-            "Access-Control-Allow-Headers": "Content-Type,Authorization",
+            "Access-Control-Allow-Headers": "Content-Type,Authorization,Last-Event-ID",
         },
     )

@@ -155,6 +155,13 @@ class ChatStreamRequest(BaseModel):
         max_length=100,
         description="运行时指定的模型ID"
     )
+    # 断点续传支持：客户端提供上次消息的 messageId
+    # 如果提供，服务端会尝试从 Redis 恢复流上下文
+    resumeMessageId: Optional[str] = Field(
+        None,
+        max_length=100,
+        description="断点续传时，上次消息的 messageId"
+    )
 
     @field_validator('message')
     @classmethod
@@ -188,6 +195,20 @@ class ChatStreamRequest(BaseModel):
             return None
         if not re.match(r'^[a-zA-Z0-9_/.-]+$', v):
             raise ValueError('模型ID格式无效')
+        return v
+
+    @field_validator('resumeMessageId')
+    @classmethod
+    def validate_resume_message_id(cls, v: Optional[str]) -> Optional[str]:
+        """验证断点续传消息ID"""
+        if v is None:
+            return v
+        v = v.strip()
+        if not v:
+            return None
+        # 允许 ObjectId 格式
+        if not SESSION_ID_PATTERN.match(v):
+            raise ValueError('resumeMessageId格式无效')
         return v
 
 
