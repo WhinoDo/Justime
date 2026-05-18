@@ -17,6 +17,7 @@ export const API_ENDPOINTS = {
 
   CHAT: {
     BASE: '/api/chat',
+    STREAM: '/api/chat/stream',
     SESSIONS: '/api/chat/sessions',
     SESSION_MESSAGES: (sessionId: string) => `/api/chat/sessions/${sessionId}/messages`,
     MESSAGE: (messageId: string) => `/api/chat/messages/${messageId}`,

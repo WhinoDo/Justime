@@ -28,6 +28,8 @@ import { ThinkingLoader } from './ThinkingLoader'
 import { RagReferencePreviewPanel, RagPreviewTab, RagFullContentState } from './RagReferencePreviewPanel'
 import { useAuth } from '@/hooks/useAuth'
 import { API_ENDPOINTS } from '@/lib/api/endpoints'
+import { useSSEChat } from '@/hooks/useSSEChat'
+import { TypewriterMessage } from './TypewriterMessage'
 
 const MessageBubble = dynamic(
   () => import('./MessageBubble').then((mod) => mod.MessageBubble),
@@ -88,6 +90,12 @@ export function ChatInterface({
   const [activeTab, setActiveTab] = useState<RagPreviewTab>('snippets')
   const [fullContentCache, setFullContentCache] = useState<Record<string, RagFullContentState>>({})
   const [fullContentLoadingPath, setFullContentLoadingPath] = useState<string | null>(null)
+
+  // SSE streaming state
+  const [streamingMessage, setStreamingMessage] = useState<Message | null>(null)
+  const [streamingContent, setStreamingContent] = useState('')
+  const [streamingMetadata, setStreamingMetadata] = useState<Record<string, unknown> | null>(null)
+  const [useStreaming, setUseStreaming] = useState(true) // Toggle for streaming mode
 
   // 当 sessionId 改变时加载历史消息
   useEffect(() => {
@@ -292,6 +300,226 @@ export function ChatInterface({
     setTheme(themes[nextIndex])
   }
 
+  /**
+   * Handle SSE streaming message send
+   */
+  const handleStreamingMessage = useCallback(async (userMessageContent: string) => {
+    // Create streaming message placeholder
+    const streamingMsgId = generateId()
+    const streamingMsg: Message = {
+      id: streamingMsgId,
+      user_id: authUser?.id || 'anonymous',
+      role: 'assistant',
+      content: '',
+      created_at: new Date().toISOString(),
+    }
+    setStreamingMessage(streamingMsg)
+    setStreamingContent('')
+    setStreamingMetadata(null)
+
+    try {
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        'Accept': 'text/event-stream',
+      }
+
+      // Get auth token from cookie
+      const rawCookieToken = document.cookie.split(';').find(c => c.trim().startsWith('access_token='))
+      if (rawCookieToken) {
+        const tokenValue = rawCookieToken.split('=')[1]
+        if (tokenValue) {
+          try {
+            const decodedToken = decodeURIComponent(tokenValue)
+            headers['Authorization'] = `Bearer ${decodedToken}`
+          } catch {
+            headers['Authorization'] = `Bearer ${tokenValue}`
+          }
+        }
+      }
+
+      const response = await fetch(API_ENDPOINTS.CHAT.STREAM, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          message: userMessageContent,
+          taskId: currentTaskId,
+          sessionId: sessionId,
+          useWebSearch: useWebSearch,
+          runtimeModelId: selectedModel,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: response.statusText }))
+        throw new Error(errorData.detail || errorData.error || `HTTP ${response.status}`)
+      }
+
+      // Check if response is SSE stream
+      const contentType = response.headers.get('content-type') || ''
+      if (!contentType.includes('text/event-stream')) {
+        // Not a stream, handle as regular JSON response
+        const data = await response.json()
+        if (data.success && data.data?.response) {
+          const assistantMessage: Message = {
+            id: data.data.messageId || generateId(),
+            user_id: authUser?.id || 'anonymous',
+            role: 'assistant',
+            content: data.data.response,
+            task_id: currentTaskId,
+            created_at: new Date().toISOString(),
+            timingStrategy: data.data.timingStrategy,
+            taskAnalysis: data.data.taskAnalysis,
+            taskDecomposition: data.data.taskDecomposition,
+            multiTaskDecompositions: data.data.multiTaskDecompositions,
+            suggestedEvents: data.data.suggestedEvents,
+            ragReferences: data.data.ragReferences,
+          }
+          setMessages(prev => [...prev, assistantMessage])
+          if (data.data?.sessionId && data.data.sessionId !== sessionId) {
+            onSessionChange?.(data.data.sessionId)
+          }
+        } else {
+          throw new Error(data.error?.message || 'Failed to get response')
+        }
+        return
+      }
+
+      // Process SSE stream
+      const reader = response.body?.getReader()
+      if (!reader) {
+        throw new Error('Response body is not readable')
+      }
+
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let accumulatedContent = ''
+      let messageId: string | null = null
+      let metadata: Record<string, unknown> | null = null
+
+      while (true) {
+        const { done, value } = await reader.read()
+
+        if (done) {
+          break
+        }
+
+        buffer += decoder.decode(value, { stream: true })
+
+        // Split by double newline to get complete events
+        const events = buffer.split('\n\n')
+        buffer = events.pop() || ''
+
+        for (const rawEvent of events) {
+          if (!rawEvent.trim() || rawEvent.startsWith(':')) {
+            // Skip heartbeat comments
+            continue
+          }
+
+          // Parse SSE event
+          const lines = rawEvent.split('\n')
+          let data: string | null = null
+
+          for (const line of lines) {
+            if (line.startsWith('data:')) {
+              data = line.slice(5).trim()
+            }
+          }
+
+          if (!data) continue
+
+          try {
+            const event = JSON.parse(data)
+
+            switch (event.event) {
+              case 'start':
+                messageId = event.message_id || null
+                if (event.conversation_id && event.conversation_id !== sessionId) {
+                  onSessionChange?.(event.conversation_id)
+                }
+                break
+
+              case 'token':
+                if (event.content) {
+                  accumulatedContent += event.content
+                  setStreamingContent(accumulatedContent)
+                }
+                break
+
+              case 'metadata':
+                metadata = event.metadata || null
+                setStreamingMetadata(metadata)
+                break
+
+              case 'done':
+                // Finalize the message
+                const finalMessage: Message = {
+                  id: messageId || generateId(),
+                  user_id: authUser?.id || 'anonymous',
+                  role: 'assistant',
+                  content: accumulatedContent,
+                  task_id: currentTaskId,
+                  created_at: new Date().toISOString(),
+                  timingStrategy: metadata?.timingStrategy as TimingStrategy,
+                  taskAnalysis: metadata?.taskAnalysis as TaskAnalysis,
+                  taskDecomposition: metadata?.taskDecomposition as TaskDecomposition,
+                  suggestedEvents: metadata?.suggestedEvents as SuggestedCalendarEvent[],
+                  ragReferences: metadata?.ragReferences as RagReference[],
+                }
+                setMessages(prev => [...prev, finalMessage])
+                setStreamingMessage(null)
+                setStreamingContent('')
+
+                // Handle task decomposition
+                if (metadata?.taskDecomposition) {
+                  setTaskDecomposition(metadata.taskDecomposition as TaskDecomposition)
+                  setDecompositionMessageId(finalMessage.id)
+                }
+                if (metadata?.suggestedEvents && Array.isArray(metadata.suggestedEvents) && metadata.suggestedEvents.length > 0) {
+                  setSuggestedEvents(metadata.suggestedEvents as SuggestedCalendarEvent[])
+                  setEventMessageId(finalMessage.id)
+                }
+                break
+
+              case 'error':
+                throw new Error(event.error || 'Stream error')
+            }
+          } catch (parseError) {
+            if (parseError instanceof SyntaxError) {
+              console.warn('Failed to parse SSE event:', data)
+            } else {
+              throw parseError
+            }
+          }
+        }
+      }
+
+      // If we got here without a 'done' event, finalize anyway
+      if (streamingMessage) {
+        const finalMessage: Message = {
+          id: messageId || generateId(),
+          user_id: authUser?.id || 'anonymous',
+          role: 'assistant',
+          content: accumulatedContent,
+          task_id: currentTaskId,
+          created_at: new Date().toISOString(),
+          timingStrategy: metadata?.timingStrategy as TimingStrategy,
+          taskAnalysis: metadata?.taskAnalysis as TaskAnalysis,
+          taskDecomposition: metadata?.taskDecomposition as TaskDecomposition,
+          suggestedEvents: metadata?.suggestedEvents as SuggestedCalendarEvent[],
+          ragReferences: metadata?.ragReferences as RagReference[],
+        }
+        setMessages(prev => [...prev, finalMessage])
+        setStreamingMessage(null)
+        setStreamingContent('')
+      }
+
+    } catch (error) {
+      console.error('SSE streaming error:', error)
+      // Fall back to non-streaming
+      throw error
+    }
+  }, [authUser?.id, currentTaskId, sessionId, useWebSearch, selectedModel, onSessionChange, streamingMessage])
+
   const handleSendMessage = async () => {
     if (!input.trim() || isLoading) return
 
@@ -305,29 +533,44 @@ export function ChatInterface({
     }
 
     setMessages(prev => [...prev, userMessage])
+    const messageContent = input.trim()
     setInput('')
     setIsLoading(true)
 
     // textarea height reset removed as it is now fixed
 
     try {
-      // 保存用户消息到数据库 (Client DB)
+      // Save user message to database (Client DB)
       const startTime = Date.now()
       await chatDB.addMessage('user', userMessage.content)
 
       console.log('发送聊天请求:', {
         message: userMessage.content.substring(0, 50),
         taskId: currentTaskId,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        useStreaming,
       })
 
+      // Try SSE streaming first if enabled
+      if (useStreaming) {
+        try {
+          await handleStreamingMessage(messageContent)
+          setIsLoading(false)
+          return
+        } catch (streamError) {
+          console.warn('SSE streaming failed, falling back to non-streaming:', streamError)
+          // Fall through to non-streaming
+        }
+      }
+
+      // Non-streaming fallback
       const response = await fetch(API_ENDPOINTS.CHAT.BASE, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          message: userMessage.content,
+          message: messageContent,
           taskId: currentTaskId,
           sessionId: sessionId, // 传递当前会话ID
           useWebSearch: useWebSearch, // 是否启用网页搜索
@@ -746,6 +989,17 @@ export function ChatInterface({
                 <Globe className="w-4 h-4" />
               </Button>
 
+              {/* 流式输出开关 */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setUseStreaming(!useStreaming)}
+                className={`rounded-2xl border border-white/10 transition-colors ${useStreaming ? 'bg-white/15 text-emerald-100' : 'bg-white/5 text-white/55 hover:bg-white/10 hover:text-white'}`}
+                title={useStreaming ? "已开启流式输出（打字机效果）" : "点击开启流式输出"}
+              >
+                <Sparkles className="w-4 h-4" />
+              </Button>
+
               {/* 聊天记录按钮 */}
               <Link href="/chat/history">
                 <Button
@@ -954,7 +1208,20 @@ export function ChatInterface({
                 </div>
               ))}
 
-              {isLoading && (
+              {/* Streaming message with typewriter effect */}
+              {streamingMessage && streamingContent && (
+                <TypewriterMessage
+                  content={streamingContent}
+                  isStreaming={isLoading}
+                  message={streamingMessage}
+                  onReferenceClick={handleReferenceClick}
+                  showCursor={true}
+                  typewriterSpeed={15}
+                />
+              )}
+
+              {/* Non-streaming loading indicator */}
+              {isLoading && !streamingContent && (
                 <div className="flex gap-3 max-w-[85%] mr-auto animate-slide-in">
                   <ThinkingLoader input={messages[messages.length - 1]?.content || ''} />
                 </div>
