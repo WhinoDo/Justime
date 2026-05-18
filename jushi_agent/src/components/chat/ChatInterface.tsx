@@ -96,6 +96,7 @@ export function ChatInterface({
   const [streamingContent, setStreamingContent] = useState('')
   const [streamingMetadata, setStreamingMetadata] = useState<Record<string, unknown> | null>(null)
   const [useStreaming, setUseStreaming] = useState(true) // Toggle for streaming mode
+  const [lastEventId, setLastEventId] = useState<string | null>(null) // For reconnection
 
   // 当 sessionId 改变时加载历史消息
   useEffect(() => {
@@ -337,6 +338,11 @@ export function ChatInterface({
         }
       }
 
+      // 断点续传：发送 Last-Event-ID 头
+      if (lastEventId) {
+        headers['Last-Event-ID'] = lastEventId
+      }
+
       const response = await fetch(API_ENDPOINTS.CHAT.STREAM, {
         method: 'POST',
         headers,
@@ -418,11 +424,19 @@ export function ChatInterface({
           // Parse SSE event
           const lines = rawEvent.split('\n')
           let data: string | null = null
+          let eventId: string | null = null
 
           for (const line of lines) {
             if (line.startsWith('data:')) {
               data = line.slice(5).trim()
+            } else if (line.startsWith('id:')) {
+              eventId = line.slice(3).trim()
             }
+          }
+
+          // 更新 lastEventId 用于断点续传
+          if (eventId) {
+            setLastEventId(eventId)
           }
 
           if (!data) continue
@@ -448,6 +462,15 @@ export function ChatInterface({
               case 'metadata':
                 metadata = event.metadata || null
                 setStreamingMetadata(metadata)
+                // 更新流式消息以包含元数据（用于打字机组件显示任务分析）
+                if (metadata) {
+                  setStreamingMessage(prev => prev ? {
+                    ...prev,
+                    timingStrategy: metadata?.timingStrategy as TimingStrategy,
+                    taskAnalysis: metadata?.taskAnalysis as TaskAnalysis,
+                    ragReferences: metadata?.ragReferences as RagReference[],
+                  } : null)
+                }
                 break
 
               case 'done':
@@ -518,7 +541,7 @@ export function ChatInterface({
       // Fall back to non-streaming
       throw error
     }
-  }, [authUser?.id, currentTaskId, sessionId, useWebSearch, selectedModel, onSessionChange, streamingMessage])
+  }, [authUser?.id, currentTaskId, sessionId, useWebSearch, selectedModel, onSessionChange, lastEventId])
 
   const handleSendMessage = async () => {
     if (!input.trim() || isLoading) return
@@ -1213,10 +1236,9 @@ export function ChatInterface({
                 <TypewriterMessage
                   content={streamingContent}
                   isStreaming={isLoading}
+                  speed={15}
                   message={streamingMessage}
                   onReferenceClick={handleReferenceClick}
-                  showCursor={true}
-                  typewriterSpeed={15}
                 />
               )}
 
