@@ -145,6 +145,52 @@ class ChatRequest(BaseModel):
             raise ValueError('ID格式无效，只允许字母、数字、下划线和短横线')
         return v
 
+
+class ChatStreamRequest(BaseModel):
+    """流式聊天请求 - 用于 SSE 打字机效果"""
+    message: str = Field(..., min_length=1, max_length=50000, description="用户消息")
+    sessionId: Optional[str] = Field(None, max_length=100, description="会话 ID")
+    runtimeModelId: Optional[str] = Field(
+        None,
+        max_length=100,
+        description="运行时指定的模型ID"
+    )
+
+    @field_validator('message')
+    @classmethod
+    def validate_message(cls, v: str) -> str:
+        """验证消息内容"""
+        if not v or not v.strip():
+            raise ValueError('消息内容不能为空')
+        return v.strip()
+
+    @field_validator('sessionId')
+    @classmethod
+    def validate_session_id(cls, v: Optional[str]) -> Optional[str]:
+        """验证会话ID格式"""
+        if v is None:
+            return v
+        v = v.strip()
+        if not v:
+            return None
+        if not SESSION_ID_PATTERN.match(v):
+            raise ValueError('会话ID格式无效')
+        return v
+
+    @field_validator('runtimeModelId')
+    @classmethod
+    def validate_runtime_model_id(cls, v: Optional[str]) -> Optional[str]:
+        """验证运行时模型ID"""
+        if v is None:
+            return v
+        v = v.strip()
+        if not v:
+            return None
+        if not re.match(r'^[a-zA-Z0-9_/.-]+$', v):
+            raise ValueError('模型ID格式无效')
+        return v
+
+
 class ChatResponseData(BaseModel):
     """聊天响应数据"""
     response: str = Field("", description="AI 回复内容")

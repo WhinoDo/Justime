@@ -1,12 +1,13 @@
 import asyncio
 import logging
+import json
 from datetime import datetime, timezone
 from time import perf_counter
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, AsyncGenerator
 
 from fastapi import HTTPException, status
 
-from app.models.chat import ChatRequest, ChatResponse, ChatResponseData, LLMTestRequest
+from app.models.chat import ChatRequest, ChatResponse, ChatResponseData, LLMTestRequest, ChatStreamRequest
 from app.models.history import ChatSession, ChatMessage
 from app.database import db
 from app.services.user_service import UserService
@@ -14,6 +15,7 @@ from app.services.task_timing_service import task_timing_service
 from app.services.task_classifier_service import task_classifier_service
 from app.services.model_router_service import model_router_service
 from app.services.openclaw_service import openclaw_service
+from app.services.llm_service import llm_service, STREAM_READ_TIMEOUT, STREAM_TOTAL_TIMEOUT
 from app.core.config import settings
 
 from app.business.chat_persistence import chat_persistence
@@ -622,6 +624,206 @@ class ChatBusiness:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"处理请求错误: {error_text}"
             )
+
+    async def process_chat_stream(
+        self,
+        request: ChatStreamRequest,
+        user_id: str,
+    ) -> AsyncGenerator[str, None]:
+        """
+        流式处理聊天请求，逐token推送响应
+
+        SSE事件格式：
+        - event: token\ndata: {"content": "..."}\n\n
+        - event: metadata\ndata: {"sessionId": "...", "messageId": "..."}\n\n
+        - event: usage\ndata: {"promptTokens": ..., "completionTokens": ...}\n\n
+        - event: done\ndata: {}\n\n
+        - event: error\ndata: {"message": "..."}\n\n
+
+        包含细粒度异常处理和资源清理
+        """
+        started_at = datetime.now(timezone.utc)
+        session_id = request.sessionId
+        accumulated_content = ""
+        usage_stats = {
+            "promptTokens": 0,
+            "completionTokens": 0,
+            "totalTokens": 0,
+        }
+
+        # 获取用户LLM配置
+        config_dict = None
+        runtime_config = None
+        llm_config = None
+
+        try:
+            # 1. 初始化会话
+            if not session_id:
+                title = request.message[:20]
+                session_id = await self.create_session(user_id, title)
+
+            # 保存用户消息
+            try:
+                await self.save_message(session_id, "user", request.message)
+            except Exception as e:
+                logger.error(f"Failed to save user message: {e}")
+                # 继续处理，不中断流
+
+            # 2. 获取LLM配置
+            config_dict = await self._get_user_llm_config(user_id)
+            system_configs = await UserService.get_available_models_for_user(user_id)
+            active_id = await UserService.get_user_active_model_id(user_id)
+            runtime_configs = chat_router.build_runtime_model_candidates(system_configs, active_id, config_dict)
+
+            if not runtime_configs:
+                yield self._format_sse_event("error", {"message": "平台尚未配置可用的 AI 模型，请联系管理员添加"})
+                return
+
+            # 选择主模型
+            if request.runtimeModelId:
+                requested_model = str(request.runtimeModelId).strip()
+                runtime_config = next(
+                    (c for c in runtime_configs if c.get("model_id") == requested_model),
+                    None
+                )
+            if not runtime_config:
+                runtime_config = next(
+                    (c for c in runtime_configs if c.get("is_active")),
+                    runtime_configs[0]
+                )
+
+            # 构建LLM配置
+            llm_config = chat_router.runtime_to_llm_config(
+                runtime_config,
+                timeout_override=STREAM_TOTAL_TIMEOUT
+            )
+
+            # 3. 构建对话上下文
+            context_window = 8
+            recent_context = await chat_persistence.build_recent_context(session_id, context_window)
+
+            messages = []
+            # 添加历史上下文
+            for ctx in recent_context:
+                if ctx.get("role") == "user":
+                    messages.append({"role": "user", "content": ctx.get("content", "")})
+                elif ctx.get("role") == "assistant":
+                    messages.append({"role": "assistant", "content": ctx.get("content", "")})
+
+            # 添加当前消息
+            messages.append({"role": "user", "content": request.message})
+
+            # 4. 发送会话元数据
+            yield self._format_sse_event("metadata", {
+                "sessionId": session_id,
+                "model": llm_config.model_id,
+            })
+
+            # 5. 流式调用LLM
+            chunk_count = 0
+            async for chunk in llm_service.chat_completion_stream(
+                messages=messages,
+                model=llm_config.model_id,
+                api_key=llm_config.api_key,
+                api_base=llm_config.api_base,
+                temperature=0.7,
+                read_timeout=STREAM_READ_TIMEOUT,
+                total_timeout=STREAM_TOTAL_TIMEOUT,
+            ):
+                chunk_count += 1
+
+                # 解析chunk内容
+                content_delta = self._extract_stream_content(chunk)
+                if content_delta:
+                    accumulated_content += content_delta
+                    yield self._format_sse_event("token", {"content": content_delta})
+
+                # 提取usage信息
+                usage = self._extract_stream_usage(chunk)
+                if usage:
+                    usage_stats = usage
+
+            logger.info(f"Stream completed: {chunk_count} chunks, {len(accumulated_content)} chars")
+
+            # 6. 保存AI消息
+            ai_message_id = None
+            try:
+                ai_message_id = await self.save_message(session_id, "ai", accumulated_content)
+            except Exception as e:
+                logger.error(f"Failed to save AI message: {e}")
+
+            # 7. 记录使用量
+            try:
+                await self._record_usage_event(
+                    user_id=user_id,
+                    session_id=session_id,
+                    config_id=runtime_config.get("config_id") or "stream-default",
+                    model_id=llm_config.model_id,
+                    config_name=runtime_config.get("config_name") or "流式配置",
+                    path_type="stream",
+                    is_primary=True,
+                    usage=usage_stats,
+                    message_id=ai_message_id,
+                )
+            except Exception as e:
+                logger.warning(f"Failed to record usage event: {e}")
+
+            # 8. 发送usage事件
+            yield self._format_sse_event("usage", usage_stats)
+
+            # 9. 发送完成事件
+            yield self._format_sse_event("done", {
+                "messageId": ai_message_id,
+                "totalMs": int((datetime.now(timezone.utc) - started_at).total_seconds() * 1000),
+            })
+
+        except asyncio.TimeoutError as e:
+            logger.error(f"Stream timeout: {e}")
+            yield self._format_sse_event("error", {"message": f"响应超时: {str(e)}"})
+
+        except HTTPException as e:
+            logger.error(f"Stream HTTP error: {e.detail}")
+            yield self._format_sse_event("error", {"message": e.detail})
+
+        except ValueError as e:
+            logger.error(f"Stream config error: {e}")
+            yield self._format_sse_event("error", {"message": f"配置错误: {str(e)}"})
+
+        except Exception as e:
+            logger.error(f"Stream unexpected error: {e}", exc_info=True)
+            yield self._format_sse_event("error", {"message": f"处理请求时发生错误: {str(e)}"})
+
+    @staticmethod
+    def _format_sse_event(event: str, data: Dict[str, Any]) -> str:
+        """格式化SSE事件"""
+        return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+    @staticmethod
+    def _extract_stream_content(chunk: Dict[str, Any]) -> Optional[str]:
+        """从流式chunk中提取内容"""
+        try:
+            choices = chunk.get("choices", [])
+            if choices:
+                delta = choices[0].get("delta", {})
+                return delta.get("content")
+        except Exception:
+            pass
+        return None
+
+    @staticmethod
+    def _extract_stream_usage(chunk: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """从流式chunk中提取usage信息"""
+        try:
+            usage = chunk.get("usage")
+            if usage:
+                return {
+                    "promptTokens": usage.get("prompt_tokens", 0),
+                    "completionTokens": usage.get("completion_tokens", 0),
+                    "totalTokens": usage.get("total_tokens", 0),
+                }
+        except Exception:
+            pass
+        return None
 
     async def test_connection(self, config: LLMTestRequest, user_id: str) -> Dict[str, Any]:
         try:
