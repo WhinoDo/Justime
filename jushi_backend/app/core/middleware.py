@@ -45,6 +45,7 @@ class SecurityHeadersMiddleware:
                     "x-xss-protection": "1; mode=block",
                     "referrer-policy": "strict-origin-when-cross-origin",
                     "permissions-policy": "camera=(), microphone=(), geolocation=()",
+                    "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'none'",
                 }
                 
                 from app.core.config import settings

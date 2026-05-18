@@ -26,6 +26,15 @@ export default function ProfilePage() {
     const [isHabitLoading, setIsHabitLoading] = useState(false)
     const [isHabitSaving, setIsHabitSaving] = useState(false)
     const [habitSaveMessage, setHabitSaveMessage] = useState<string | null>(null)
+    const [profileForm, setProfileForm] = useState({
+        displayName: '',
+        bio: '',
+        phone: '',
+        location: '',
+        website: '',
+        department: '',
+        jobTitle: '',
+    })
     const [habitForm, setHabitForm] = useState({
         occupation: '',
         currentStudyFocus: '',
@@ -62,6 +71,15 @@ export default function ProfilePage() {
 
             const profile = result.data?.user?.profile || {}
             const habits = profile.habits || {}
+            setProfileForm({
+                displayName: profile.displayName || user.displayName || '',
+                bio: profile.bio || '',
+                phone: profile.phone || '',
+                location: profile.location || '',
+                website: profile.website || '',
+                department: profile.department || '',
+                jobTitle: profile.jobTitle || '',
+            })
             setHabitForm({
                 occupation: habits.occupation || '',
                 currentStudyFocus: habits.currentStudyFocus || '',
@@ -90,8 +108,14 @@ export default function ProfilePage() {
                 profile: {
                     ...(user.profile || {}),
                     name: user.profile?.name || user.displayName || user.username || '用户',
-                    displayName: user.displayName,
+                    displayName: profileForm.displayName.trim() || user.displayName,
                     email: user.email,
+                    bio: profileForm.bio.trim(),
+                    phone: profileForm.phone.trim(),
+                    location: profileForm.location.trim(),
+                    website: profileForm.website.trim(),
+                    department: profileForm.department.trim(),
+                    jobTitle: profileForm.jobTitle.trim(),
                     habits: {
                         occupation: habitForm.occupation.trim(),
                         currentStudyFocus: habitForm.currentStudyFocus.trim(),
@@ -285,8 +309,63 @@ export default function ProfilePage() {
                                         <p className="text-white/90 font-medium">{user.email}</p>
                                     </div>
                                 </div>
-                                {/* <Button size="sm" variant="ghost" className="text-white/40 hover:text-white hover:bg-white/10 h-8 text-xs">Edit</Button> */}
                             </div>
+                        </div>
+
+                        {/* Profile Info */}
+                        <div className="bg-black/20 rounded-2xl p-4 border border-white/10 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-white font-semibold">个人信息</h3>
+                                    <p className="text-white/40 text-xs">设置您的展示名称、联系方式等基本信息</p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <input
+                                    value={profileForm.displayName}
+                                    onChange={(e) => setProfileForm(prev => ({ ...prev, displayName: e.target.value }))}
+                                    placeholder="显示名称"
+                                    className="h-10 rounded-xl bg-white/5 border border-white/15 px-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-blue-400/40"
+                                />
+                                <input
+                                    value={profileForm.phone}
+                                    onChange={(e) => setProfileForm(prev => ({ ...prev, phone: e.target.value }))}
+                                    placeholder="手机号码"
+                                    className="h-10 rounded-xl bg-white/5 border border-white/15 px-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-blue-400/40"
+                                />
+                                <input
+                                    value={profileForm.location}
+                                    onChange={(e) => setProfileForm(prev => ({ ...prev, location: e.target.value }))}
+                                    placeholder="所在位置"
+                                    className="h-10 rounded-xl bg-white/5 border border-white/15 px-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-blue-400/40"
+                                />
+                                <input
+                                    value={profileForm.website}
+                                    onChange={(e) => setProfileForm(prev => ({ ...prev, website: e.target.value }))}
+                                    placeholder="个人网站"
+                                    className="h-10 rounded-xl bg-white/5 border border-white/15 px-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-blue-400/40"
+                                />
+                                <input
+                                    value={profileForm.department}
+                                    onChange={(e) => setProfileForm(prev => ({ ...prev, department: e.target.value }))}
+                                    placeholder="部门"
+                                    className="h-10 rounded-xl bg-white/5 border border-white/15 px-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-blue-400/40"
+                                />
+                                <input
+                                    value={profileForm.jobTitle}
+                                    onChange={(e) => setProfileForm(prev => ({ ...prev, jobTitle: e.target.value }))}
+                                    placeholder="职位"
+                                    className="h-10 rounded-xl bg-white/5 border border-white/15 px-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-blue-400/40"
+                                />
+                            </div>
+
+                            <textarea
+                                value={profileForm.bio}
+                                onChange={(e) => setProfileForm(prev => ({ ...prev, bio: e.target.value }))}
+                                placeholder="个人简介"
+                                className="w-full h-20 rounded-xl bg-white/5 border border-white/15 px-3 py-2 text-sm text-white placeholder:text-white/30 resize-none focus:outline-none focus:border-blue-400/40"
+                            />
                         </div>
 
                         {/* Work/Study Habits */}

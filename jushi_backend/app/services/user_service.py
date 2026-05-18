@@ -593,12 +593,14 @@ class UserService:
         try:
             oid = ObjectId(user_id) if isinstance(user_id, str) else user_id
             hashed_password = UserService.get_password_hash(new_password)
+            now = datetime.utcnow()
             result = await db.db.users.update_one(
                 {"_id": oid},
                 {
                     "$set": {
                         "hashed_password": hashed_password,
-                        "updated_at": datetime.utcnow()
+                        "password_changed_at": now,
+                        "updated_at": now
                     },
                     "$unset": {"password": ""}
                 }

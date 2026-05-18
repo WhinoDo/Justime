@@ -8,11 +8,13 @@ from typing import Dict, Any, List, Optional
 from app.services.agent_service import agent_service
 from app.services.llm_service import llm_service
 from app.services.user_service import UserService
+from app.business.chat_retry_service import (
+    chat_retry_service,
+    DECOMPOSITION_TOOL_RETRY_LIMIT,
+    KNOWLEDGE_TOOL_RETRY_LIMIT,
+)
 
 logger = logging.getLogger(__name__)
-
-DECOMPOSITION_TOOL_RETRY_LIMIT = 2
-KNOWLEDGE_TOOL_RETRY_LIMIT = 1
 
 
 def retry_on_failure(max_retries: int = 3, delay: float = 1.0, exceptions: tuple = (Exception,)):
@@ -48,50 +50,17 @@ class ChatExecutor:
         usage: Optional[Dict[str, Any]],
         message_id: Optional[str] = None
     ) -> None:
-        if not isinstance(usage, dict):
-            return
-
-        try:
-            prompt_tokens = max(0, int(usage.get("promptTokens", 0) or 0))
-            completion_tokens = max(0, int(usage.get("completionTokens", 0) or 0))
-            request_count = max(
-                1,
-                int(
-                    usage.get("totalRequests")
-                    or usage.get("requestsWithUsage")
-                    or usage.get("requestCount")
-                    or 1
-                ),
-            )
-            missing_usage_requests = int(
-                usage.get("missingUsageRequests", 0)
-                or (1 if usage.get("usageMissing") else 0)
-            )
-            usage_missing = bool(usage.get("usageMissing")) or (
-                (prompt_tokens + completion_tokens) <= 0 and missing_usage_requests > 0
-            )
-            if (prompt_tokens + completion_tokens) <= 0 and not usage_missing and missing_usage_requests <= 0:
-                return
-
-            await UserService.record_llm_usage_event(
-                user_id=user_id,
-                session_id=session_id,
-                config_id=config_id,
-                model_id=model_id,
-                config_name=config_name,
-                path_type=path_type,
-                is_primary=is_primary,
-                prompt_tokens=prompt_tokens,
-                completion_tokens=completion_tokens,
-                usage_missing=usage_missing,
-                request_count=request_count,
-                missing_usage_requests=missing_usage_requests,
-                provider_request_ids=usage.get("providerRequestIds") if isinstance(usage.get("providerRequestIds"), list) else [],
-                message_id=message_id,
-                usage_raw=usage.get("usageRaw") if isinstance(usage.get("usageRaw"), dict) else None
-            )
-        except Exception as exc:
-            logger.warning(f"记录模型 token 使用量失败: {exc}")
+        await chat_retry_service._record_usage_event(
+            user_id=user_id,
+            session_id=session_id,
+            config_id=config_id,
+            model_id=model_id,
+            config_name=config_name,
+            path_type=path_type,
+            is_primary=is_primary,
+            usage=usage,
+            message_id=message_id,
+        )
 
     async def run_shadow_ensemble(
         self,

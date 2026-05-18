@@ -16,10 +16,8 @@ services:
     container_name: jushi-gateway
     restart: unless-stopped
     depends_on:
-      frontend:
-        condition: service_started
       backend:
-        condition: service_started
+        condition: service_healthy
       openclaw:
         condition: service_started
     ports:
@@ -67,9 +65,9 @@ services:
       JWT_SECRET: ${JWT_SECRET}
     depends_on:
       mongodb:
-        condition: service_started
+        condition: service_healthy
       backend:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test:
         [
@@ -130,9 +128,9 @@ services:
       MINIMAX_API_KEY: ${MINIMAX_API_KEY}
     depends_on:
       mongodb:
-        condition: service_started
+        condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
     volumes:
       - ./data/logs/backend:/app/logs
       - ./data/backend/output:/app/output

@@ -18,6 +18,7 @@ MAX_INTERACTIVE_LIST_ITEMS = 100
 MAX_MONGO_KEY_VALIDATION_DEPTH = 64
 DEFAULT_SESSION_MESSAGES_LIMIT = 200
 MAX_SESSION_MESSAGES_LIMIT = 1000
+MAX_MESSAGE_LENGTH = 50000
 
 
 def _parse_object_id(raw_id: str, field_name: str) -> ObjectId:
@@ -120,6 +121,11 @@ async def chat(
     current_user: dict = Depends(SecurityService.get_current_user)
 ) -> ChatResponse:
     """发送聊天消息"""
+    if len(request.message) > MAX_MESSAGE_LENGTH:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"消息长度不能超过{MAX_MESSAGE_LENGTH}个字符"
+        )
     session_id = getattr(request, "sessionId", None)
     if session_id:
         await _ensure_session_access(session_id, str(current_user["_id"]))

@@ -39,6 +39,7 @@ export const API_ENDPOINTS = {
     FILE: (filename: string) => `/api/knowledge/files/${filename}`,
     UPLOAD: '/api/knowledge/upload',
     REBUILD: '/api/knowledge/rebuild',
+    REBUILD_STATUS: (taskId: string) => `/api/knowledge/rebuild/status/${taskId}`,
     CONTENT: (path: string, maxChars: number = 20000) => `/api/knowledge/content?path=${encodeURIComponent(path)}&max_chars=${maxChars}`,
     RAW: (path: string) => `/api/knowledge/raw?path=${encodeURIComponent(path)}`,
     CHUNKED_INIT: '/api/knowledge/chunked/init',

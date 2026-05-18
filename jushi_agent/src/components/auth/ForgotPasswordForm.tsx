@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,6 +14,8 @@ interface ForgotPasswordFormProps {
 }
 
 export function ForgotPasswordForm({ onBackToLogin }: ForgotPasswordFormProps) {
+  const router = useRouter()
+  const handleBackToLogin = onBackToLogin || (() => router.push('/auth'))
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -126,7 +129,7 @@ export function ForgotPasswordForm({ onBackToLogin }: ForgotPasswordFormProps) {
           <Button
             variant="link"
             className="p-0 h-auto text-orange-300 hover:text-orange-200"
-            onClick={onBackToLogin}
+            onClick={handleBackToLogin}
           >
             <ArrowLeft className="h-4 w-4 mr-1" />
             返回登录

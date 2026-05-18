@@ -40,8 +40,8 @@ export function ResetPasswordForm({ token: propToken, onSuccess }: ResetPassword
       return
     }
 
-    if (!newPassword.trim() || newPassword.length < 6) {
-      setError('密码至少需要6个字符')
+    if (!newPassword.trim() || newPassword.length < 8) {
+      setError('密码至少需要8个字符')
       return
     }
 
@@ -131,7 +131,7 @@ export function ResetPasswordForm({ token: propToken, onSuccess }: ResetPassword
               <Input
                 id="newPassword"
                 type={showPassword ? 'text' : 'password'}
-                placeholder="请输入新密码（至少6位）"
+                placeholder="请输入新密码（至少8位）"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 className="pl-10 pr-10 bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-orange-300 focus-visible:border-orange-300/70"

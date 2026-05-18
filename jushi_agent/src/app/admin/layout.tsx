@@ -8,6 +8,7 @@ import {
     Users,
     ServerCog,
     KeyRound,
+    Settings,
     LogOut,
     Menu,
     X,
@@ -47,6 +48,11 @@ export default function AdminLayout({
             title: 'API Key 管理',
             icon: KeyRound,
             href: '/admin/apikeys'
+        },
+        {
+            title: '系统设置',
+            icon: Settings,
+            href: '/admin/settings'
         }
     ]
 
@@ -91,7 +97,7 @@ export default function AdminLayout({
                     {/* Navigation */}
                     <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
                         {menuItems.map((item) => {
-                            const isActive = pathname === item.href
+                            const isActive = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))
                             return (
                                 <Link key={item.href} href={item.href}>
                                     <div

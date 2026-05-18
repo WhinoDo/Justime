@@ -28,7 +28,7 @@ class SecurityService:
         else:
             expire = datetime.utcnow() + timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
 
-        to_encode.update({"exp": expire, "type": SecurityService.ACCESS_TOKEN_TYPE})
+        to_encode.update({"exp": expire, "type": SecurityService.ACCESS_TOKEN_TYPE, "iss": "jushi-app", "aud": "jushi-users"})
         encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
         return encoded_jwt
 
@@ -41,7 +41,7 @@ class SecurityService:
         else:
             expire = datetime.utcnow() + timedelta(days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS)
 
-        to_encode.update({"exp": expire, "type": SecurityService.REFRESH_TOKEN_TYPE})
+        to_encode.update({"exp": expire, "type": SecurityService.REFRESH_TOKEN_TYPE, "iss": "jushi-app", "aud": "jushi-users"})
         encoded_jwt = jwt.encode(to_encode, settings.JWT_REFRESH_SECRET, algorithm=settings.JWT_ALGORITHM)
         return encoded_jwt
 
@@ -49,7 +49,7 @@ class SecurityService:
     def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
         """解码并验证访问令牌"""
         try:
-            payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+            payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM], audience="jushi-users", issuer="jushi-app")
             if payload.get("type") != SecurityService.ACCESS_TOKEN_TYPE:
                 return None
             return payload
@@ -60,7 +60,7 @@ class SecurityService:
     def decode_refresh_token(token: str) -> Optional[Dict[str, Any]]:
         """解码并验证刷新令牌"""
         try:
-            payload = jwt.decode(token, settings.JWT_REFRESH_SECRET, algorithms=[settings.JWT_ALGORITHM])
+            payload = jwt.decode(token, settings.JWT_REFRESH_SECRET, algorithms=[settings.JWT_ALGORITHM], audience="jushi-users", issuer="jushi-app")
             if payload.get("type") != SecurityService.REFRESH_TOKEN_TYPE:
                 return None
             return payload
@@ -76,15 +76,15 @@ class SecurityService:
         else:
             expire = datetime.utcnow() + timedelta(hours=1)
 
-        to_encode.update({"exp": expire, "type": SecurityService.PASSWORD_RESET_TOKEN_TYPE})
-        encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+        to_encode.update({"exp": expire, "type": SecurityService.PASSWORD_RESET_TOKEN_TYPE, "iss": "jushi-app", "aud": "jushi-users"})
+        encoded_jwt = jwt.encode(to_encode, settings.JWT_PASSWORD_RESET_SECRET, algorithm=settings.JWT_ALGORITHM)
         return encoded_jwt
 
     @staticmethod
     def decode_password_reset_token(token: str) -> Optional[Dict[str, Any]]:
         """解码并验证密码重置令牌"""
         try:
-            payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+            payload = jwt.decode(token, settings.JWT_PASSWORD_RESET_SECRET, algorithms=[settings.JWT_ALGORITHM], audience="jushi-users", issuer="jushi-app")
             if payload.get("type") != SecurityService.PASSWORD_RESET_TOKEN_TYPE:
                 return None
             return payload
@@ -111,12 +111,17 @@ class SecurityService:
         if user_id is None:
             raise credentials_exception
             
-        # 使用 ID 查询用户
         user = await UserService.get_user_by_id(user_id)
         
         if user is None:
             raise credentials_exception
-            
+
+        password_changed_at = user.get("password_changed_at")
+        if password_changed_at:
+            token_iat = payload.get("iat")
+            if token_iat and datetime.utcfromtimestamp(token_iat) < password_changed_at:
+                raise credentials_exception
+        
         return user
 
 # 全局安全服务实例

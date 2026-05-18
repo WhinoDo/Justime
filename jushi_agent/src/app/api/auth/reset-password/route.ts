@@ -23,8 +23,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 验证密码长度
-    if (new_password.length < 6) {
-      return createErrorResponse('密码至少需要6个字符', 'VALIDATION_ERROR', 400)
+    if (new_password.length < 8) {
+      return createErrorResponse('密码至少需要8个字符', 'VALIDATION_ERROR', 400)
     }
 
     // 调用后端Python服务的重置密码API

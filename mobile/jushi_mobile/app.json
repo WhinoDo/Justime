@@ -22,7 +22,7 @@
       },
       "edgeToEdgeEnabled": false,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.jushi_mobile"
+      "package": "com.jushi.mobile"
     },
     "web": {
       "output": "static",

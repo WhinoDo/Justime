@@ -90,6 +90,7 @@ class Settings(BaseSettings):
     # JWT配置
     JWT_SECRET: str = ""
     JWT_REFRESH_SECRET: str = ""
+    JWT_PASSWORD_RESET_SECRET: str = ""
     ENCRYPTION_SECRET: str = ""
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7天
@@ -101,7 +102,6 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3000",
         "http://localhost:3001",
         "http://127.0.0.1:3001",
-        "http://192.168.1.4:3000"
     ]
     ALLOWED_METHODS: List[str] = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
     ALLOWED_HEADERS: List[str] = [
@@ -129,10 +129,6 @@ class Settings(BaseSettings):
         "如果任务信息不足，明确说明缺失项，不要编造。"
     )
 
-    # Redis 配置
-    REDIS_URL: str = ""
-    REDIS_MAX_CONNECTIONS: int = 10
-
     # MongoDB 连接池配置
     MONGODB_MAX_POOL_SIZE: int = 50
     MONGODB_MIN_POOL_SIZE: int = 5
@@ -152,7 +148,7 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_required_secrets(self):
-        required_secrets = ["JWT_SECRET", "JWT_REFRESH_SECRET", "ENCRYPTION_SECRET"]
+        required_secrets = ["JWT_SECRET", "JWT_REFRESH_SECRET", "JWT_PASSWORD_RESET_SECRET", "ENCRYPTION_SECRET"]
         if self.CSRF_ENABLED:
             required_secrets.append("CSRF_SECRET")
         
@@ -175,6 +171,9 @@ class Settings(BaseSettings):
         if weak_secrets:
             raise ValueError(f"安全密钥强度不足，请使用至少 {min_secret_length} 字符的密钥: {', '.join(weak_secrets)}")
         
+        if not self.DEBUG and not self.CSRF_ENABLED:
+            raise ValueError("生产环境必须启用 CSRF 防护 (CSRF_ENABLED=True)")
+
         if not self.DEBUG and "*" in self.ALLOWED_ORIGINS:
             raise ValueError("生产环境禁止使用 allow_origins=['*']，请配置具体的允许源")
         

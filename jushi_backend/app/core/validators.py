@@ -584,7 +584,7 @@ class InputValidator:
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"投影字段名不能以 $ 开头: {key}"
                 )
-            if not isinstance(value, (bool, int, 0, 1)):
+            if not isinstance(value, (bool, int)):
                 if isinstance(value, dict):
                     safe_value = InputValidator.sanitize_mongo_query_value(value)
                 else:

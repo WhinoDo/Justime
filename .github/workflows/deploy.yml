@@ -107,8 +107,8 @@ jobs:
           script: |
             cd /opt/jushi
             git pull origin main
-            docker compose -f deployment/homelab/docker-compose.yml pull
-            docker compose -f deployment/homelab/docker-compose.yml up -d
+            docker compose --env-file deployment/homelab/.env -f deployment/homelab/docker-compose.yml build
+            docker compose --env-file deployment/homelab/.env -f deployment/homelab/docker-compose.yml up -d
             docker system prune -f
 
   deploy-production:
@@ -134,8 +134,8 @@ jobs:
             cd /opt/jushi
             git fetch --tags
             git checkout ${{ github.ref_name }}
-            docker compose -f deployment/homelab/docker-compose.yml pull
-            docker compose -f deployment/homelab/docker-compose.yml up -d
+            docker compose --env-file deployment/homelab/.env -f deployment/homelab/docker-compose.yml build
+            docker compose --env-file deployment/homelab/.env -f deployment/homelab/docker-compose.yml up -d
             docker system prune -f
             
             # Create release marker

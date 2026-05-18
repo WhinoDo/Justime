@@ -42,6 +42,7 @@ mkdir -p \
   "${ROOT_DIR}/data/openclaw" \
   "${ROOT_DIR}/data/backend/output" \
   "${ROOT_DIR}/data/logs/backend" \
+  "${ROOT_DIR}/data/logs/frontend" \
   "${ROOT_DIR}/data/logs/caddy" \
   "${ROOT_DIR}/data/logs/openclaw"
 

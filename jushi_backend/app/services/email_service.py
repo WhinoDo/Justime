@@ -33,7 +33,7 @@ class EmailService:
         Returns:
             bool: 发送是否成功
         """
-        reset_url = f"{self.frontend_url}/reset-password?token={token}"
+        reset_url = f"{self.frontend_url}/auth/reset-password?token={token}"
 
         subject = "【聚势】密码重置"
         html_content = f"""

@@ -55,6 +55,9 @@ export default function KnowledgeBasePage() {
     const [loading, setLoading] = useState(true)
     const [uploading, setUploading] = useState(false)
     const [rebuilding, setRebuilding] = useState(false)
+    const [rebuildTaskId, setRebuildTaskId] = useState<string | null>(null)
+    const [rebuildStatus, setRebuildStatus] = useState<{ status: string; message?: string; error?: string } | null>(null)
+    const [showRebuildStatus, setShowRebuildStatus] = useState(false)
     const [previewState, setPreviewState] = useState<PreviewState>({
         open: false,
         fileName: '',
@@ -172,18 +175,21 @@ export default function KnowledgeBasePage() {
         }
     }
 
-    // 重建索引
     const handleRebuild = async () => {
         try {
             setRebuilding(true)
+            setRebuildStatus(null)
             const res = await fetch(API_ENDPOINTS.KNOWLEDGE.REBUILD, {
                 method: 'POST',
             })
             const data = await res.json()
             if (data.success) {
+                setRebuildTaskId(data.task_id)
+                setRebuildStatus({ status: 'pending', message: '索引重建任务已创建' })
+                setShowRebuildStatus(true)
                 toast({
-                    title: '重建成功',
-                    description: data.message,
+                    title: '重建已启动',
+                    description: data.message || '索引重建任务已创建',
                 })
             } else {
                 throw new Error(data.error)
@@ -199,6 +205,32 @@ export default function KnowledgeBasePage() {
             setRebuilding(false)
         }
     }
+
+    useEffect(() => {
+        if (!rebuildTaskId || !showRebuildStatus) return
+        const pollInterval = setInterval(async () => {
+            try {
+                const res = await fetch(API_ENDPOINTS.KNOWLEDGE.REBUILD_STATUS(rebuildTaskId))
+                const data = await res.json()
+                if (data.success) {
+                    setRebuildStatus({
+                        status: data.status,
+                        message: data.message,
+                        error: data.error,
+                    })
+                    if (data.status === 'completed' || data.status === 'failed') {
+                        clearInterval(pollInterval)
+                        if (data.status === 'completed') {
+                            toast({ title: '索引重建完成', description: data.message })
+                        }
+                    }
+                }
+            } catch {
+                clearInterval(pollInterval)
+            }
+        }, 3000)
+        return () => clearInterval(pollInterval)
+    }, [rebuildTaskId, showRebuildStatus])
 
     const closePreview = () => {
         setPreviewState((prev) => ({
@@ -362,7 +394,7 @@ export default function KnowledgeBasePage() {
                                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                                         onChange={handleFileUpload}
                                         disabled={uploading}
-                                        accept=".pdf,.txt,.md,.json,.csv,.docx"
+                                        accept=".pdf,.txt,.md,.markdown,.json,.csv,.yaml,.yml,.xml,.html,.htm,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.rtf,.odt,.ods,.odp,.py,.js,.ts,.tsx,.jsx,.java,.c,.cpp,.go,.rs,.log,.ini"
                                     />
                                     <div className="h-14 w-14 rounded-full bg-blue-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                                         {uploading ? (
@@ -376,7 +408,7 @@ export default function KnowledgeBasePage() {
                                             {uploading ? 'Uploading...' : 'Click or Drag files'}
                                         </p>
                                         <p className="text-xs text-white/50">
-                                            PDF, TXT, MD, DOCX
+                                            PDF, TXT, MD, DOCX, XLSX, CSV, JSON, YAML, PPTX...
                                         </p>
                                     </div>
                                 </div>
@@ -501,6 +533,53 @@ export default function KnowledgeBasePage() {
                             文档较长，当前仅展示前 {previewState.maxChars.toLocaleString()} 字内容（原文 {previewState.charCount.toLocaleString()} 字）。
                         </p>
                     )}
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={showRebuildStatus} onOpenChange={setShowRebuildStatus}>
+                <DialogContent className="max-w-md bg-slate-950/95 border-white/20 text-white backdrop-blur-xl">
+                    <DialogHeader>
+                        <DialogTitle>索引重建状态</DialogTitle>
+                        <DialogDescription className="text-white/60">
+                            查看索引重建任务的实时进度
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                        {rebuildStatus ? (
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-3">
+                                    {rebuildStatus.status === 'completed' ? (
+                                        <div className="h-8 w-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                                            <svg className="h-5 w-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                        </div>
+                                    ) : rebuildStatus.status === 'failed' ? (
+                                        <div className="h-8 w-8 rounded-full bg-red-500/20 flex items-center justify-center">
+                                            <AlertTriangle className="h-5 w-5 text-red-400" />
+                                        </div>
+                                    ) : (
+                                        <Loader2 className="h-8 w-8 animate-spin text-blue-300" />
+                                    )}
+                                    <div>
+                                        <p className="font-medium text-white">
+                                            {rebuildStatus.status === 'completed' ? '已完成' : rebuildStatus.status === 'failed' ? '失败' : rebuildStatus.status === 'running' ? '进行中' : '等待中'}
+                                        </p>
+                                        {rebuildStatus.message && (
+                                            <p className="text-sm text-white/60">{rebuildStatus.message}</p>
+                                        )}
+                                    </div>
+                                </div>
+                                {rebuildStatus.error && (
+                                    <div className="rounded-lg border border-red-500/30 bg-red-500/10 text-red-200 p-3 text-sm">
+                                        {rebuildStatus.error}
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="flex items-center justify-center py-4">
+                                <Loader2 className="h-6 w-6 animate-spin text-white/50" />
+                            </div>
+                        )}
+                    </div>
                 </DialogContent>
             </Dialog>
         </div>

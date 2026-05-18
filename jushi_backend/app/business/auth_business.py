@@ -538,18 +538,22 @@ class AuthBusiness:
 
     @staticmethod
     async def forgot_password(email: str) -> AuthResponse:
-        """处理忘记密码请求，生成重置 token"""
+        """处理忘记密码请求，生成重置 token 并发送邮件"""
         from app.database import db
-        from app.core.config import settings
+        from app.services.email_service import email_service
         
         if db.db is None:
             raise HTTPException(status_code=503, detail="数据库连接失败")
         
         user = await UserService.get_user_by_email(email)
         if not user:
-            raise HTTPException(status_code=404, detail="该邮箱未注册")
+            return AuthResponse(
+                success=True,
+                message="如果该邮箱已注册，您将收到密码重置邮件"
+            )
         
         user_id = str(user["_id"])
+        user_name = user.get("displayName") or user.get("username") or email.split("@")[0]
         
         reset_token = secrets.token_urlsafe(32)
         expires_at = datetime.utcnow() + timedelta(minutes=15)
@@ -564,16 +568,11 @@ class AuthBusiness:
             "used": False
         })
         
-        reset_url = f"/auth/reset-password?token={reset_token}"
+        await email_service.send_password_reset_email(email, reset_token, user_name)
         
         return AuthResponse(
             success=True,
-            message="重置链接已生成",
-            data={
-                "resetUrl": reset_url,
-                "expiresIn": 900,
-                "note": "生产环境中此链接应通过邮件发送给用户"
-            }
+            message="如果该邮箱已注册，您将收到密码重置邮件"
         )
 
     @staticmethod
@@ -596,10 +595,11 @@ class AuthBusiness:
         user_id = token_doc["user_id"]
         
         hashed_password = UserService.get_password_hash(new_password)
-        
+        now = datetime.utcnow()
+
         result = await db.db.users.update_one(
             {"_id": ObjectId(user_id)},
-            {"$set": {"hashed_password": hashed_password, "updated_at": datetime.utcnow()}}
+            {"$set": {"hashed_password": hashed_password, "password_changed_at": now, "updated_at": now}}
         )
         
         if result.matched_count == 0:
