@@ -397,8 +397,7 @@ pytest tests/ -v --tb=short
 
 ## 已知问题与注意事项
 
-1. `jushi_backend/.venv/` 和 `infrastructure/data/db/` 被误提交到 Git，不要修改这些目录
-2. `knowledge` 模块 (LlamaIndex) 启动时可能因依赖缺失而跳过，这是预期行为
-3. 前端 `src/app/api/` 是代理层，业务逻辑应放在组件或 `lib/` 中
-4. 移动端和 Web 端的 `useSSEChat` 是独立实现，修改时需同步更新两端
-5. 后端无数据库 Migration 工具，新增集合/索引需手动在 `database/indexes.py` 中添加
+1. `knowledge` 模块 (LlamaIndex) 启动时可能因依赖缺失而跳过，这是预期行为
+2. 前端 `src/app/api/` 是代理层，业务逻辑应放在组件或 `lib/` 中
+3. 移动端和 Web 端的 `useSSEChat` 是独立实现，修改时需同步更新两端
+4. 后端无数据库 Migration 工具，新增集合/索引需手动在 `database/indexes.py` 中添加
