@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, memo } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism'
@@ -35,7 +35,7 @@ const formatUrgency = (urgency?: string) => {
   return '中紧急'
 }
 
-export function TypewriterMessage({
+const TypewriterMessageInner = ({
   content,
   isStreaming = false,
   speed = 15,
@@ -43,7 +43,7 @@ export function TypewriterMessage({
   onContentChange,
   message,
   onReferenceClick,
-}: TypewriterMessageProps) {
+}: TypewriterMessageProps) => {
   const [displayedContent, setDisplayedContent] = useState('')
   const [cursorVisible, setCursorVisible] = useState(true)
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
@@ -280,5 +280,47 @@ export function TypewriterMessage({
     </div>
   )
 }
+
+// 自定义比较函数：避免 token 更新触发不必要的重渲染
+// 只在关键 props 变化时才重新渲染
+const arePropsEqual = (prevProps: TypewriterMessageProps, nextProps: TypewriterMessageProps) => {
+  // streaming 状态变化时必须更新
+  if (prevProps.isStreaming !== nextProps.isStreaming) return false
+
+  // instant 模式变化时必须更新
+  if (prevProps.instant !== nextProps.instant) return false
+
+  // 非流式状态下，比较完整内容
+  if (!nextProps.isStreaming) {
+    return prevProps.content === nextProps.content
+  }
+
+  // 流式状态下，允许每次 content 更新（打字机效果）
+  // 但避免其他无关 props 变化触发重渲染
+  if (prevProps.content !== nextProps.content) return false
+
+  // 检查 message 的关键属性
+  const prevMsg = prevProps.message
+  const nextMsg = nextProps.message
+  if (prevMsg !== nextMsg) {
+    // 如果 message 引用相同，不需要更新
+    if (prevMsg && nextMsg) {
+      // 检查关键属性是否变化
+      if (
+        prevMsg.created_at !== nextMsg.created_at ||
+        prevMsg.taskAnalysis !== nextMsg.taskAnalysis ||
+        prevMsg.timingStrategy !== nextMsg.timingStrategy ||
+        prevMsg.ragReferences !== nextMsg.ragReferences
+      ) {
+        return false
+      }
+    }
+  }
+
+  // 其他情况认为 props 相等，跳过重渲染
+  return true
+}
+
+export const TypewriterMessage = memo(TypewriterMessageInner, arePropsEqual)
 
 export default TypewriterMessage

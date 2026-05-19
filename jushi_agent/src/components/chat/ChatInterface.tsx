@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, memo } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useTheme } from 'next-themes'
@@ -53,12 +53,12 @@ interface ChatInterfaceProps {
   onSessionChange?: (sessionId: string) => void
 }
 
-export function ChatInterface({
+const ChatInterfaceInner = ({
   initialMessages = [],
   onTaskCreate,
   sessionId,
   onSessionChange
-}: ChatInterfaceProps) {
+}: ChatInterfaceProps) => {
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -1353,4 +1353,33 @@ export function ChatInterface({
 
     </div>
   )
-} 
+}
+
+// 自定义比较函数：避免父组件状态变化导致不必要的完整重渲染
+// 只在关键 props 变化时才重新渲染
+const arePropsEqual = (prevProps: ChatInterfaceProps, nextProps: ChatInterfaceProps) => {
+  // sessionId 变化时必须更新（会触发历史消息加载）
+  if (prevProps.sessionId !== nextProps.sessionId) return false
+
+  // initialMessages 引用变化时需要更新
+  if (prevProps.initialMessages !== nextProps.initialMessages) {
+    // 如果引用不同，比较数组长度和第一个/最后一个消息的 id
+    const prevMsgs = prevProps.initialMessages || []
+    const nextMsgs = nextProps.initialMessages || []
+    if (prevMsgs.length !== nextMsgs.length) return false
+    if (prevMsgs.length > 0) {
+      if (prevMsgs[0].id !== nextMsgs[0].id) return false
+      if (prevMsgs[prevMsgs.length - 1].id !== nextMsgs[nextMsgs.length - 1].id) return false
+    }
+  }
+
+  // onTaskCreate 和 onSessionChange 通常是稳定的回调函数
+  // 如果它们变化，需要重新渲染
+  if (prevProps.onTaskCreate !== nextProps.onTaskCreate) return false
+  if (prevProps.onSessionChange !== nextProps.onSessionChange) return false
+
+  // 其他情况认为 props 相等，跳过重渲染
+  return true
+}
+
+export const ChatInterface = memo(ChatInterfaceInner, arePropsEqual) 
