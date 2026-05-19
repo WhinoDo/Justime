@@ -49,15 +49,30 @@ def backup_mongodb() -> bool:
         BACKUP_DIR.mkdir(parents=True, exist_ok=True)
 
         # 解析 MongoDB URI
-        # 格式: mongodb://[user:password@]host:port/database
+        # 格式: mongodb://[user:password@]host:port/database[?authSource=...]
         host = "localhost"
         port = 27017
+        user = None
+        password = None
+        auth_source = "admin"
 
         if MONGODB_URI.startswith("mongodb://"):
             uri_part = MONGODB_URI[10:]
+
+            # 解析查询参数
+            if "?" in uri_part:
+                uri_part, query = uri_part.split("?", 1)
+                for param in query.split("&"):
+                    if "=" in param:
+                        key, value = param.split("=", 1)
+                        if key == "authSource":
+                            auth_source = value
+
+            # 解析认证信息
             if "@" in uri_part:
-                # 有认证信息
                 auth_part, host_part = uri_part.split("@")
+                if ":" in auth_part:
+                    user, password = auth_part.split(":", 1)
                 host = host_part.split("/")[0]
             else:
                 host = uri_part.split("/")[0]
@@ -75,6 +90,14 @@ def backup_mongodb() -> bool:
             "--out", str(backup_path),
             "--quiet"
         ]
+
+        # 添加认证参数
+        if user and password:
+            cmd.extend([
+                "--username", user,
+                "--password", password,
+                "--authenticationDatabase", auth_source
+            ])
 
         log(f"开始备份 MongoDB: {DB_NAME}")
         log(f"备份路径: {backup_path}")

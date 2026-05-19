@@ -81,6 +81,8 @@ cp .env.example .env
 vim .env
 # 必须修改:
 # - JUSHI_REPO_ROOT=/opt/jushi
+# - MONGO_ROOT_PASSWORD (openssl rand -hex 32) - MongoDB root 密码
+# - MONGO_APP_PASSWORD (openssl rand -hex 32) - MongoDB 应用密码
 # - JWT_SECRET (openssl rand -hex 32)
 # - JWT_REFRESH_SECRET (openssl rand -hex 32)
 # - ENCRYPTION_SECRET (openssl rand -hex 32)
@@ -220,8 +222,8 @@ NEXT_PUBLIC_APP_NAME=聚石智能助手
 NEXT_PUBLIC_APP_VERSION=1.0.0
 NEXT_PUBLIC_BACKEND_URL=/backend
 
-# 数据库
-MONGODB_URI=mongodb://mongodb:27017/jushi-agent
+# 数据库 (认证模式)
+MONGODB_URI=mongodb://jushi_app:<MONGO_APP_PASSWORD>@mongodb:27017/jushi-agent?authSource=jushi-agent
 
 # 安全
 JWT_SECRET=<32字符以上随机字符串>
@@ -238,8 +240,8 @@ HOST=0.0.0.0
 PORT=8080
 DEBUG=false
 
-# 数据库
-MONGODB_URI=mongodb://mongodb:27017/jushi-agent
+# 数据库 (认证模式)
+MONGODB_URI=mongodb://jushi_app:<MONGO_APP_PASSWORD>@mongodb:27017/jushi-agent?authSource=jushi-agent
 MONGODB_DB_NAME=jushi-agent
 REDIS_URL=redis://redis:6379/0
 
@@ -280,6 +282,7 @@ EXPO_PUBLIC_DEBUG=false
 - [ ] 所有密钥使用强随机字符串 (`openssl rand -hex 32`)
 - [ ] `JWT_SECRET`、`JWT_REFRESH_SECRET`、`ENCRYPTION_SECRET` 已配置
 - [ ] 密钥长度 ≥ 32 字符
+- [ ] **MongoDB 认证已启用** (`MONGO_ROOT_PASSWORD`、`MONGO_APP_PASSWORD` 已配置)
 - [ ] 数据库端口不对外暴露
 - [ ] HTTPS 已启用
 - [ ] `ALLOWED_ORIGINS` 已正确配置 (禁止使用 `*`)
@@ -298,8 +301,8 @@ curl http://localhost:8088/backend/api/v1/health/
 # 前端检查
 curl -I http://localhost:8088
 
-# 数据库连接
-docker compose exec mongodb mongosh --eval "db.adminCommand('ping')"
+# 数据库连接 (认证模式)
+docker compose exec mongodb mongosh -u root -p "${MONGO_ROOT_PASSWORD}" --authenticationDatabase admin --eval "db.adminCommand('ping')"
 docker compose exec redis redis-cli ping
 ```
 
@@ -322,7 +325,7 @@ sudo journalctl -u jushi-agent -f
 docker stats
 
 # MongoDB 状态
-docker compose exec mongodb mongosh --eval "db.serverStatus()"
+docker compose exec mongodb mongosh -u root -p "${MONGO_ROOT_PASSWORD}" --authenticationDatabase admin --eval "db.serverStatus()"
 
 # Redis 状态
 docker compose exec redis redis-cli info
@@ -331,15 +334,17 @@ docker compose exec redis redis-cli info
 ### 数据备份
 
 ```bash
-# MongoDB 备份
+# MongoDB 备份 (认证模式)
 docker compose exec mongodb mongodump \
-  --uri="mongodb://localhost:27017/jushi-agent" \
+  --uri="mongodb://jushi_app:${MONGO_APP_PASSWORD}@localhost:27017/jushi-agent?authSource=jushi-agent" \
   --archive=/data/backup.archive
 docker cp jushi-mongodb:/data/backup.archive ./backup.archive
 
 # MongoDB 恢复
 docker cp ./backup.archive jushi-mongodb:/data/backup.archive
-docker compose exec mongodb mongorestore --archive=/data/backup.archive
+docker compose exec mongodb mongorestore \
+  --uri="mongodb://jushi_app:${MONGO_APP_PASSWORD}@localhost:27017/jushi-agent?authSource=jushi-agent" \
+  --archive=/data/backup.archive
 ```
 
 ## 常见问题

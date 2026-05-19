@@ -161,14 +161,19 @@ services:
     image: mongo:7
     container_name: jushi-mongodb
     restart: unless-stopped
-    command: ["mongod", "--bind_ip_all"]
+    command: ["mongod", "--auth", "--bind_ip", "0.0.0.0"]
+    environment:
+      MONGO_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD}
+      MONGODB_DB_NAME: ${MONGODB_DB_NAME:-jushi-agent}
     shm_size: 256m
     volumes:
       - ./data/mongodb:/data/db
+      - ./scripts/mongo-init.sh:/docker-entrypoint-initdb.d/mongo-init.sh:ro
     tmpfs:
       - /tmp:rw,size=128m
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      test: ["CMD", "mongosh", "--quiet", "-u", "root", "-p", "${MONGO_ROOT_PASSWORD}", "--authenticationDatabase", "admin", "--eval", "db.adminCommand('ping').ok"]
       <<: *healthcheck-defaults
       start_period: 20s
     init: true
