@@ -5,6 +5,7 @@ from passlib.context import CryptContext
 from app.database import db
 from bson import ObjectId
 from app.core.exceptions import UserNotFoundError, PasswordIncorrectError, AuthenticationError
+from app.services.cache_service import CacheService
 
 # 初始化日志
 logger = logging.getLogger(__name__)
@@ -49,11 +50,21 @@ class UserService:
 
     @staticmethod
     async def get_user_by_id(user_id: str) -> Optional[Dict[str, Any]]:
+        """获取用户信息（带缓存）"""
+        # 尝试从缓存获取
+        cached_user = await CacheService.get_user_data(user_id)
+        if cached_user is not None:
+            return cached_user
+
         if db.db is None:
             return None
         try:
             oid = ObjectId(user_id) if isinstance(user_id, str) else user_id
-            return await db.db.users.find_one({"_id": oid})
+            user = await db.db.users.find_one({"_id": oid})
+            if user:
+                # 缓存用户数据
+                await CacheService.set_user_data(user_id, user)
+            return user
         except (ValueError, TypeError, Exception) as e:
             logger.debug(f"Invalid user_id format: {e}")
             return None
@@ -155,12 +166,17 @@ class UserService:
 
     @staticmethod
     async def delete_user(user_id: str) -> bool:
+        """删除用户（并使缓存失效）"""
         if db.db is None:
             return False
         try:
             oid = ObjectId(user_id) if isinstance(user_id, str) else user_id
             result = await db.db.users.delete_one({"_id": oid})
-            return result.deleted_count > 0
+            success = result.deleted_count > 0
+            if success:
+                # 使该用户的所有缓存失效
+                await CacheService.invalidate_all_user_cache(user_id)
+            return success
         except (ValueError, TypeError, Exception) as e:
             logger.debug(f"Failed to delete user: {e}")
             return False
@@ -183,15 +199,24 @@ class UserService:
 
     @staticmethod
     async def get_system_llm_configs() -> List[Dict[str, Any]]:
-        """获取平台所有预设的 LLM 配置"""
-        if db.db is None: return []
+        """获取平台所有预设的 LLM 配置（带缓存）"""
+        # 尝试从缓存获取
+        cached_configs = await CacheService.get_system_llm_configs()
+        if cached_configs is not None:
+            return cached_configs
+
+        if db.db is None:
+            return []
         try:
             configs = await db.db.system_llm_configs.find({}).to_list(length=None)
             configs = await UserService._inject_api_keys_for_configs(configs)
             for c in configs:
                 c["_id"] = str(c.get("_id"))
+            # 缓存结果
+            await CacheService.set_system_llm_configs(configs)
             return configs
-        except Exception: return []
+        except Exception:
+            return []
 
     @staticmethod
     async def _inject_api_keys_for_configs(configs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -226,7 +251,12 @@ class UserService:
 
     @staticmethod
     async def get_available_models_for_user(user_id: str) -> List[Dict[str, Any]]:
-        """按用户模型权限返回可用系统模型配置。"""
+        """按用户模型权限返回可用系统模型配置（带缓存）"""
+        # 尝试从缓存获取
+        cached_models = await CacheService.get_user_available_models(user_id)
+        if cached_models is not None:
+            return cached_models
+
         configs = await UserService.get_system_llm_configs()
         if db.db is None:
             return configs
@@ -244,6 +274,8 @@ class UserService:
 
         access_all = bool(user.get("access_all_models", True))
         if access_all:
+            # 缓存结果
+            await CacheService.set_user_available_models(user_id, configs)
             return configs
 
         allowed_model_ids = user.get("allowed_model_ids") or []
@@ -255,31 +287,52 @@ class UserService:
         if not allowed_set:
             return []
 
-        return [
+        result = [
             conf for conf in configs
             if str(conf.get("id") or "").strip() in allowed_set
         ]
+        # 缓存结果
+        await CacheService.set_user_available_models(user_id, result)
+        return result
 
     @staticmethod
     async def get_user_active_model_id(user_id: str) -> Optional[str]:
-        if db.db is None: return None
+        """获取用户活跃模型 ID（带缓存）"""
+        # 尝试从缓存获取
+        cached_model_id = await CacheService.get_user_active_model(user_id)
+        if cached_model_id is not None:
+            return cached_model_id
+
+        if db.db is None:
+            return None
         try:
             oid = ObjectId(user_id) if isinstance(user_id, str) else user_id
             user = await db.db.users.find_one({"_id": oid}, {"active_model_id": 1})
-            return user.get("active_model_id") if user else None
-        except Exception: return None
+            model_id = user.get("active_model_id") if user else None
+            if model_id:
+                await CacheService.set_user_active_model(user_id, model_id)
+            return model_id
+        except Exception:
+            return None
 
     @staticmethod
     async def set_active_model_id(user_id: str, model_id: str) -> bool:
-        if db.db is None: return False
+        """设置用户活跃模型 ID（并使缓存失效）"""
+        if db.db is None:
+            return False
         try:
             oid = ObjectId(user_id) if isinstance(user_id, str) else user_id
             result = await db.db.users.update_one(
                 {"_id": oid},
                 {"$set": {"active_model_id": model_id}}
             )
-            return result.modified_count > 0 or result.matched_count > 0
-        except Exception: return False
+            success = result.modified_count > 0 or result.matched_count > 0
+            if success:
+                # 更新缓存而非删除
+                await CacheService.set_user_active_model(user_id, model_id)
+            return success
+        except Exception:
+            return False
 
     @staticmethod
     async def update_user_model_access(
@@ -287,6 +340,7 @@ class UserService:
         access_all_models: bool,
         allowed_model_ids: List[str],
     ) -> bool:
+        """更新用户模型访问权限（并使缓存失效）"""
         if db.db is None:
             return False
         try:
@@ -307,7 +361,13 @@ class UserService:
                     }
                 },
             )
-            return result.modified_count > 0 or result.matched_count > 0
+            success = result.modified_count > 0 or result.matched_count > 0
+            if success:
+                # 使相关缓存失效
+                await CacheService.invalidate_user_available_models(user_id)
+                await CacheService.invalidate_user_permissions(user_id)
+                await CacheService.invalidate_user_data(user_id)
+            return success
         except Exception:
             return False
 
@@ -531,7 +591,12 @@ class UserService:
 
     @staticmethod
     async def get_user_profile(user_id: str) -> Dict[str, Any]:
-        """获取用户 profile 数据（不存在时返回默认结构）"""
+        """获取用户 profile 数据（带缓存，不存在时返回默认结构）"""
+        # 尝试从缓存获取
+        cached_profile = await CacheService.get_user_profile(user_id)
+        if cached_profile is not None:
+            return cached_profile
+
         default_profile = {"name": "", "habits": {}}
         if db.db is None:
             return default_profile
@@ -548,6 +613,8 @@ class UserService:
             profile.setdefault("email", user.get("email") or "")
             profile.setdefault("displayName", user.get("displayName") or "")
             profile.setdefault("habits", {})
+            # 缓存结果
+            await CacheService.set_user_profile(user_id, profile)
             return profile
         except Exception as e:
             logger.error(f"Error get user profile: {e}")
@@ -555,7 +622,7 @@ class UserService:
 
     @staticmethod
     async def update_user_profile(user_id: str, profile: Dict[str, Any]) -> bool:
-        """更新用户 profile 数据"""
+        """更新用户 profile 数据（并使缓存失效）"""
         if db.db is None:
             return False
         try:
@@ -580,14 +647,18 @@ class UserService:
                 update_doc["$set"]["displayName"] = display_name.strip()
 
             result = await db.db.users.update_one({"_id": oid}, update_doc)
-            return result.modified_count > 0 or result.matched_count > 0
+            success = result.modified_count > 0 or result.matched_count > 0
+            if success:
+                # 更新缓存而非删除
+                await CacheService.set_user_profile(user_id, safe_profile)
+            return success
         except Exception as e:
             logger.error(f"Error update user profile: {e}")
             return False
 
     @staticmethod
     async def update_password(user_id: str, new_password: str) -> bool:
-        """更新用户密码"""
+        """更新用户密码（并使缓存失效）"""
         if db.db is None:
             return False
         try:
@@ -605,7 +676,11 @@ class UserService:
                     "$unset": {"password": ""}
                 }
             )
-            return result.modified_count > 0 or result.matched_count > 0
+            success = result.modified_count > 0 or result.matched_count > 0
+            if success:
+                # 使用户数据缓存失效
+                await CacheService.invalidate_user_data(user_id)
+            return success
         except Exception as e:
             logger.error(f"Error updating password: {e}")
             return False

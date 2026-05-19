@@ -10,6 +10,7 @@ from app.core.normalizers import to_iso_datetime
 from app.database import db
 from app.models.admin_apikey import AdminApiKey, AdminApiKeyCreated, AdminApiKeyUpsertRequest
 from app.services.encryption_service import encryption_service
+from app.services.cache_service import CacheService
 
 
 class AdminApiKeyBusiness:
@@ -81,6 +82,8 @@ class AdminApiKeyBusiness:
         created = await db.db[AdminApiKeyBusiness.COLLECTION].find_one({"id": doc["id"]})
         if not created:
             return None
+        # 使系统 LLM 配置缓存失效（因为 API Key 被引用）
+        await CacheService.invalidate_system_llm_configs()
         return AdminApiKeyCreated(
             id=str(created.get("id") or ""),
             name=str(created.get("name") or "系统 API Key"),
@@ -105,6 +108,8 @@ class AdminApiKeyBusiness:
         updated = await db.db[AdminApiKeyBusiness.COLLECTION].find_one({"_id": existing["_id"]})
         if not updated:
             return None
+        # 使系统 LLM 配置缓存失效（因为 API Key 被引用）
+        await CacheService.invalidate_system_llm_configs()
         return AdminApiKeyBusiness._safe_apikey(updated)
 
     @staticmethod
@@ -114,7 +119,11 @@ class AdminApiKeyBusiness:
         result = await db.db[AdminApiKeyBusiness.COLLECTION].delete_one(
             AdminApiKeyBusiness._resolve_key_filter(key_id)
         )
-        return result.deleted_count > 0
+        success = result.deleted_count > 0
+        if success:
+            # 使系统 LLM 配置缓存失效（因为 API Key 被引用）
+            await CacheService.invalidate_system_llm_configs()
+        return success
 
 
 admin_apikey_business = AdminApiKeyBusiness()

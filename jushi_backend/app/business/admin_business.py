@@ -10,6 +10,7 @@ from bson import ObjectId
 from app.core.normalizers import normalize_bool, normalize_capabilities, normalize_priority, to_iso_datetime
 from app.services.user_service import UserService
 from app.services.encryption_service import encryption_service
+from app.services.cache_service import CacheService
 from app.database import db
 from app.models.admin import AdminModel, AdminModelUpsertRequest, AdminUser, SystemStats
 
@@ -119,7 +120,11 @@ class AdminBusiness:
             {"_id": oid},
             {"$set": {"status": status_value, "updated_at": datetime.utcnow()}}
         )
-        return result.modified_count > 0 or result.matched_count > 0
+        success = result.modified_count > 0 or result.matched_count > 0
+        if success:
+            # 使用户数据缓存失效
+            await CacheService.invalidate_user_data(user_id)
+        return success
 
     @staticmethod
     async def update_user_role(user_id: str, role_value: str) -> bool:
@@ -133,7 +138,11 @@ class AdminBusiness:
             {"_id": oid},
             {"$set": {"role": role_value, "updated_at": datetime.utcnow()}}
         )
-        return result.modified_count > 0 or result.matched_count > 0
+        success = result.modified_count > 0 or result.matched_count > 0
+        if success:
+            # 使用户数据缓存失效
+            await CacheService.invalidate_user_data(user_id)
+        return success
 
     @staticmethod
     async def update_user_model_access(
@@ -193,6 +202,8 @@ class AdminBusiness:
         created = await db.db.system_llm_configs.find_one({"id": doc["id"]})
         if not created:
             return None
+        # 使系统 LLM 配置缓存失效
+        await CacheService.invalidate_system_llm_configs()
         return AdminBusiness._safe_model(created)
 
     @staticmethod
@@ -212,6 +223,8 @@ class AdminBusiness:
         updated = await db.db.system_llm_configs.find_one({"_id": existing["_id"]})
         if not updated:
             return None
+        # 使系统 LLM 配置缓存失效
+        await CacheService.invalidate_system_llm_configs()
         return AdminBusiness._safe_model(updated)
 
     @staticmethod
@@ -219,7 +232,11 @@ class AdminBusiness:
         if db.db is None:
             return False
         result = await db.db.system_llm_configs.delete_one(AdminBusiness._resolve_model_filter(model_id))
-        return result.deleted_count > 0
+        success = result.deleted_count > 0
+        if success:
+            # 使系统 LLM 配置缓存失效
+            await CacheService.invalidate_system_llm_configs()
+        return success
 
     @staticmethod
     async def get_system_stats() -> SystemStats:

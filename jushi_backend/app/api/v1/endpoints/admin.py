@@ -15,6 +15,8 @@ from app.models.admin import (
 )
 from app.api.deps import parse_object_id, require_admin
 from app.business.admin_business import admin_business
+from app.services.cache_service import CacheService
+from app.core.redis_client import RedisClient
 
 router = APIRouter()
 
@@ -143,3 +145,28 @@ async def delete_model(model_id: str, _: Dict[str, Any] = Depends(require_admin)
 async def get_stats(_: Dict[str, Any] = Depends(require_admin)) -> SystemStats:
     """获取系统运行统计信息"""
     return await admin_business.get_system_stats()
+
+
+@router.get("/cache/stats", summary="获取缓存统计")
+async def get_cache_stats(_: Dict[str, Any] = Depends(require_admin)) -> Dict[str, Any]:
+    """获取缓存命中率和统计信息"""
+    stats = CacheService.get_cache_stats()
+    return {
+        "redis_enabled": RedisClient.is_enabled(),
+        "cache_stats": stats,
+        "summary": {
+            "total_hits": sum(s.get("hits", 0) for s in stats.values()),
+            "total_misses": sum(s.get("misses", 0) for s in stats.values()),
+        }
+    }
+
+
+@router.post("/cache/invalidate", summary="使所有缓存失效")
+async def invalidate_all_cache(_: Dict[str, Any] = Depends(require_admin)) -> Dict[str, Any]:
+    """使所有缓存失效（慎用）"""
+    # 获取所有缓存键的模式匹配
+    if RedisClient.is_enabled():
+        # 重新初始化统计
+        CacheService.reset_cache_stats()
+        return {"success": True, "message": "缓存统计已重置，Redis 缓存将按 TTL 自然过期"}
+    return {"success": False, "message": "Redis 未启用"}

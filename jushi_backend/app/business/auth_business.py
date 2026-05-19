@@ -18,6 +18,7 @@ from typing import Dict, Any
 from app.core.normalizers import normalize_bool, normalize_capabilities, normalize_priority
 from app.services.security_service import SecurityService
 from app.services.encryption_service import encryption_service
+from app.services.cache_service import CacheService
 from app.core.exceptions import UserNotFoundError, PasswordIncorrectError
 
 logger = logging.getLogger(__name__)
@@ -268,6 +269,9 @@ class AuthBusiness:
         )
         if result.matched_count == 0:
             raise HTTPException(status_code=404, detail=f"未找到配置 {config_id}")
+
+        # 使系统 LLM 配置缓存失效
+        await CacheService.invalidate_system_llm_configs()
 
         return AuthResponse(success=True, message="更新配置成功")
 
@@ -579,21 +583,21 @@ class AuthBusiness:
     async def reset_password(token: str, new_password: str) -> AuthResponse:
         """通过重置 token 设置新密码"""
         from app.database import db
-        
+
         if db.db is None:
             raise HTTPException(status_code=503, detail="数据库连接失败")
-        
+
         token_doc = await db.db.password_reset_tokens.find_one({
             "token": token,
             "used": False,
             "expires_at": {"$gt": datetime.utcnow()}
         })
-        
+
         if not token_doc:
             raise HTTPException(status_code=400, detail="重置链接无效或已过期")
-        
+
         user_id = token_doc["user_id"]
-        
+
         hashed_password = UserService.get_password_hash(new_password)
         now = datetime.utcnow()
 
@@ -601,15 +605,18 @@ class AuthBusiness:
             {"_id": ObjectId(user_id)},
             {"$set": {"hashed_password": hashed_password, "password_changed_at": now, "updated_at": now}}
         )
-        
+
         if result.matched_count == 0:
             raise HTTPException(status_code=404, detail="用户不存在")
-        
+
+        # 使该用户的数据缓存失效
+        await CacheService.invalidate_user_data(user_id)
+
         await db.db.password_reset_tokens.update_one(
             {"_id": token_doc["_id"]},
             {"$set": {"used": True, "used_at": datetime.utcnow()}}
         )
-        
+
         return AuthResponse(
             success=True,
             message="密码重置成功，请使用新密码登录"
