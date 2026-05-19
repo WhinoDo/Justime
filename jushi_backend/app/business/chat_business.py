@@ -922,7 +922,7 @@ class ChatBusiness:
                 delta = choices[0].get("delta", {})
                 return delta.get("content")
         except Exception:
-            pass
+            logger.warning("Failed to extract stream content from chunk", exc_info=True)
         return None
 
     @staticmethod
@@ -937,7 +937,7 @@ class ChatBusiness:
                     "totalTokens": usage.get("total_tokens", 0),
                 }
         except Exception:
-            pass
+            logger.warning("Failed to extract stream usage from chunk", exc_info=True)
         return None
 
     async def test_connection(self, config: LLMTestRequest, user_id: str) -> Dict[str, Any]:
