@@ -17,6 +17,10 @@ os.environ["CSRF_ENABLED"] = "false"
 os.environ["DEBUG"] = "true"
 os.environ["MONGODB_URI"] = "mongodb://localhost:27017/jushi_test"
 os.environ["MONGODB_DB_NAME"] = "jushi_test"
+# Test API keys for model router service tests (placeholder values, not real credentials)
+os.environ["TEST_API_KEY_FAST"] = "test-fast-key-placeholder"
+os.environ["TEST_API_KEY_REASONING"] = "test-reasoning-key-placeholder"
+os.environ["TEST_API_KEY_DISABLED"] = "test-disabled-key-placeholder"
 
 
 @pytest.fixture(scope="session")
