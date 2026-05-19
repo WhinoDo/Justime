@@ -1,0 +1,10 @@
+# Development/Testing dependencies
+# Used for CI and local development
+
+-r requirements.in
+
+# Testing
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+pytest-cov>=4.1.0
+httpx>=0.24.0

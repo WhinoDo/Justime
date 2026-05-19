@@ -1,0 +1,5 @@
+# Homelab deployment dependencies
+# Includes all dependencies for full deployment
+
+-r requirements.in
+-r requirements-ai-extras.in

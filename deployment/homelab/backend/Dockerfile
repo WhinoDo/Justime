@@ -19,8 +19,8 @@ RUN apt-get update \
     && useradd --create-home --shell /bin/bash appuser \
     && chown -R appuser:appuser /app
 
-COPY requirements-homelab.txt ./requirements-homelab.txt
-RUN pip install -r requirements-homelab.txt
+COPY requirements-homelab.lock ./requirements-homelab.lock
+RUN pip install -r requirements-homelab.lock
 
 COPY --chown=appuser:appuser . .
 

@@ -1,0 +1,18 @@
+# AI/ML Extras - Heavy dependencies for RAG and document processing
+
+# Speech
+faster-whisper>=1.0.3
+
+# RAG - LlamaIndex
+llama-index>=0.10.0
+llama-index-embeddings-huggingface>=0.2.0
+llama-index-readers-file>=0.1.0
+
+# Document Processing
+docx2txt>=0.8
+pypdf>=4.0.0
+PyMuPDF>=1.23.0
+
+# OCR
+pytesseract>=0.3.10
+Pillow>=10.0.0
