@@ -1,32 +1,43 @@
 'use client'
 
+import { memo } from 'react'
 import { MessageCircle } from 'lucide-react'
 
-export function ChatEmptyState() {
+export interface ChatEmptyStateProps {
+  /** Optional custom title */
+  title?: string
+  /** Optional custom description */
+  description?: string
+}
+
+export const ChatEmptyState = memo(function ChatEmptyState({
+  title = '开始对话',
+  description = '告诉我你现在的任务或感受，我会根据你的情绪状态提供个性化的帮助和任务拆解建议',
+}: ChatEmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center h-full text-center space-y-6">
-      <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 flex items-center justify-center">
-        <MessageCircle className="w-12 h-12 text-blue-500" />
+    <div className="flex h-full flex-col items-center justify-center space-y-6 text-center">
+      <div className="flex h-24 w-24 items-center justify-center rounded-[28px] border border-white/15 bg-white/10 shadow-2xl shadow-black/10">
+        <MessageCircle className="h-12 w-12 text-white/80" />
       </div>
       <div className="space-y-2">
-        <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
-          开始对话
+        <h3 className="text-xl font-semibold text-white">
+          {title}
         </h3>
-        <p className="text-gray-500 dark:text-gray-400 max-w-md">
-          告诉我你现在的任务或感受，我会根据你的情绪状态提供个性化的帮助和任务拆解建议
+        <p className="max-w-md text-white/60">
+          {description}
         </p>
       </div>
-      <div className="flex flex-wrap gap-2 justify-center">
-        <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-sm">
+      <div className="flex flex-wrap justify-center gap-2">
+        <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-sm text-white/75">
           情绪感知
         </span>
-        <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-sm">
+        <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-sm text-white/75">
           任务拆解
         </span>
-        <span className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-sm">
+        <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-sm text-white/75">
           智能陪伴
         </span>
       </div>
     </div>
   )
-}
+})
