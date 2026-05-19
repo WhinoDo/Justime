@@ -37,7 +37,8 @@ jushi_deploy_package.zip
 
 # Data directories
 infrastructure/mongodb/data/
-infrastructure/data/
+infrastructure/data/db/*
+!infrastructure/data/db/.gitkeep
 jushi_backend/app/data/documents/book-analysis/
 
 # IDE
