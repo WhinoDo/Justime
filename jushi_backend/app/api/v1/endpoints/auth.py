@@ -43,7 +43,9 @@ def _cookie_security_settings() -> tuple[bool, str]:
 
 def _set_auth_cookies(response: Response, access_token: str, refresh_token: str, remember_me: bool = False) -> None:
     secure, same_site = _cookie_security_settings()
-    access_max_age = 60 * 60 * 24 * (30 if remember_me else 1)
+    # Access token cookie matches token expiry (30 minutes)
+    access_max_age = settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    # Refresh token cookie uses longer expiry based on remember_me
     refresh_max_age = 60 * 60 * 24 * (30 if remember_me else 7)
 
     response.set_cookie(
@@ -135,12 +137,12 @@ async def refresh_token(request: Request, response: Response) -> AuthResponse:
     safe_user = auth_business._build_safe_user(user, profile)
 
     remember_me = bool(payload.get("remember", False))
-    access_token_expires = timedelta(days=30) if remember_me else timedelta(days=1)
+    # Access token always uses short expiry (30 minutes) for security (OAuth2 best practice)
+    # Refresh token uses longer expiry based on remember_me
     refresh_token_expires = timedelta(days=30) if remember_me else timedelta(days=7)
 
     new_access_token = SecurityService.create_access_token(
-        data={"sub": user_id},
-        expires_delta=access_token_expires
+        data={"sub": user_id}
     )
     new_refresh_token = SecurityService.create_refresh_token(
         data={"sub": user_id, "remember": remember_me},

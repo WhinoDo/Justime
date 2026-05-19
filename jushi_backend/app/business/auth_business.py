@@ -106,16 +106,12 @@ class AuthBusiness:
         safe_user = AuthBusiness._build_safe_user(user, profile)
 
         # Generate tokens
-        if payload.rememberMe:
-            access_token_expires = timedelta(days=30)
-            refresh_token_expires = timedelta(days=30)
-        else:
-            access_token_expires = timedelta(days=1)
-            refresh_token_expires = timedelta(days=7)
+        # Access token always uses short expiry (30 minutes) for security (OAuth2 best practice)
+        # Refresh token uses longer expiry based on rememberMe
+        refresh_token_expires = timedelta(days=30) if payload.rememberMe else timedelta(days=7)
 
         access_token = SecurityService.create_access_token(
-            data={"sub": user_id},
-            expires_delta=access_token_expires
+            data={"sub": user_id}
         )
         refresh_token = SecurityService.create_refresh_token(
             data={"sub": user_id, "remember": bool(payload.rememberMe)},

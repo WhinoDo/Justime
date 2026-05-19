@@ -10,6 +10,7 @@ from unittest.mock import patch, AsyncMock
 
 os.environ["JWT_SECRET"] = "test-jwt-secret-key-at-least-32-characters-long!"
 os.environ["JWT_REFRESH_SECRET"] = "test-refresh-secret-key-at-least-32-characters-long!"
+os.environ["JWT_PASSWORD_RESET_SECRET"] = "test-password-reset-secret-key-at-least-32-characters-long!"
 os.environ["ENCRYPTION_SECRET"] = "test-encryption-secret-key-at-least-32-characters-long!"
 os.environ["CSRF_SECRET"] = "test-csrf-secret-key-at-least-32-characters-long!"
 os.environ["CSRF_ENABLED"] = "false"

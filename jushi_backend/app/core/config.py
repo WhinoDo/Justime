@@ -93,7 +93,7 @@ class Settings(BaseSettings):
     JWT_PASSWORD_RESET_SECRET: str = ""
     ENCRYPTION_SECRET: str = ""
     JWT_ALGORITHM: str = "HS256"
-    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7天
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30  # 30分钟（OAuth2 最佳实践）
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 30  # 30天
     
     # CORS配置
