@@ -23,7 +23,6 @@ import { SuggestedEventCard } from './SuggestedEventCard'
 import { EditableTaskPlan } from './EditableTaskPlan'
 import { TaskItem } from '@/lib/ai/task-planner'
 import { TimeAwareTaskInput } from './TimeAwareTaskInput'
-import { chatDB } from '@/lib/database/ChatDatabaseIntegration'
 import { ThinkingLoader } from './ThinkingLoader'
 import { RagReferencePreviewPanel, RagPreviewTab, RagFullContentState } from './RagReferencePreviewPanel'
 import { useAuth } from '@/hooks/useAuth'
@@ -266,20 +265,16 @@ export function ChatInterface({
   useEffect(() => {
     setMounted(true)
 
-    // 初始化数据库用户会话
-    const initializeDatabase = async () => {
+    // 加载供应商模型
+    const initializeApp = async () => {
       try {
-        const user = await chatDB.initializeUser()
-        console.log('✅ 数据库用户会话已初始化')
-
-        // 加载供应商模型
         await loadProviderModels()
       } catch (error) {
-        console.error('❌ 数据库初始化失败:', error)
+        console.error('❌ 加载模型配置失败:', error)
       }
     }
 
-    initializeDatabase()
+    initializeApp()
 
   }, [])
 
@@ -563,9 +558,7 @@ export function ChatInterface({
     // textarea height reset removed as it is now fixed
 
     try {
-      // Save user message to database (Client DB)
       const startTime = Date.now()
-      await chatDB.addMessage('user', userMessage.content)
 
       console.log('发送聊天请求:', {
         message: userMessage.content.substring(0, 50),

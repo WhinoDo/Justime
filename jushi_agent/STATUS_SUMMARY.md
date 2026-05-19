@@ -51,7 +51,7 @@
 7. **RegisterForm.tsx** - 移除飞书登录选项
 
 ### 数据库
-8. **ChatDatabaseIntegration.ts** - 所有方法已禁用
+8. **ChatDatabaseIntegration.ts** - ✅ 已删除（禁用的死代码）
 9. **mongodb.ts** - ✅ 新建MongoDB连接文件
 
 ### 配置

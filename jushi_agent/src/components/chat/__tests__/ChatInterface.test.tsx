@@ -18,13 +18,6 @@ jest.mock('@/hooks/useAuth', () => ({
   }),
 }))
 
-jest.mock('@/lib/database/ChatDatabaseIntegration', () => ({
-  chatDB: {
-    initializeUser: jest.fn().mockResolvedValue('test-user'),
-    addMessage: jest.fn().mockResolvedValue(undefined),
-  },
-}))
-
 global.fetch = jest.fn()
 
 describe('ChatInterface', () => {
