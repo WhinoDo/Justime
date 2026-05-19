@@ -8,6 +8,11 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider } from '@/context/AuthContext';
+import { validateProductionConfig } from '@/constants/app-config';
+
+// 在应用启动时验证生产环境配置
+// 确保生产构建必须显式配置 API URL，防止使用开发环境默认值
+validateProductionConfig();
 
 // Monkey patch global.fetch to bypass Localtunnel's warning page
 const originalFetch = global.fetch;

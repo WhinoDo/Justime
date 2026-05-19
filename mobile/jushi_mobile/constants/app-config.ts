@@ -21,7 +21,14 @@ const getExpoExtra = (): Record<string, unknown> => {
 const getDefaultBaseUrlForEnv = (env: Environment): string => {
   switch (env) {
     case 'production':
-      return 'https://api.jushi.app';
+      // 生产环境不允许使用默认值，必须显式配置
+      throw new Error(
+        '[CONFIG ERROR] Production build requires EXPO_PUBLIC_API_BASE_URL to be set.\n' +
+        'Solutions:\n' +
+        '  1. Set environment variable: EXPO_PUBLIC_API_BASE_URL=https://api.jushi.app\n' +
+        '  2. Configure in app.json: extra.apiBaseUrl = "https://api.jushi.app"\n' +
+        '  3. Use EAS Build/Update with proper environment configuration'
+      );
     case 'staging':
       return 'https://staging-api.jushi.app';
     case 'development':
@@ -86,5 +93,36 @@ export const isManualApiBaseUrlEnabled = (): boolean => {
   if (typeof extraValue === 'boolean') return extraValue;
 
   return isDevelopment();
+};
+
+/**
+ * 验证生产环境配置
+ * 在应用启动时调用，确保生产构建必须显式配置 API URL
+ * @throws Error 如果生产环境未配置 API URL
+ */
+export const validateProductionConfig = (): void => {
+  const env = getEnvironment();
+
+  if (env === 'production') {
+    const configured = getConfiguredApiBaseUrl();
+    if (!configured) {
+      throw new Error(
+        '[CONFIG ERROR] Production build requires EXPO_PUBLIC_API_BASE_URL to be set.\n' +
+        'Solutions:\n' +
+        '  1. Set environment variable: EXPO_PUBLIC_API_BASE_URL=https://api.jushi.app\n' +
+        '  2. Configure in app.json: extra.apiBaseUrl = "https://api.jushi.app"\n' +
+        '  3. Use EAS Update with proper environment configuration'
+      );
+    }
+  }
+};
+
+/**
+ * 安全获取 API 基础 URL
+ * 在生产环境未配置时会抛出明确错误，而非返回默认值
+ */
+export const getApiBaseUrlSafe = (): string => {
+  validateProductionConfig();
+  return getApiBaseUrl();
 };
 
