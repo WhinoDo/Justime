@@ -32,10 +32,10 @@ class EncryptionService:
             return ""
         try:
             return self.fernet.decrypt(token.encode()).decode()
-        except Exception:
+        except Exception as e:
             # 如果解密失败（例如密钥变更或数据损坏），返回空或原始值
             # 为了安全起见，通常返回空或抛出异常
-            logger.warning("Decryption failed, possibly due to key change or data corruption")
+            logger.warning(f"Decryption failed: {type(e).__name__}: {e}")
             return ""
 
 # 全局加密服务实例

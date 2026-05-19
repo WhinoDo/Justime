@@ -9,7 +9,7 @@ from typing import Optional, List, Dict
 import threading
 try:
     from smolagents import tool
-except Exception:
+except ImportError:
     def tool(func):
         return func
 

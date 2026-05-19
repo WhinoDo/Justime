@@ -27,6 +27,8 @@ from urllib.parse import urlparse
 
 import httpx
 from bson import ObjectId
+from bson.errors import InvalidId
+from pymongo.errors import PyMongoError
 
 from app.core.config import settings
 from app.database import db
@@ -69,7 +71,7 @@ class YouTubeSummaryService:
     def is_youtube_url(self, url: str) -> bool:
         try:
             parsed = urlparse(url.strip())
-        except Exception:
+        except (ValueError, AttributeError):
             return False
         if parsed.scheme not in {"http", "https"}:
             return False
@@ -147,7 +149,7 @@ class YouTubeSummaryService:
     ) -> Optional[Dict[str, Any]]:
         try:
             oid = ObjectId(job_id)
-        except Exception:
+        except (InvalidId, TypeError, ValueError):
             return None
         return await db.db[JOB_COLLECTION].find_one(
             {"_id": oid, "eventId": event_id, "userId": user_id}
@@ -324,7 +326,7 @@ class YouTubeSummaryService:
             missing.append("ffmpeg")
         try:
             import oss2  # type: ignore # noqa: F401
-        except Exception:
+        except ImportError:
             missing.append("oss2")
 
         if not asr_config.get("api_key"):
@@ -607,7 +609,7 @@ class YouTubeSummaryService:
     async def _update_job(self, job_id: str, set_fields: Dict[str, Any]) -> None:
         try:
             oid = ObjectId(job_id)
-        except Exception:
+        except (InvalidId, TypeError, ValueError):
             return
         await db.db[JOB_COLLECTION].update_one({"_id": oid}, {"$set": set_fields})
 
@@ -828,7 +830,7 @@ class YouTubeSummaryService:
     async def _delete_oss_object(self, *, object_key: str, oss_config: Dict[str, Any]) -> None:
         try:
             await asyncio.to_thread(self._delete_oss_object_sync, object_key, oss_config)
-        except Exception:
+        except (OSError, RuntimeError):
             # 清理失败不影响主流程结果，避免覆盖原始业务错误。
             return
 
@@ -920,7 +922,7 @@ class YouTubeSummaryService:
                 try:
                     parsed = json.loads(stripped)
                     return self._collect_candidate_texts(parsed)
-                except Exception:
+                except (json.JSONDecodeError, TypeError):
                     return [stripped]
             return [stripped]
         if isinstance(payload, list):
@@ -1048,7 +1050,7 @@ class YouTubeSummaryService:
                 return ""
             try:
                 return resp.json()
-            except Exception:
+            except (json.JSONDecodeError, ValueError):
                 return text
 
 
