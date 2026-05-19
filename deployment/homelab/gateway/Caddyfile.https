@@ -1,22 +1,31 @@
 # ==============================================================================
-# Jushi Gateway Configuration
+# Jushi Gateway Configuration (Production HTTPS)
 # ==============================================================================
 #
-# Security Configuration:
-# - This file uses HTTP only (suitable for Tailscale/reverse proxy setups)
-# - For production HTTPS, use Caddyfile.https template
-# - Security headers are enabled for all responses
+# This is a production-ready Caddyfile with automatic HTTPS enabled.
+# Caddy will automatically obtain and renew Let's Encrypt certificates.
+#
+# Usage:
+#   1. Copy this file to Caddyfile: cp Caddyfile.https Caddyfile
+#   2. Replace YOUR_DOMAIN with your actual domain
+#   3. Ensure DNS is properly configured to point to your server
+#   4. Ensure ports 80 and 443 are open in your firewall
+#   5. Restart Caddy: docker compose restart gateway
+#
+# Requirements:
+#   - Valid domain name with DNS pointing to this server
+#   - Ports 80 and 443 accessible from the internet
+#   - Email for Let's Encrypt notifications (optional but recommended)
 #
 # ==============================================================================
 
 {
-  # HTTP-only mode for homelab/Tailscale deployments
-  # For production HTTPS, remove this line to enable automatic HTTPS
-  auto_https off
-  admin off
+  # Automatic HTTPS enabled (default behavior)
+  # Caddy will obtain certificates from Let's Encrypt automatically
+  email admin@YOUR_DOMAIN
 }
 
-:80 {
+YOUR_DOMAIN {
   log {
     output file /var/log/caddy/access.log
     format console
@@ -38,6 +47,8 @@
     Referrer-Policy "strict-origin-when-cross-origin"
     # Permissions Policy
     Permissions-Policy "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
+    # HTTP Strict Transport Security (HSTS) - 1 year
+    Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
     # Remove server identification
     -Server
   }
@@ -57,4 +68,9 @@
   handle {
     reverse_proxy frontend:3000
   }
+}
+
+# Redirect www to non-www (optional)
+www.YOUR_DOMAIN {
+  redir https://YOUR_DOMAIN{uri} permanent
 }
