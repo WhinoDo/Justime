@@ -118,7 +118,7 @@ class EmailService:
                 with open(dev_token_file, "a") as f:
                     import datetime
                     f.write(f"{datetime.datetime.now().isoformat()} | {to_email} | {reset_url}\n")
-            except Exception:
+            except OSError:
                 pass
 
             return True

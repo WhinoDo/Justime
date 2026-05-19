@@ -4,6 +4,8 @@ from typing import Optional, Dict, Any, List
 from passlib.context import CryptContext
 from app.database import db
 from bson import ObjectId
+from bson.errors import InvalidId
+from pymongo.errors import PyMongoError
 from app.core.exceptions import UserNotFoundError, PasswordIncorrectError, AuthenticationError
 from app.services.cache_service import CacheService
 
@@ -215,7 +217,8 @@ class UserService:
             # 缓存结果
             await CacheService.set_system_llm_configs(configs)
             return configs
-        except Exception:
+        except PyMongoError as e:
+            logger.error(f"Database error in get_system_llm_configs: {type(e).__name__}: {e}")
             return []
 
     @staticmethod
@@ -266,7 +269,8 @@ class UserService:
                 {"_id": oid},
                 {"access_all_models": 1, "allowed_model_ids": 1}
             )
-        except Exception:
+        except (InvalidId, ValueError, TypeError, PyMongoError) as e:
+            logger.warning(f"Error getting user model access: {type(e).__name__}: {e}")
             return []
 
         if not user:
@@ -312,7 +316,8 @@ class UserService:
             if model_id:
                 await CacheService.set_user_active_model(user_id, model_id)
             return model_id
-        except Exception:
+        except (InvalidId, ValueError, TypeError, PyMongoError) as e:
+            logger.warning(f"Error getting user active model: {type(e).__name__}: {e}")
             return None
 
     @staticmethod
@@ -331,7 +336,8 @@ class UserService:
                 # 更新缓存而非删除
                 await CacheService.set_user_active_model(user_id, model_id)
             return success
-        except Exception:
+        except (InvalidId, ValueError, TypeError, PyMongoError) as e:
+            logger.warning(f"Error setting active model: {type(e).__name__}: {e}")
             return False
 
     @staticmethod
@@ -368,7 +374,8 @@ class UserService:
                 await CacheService.invalidate_user_permissions(user_id)
                 await CacheService.invalidate_user_data(user_id)
             return success
-        except Exception:
+        except (InvalidId, ValueError, TypeError, PyMongoError) as e:
+            logger.warning(f"Error updating user model access: {type(e).__name__}: {e}")
             return False
 
     @staticmethod

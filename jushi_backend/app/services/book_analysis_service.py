@@ -24,6 +24,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from bson import ObjectId
+from bson.errors import InvalidId
+from pymongo.errors import PyMongoError
 from fastapi import HTTPException
 from fastapi.concurrency import run_in_threadpool
 
@@ -32,7 +34,7 @@ from app.database import db
 
 try:
     from app.services.rag_service import DOCS_DIR as RAG_DOCS_DIR
-except Exception:
+except ImportError:
     RAG_DOCS_DIR = Path("app/data/documents")
 
 DOCS_DIR = Path(RAG_DOCS_DIR)
@@ -42,7 +44,7 @@ DOCS_DIR.mkdir(parents=True, exist_ok=True)
 
 try:
     import fitz  # type: ignore
-except Exception:
+except ImportError:
     fitz = None
 
 
@@ -353,7 +355,7 @@ class BookAnalysisService:
                                     "--yes",
                                 ]
                             )
-                    except Exception:
+                    except (OSError, subprocess.SubprocessError):
                         pass
                     project["updatedAt"] = datetime.now(timezone.utc)
                     await self._persist_project(project)
@@ -571,7 +573,7 @@ class BookAnalysisService:
         for candidate in candidates:
             try:
                 parsed = json.loads(candidate)
-            except Exception:
+            except (json.JSONDecodeError, TypeError):
                 continue
             if isinstance(parsed, dict):
                 return parsed
@@ -878,7 +880,7 @@ class BookAnalysisService:
     def _parse_object_id(self, value: str) -> Optional[ObjectId]:
         try:
             return ObjectId(value)
-        except Exception:
+        except (InvalidId, TypeError, ValueError):
             return None
 
     def _ensure_string_list(self, value: Any) -> List[str]:

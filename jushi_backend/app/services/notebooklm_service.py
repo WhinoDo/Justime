@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional
 
 from app.core.config import settings
 from app.database import db
+from bson.errors import InvalidId
 
 logger = logging.getLogger(__name__)
 
@@ -81,8 +82,8 @@ class NotebookLMService:
                 client = await _get_client()
                 await client.notebooks.get(notebook_id)
                 return notebook_id
-            except Exception:
-                logger.warning(f"Notebook {notebook_id} not found, will create a new one")
+            except (RPCError, ValueError, TypeError) as e:
+                logger.warning(f"Notebook {notebook_id} not found, will create a new one: {e}")
 
         client = await _get_client()
         nb = await client.notebooks.create(f"Jushi-{user_id[:8]}")
@@ -281,7 +282,7 @@ def _to_object_id(user_id: str):
     from bson import ObjectId
     try:
         return ObjectId(user_id)
-    except Exception:
+    except (InvalidId, TypeError, ValueError):
         return user_id
 
 

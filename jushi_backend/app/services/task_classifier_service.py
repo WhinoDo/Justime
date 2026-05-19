@@ -72,7 +72,7 @@ class TaskClassifierService:
         try:
             data = json.loads(candidate)
             return data if isinstance(data, dict) else None
-        except Exception:
+        except (json.JSONDecodeError, TypeError):
             return None
 
     def _normalize_result(self, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -81,12 +81,12 @@ class TaskClassifierService:
 
         try:
             difficulty_level = int(data.get("difficulty_level", 3))
-        except Exception:
+        except (TypeError, ValueError):
             difficulty_level = 3
 
         try:
             confidence = float(data.get("confidence", 0.5))
-        except Exception:
+        except (TypeError, ValueError):
             confidence = 0.5
 
         if task_type not in self._VALID_TASK_TYPES:

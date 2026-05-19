@@ -10,7 +10,7 @@ try:
     from smolagents import CodeAgent, LiteLLMModel, DuckDuckGoSearchTool
     SMOLAGENTS_AVAILABLE = True
     SMOLAGENTS_IMPORT_ERROR = ""
-except Exception as exc:
+except ImportError as exc:
     CodeAgent = Any  # type: ignore[assignment]
     LiteLLMModel = Any  # type: ignore[assignment]
     DuckDuckGoSearchTool = None  # type: ignore[assignment]
@@ -37,7 +37,7 @@ try:
         set_current_request_context,
         clear_current_request_context,
     )
-except Exception:
+except ImportError:
     def get_pending_rag_references(request_id: Optional[str] = None) -> List[dict]:
         return []
 
@@ -164,7 +164,7 @@ class AgentService:
             timeout = 60
             try:
                 timeout = max(1, int(row.get("timeout", 60)))
-            except Exception:
+            except (TypeError, ValueError):
                 timeout = 60
 
             configs[provider_name] = LLMConfig(
@@ -349,7 +349,7 @@ class AgentService:
     def _to_int(self, value: Any) -> int:
         try:
             return max(0, int(value or 0))
-        except Exception:
+        except (TypeError, ValueError):
             return 0
 
     def _extract_provider_request_id(self, raw: Any) -> Optional[str]:
