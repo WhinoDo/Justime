@@ -132,7 +132,7 @@ export function useSSEChat(options: UseSSEChatOptions): UseSSEChatReturn {
 
       // Update session ID if provided
       if (event.sessionId) {
-        setState(prev => ({ ...prev, sessionId: event.sessionId }));
+        setState(prev => ({ ...prev, sessionId: event.sessionId ?? null }));
       }
     });
 
