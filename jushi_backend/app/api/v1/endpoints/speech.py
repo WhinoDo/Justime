@@ -4,18 +4,18 @@
 
 from typing import Any, Dict
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, status
 
 from app.services.aliyun_token_service import aliyun_token_service
-from app.services.security_service import SecurityService
+from app.api.deps import CurrentUser
 
 router = APIRouter()
 
 
 @router.get("/token", summary="获取阿里云语音服务 Token")
 async def get_aliyun_speech_token(
+    current_user: CurrentUser,
     force_refresh: bool = Query(default=False, description="是否强制刷新，不使用缓存"),
-    current_user: Dict[str, Any] = Depends(SecurityService.get_current_user),
 ) -> Dict[str, Any]:
     """服务端生成并返回阿里云语音服务 Token。"""
     _ = current_user

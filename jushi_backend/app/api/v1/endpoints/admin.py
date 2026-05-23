@@ -3,7 +3,7 @@
 """
 
 from typing import Any, Dict, List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, HTTPException, status
 from app.models.admin import (
     AdminModel,
     AdminModelUpsertRequest,
@@ -13,7 +13,7 @@ from app.models.admin import (
     UserRoleUpdateRequest,
     UserStatusUpdateRequest,
 )
-from app.api.deps import parse_object_id, require_admin
+from app.api.deps import parse_object_id, AdminUser as AdminDep
 from app.business.admin_business import admin_business
 from app.services.cache_service import CacheService
 from app.core.redis_client import RedisClient
@@ -22,7 +22,7 @@ router = APIRouter()
 
 
 @router.get("/users", response_model=List[AdminUser], summary="获取用户列表")
-async def get_users(_: Dict[str, Any] = Depends(require_admin)) -> List[AdminUser]:
+async def get_users(_: AdminDep) -> List[AdminUser]:
     """获取所有用户列表"""
     return await admin_business.get_all_users()
 
@@ -31,7 +31,7 @@ async def get_users(_: Dict[str, Any] = Depends(require_admin)) -> List[AdminUse
 async def update_user_status(
     user_id: str,
     payload: UserStatusUpdateRequest,
-    _: Dict[str, Any] = Depends(require_admin)
+    _: AdminDep
 ) -> Dict[str, Any]:
     # 验证 user_id 格式
     validated_user_id = parse_object_id(user_id, "用户ID")
@@ -46,7 +46,7 @@ async def update_user_status(
 async def update_user_role(
     user_id: str,
     payload: UserRoleUpdateRequest,
-    _: Dict[str, Any] = Depends(require_admin)
+    _: AdminDep
 ) -> Dict[str, Any]:
     # 验证 user_id 格式
     validated_user_id = parse_object_id(user_id, "用户ID")
@@ -61,7 +61,7 @@ async def update_user_role(
 async def update_user_model_access(
     user_id: str,
     payload: UserModelAccessUpdateRequest,
-    _: Dict[str, Any] = Depends(require_admin)
+    _: AdminDep
 ) -> Dict[str, Any]:
     # 验证 user_id 格式
     validated_user_id = parse_object_id(user_id, "用户ID")
@@ -86,7 +86,7 @@ async def update_user_model_access(
 
 
 @router.delete("/users/{user_id}", summary="删除用户")
-async def delete_user(user_id: str, _: Dict[str, Any] = Depends(require_admin)) -> Dict[str, Any]:
+async def delete_user(user_id: str, _: AdminDep) -> Dict[str, Any]:
     """删除指定用户"""
     # 验证 user_id 格式
     validated_user_id = parse_object_id(user_id, "用户ID")
@@ -98,14 +98,14 @@ async def delete_user(user_id: str, _: Dict[str, Any] = Depends(require_admin)) 
 
 
 @router.get("/models", response_model=List[AdminModel], summary="获取系统模型配置")
-async def get_models(_: Dict[str, Any] = Depends(require_admin)) -> List[AdminModel]:
+async def get_models(_: AdminDep) -> List[AdminModel]:
     return await admin_business.get_all_models()
 
 
 @router.post("/models", response_model=AdminModel, summary="新增系统模型配置")
 async def create_model(
     payload: AdminModelUpsertRequest,
-    _: Dict[str, Any] = Depends(require_admin)
+    _: AdminDep
 ) -> AdminModel:
     created = await admin_business.create_model(payload)
     if not created:
@@ -117,7 +117,7 @@ async def create_model(
 async def update_model(
     model_id: str,
     payload: AdminModelUpsertRequest,
-    _: Dict[str, Any] = Depends(require_admin)
+    _: AdminDep
 ) -> AdminModel:
     # 验证 model_id 格式（可以是自定义ID或ObjectId）
     if not model_id or not model_id.strip():
@@ -130,7 +130,7 @@ async def update_model(
 
 
 @router.delete("/models/{model_id}", summary="删除系统模型配置")
-async def delete_model(model_id: str, _: Dict[str, Any] = Depends(require_admin)) -> Dict[str, Any]:
+async def delete_model(model_id: str, _: AdminDep) -> Dict[str, Any]:
     # 验证 model_id 格式
     if not model_id or not model_id.strip():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="模型ID不能为空")
@@ -142,13 +142,13 @@ async def delete_model(model_id: str, _: Dict[str, Any] = Depends(require_admin)
 
 
 @router.get("/stats", response_model=SystemStats, summary="获取系统统计")
-async def get_stats(_: Dict[str, Any] = Depends(require_admin)) -> SystemStats:
+async def get_stats(_: AdminDep) -> SystemStats:
     """获取系统运行统计信息"""
     return await admin_business.get_system_stats()
 
 
 @router.get("/cache/stats", summary="获取缓存统计")
-async def get_cache_stats(_: Dict[str, Any] = Depends(require_admin)) -> Dict[str, Any]:
+async def get_cache_stats(_: AdminDep) -> Dict[str, Any]:
     """获取缓存命中率和统计信息"""
     stats = CacheService.get_cache_stats()
     return {
@@ -162,7 +162,7 @@ async def get_cache_stats(_: Dict[str, Any] = Depends(require_admin)) -> Dict[st
 
 
 @router.post("/cache/invalidate", summary="使所有缓存失效")
-async def invalidate_all_cache(_: Dict[str, Any] = Depends(require_admin)) -> Dict[str, Any]:
+async def invalidate_all_cache(_: AdminDep) -> Dict[str, Any]:
     """使所有缓存失效（慎用）"""
     # 获取所有缓存键的模式匹配
     if RedisClient.is_enabled():

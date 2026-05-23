@@ -3,16 +3,17 @@
 """
 
 from datetime import timedelta
-from fastapi import APIRouter, Depends, Response, Query, HTTPException, status, Request
+from fastapi import APIRouter, Response, Query, HTTPException, status, Request
 from app.business.auth_business import auth_business
 from app.models.auth import (
     RegisterRequest, LoginRequest, AuthResponse, LLMConfig, AuthData, SafeUser, UserProfile, ProfileUpdateRequest,
     ForgotPasswordRequest, ResetPasswordRequest
 )
-from app.services.security_service import SecurityService
+from app.api.deps import CurrentUser
 from typing import Dict, Any
 from app.core.config import settings
 from app.services.user_service import UserService
+from app.services.security_service import SecurityService
 
 router = APIRouter()
 
@@ -108,7 +109,7 @@ async def login_user(payload: LoginRequest, response: Response) -> AuthResponse:
 
 
 @router.get("/me", response_model=AuthResponse, summary="获取当前用户信息")
-async def get_current_user_info(current_user: Dict[str, Any] = Depends(SecurityService.get_current_user)) -> AuthResponse:
+async def get_current_user_info(current_user: CurrentUser) -> AuthResponse:
     """获取当前登录用户信息"""
     user_id = str(current_user["_id"])
     return await auth_business.get_profile(user_id)
@@ -171,7 +172,7 @@ async def logout(response: Response) -> AuthResponse:
 
 
 @router.get("/profile", response_model=AuthResponse, summary="获取用户资料")
-async def get_profile(current_user: Dict[str, Any] = Depends(SecurityService.get_current_user)) -> AuthResponse:
+async def get_profile(current_user: CurrentUser) -> AuthResponse:
     user_id = str(current_user["_id"])
     return await auth_business.get_profile(user_id)
 
@@ -179,21 +180,21 @@ async def get_profile(current_user: Dict[str, Any] = Depends(SecurityService.get
 @router.put("/profile", response_model=AuthResponse, summary="更新用户资料")
 async def update_profile(
     payload: ProfileUpdateRequest,
-    current_user: Dict[str, Any] = Depends(SecurityService.get_current_user)
+    current_user: CurrentUser
 ) -> AuthResponse:
     user_id = str(current_user["_id"])
     return await auth_business.update_profile(user_id, payload.profile)
 
 
 @router.get("/llm-config", response_model=AuthResponse, summary="获取LLM配置")
-async def get_llm_config(current_user: Dict[str, Any] = Depends(SecurityService.get_current_user)) -> AuthResponse:
+async def get_llm_config(current_user: CurrentUser) -> AuthResponse:
     """获取当前用户LLM配置"""
     user_id = str(current_user["_id"])
     return await auth_business.get_llm_config(user_id)
 
 
 @router.put("/llm-config", response_model=AuthResponse, summary="保存LLM配置 (Legacy)")
-async def save_llm_config(config: LLMConfig, current_user: Dict[str, Any] = Depends(SecurityService.get_current_user)) -> AuthResponse:
+async def save_llm_config(config: LLMConfig, current_user: CurrentUser) -> AuthResponse:
     """保存用户LLM配置 (兼容旧接口)"""
     user_id = str(current_user["_id"])
     return await auth_business.save_llm_config(user_id, config)
@@ -202,7 +203,7 @@ async def save_llm_config(config: LLMConfig, current_user: Dict[str, Any] = Depe
 # --- New Multiple Config Endpoints ---
 
 @router.get("/llm-configs", response_model=AuthResponse, summary="获取配置列表")
-async def get_llm_configs(current_user: Dict[str, Any] = Depends(SecurityService.get_current_user)) -> AuthResponse:
+async def get_llm_configs(current_user: CurrentUser) -> AuthResponse:
     """获取用户的所有LLM配置"""
     user_id = str(current_user["_id"])
     return await auth_business.get_llm_configs_list(user_id)
@@ -212,7 +213,7 @@ async def get_llm_configs(current_user: Dict[str, Any] = Depends(SecurityService
 async def update_llm_config(
     config_id: str,
     payload: Dict[str, Any],
-    current_user: Dict[str, Any] = Depends(SecurityService.get_current_user)
+    current_user: CurrentUser
 ) -> AuthResponse:
     """更新指定系统模型配置的可调参数（当前支持 temperature）"""
     # 验证 config_id 格式
@@ -258,7 +259,7 @@ async def update_llm_config(
 
 
 @router.put("/llm-configs/{config_id}/active", response_model=AuthResponse, summary="激活配置")
-async def set_active_config(config_id: str, current_user: Dict[str, Any] = Depends(SecurityService.get_current_user)) -> AuthResponse:
+async def set_active_config(config_id: str, current_user: CurrentUser) -> AuthResponse:
     """设置当前激活的配置"""
     # 验证 config_id 格式
     if not config_id or not config_id.strip():
@@ -272,7 +273,7 @@ async def set_active_config(config_id: str, current_user: Dict[str, Any] = Depen
     return await auth_business.set_active_config(user_id, config_id)
 
 @router.get("/provider-models", response_model=AuthResponse, summary="动态获取供应商支持的模型列表")
-async def get_provider_models(current_user: Dict[str, Any] = Depends(SecurityService.get_current_user)) -> AuthResponse:
+async def get_provider_models(current_user: CurrentUser) -> AuthResponse:
     """根据当前激活的模型配置请求对应的供应商API，动态返回可用的模型列表"""
     user_id = str(current_user["_id"])
     return await auth_business.get_provider_models(user_id)
@@ -280,9 +281,9 @@ async def get_provider_models(current_user: Dict[str, Any] = Depends(SecuritySer
 
 @router.get("/llm-usage/daily", summary="获取模型每日 Token 使用量")
 async def get_llm_daily_usage(
+    current_user: CurrentUser,
     days: int = Query(default=14, ge=1, le=90),
     scope: str = Query(default="primary", pattern="^(primary|all)$"),
-    current_user: Dict[str, Any] = Depends(SecurityService.get_current_user)
 ) -> Dict[str, Any]:
     """获取当前用户按模型聚合的每日 token 使用量"""
     user_id = str(current_user["_id"])
@@ -291,9 +292,9 @@ async def get_llm_daily_usage(
 
 @router.get("/llm-usage/sessions", summary="获取模型会话级 Token 使用量")
 async def get_llm_session_usage(
+    current_user: CurrentUser,
     days: int = Query(default=14, ge=1, le=90),
     scope: str = Query(default="primary", pattern="^(primary|all)$"),
-    current_user: Dict[str, Any] = Depends(SecurityService.get_current_user)
 ) -> Dict[str, Any]:
     """获取当前用户按会话聚合的模型 token 使用量"""
     user_id = str(current_user["_id"])

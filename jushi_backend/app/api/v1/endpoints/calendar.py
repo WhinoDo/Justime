@@ -8,16 +8,15 @@ from typing import Any, Optional
 
 from bson import ObjectId
 from pymongo import ReturnDocument
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, status
 
-from app.api.deps import parse_object_id
+from app.api.deps import parse_object_id, CurrentUser
 from app.database import db
 from app.models.calendar import (
     CalendarEventCreate,
     CalendarEventUpdate,
     YouTubeSummaryJobCreate,
 )
-from app.services.security_service import SecurityService
 from app.services.youtube_summary_service import youtube_summary_service
 
 router = APIRouter()
@@ -48,10 +47,10 @@ def _to_jsonable(value: Any) -> Any:
 
 @router.get("/events", summary="获取日历事件列表")
 async def list_events(
+    current_user: CurrentUser,
     startDate: Optional[str] = Query(None, description="开始日期 ISO 8601"),
     endDate: Optional[str] = Query(None, description="结束日期 ISO 8601"),
     type: Optional[str] = Query(None, description="事件类型"),
-    current_user: dict = Depends(SecurityService.get_current_user)
 ):
     user_id = str(current_user["_id"])
 
@@ -91,7 +90,7 @@ async def list_events(
 @router.get("/events/{event_id}", summary="获取日历事件详情")
 async def get_event(
     event_id: str,
-    current_user: dict = Depends(SecurityService.get_current_user)
+    current_user: CurrentUser
 ):
     user_id = str(current_user["_id"])
     # 使用验证器验证 ObjectId
@@ -107,7 +106,7 @@ async def get_event(
 @router.post("/events", summary="创建日历事件")
 async def create_event(
     payload: CalendarEventCreate,
-    current_user: dict = Depends(SecurityService.get_current_user)
+    current_user: CurrentUser
 ):
     if payload.start >= payload.end:
         raise HTTPException(status_code=400, detail="结束时间必须晚于开始时间")
@@ -132,7 +131,7 @@ async def create_event(
 async def update_event(
     event_id: str,
     payload: CalendarEventUpdate,
-    current_user: dict = Depends(SecurityService.get_current_user)
+    current_user: CurrentUser
 ):
     user_id = str(current_user["_id"])
     # 使用验证器验证 ObjectId
@@ -174,7 +173,7 @@ async def update_event(
 @router.delete("/events/{event_id}", summary="删除日历事件")
 async def delete_event(
     event_id: str,
-    current_user: dict = Depends(SecurityService.get_current_user)
+    current_user: CurrentUser
 ):
     user_id = str(current_user["_id"])
     # 使用验证器验证 ObjectId
@@ -194,8 +193,8 @@ async def delete_event(
 )
 async def create_youtube_summary_job(
     event_id: str,
+    current_user: CurrentUser,
     payload: Optional[YouTubeSummaryJobCreate] = None,
-    current_user: dict = Depends(SecurityService.get_current_user),
 ):
     user_id = str(current_user["_id"])
     # 使用验证器验证 ObjectId
@@ -257,7 +256,7 @@ async def create_youtube_summary_job(
 async def get_youtube_summary_job_status(
     event_id: str,
     job_id: str,
-    current_user: dict = Depends(SecurityService.get_current_user),
+    current_user: CurrentUser,
 ):
     user_id = str(current_user["_id"])
     # 验证 event_id 和 job_id
