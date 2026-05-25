@@ -3,7 +3,7 @@ Agent API 端点
 提供 Agent 相关的 RESTful API，支持多 LLM 提供者
 """
 
-from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi import APIRouter, HTTPException, Query
 from typing import Optional, Dict, Any
 
 from app.business.agent_business import agent_business
@@ -14,21 +14,21 @@ from app.models.agent import (
     AgentToolsResponse,
     AgentProvidersResponse
 )
-from app.services.security_service import SecurityService
+from app.api.deps import CurrentUser
 
 router = APIRouter()
 
 
 @router.get("/status", response_model=AgentStatusResponse)
 async def get_agent_status(
+    current_user: CurrentUser,
     provider: Optional[str] = Query(None, description="LLM 提供者名称"),
-    current_user: Dict[str, Any] = Depends(SecurityService.get_current_user)
 ):
     """
     获取 Agent 服务状态
-    
+
     返回 Agent 服务的可用性、当前模型和工具数量
-    
+
     - **provider**: LLM 提供者名称（可选，不指定则使用默认）
     """
     _ = current_user
@@ -40,11 +40,11 @@ async def get_agent_status(
 
 @router.get("/providers", response_model=AgentProvidersResponse)
 async def get_agent_providers(
-    current_user: Dict[str, Any] = Depends(SecurityService.get_current_user)
+    current_user: CurrentUser
 ):
     """
     获取所有 LLM 提供者列表
-    
+
     返回所有配置的 LLM 提供者及其可用状态
     """
     _ = current_user
@@ -56,11 +56,11 @@ async def get_agent_providers(
 
 @router.get("/tools", response_model=AgentToolsResponse)
 async def get_agent_tools(
-    current_user: Dict[str, Any] = Depends(SecurityService.get_current_user)
+    current_user: CurrentUser
 ):
     """
     获取可用工具列表
-    
+
     返回 Agent 可以使用的所有工具信息
     """
     _ = current_user
@@ -73,13 +73,13 @@ async def get_agent_tools(
 @router.post("/run", response_model=AgentRunResponse)
 async def run_agent_task(
     request: AgentRunRequest,
-    current_user: Dict[str, Any] = Depends(SecurityService.get_current_user)
+    current_user: CurrentUser
 ):
     """
     执行 Agent 任务
-    
+
     根据任务描述，Agent 会自动规划和执行步骤来完成任务
-    
+
     - **task**: 任务描述（必填）
     - **tools**: 要使用的工具列表（可选）
     - **max_steps**: 最大执行步数（可选，默认 10）

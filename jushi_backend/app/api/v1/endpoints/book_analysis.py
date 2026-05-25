@@ -8,11 +8,11 @@ import tempfile
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from app.models.book_analysis import BookAnalysisChapterUpdateRequest
 from app.services.book_analysis_service import book_analysis_service
-from app.services.security_service import SecurityService
+from app.api.deps import CurrentUser
 from app.core.config import settings
 from app.core.validators import InputValidator
 
@@ -24,9 +24,9 @@ MAX_FILE_SIZE = settings.MAX_FILE_SIZE
 
 @router.post("/projects", summary="创建书籍分析项目")
 async def create_book_analysis_project(
+    current_user: CurrentUser,
     file: UploadFile = File(...),
     title: Optional[str] = Form(None),
-    current_user: dict = Depends(SecurityService.get_current_user),
 ) -> Dict[str, Any]:
     if not file.filename:
         raise HTTPException(status_code=400, detail="文件名不能为空")
@@ -74,7 +74,7 @@ async def create_book_analysis_project(
 
 @router.get("/projects", summary="获取书籍分析项目列表")
 async def list_book_analysis_projects(
-    current_user: dict = Depends(SecurityService.get_current_user),
+    current_user: CurrentUser,
 ) -> Dict[str, Any]:
     projects = await book_analysis_service.list_projects(user_id=str(current_user["_id"]))
     return {"success": True, "data": {"projects": projects}}
@@ -83,7 +83,7 @@ async def list_book_analysis_projects(
 @router.get("/projects/{project_id}", summary="获取书籍分析项目详情")
 async def get_book_analysis_project(
     project_id: str,
-    current_user: dict = Depends(SecurityService.get_current_user),
+    current_user: CurrentUser,
 ) -> Dict[str, Any]:
     project = await book_analysis_service.get_project(project_id=project_id, user_id=str(current_user["_id"]))
     if not project:
@@ -94,7 +94,7 @@ async def get_book_analysis_project(
 @router.get("/projects/{project_id}/status", summary="获取书籍分析任务状态")
 async def get_book_analysis_status(
     project_id: str,
-    current_user: dict = Depends(SecurityService.get_current_user),
+    current_user: CurrentUser,
 ) -> Dict[str, Any]:
     status = await book_analysis_service.get_status(project_id=project_id, user_id=str(current_user["_id"]))
     return {"success": True, "data": status}
@@ -104,7 +104,7 @@ async def get_book_analysis_status(
 async def update_book_analysis_chapters(
     project_id: str,
     payload: BookAnalysisChapterUpdateRequest,
-    current_user: dict = Depends(SecurityService.get_current_user),
+    current_user: CurrentUser,
 ) -> Dict[str, Any]:
     project = await book_analysis_service.update_chapters(
         project_id=project_id,
@@ -117,7 +117,7 @@ async def update_book_analysis_chapters(
 @router.post("/projects/{project_id}/run", summary="启动书籍分析任务")
 async def run_book_analysis_project(
     project_id: str,
-    current_user: dict = Depends(SecurityService.get_current_user),
+    current_user: CurrentUser,
 ) -> Dict[str, Any]:
     project = await book_analysis_service.start_project(project_id=project_id, user_id=str(current_user["_id"]))
     return {"success": True, "data": {"project": project}, "message": "分析任务已启动"}

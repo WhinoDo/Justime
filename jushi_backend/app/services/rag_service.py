@@ -27,22 +27,22 @@ from llama_index.core.schema import Document
 
 try:
     import fitz  # type: ignore
-except Exception:
+except ImportError:
     fitz = None
 
 try:
     import pytesseract  # type: ignore
-except Exception:
+except ImportError:
     pytesseract = None
 
 try:
     from PIL import Image
-except Exception:
+except ImportError:
     Image = None
 
 try:
     from llama_index.llms.openai_like import OpenAILike
-except Exception:
+except ImportError:
     OpenAILike = None
 from pymongo import MongoClient
 
@@ -179,12 +179,12 @@ def _configure_llamaindex_settings() -> None:
     try:
         from llama_index.embeddings.huggingface import HuggingFaceEmbedding as HFEmbedding
         huggingface_embedding_cls = HFEmbedding
-    except Exception:
+    except ImportError:
         try:
             # 兼容部分版本的路径差异
             from llama_index.embeddings.huggingface.base import HuggingFaceEmbedding as HFEmbedding
             huggingface_embedding_cls = HFEmbedding
-        except Exception:
+        except ImportError:
             huggingface_embedding_cls = None
 
     if huggingface_embedding_cls is not None:
@@ -274,7 +274,8 @@ def _resolve_llm_config_from_system_configs() -> dict | None:
                 "base_url": base_url,
                 "api_key": api_key,
             }
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Error resolving system LLM config: {e}")
         return None
     finally:
         if client is not None:
@@ -432,7 +433,7 @@ class RAGService:
         try:
             resolved = Path(file_path).expanduser().resolve()
             return resolved.relative_to(DOCS_DIR.resolve()).as_posix()
-        except Exception:
+        except (ValueError, OSError):
             return Path(str(file_path)).name
 
     def _extract_reference_from_node(self, node_with_score: Any) -> Optional[Dict[str, Any]]:
@@ -440,7 +441,7 @@ class RAGService:
         score_raw = getattr(node_with_score, "score", None)
         try:
             score = float(score_raw) if score_raw is not None else 0.0
-        except Exception:
+        except (TypeError, ValueError):
             score = 0.0
 
         metadata = getattr(base_node, "metadata", {}) or {}
@@ -458,7 +459,7 @@ class RAGService:
         content = ""
         try:
             content = (base_node.get_content() or "").strip()
-        except Exception:
+        except (AttributeError, TypeError):
             content = ""
         snippet = " ".join(content.split())
         if not snippet:
@@ -565,7 +566,7 @@ class RAGService:
                     base_node = getattr(node, "node", node)
                     try:
                         content = (base_node.get_content() or "").strip()
-                    except Exception:
+                    except (AttributeError, TypeError):
                         content = ""
                     if not content:
                         continue

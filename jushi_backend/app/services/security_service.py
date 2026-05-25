@@ -5,7 +5,7 @@
 
 import jwt
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
+from typing import Annotated, Optional, Dict, Any
 from app.core.config import settings
 from fastapi.security import OAuth2PasswordBearer
 from fastapi import Depends, HTTPException, status
@@ -13,6 +13,9 @@ from app.services.user_service import UserService
 
 # OAuth2 方案，用于 Swagger UI 认证
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
+
+# Annotated type hint for OAuth2 token dependency (SonarQube python:S8410)
+AuthToken = Annotated[str, Depends(oauth2_scheme)]
 
 class SecurityService:
     ACCESS_TOKEN_TYPE = "access"
@@ -92,10 +95,11 @@ class SecurityService:
             return None
 
     @staticmethod
-    async def get_current_user(token: str = Depends(oauth2_scheme)) -> Dict[str, Any]:
+    async def get_current_user(token: AuthToken) -> Dict[str, Any]:
         """
         获取当前用户依赖项
-        用法: async def endpoint(current_user = Depends(SecurityService.get_current_user)):
+        用法: from app.api.deps import CurrentUser
+             async def endpoint(current_user: CurrentUser):
         """
         credentials_exception = HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

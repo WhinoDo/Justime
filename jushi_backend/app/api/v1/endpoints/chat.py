@@ -4,14 +4,14 @@
 
 import asyncio
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, HTTPException, status, Request
 from fastapi.responses import StreamingResponse
 from typing import Dict, Any, AsyncGenerator
 from bson import ObjectId
 from app.models.chat import ChatRequest, ChatResponse, LLMTestRequest, ChatStreamRequest
 from app.models.history import SessionListResponse, MessageListResponse, CreateSessionRequest
 from app.business.chat_business import chat_business
-from app.services.security_service import SecurityService
+from app.api.deps import CurrentUser
 from app.database import db
 from app.core.validators import InputValidator
 from app.core.config import settings
@@ -128,7 +128,7 @@ def _validate_no_forbidden_mongo_keys(value: Any, path: str = "", depth: int = 0
 @router.post("/", response_model=ChatResponse, summary="发送聊天消息")
 async def chat(
     request: ChatRequest,
-    current_user: dict = Depends(SecurityService.get_current_user)
+    current_user: CurrentUser
 ) -> ChatResponse:
     """发送聊天消息"""
     if len(request.message) > MAX_MESSAGE_LENGTH:
@@ -144,7 +144,7 @@ async def chat(
 
 @router.get("/sessions", response_model=SessionListResponse, summary="获取会话列表")
 async def get_sessions(
-    current_user: dict = Depends(SecurityService.get_current_user)
+    current_user: CurrentUser
 ) -> SessionListResponse:
     """获取当前用户的会话列表"""
     sessions = await chat_business.get_user_sessions(str(current_user["_id"]))
@@ -154,7 +154,7 @@ async def get_sessions(
 @router.post("/sessions", summary="创建新会话")
 async def create_session(
     request: CreateSessionRequest,
-    current_user: dict = Depends(SecurityService.get_current_user)
+    current_user: CurrentUser
 ) -> Dict[str, str]:
     """创建新会话"""
     # 清理并验证标题
@@ -171,8 +171,8 @@ async def create_session(
 @router.get("/sessions/{session_id}/messages", response_model=MessageListResponse, summary="获取会话消息")
 async def get_session_messages(
     session_id: str,
+    current_user: CurrentUser,
     limit: int = DEFAULT_SESSION_MESSAGES_LIMIT,
-    current_user: dict = Depends(SecurityService.get_current_user)
 ) -> MessageListResponse:
     """获取特定会话的消息记录"""
     if limit < 1:
@@ -187,7 +187,7 @@ async def get_session_messages(
 @router.post("/test", summary="测试LLM连接")
 async def test_llm_connection(
     config: LLMTestRequest,
-    current_user: dict = Depends(SecurityService.get_current_user)
+    current_user: CurrentUser
 ) -> Dict[str, Any]:
     """测试 LLM 连接"""
     return await chat_business.test_connection(config, str(current_user["_id"]))
@@ -197,7 +197,7 @@ async def test_llm_connection(
 async def update_message(
     message_id: str,
     updates: Dict[str, Any],
-    current_user: dict = Depends(SecurityService.get_current_user)
+    current_user: CurrentUser
 ) -> Dict[str, bool]:
     """更新消息状态（如标记任务分解已处理）"""
     if not isinstance(updates, dict):
@@ -323,7 +323,7 @@ def _get_allowed_origin(request: Request) -> str:
 async def chat_stream(
     request: ChatStreamRequest,
     http_request: Request,
-    current_user: dict = Depends(SecurityService.get_current_user)
+    current_user: CurrentUser
 ) -> StreamingResponse:
     """
     流式聊天消息端点 - SSE (Server-Sent Events)

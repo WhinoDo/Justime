@@ -1,3 +1,4 @@
+import os
 import unittest
 
 from app.services.model_router_service import model_router_service
@@ -5,12 +6,18 @@ from app.services.model_router_service import model_router_service
 
 class ModelRouterServiceTest(unittest.TestCase):
     def setUp(self) -> None:
+        # Use environment variables for test API keys to avoid hardcoded credentials
+        # These are placeholder test values, not real API keys
+        test_api_key_fast = os.getenv("TEST_API_KEY_FAST", "test-fast-key-placeholder")
+        test_api_key_reasoning = os.getenv("TEST_API_KEY_REASONING", "test-reasoning-key-placeholder")
+        test_api_key_disabled = os.getenv("TEST_API_KEY_DISABLED", "test-disabled-key-placeholder")
+
         self.configs = [
             {
                 "config_id": "cfg-fast",
                 "config_name": "Fast",
                 "model_id": "deepseek-chat",
-                "api_key": "k1",
+                "api_key": test_api_key_fast,
                 "base_url": "https://example.com/v1",
                 "enabled": True,
                 "priority": 50,
@@ -21,7 +28,7 @@ class ModelRouterServiceTest(unittest.TestCase):
                 "config_id": "cfg-reasoning",
                 "config_name": "Reasoning",
                 "model_id": "deepseek-reasoner",
-                "api_key": "k2",
+                "api_key": test_api_key_reasoning,
                 "base_url": "https://example.com/v1",
                 "enabled": True,
                 "priority": 80,
@@ -32,7 +39,7 @@ class ModelRouterServiceTest(unittest.TestCase):
                 "config_id": "cfg-disabled",
                 "config_name": "Disabled",
                 "model_id": "gpt-4o-mini",
-                "api_key": "k3",
+                "api_key": test_api_key_disabled,
                 "base_url": "https://example.com/v1",
                 "enabled": False,
                 "priority": 1,

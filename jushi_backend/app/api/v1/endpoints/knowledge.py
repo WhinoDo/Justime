@@ -8,7 +8,7 @@ import mimetypes
 from urllib.parse import quote
 from pathlib import Path
 from typing import List, Dict, Any
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Query, status, Form
+from fastapi import APIRouter, UploadFile, File, HTTPException, Query, status, Form
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from app.services.rag_service import (
@@ -16,7 +16,7 @@ from app.services.rag_service import (
     DOCS_DIR,
     get_user_docs_dir,
 )
-from app.services.security_service import SecurityService
+from app.api.deps import CurrentUser
 from app.services.upload_service import (
     chunked_upload_manager,
     generate_upload_id,
@@ -82,8 +82,8 @@ CHUNK_SIZE = 64 * 1024
 
 @router.post("/upload", summary="上传文档")
 async def upload_document(
+    current_user: CurrentUser,
     file: UploadFile = File(...),
-    current_user: dict = Depends(SecurityService.get_current_user)
 ) -> Dict[str, Any]:
     """上传文档到知识库（流式写入，避免全量内存占用）"""
     try:
@@ -131,7 +131,7 @@ async def upload_document(
 
 @router.get("/files", summary="获取文档列表")
 async def list_documents(
-    current_user: dict = Depends(SecurityService.get_current_user)
+    current_user: CurrentUser
 ) -> Dict[str, Any]:
     """获取知识库中的所有文档"""
     try:
@@ -154,9 +154,9 @@ async def list_documents(
 
 @router.get("/content", summary="预览知识库文档内容")
 async def get_document_content(
+    current_user: CurrentUser,
     path: str = Query(..., description="文档相对路径"),
     max_chars: int = Query(DEFAULT_PREVIEW_MAX_CHARS, ge=100, le=MAX_PREVIEW_MAX_CHARS),
-    current_user: dict = Depends(SecurityService.get_current_user)
 ) -> Dict[str, Any]:
     """获取文档预览内容（带路径安全校验）。"""
     try:
@@ -187,8 +187,8 @@ async def get_document_content(
 
 @router.get("/raw", summary="获取知识库原始文件流")
 async def get_document_raw(
+    current_user: CurrentUser,
     path: str = Query(..., description="文档相对路径"),
-    current_user: dict = Depends(SecurityService.get_current_user)
 ) -> FileResponse:
     """返回文档原始文件流（适用于 PDF 原生预览等场景）。"""
     try:
@@ -215,7 +215,7 @@ async def get_document_raw(
 @router.delete("/files/{filename}", summary="删除文档")
 async def delete_document(
     filename: str,
-    current_user: dict = Depends(SecurityService.get_current_user)
+    current_user: CurrentUser
 ) -> Dict[str, Any]:
     """删除知识库中的文档"""
     try:
@@ -243,7 +243,7 @@ async def delete_document(
 
 @router.post("/rebuild", summary="重建索引（异步）")
 async def rebuild_index(
-    current_user: dict = Depends(SecurityService.get_current_user)
+    current_user: CurrentUser
 ) -> Dict[str, Any]:
     """异步触发索引重建，立即返回任务ID，不阻塞API"""
     try:
@@ -270,7 +270,7 @@ async def rebuild_index(
 @router.get("/rebuild/status/{task_id}", summary="查询索引重建状态")
 async def get_rebuild_status(
     task_id: str,
-    current_user: dict = Depends(SecurityService.get_current_user)
+    current_user: CurrentUser
 ) -> Dict[str, Any]:
     """查询异步索引重建任务的状态"""
     try:
@@ -313,7 +313,7 @@ class ChunkedUploadCompleteRequest(BaseModel):
 @router.post("/chunked/init", summary="初始化分片上传")
 async def init_chunked_upload(
     request: ChunkedUploadInitRequest,
-    current_user: dict = Depends(SecurityService.get_current_user)
+    current_user: CurrentUser
 ) -> Dict[str, Any]:
     """初始化分片上传会话，返回 upload_id 和分片信息"""
     try:
@@ -350,10 +350,10 @@ async def init_chunked_upload(
 
 @router.post("/chunked/chunk", summary="上传分片")
 async def upload_chunk(
+    current_user: CurrentUser,
     upload_id: str = Form(..., description="上传会话ID"),
     chunk_index: int = Form(..., ge=0, description="分片索引"),
     chunk: UploadFile = File(..., description="分片数据"),
-    current_user: dict = Depends(SecurityService.get_current_user)
 ) -> Dict[str, Any]:
     """上传单个分片"""
     try:
@@ -393,7 +393,7 @@ async def upload_chunk(
 @router.post("/chunked/complete", summary="完成分片上传")
 async def complete_chunked_upload(
     request: ChunkedUploadCompleteRequest,
-    current_user: dict = Depends(SecurityService.get_current_user)
+    current_user: CurrentUser
 ) -> Dict[str, Any]:
     """完成分片上传，合并所有分片为最终文件"""
     try:
@@ -434,7 +434,7 @@ async def complete_chunked_upload(
 @router.get("/chunked/status/{upload_id}", summary="查询分片上传状态")
 async def get_chunked_upload_status(
     upload_id: str,
-    current_user: dict = Depends(SecurityService.get_current_user)
+    current_user: CurrentUser
 ) -> Dict[str, Any]:
     """查询分片上传会话的状态和进度"""
     try:
@@ -479,7 +479,7 @@ async def get_chunked_upload_status(
 @router.delete("/chunked/{upload_id}", summary="取消分片上传")
 async def cancel_chunked_upload(
     upload_id: str,
-    current_user: dict = Depends(SecurityService.get_current_user)
+    current_user: CurrentUser
 ) -> Dict[str, Any]:
     """取消分片上传，清理临时文件"""
     try:

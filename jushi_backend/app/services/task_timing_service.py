@@ -188,7 +188,7 @@ class TaskTimingService:
         if difficulty_level is not None:
             try:
                 parsed_difficulty = self._clamp(int(difficulty_level), 1, 5)
-            except Exception:
+            except (TypeError, ValueError):
                 parsed_difficulty = None
         final_difficulty = parsed_difficulty if parsed_difficulty is not None else self._infer_difficulty(message, final_task_type)
         final_urgency = normalized_urgency or self._infer_urgency(message)

@@ -6,12 +6,11 @@ from datetime import datetime
 from typing import Any
 
 from bson import ObjectId
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, HTTPException, status
 
-from app.api.deps import parse_object_id
+from app.api.deps import parse_object_id, CurrentUser
 from app.database import db
 from app.models.document import WorkDocumentUpdate
-from app.services.security_service import SecurityService
 
 router = APIRouter()
 
@@ -42,7 +41,7 @@ def _to_jsonable(value: Any) -> Any:
 @router.get("", summary="获取工作文档")
 async def get_document(
     eventId: str,
-    current_user: dict = Depends(SecurityService.get_current_user),
+    current_user: CurrentUser,
 ):
     user_id = str(current_user["_id"])
     event_oid = parse_object_id(eventId, "事件ID")
@@ -78,7 +77,7 @@ async def get_document(
 @router.post("", summary="保存工作文档")
 async def save_document(
     payload: WorkDocumentUpdate,
-    current_user: dict = Depends(SecurityService.get_current_user),
+    current_user: CurrentUser,
 ):
     user_id = str(current_user["_id"])
 
