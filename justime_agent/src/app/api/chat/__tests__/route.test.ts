@@ -1,10 +1,11 @@
 import { setNodeEnv } from '@/test-utils/env'
 
-const mockJson = jest.fn()
+const mockCreateErrorResponse = jest.fn()
+const mockProxyWithAuth = jest.fn()
 
 jest.mock('next/server', () => ({
   NextResponse: {
-    json: (...args: unknown[]) => mockJson(...args),
+    json: (...args: unknown[]) => ({ jsonArgs: args }),
   },
 }))
 
@@ -16,713 +17,24 @@ jest.mock('@/lib/api/config', () => ({
 }))
 
 jest.mock('@/lib/api/proxy', () => ({
-  createErrorResponse: jest.fn(),
-  createSuccessResponse: jest.fn(),
+  createErrorResponse: (...args: unknown[]) => mockCreateErrorResponse(...args),
+  proxyWithAuth: (...args: unknown[]) => mockProxyWithAuth(...args),
 }))
 
 describe('POST /api/chat route', () => {
   const originalNodeEnv = process.env.NODE_ENV
-  const originalFetch = global.fetch
 
   beforeEach(() => {
     jest.resetModules()
-    mockJson.mockReset()
+    mockCreateErrorResponse.mockReset()
+    mockProxyWithAuth.mockReset()
   })
 
   afterAll(() => {
     setNodeEnv(originalNodeEnv ?? 'test')
-    global.fetch = originalFetch
-  })
-
-  it('hides backend error details in production', async () => {
-    setNodeEnv('production')
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: false,
-      status: 500,
-      statusText: 'Internal Server Error',
-      json: async () => ({ detail: 'database stacktrace leak' }),
-    }) as unknown as typeof fetch
-
-    const { POST } = await import('@/app/api/chat/route')
-
-    const request = {
-      json: async () => ({ message: 'hello' }),
-      cookies: { get: () => undefined },
-      headers: { get: () => null },
-    } as any
-
-    await POST(request)
-
-    expect(mockJson).toHaveBeenCalledTimes(1)
-    const [body] = mockJson.mock.calls[0]
-    expect(body.success).toBe(false)
-    expect(body.error.details).not.toContain('database stacktrace leak')
-  })
-
-  it('does not log backend error details in production', async () => {
-    setNodeEnv('production')
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: false,
-      status: 500,
-      statusText: 'Internal Server Error',
-      json: async () => ({ detail: 'database stacktrace leak' }),
-    }) as unknown as typeof fetch
-
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
-    const { POST } = await import('@/app/api/chat/route')
-
-    const request = {
-      json: async () => ({ message: 'hello' }),
-      cookies: { get: () => undefined },
-      headers: { get: () => null },
-    } as any
-
-    await POST(request)
-
-    const loggedPayload = consoleErrorSpy.mock.calls
-      .flat()
-      .map((value) => (typeof value === 'string' ? value : JSON.stringify(value)))
-      .join(' ')
-
-    expect(loggedPayload).not.toContain('database stacktrace leak')
-    consoleErrorSpy.mockRestore()
-  })
-
-  it('redacts message preview in production forwarding logs', async () => {
-    setNodeEnv('production')
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: { reply: 'ok' },
-        timestamp: '2026-03-19T00:00:00.000Z',
-      }),
-    }) as unknown as typeof fetch
-
-    const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {})
-    const { POST } = await import('@/app/api/chat/route')
-
-    const request = {
-      json: async () => ({ message: 'my bank pin is 123456' }),
-      cookies: { get: () => undefined },
-      headers: { get: () => null },
-    } as any
-
-    await POST(request)
-
-    const loggedPayload = consoleLogSpy.mock.calls
-      .flat()
-      .map((value) => (typeof value === 'string' ? value : JSON.stringify(value)))
-      .join(' ')
-
-    expect(loggedPayload).not.toContain('my bank pin is 123456')
-    expect(loggedPayload).toContain('[REDACTED]')
-    consoleLogSpy.mockRestore()
-  })
-
-  it('does not expose backend host in production logs', async () => {
-    setNodeEnv('production')
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: { reply: 'ok' },
-        timestamp: '2026-03-19T00:00:00.000Z',
-      }),
-    }) as unknown as typeof fetch
-
-    const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {})
-    const { POST } = await import('@/app/api/chat/route')
-
-    const request = {
-      json: async () => ({ message: 'hello' }),
-      cookies: { get: () => undefined },
-      headers: { get: () => null },
-    } as any
-
-    await POST(request)
-
-    const loggedPayload = consoleLogSpy.mock.calls
-      .flat()
-      .map((value) => (typeof value === 'string' ? value : JSON.stringify(value)))
-      .join(' ')
-
-    expect(loggedPayload).not.toContain('http://backend.local')
-    consoleLogSpy.mockRestore()
-  })
-
-  it('normalizes lowercase bearer authorization header before forwarding', async () => {
-    setNodeEnv('test')
-
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: { reply: 'ok' },
-        timestamp: '2026-03-19T00:00:00.000Z',
-      }),
-    })
-    global.fetch = fetchMock as unknown as typeof fetch
-
-    const { POST } = await import('@/app/api/chat/route')
-
-    const request = {
-      json: async () => ({ message: 'hello' }),
-      cookies: { get: () => undefined },
-      headers: { get: (key: string) => (key === 'authorization' ? 'bearer token-abc' : null) },
-    } as any
-
-    await POST(request)
-
-    const fetchOptions = fetchMock.mock.calls[0][1]
-    expect(fetchOptions.headers.Authorization).toBe('Bearer token-abc')
-  })
-
-  it('does not forward authorization header when bearer uses plus separator', async () => {
-    setNodeEnv('test')
-
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: { reply: 'ok' },
-        timestamp: '2026-03-19T00:00:00.000Z',
-      }),
-    })
-    global.fetch = fetchMock as unknown as typeof fetch
-
-    const { POST } = await import('@/app/api/chat/route')
-
-    const request = {
-      json: async () => ({ message: 'hello' }),
-      cookies: { get: () => undefined },
-      headers: { get: (key: string) => (key === 'authorization' ? 'Bearer+token-from-header' : null) },
-    } as any
-
-    await POST(request)
-
-    const fetchOptions = fetchMock.mock.calls[0][1]
-    expect(fetchOptions.headers.Authorization).toBeUndefined()
-  })
-
-  it('normalizes lowercase bearer token from cookie before forwarding', async () => {
-    setNodeEnv('test')
-
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: { reply: 'ok' },
-        timestamp: '2026-03-19T00:00:00.000Z',
-      }),
-    })
-    global.fetch = fetchMock as unknown as typeof fetch
-
-    const { POST } = await import('@/app/api/chat/route')
-
-    const request = {
-      json: async () => ({ message: 'hello' }),
-      cookies: { get: () => ({ value: 'bearer token-cookie' }) },
-      headers: { get: () => null },
-    } as any
-
-    await POST(request)
-
-    const fetchOptions = fetchMock.mock.calls[0][1]
-    expect(fetchOptions.headers.Authorization).toBe('Bearer token-cookie')
-  })
-
-  it('decodes url-encoded bearer token from cookie before forwarding', async () => {
-    setNodeEnv('test')
-
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: { reply: 'ok' },
-        timestamp: '2026-03-19T00:00:00.000Z',
-      }),
-    })
-    global.fetch = fetchMock as unknown as typeof fetch
-
-    const { POST } = await import('@/app/api/chat/route')
-
-    const request = {
-      json: async () => ({ message: 'hello' }),
-      cookies: { get: () => ({ value: 'Bearer%20token-cookie%3D%3D' }) },
-      headers: { get: () => null },
-    } as any
-
-    await POST(request)
-
-    const fetchOptions = fetchMock.mock.calls[0][1]
-    expect(fetchOptions.headers.Authorization).toBe('Bearer token-cookie==')
-  })
-
-  it('decodes plus-encoded bearer token from cookie before forwarding', async () => {
-    setNodeEnv('test')
-
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: { reply: 'ok' },
-        timestamp: '2026-03-19T00:00:00.000Z',
-      }),
-    })
-    global.fetch = fetchMock as unknown as typeof fetch
-
-    const { POST } = await import('@/app/api/chat/route')
-
-    const request = {
-      json: async () => ({ message: 'hello' }),
-      cookies: { get: () => ({ value: 'Bearer+token-plus' }) },
-      headers: { get: () => null },
-    } as any
-
-    await POST(request)
-
-    const fetchOptions = fetchMock.mock.calls[0][1]
-    expect(fetchOptions.headers.Authorization).toBe('Bearer token-plus')
-  })
-
-  it('preserves literal plus signs inside cookie bearer token payload', async () => {
-    setNodeEnv('test')
-
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: { reply: 'ok' },
-        timestamp: '2026-03-19T00:00:00.000Z',
-      }),
-    })
-    global.fetch = fetchMock as unknown as typeof fetch
-
-    const { POST } = await import('@/app/api/chat/route')
-
-    const request = {
-      json: async () => ({ message: 'hello' }),
-      cookies: { get: () => ({ value: 'Bearer%20token+plus+payload' }) },
-      headers: { get: () => null },
-    } as any
-
-    await POST(request)
-
-    const fetchOptions = fetchMock.mock.calls[0][1]
-    expect(fetchOptions.headers.Authorization).toBe('Bearer token+plus+payload')
-  })
-
-  it('does not forward malformed bare bearer header', async () => {
-    setNodeEnv('test')
-
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: { reply: 'ok' },
-        timestamp: '2026-03-19T00:00:00.000Z',
-      }),
-    })
-    global.fetch = fetchMock as unknown as typeof fetch
-
-    const { POST } = await import('@/app/api/chat/route')
-
-    const request = {
-      json: async () => ({ message: 'hello' }),
-      cookies: { get: () => undefined },
-      headers: { get: (key: string) => (key === 'authorization' ? 'Bearer' : null) },
-    } as any
-
-    await POST(request)
-
-    const fetchOptions = fetchMock.mock.calls[0][1]
-    expect(fetchOptions.headers.Authorization).toBeUndefined()
-  })
-
-  it('falls back to authorization header when cookie token is placeholder text', async () => {
-    setNodeEnv('test')
-
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: { reply: 'ok' },
-        timestamp: '2026-03-19T00:00:00.000Z',
-      }),
-    })
-    global.fetch = fetchMock as unknown as typeof fetch
-
-    const { POST } = await import('@/app/api/chat/route')
-
-    const request = {
-      json: async () => ({ message: 'hello' }),
-      cookies: { get: () => ({ value: 'undefined' }) },
-      headers: { get: (key: string) => (key === 'authorization' ? 'Bearer token-from-header' : null) },
-    } as any
-
-    await POST(request)
-
-    const fetchOptions = fetchMock.mock.calls[0][1]
-    expect(fetchOptions.headers.Authorization).toBe('Bearer token-from-header')
-  })
-
-  it('falls back to authorization header when cookie token is bearer placeholder text', async () => {
-    setNodeEnv('test')
-
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: { reply: 'ok' },
-        timestamp: '2026-03-19T00:00:00.000Z',
-      }),
-    })
-    global.fetch = fetchMock as unknown as typeof fetch
-
-    const { POST } = await import('@/app/api/chat/route')
-
-    const request = {
-      json: async () => ({ message: 'hello' }),
-      cookies: { get: () => ({ value: 'Bearer%20undefined' }) },
-      headers: { get: (key: string) => (key === 'authorization' ? 'Bearer token-from-header' : null) },
-    } as any
-
-    await POST(request)
-
-    const fetchOptions = fetchMock.mock.calls[0][1]
-    expect(fetchOptions.headers.Authorization).toBe('Bearer token-from-header')
-  })
-
-  it('falls back to authorization header when cookie token is quoted bearer placeholder text', async () => {
-    setNodeEnv('test')
-
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: { reply: 'ok' },
-        timestamp: '2026-03-19T00:00:00.000Z',
-      }),
-    })
-    global.fetch = fetchMock as unknown as typeof fetch
-
-    const { POST } = await import('@/app/api/chat/route')
-
-    const request = {
-      json: async () => ({ message: 'hello' }),
-      cookies: { get: () => ({ value: '"Bearer undefined"' }) },
-      headers: { get: (key: string) => (key === 'authorization' ? 'Bearer token-from-header' : null) },
-    } as any
-
-    await POST(request)
-
-    const fetchOptions = fetchMock.mock.calls[0][1]
-    expect(fetchOptions.headers.Authorization).toBe('Bearer token-from-header')
-  })
-
-  it('falls back to authorization header when cookie token contains newline whitespace', async () => {
-    setNodeEnv('test')
-
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: { reply: 'ok' },
-        timestamp: '2026-03-19T00:00:00.000Z',
-      }),
-    })
-    global.fetch = fetchMock as unknown as typeof fetch
-
-    const { POST } = await import('@/app/api/chat/route')
-
-    const request = {
-      json: async () => ({ message: 'hello' }),
-      cookies: { get: () => ({ value: 'Bearer%20token-cookie%0Awith-newline' }) },
-      headers: { get: (key: string) => (key === 'authorization' ? 'Bearer token-from-header' : null) },
-    } as any
-
-    await POST(request)
-
-    const fetchOptions = fetchMock.mock.calls[0][1]
-    expect(fetchOptions.headers.Authorization).toBe('Bearer token-from-header')
-  })
-
-  it('falls back to authorization header when cookie token is too long', async () => {
-    setNodeEnv('test')
-
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: { reply: 'ok' },
-        timestamp: '2026-03-19T00:00:00.000Z',
-      }),
-    })
-    global.fetch = fetchMock as unknown as typeof fetch
-
-    const { POST } = await import('@/app/api/chat/route')
-
-    const overlongToken = `Bearer ${'a'.repeat(4097)}`
-    const request = {
-      json: async () => ({ message: 'hello' }),
-      cookies: { get: () => ({ value: overlongToken }) },
-      headers: { get: (key: string) => (key === 'authorization' ? 'Bearer token-from-header' : null) },
-    } as any
-
-    await POST(request)
-
-    const fetchOptions = fetchMock.mock.calls[0][1]
-    expect(fetchOptions.headers.Authorization).toBe('Bearer token-from-header')
-  })
-
-  it('falls back to authorization header when cookie token contains null-byte control char', async () => {
-    setNodeEnv('test')
-
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: { reply: 'ok' },
-        timestamp: '2026-03-19T00:00:00.000Z',
-      }),
-    })
-    global.fetch = fetchMock as unknown as typeof fetch
-
-    const { POST } = await import('@/app/api/chat/route')
-
-    const request = {
-      json: async () => ({ message: 'hello' }),
-      cookies: { get: () => ({ value: 'Bearer%20token-cookie%00injected' }) },
-      headers: { get: (key: string) => (key === 'authorization' ? 'Bearer token-from-header' : null) },
-    } as any
-
-    await POST(request)
-
-    const fetchOptions = fetchMock.mock.calls[0][1]
-    expect(fetchOptions.headers.Authorization).toBe('Bearer token-from-header')
-  })
-
-  it('does not forward authorization header when bearer token contains null-byte control char', async () => {
-    setNodeEnv('test')
-
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: { reply: 'ok' },
-        timestamp: '2026-03-19T00:00:00.000Z',
-      }),
-    })
-    global.fetch = fetchMock as unknown as typeof fetch
-
-    const { POST } = await import('@/app/api/chat/route')
-
-    const request = {
-      json: async () => ({ message: 'hello' }),
-      cookies: { get: () => undefined },
-      headers: { get: (key: string) => (key === 'authorization' ? 'Bearer token-header%00injected' : null) },
-    } as any
-
-    await POST(request)
-
-    const fetchOptions = fetchMock.mock.calls[0][1]
-    expect(fetchOptions.headers.Authorization).toBeUndefined()
-  })
-
-  it('does not forward authorization header when bearer token contains double-encoded newline', async () => {
-    setNodeEnv('test')
-
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: { reply: 'ok' },
-        timestamp: '2026-03-19T00:00:00.000Z',
-      }),
-    })
-    global.fetch = fetchMock as unknown as typeof fetch
-
-    const { POST } = await import('@/app/api/chat/route')
-
-    const request = {
-      json: async () => ({ message: 'hello' }),
-      cookies: { get: () => undefined },
-      headers: { get: (key: string) => (key === 'authorization' ? 'Bearer token-header%250Ainjected' : null) },
-    } as any
-
-    await POST(request)
-
-    const fetchOptions = fetchMock.mock.calls[0][1]
-    expect(fetchOptions.headers.Authorization).toBeUndefined()
-  })
-
-  it('does not forward authorization header when bearer token contains triple-encoded newline', async () => {
-    setNodeEnv('test')
-
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: { reply: 'ok' },
-        timestamp: '2026-03-19T00:00:00.000Z',
-      }),
-    })
-    global.fetch = fetchMock as unknown as typeof fetch
-
-    const { POST } = await import('@/app/api/chat/route')
-
-    const request = {
-      json: async () => ({ message: 'hello' }),
-      cookies: { get: () => undefined },
-      headers: { get: (key: string) => (key === 'authorization' ? 'Bearer token-header%25250Ainjected' : null) },
-    } as any
-
-    await POST(request)
-
-    const fetchOptions = fetchMock.mock.calls[0][1]
-    expect(fetchOptions.headers.Authorization).toBeUndefined()
-  })
-
-  it('does not forward authorization header when bearer token contains quadruple-encoded newline', async () => {
-    setNodeEnv('test')
-
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: { reply: 'ok' },
-        timestamp: '2026-03-19T00:00:00.000Z',
-      }),
-    })
-    global.fetch = fetchMock as unknown as typeof fetch
-
-    const { POST } = await import('@/app/api/chat/route')
-
-    const request = {
-      json: async () => ({ message: 'hello' }),
-      cookies: { get: () => undefined },
-      headers: { get: (key: string) => (key === 'authorization' ? 'Bearer token-header%2525250Ainjected' : null) },
-    } as any
-
-    await POST(request)
-
-    const fetchOptions = fetchMock.mock.calls[0][1]
-    expect(fetchOptions.headers.Authorization).toBeUndefined()
-  })
-
-  it('does not forward authorization header when bearer token contains nonuple-encoded newline', async () => {
-    setNodeEnv('test')
-
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: { reply: 'ok' },
-        timestamp: '2026-03-19T00:00:00.000Z',
-      }),
-    })
-    global.fetch = fetchMock as unknown as typeof fetch
-
-    const { POST } = await import('@/app/api/chat/route')
-
-    const request = {
-      json: async () => ({ message: 'hello' }),
-      cookies: { get: () => undefined },
-      headers: { get: (key: string) => (key === 'authorization' ? 'Bearer token-header%25252525252525250Ainjected' : null) },
-    } as any
-
-    await POST(request)
-
-    const fetchOptions = fetchMock.mock.calls[0][1]
-    expect(fetchOptions.headers.Authorization).toBeUndefined()
-  })
-
-  it('does not forward authorization header when bearer token contains encoded unicode line separator', async () => {
-    setNodeEnv('test')
-
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: { reply: 'ok' },
-        timestamp: '2026-03-19T00:00:00.000Z',
-      }),
-    })
-    global.fetch = fetchMock as unknown as typeof fetch
-
-    const { POST } = await import('@/app/api/chat/route')
-
-    const request = {
-      json: async () => ({ message: 'hello' }),
-      cookies: { get: () => undefined },
-      headers: { get: (key: string) => (key === 'authorization' ? 'Bearer token-header%E2%80%A8injected' : null) },
-    } as any
-
-    await POST(request)
-
-    const fetchOptions = fetchMock.mock.calls[0][1]
-    expect(fetchOptions.headers.Authorization).toBeUndefined()
-  })
-
-  it('does not forward authorization header when bearer token contains encoded unicode next-line control char', async () => {
-    setNodeEnv('test')
-
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: { reply: 'ok' },
-        timestamp: '2026-03-19T00:00:00.000Z',
-      }),
-    })
-    global.fetch = fetchMock as unknown as typeof fetch
-
-    const { POST } = await import('@/app/api/chat/route')
-
-    const request = {
-      json: async () => ({ message: 'hello' }),
-      cookies: { get: () => undefined },
-      headers: { get: (key: string) => (key === 'authorization' ? 'Bearer token-header%C2%85injected' : null) },
-    } as any
-
-    await POST(request)
-
-    const fetchOptions = fetchMock.mock.calls[0][1]
-    expect(fetchOptions.headers.Authorization).toBeUndefined()
-  })
-
-  it('does not forward authorization header when bearer token is quoted placeholder text', async () => {
-    setNodeEnv('test')
-
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: { reply: 'ok' },
-        timestamp: '2026-03-19T00:00:00.000Z',
-      }),
-    })
-    global.fetch = fetchMock as unknown as typeof fetch
-
-    const { POST } = await import('@/app/api/chat/route')
-
-    const request = {
-      json: async () => ({ message: 'hello' }),
-      cookies: { get: () => undefined },
-      headers: { get: (key: string) => (key === 'authorization' ? 'Bearer "undefined"' : null) },
-    } as any
-
-    await POST(request)
-
-    const fetchOptions = fetchMock.mock.calls[0][1]
-    expect(fetchOptions.headers.Authorization).toBeUndefined()
   })
 
   it('returns 400 when message is blank after trim', async () => {
-    setNodeEnv('test')
-    global.fetch = jest.fn() as unknown as typeof fetch
-
     const { POST } = await import('@/app/api/chat/route')
 
     const request = {
@@ -733,26 +45,270 @@ describe('POST /api/chat route', () => {
 
     await POST(request)
 
-    expect(mockJson).toHaveBeenCalledTimes(1)
-    const [body, init] = mockJson.mock.calls[0]
-    expect(body.success).toBe(false)
-    expect(body.error.code).toBe('CHAT_BAD_REQUEST')
-    expect(init?.status).toBe(400)
+    expect(mockCreateErrorResponse).toHaveBeenCalledWith('消息内容不能为空', 'CHAT_BAD_REQUEST', 400)
+  })
+
+  it('returns 400 when message is missing', async () => {
+    const { POST } = await import('@/app/api/chat/route')
+
+    const request = {
+      json: async () => ({}),
+      cookies: { get: () => undefined },
+      headers: { get: () => null },
+    } as any
+
+    await POST(request)
+
+    expect(mockCreateErrorResponse).toHaveBeenCalledWith('消息内容无效', 'CHAT_BAD_REQUEST', 400)
+  })
+
+  it('returns 400 when message is not a string', async () => {
+    const { POST } = await import('@/app/api/chat/route')
+
+    const request = {
+      json: async () => ({ message: 123 }),
+      cookies: { get: () => undefined },
+      headers: { get: () => null },
+    } as any
+
+    await POST(request)
+
+    expect(mockCreateErrorResponse).toHaveBeenCalledWith('消息内容无效', 'CHAT_BAD_REQUEST', 400)
+  })
+
+  it('returns 400 when request json is invalid', async () => {
+    const { POST } = await import('@/app/api/chat/route')
+
+    const request = {
+      json: async () => { throw new SyntaxError('Unexpected token') },
+      cookies: { get: () => undefined },
+      headers: { get: () => null },
+    } as any
+
+    await POST(request)
+
+    expect(mockCreateErrorResponse).toHaveBeenCalledWith('请求体格式无效', 'CHAT_BAD_REQUEST', 400)
+  })
+
+  it('returns 400 when request json parsing throws type error', async () => {
+    const { POST } = await import('@/app/api/chat/route')
+
+    const request = {
+      json: async () => { throw new TypeError('Body is unusable') },
+      cookies: { get: () => undefined },
+      headers: { get: () => null },
+    } as any
+
+    await POST(request)
+
+    expect(mockCreateErrorResponse).toHaveBeenCalledWith('请求体格式无效', 'CHAT_BAD_REQUEST', 400)
+  })
+
+  it('returns 400 when request payload is null', async () => {
+    const { POST } = await import('@/app/api/chat/route')
+
+    const request = {
+      json: async () => null,
+      cookies: { get: () => undefined },
+      headers: { get: () => null },
+    } as any
+
+    await POST(request)
+
+    expect(mockCreateErrorResponse).toHaveBeenCalledWith('请求体格式无效', 'CHAT_BAD_REQUEST', 400)
+  })
+
+  it('returns 400 when runtimeModelId is not a string', async () => {
+    const { POST } = await import('@/app/api/chat/route')
+
+    const request = {
+      json: async () => ({ message: 'hello', runtimeModelId: { id: 'gpt-5' } }),
+      cookies: { get: () => undefined },
+      headers: { get: () => null },
+    } as any
+
+    await POST(request)
+
+    expect(mockCreateErrorResponse).toHaveBeenCalledWith('模型配置无效', 'CHAT_BAD_REQUEST', 400)
+    expect(mockProxyWithAuth).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when runtimeModelId is blank after trim', async () => {
+    const { POST } = await import('@/app/api/chat/route')
+
+    const request = {
+      json: async () => ({ message: 'hello', runtimeModelId: '   ' }),
+      cookies: { get: () => undefined },
+      headers: { get: () => null },
+    } as any
+
+    await POST(request)
+
+    expect(mockCreateErrorResponse).toHaveBeenCalledWith('模型配置无效', 'CHAT_BAD_REQUEST', 400)
+    expect(mockProxyWithAuth).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when difficultyLevel is out of range', async () => {
+    const { POST } = await import('@/app/api/chat/route')
+
+    const request = {
+      json: async () => ({ message: 'hello', difficultyLevel: 0 }),
+      cookies: { get: () => undefined },
+      headers: { get: () => null },
+    } as any
+
+    await POST(request)
+
+    expect(mockCreateErrorResponse).toHaveBeenCalledWith('任务难度无效', 'CHAT_BAD_REQUEST', 400)
+    expect(mockProxyWithAuth).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when useWebSearch is not a boolean', async () => {
+    const { POST } = await import('@/app/api/chat/route')
+
+    const request = {
+      json: async () => ({ message: 'hello', useWebSearch: 'false' }),
+      cookies: { get: () => undefined },
+      headers: { get: () => null },
+    } as any
+
+    await POST(request)
+
+    expect(mockCreateErrorResponse).toHaveBeenCalledWith('网页搜索开关无效', 'CHAT_BAD_REQUEST', 400)
+    expect(mockProxyWithAuth).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when sessionId is not a string', async () => {
+    const { POST } = await import('@/app/api/chat/route')
+
+    const request = {
+      json: async () => ({ message: 'hello', sessionId: { id: 'session-1' } }),
+      cookies: { get: () => undefined },
+      headers: { get: () => null },
+    } as any
+
+    await POST(request)
+
+    expect(mockCreateErrorResponse).toHaveBeenCalledWith('会话标识无效', 'CHAT_BAD_REQUEST', 400)
+    expect(mockProxyWithAuth).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when openclaw command has no payload', async () => {
+    const { POST } = await import('@/app/api/chat/route')
+
+    const request = {
+      json: async () => ({ message: '/openclaw' }),
+      cookies: { get: () => undefined },
+      headers: { get: () => null },
+    } as any
+
+    await POST(request)
+
+    expect(mockCreateErrorResponse).toHaveBeenCalledWith('OpenClaw 指令不能为空', 'CHAT_BAD_REQUEST', 400)
+  })
+
+  it('returns 400 when message exceeds 1000 characters', async () => {
+    const { POST } = await import('@/app/api/chat/route')
+
+    const request = {
+      json: async () => ({ message: 'a'.repeat(1001) }),
+      cookies: { get: () => undefined },
+      headers: { get: () => null },
+    } as any
+
+    await POST(request)
+
+    expect(mockCreateErrorResponse).toHaveBeenCalledWith('消息内容过长，请缩短到1000字符以内', 'CHAT_BAD_REQUEST', 400)
+  })
+
+  it('delegates to proxyWithAuth with validated body on success', async () => {
+    const { POST } = await import('@/app/api/chat/route')
+
+    const request = {
+      json: async () => ({
+        message: 'hello',
+        taskId: 'task-1',
+        sessionId: 'session-1',
+        useWebSearch: true,
+        useOpenClaw: false,
+        taskType: 'general',
+        difficultyLevel: 3,
+        urgency: 'medium',
+        runtimeModelId: 'model-1',
+      }),
+      cookies: { get: () => undefined },
+      headers: { get: () => null },
+    } as any
+
+    await POST(request)
+
+    expect(mockProxyWithAuth).toHaveBeenCalledWith(request, '/chat/', {
+      method: 'POST',
+      body: {
+        message: 'hello',
+        taskId: 'task-1',
+        sessionId: 'session-1',
+        useWebSearch: true,
+        useOpenClaw: false,
+        taskType: 'general',
+        difficultyLevel: 3,
+        urgency: 'medium',
+        runtimeModelId: 'model-1',
+      },
+      successMessage: '对话成功',
+      errorMessage: '对话请求失败',
+      errorCode: 'CHAT_ERROR',
+    })
+  })
+
+  it('strips message whitespace before forwarding', async () => {
+    const { POST } = await import('@/app/api/chat/route')
+
+    const request = {
+      json: async () => ({ message: '  hello  ' }),
+      cookies: { get: () => undefined },
+      headers: { get: () => null },
+    } as any
+
+    await POST(request)
+
+    const proxyCall = mockProxyWithAuth.mock.calls[0]
+    expect(proxyCall[1]).toBe('/chat/')
+    expect(proxyCall[2].body.message).toBe('hello')
+  })
+
+  it('handles openclaw prefix and sets useOpenClaw flag', async () => {
+    const { POST } = await import('@/app/api/chat/route')
+
+    const request = {
+      json: async () => ({ message: '/openclaw do something' }),
+      cookies: { get: () => undefined },
+      headers: { get: () => null },
+    } as any
+
+    await POST(request)
+
+    const proxyCall = mockProxyWithAuth.mock.calls[0]
+    expect(proxyCall[2].body.message).toBe('do something')
+    expect(proxyCall[2].body.useOpenClaw).toBe(true)
+  })
+
+  it('coerces useOpenClaw to boolean when prefixed', async () => {
+    const { POST } = await import('@/app/api/chat/route')
+
+    const request = {
+      json: async () => ({ message: '/openclaw test', useOpenClaw: false }),
+      cookies: { get: () => undefined },
+      headers: { get: () => null },
+    } as any
+
+    await POST(request)
+
+    const proxyCall = mockProxyWithAuth.mock.calls[0]
+    expect(proxyCall[2].body.useOpenClaw).toBe(true)
   })
 
   it('accepts message when trimmed length is exactly 1000', async () => {
-    setNodeEnv('test')
-
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: { reply: 'ok' },
-        timestamp: '2026-03-19T00:00:00.000Z',
-      }),
-    })
-    global.fetch = fetchMock as unknown as typeof fetch
-
     const { POST } = await import('@/app/api/chat/route')
 
     const message = `  ${'a'.repeat(1000)}  `
@@ -764,261 +320,12 @@ describe('POST /api/chat route', () => {
 
     await POST(request)
 
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    const fetchOptions = fetchMock.mock.calls[0][1]
-    expect(JSON.parse(fetchOptions.body).message.length).toBe(1000)
-    expect(mockJson).toHaveBeenCalledTimes(1)
-    const [body, init] = mockJson.mock.calls[0]
-    expect(body.success).toBe(true)
-    expect(init).toBeUndefined()
+    const proxyCall = mockProxyWithAuth.mock.calls[0]
+    expect(proxyCall[2].body.message.length).toBe(1000)
   })
 
-  it('accepts openclaw command when command payload length is exactly 1000', async () => {
-    setNodeEnv('test')
-
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: { reply: 'ok' },
-        timestamp: '2026-03-19T00:00:00.000Z',
-      }),
-    })
-    global.fetch = fetchMock as unknown as typeof fetch
-
-    const { POST } = await import('@/app/api/chat/route')
-
-    const message = `/openclaw ${'a'.repeat(1000)}`
-    const request = {
-      json: async () => ({ message }),
-      cookies: { get: () => undefined },
-      headers: { get: () => null },
-    } as any
-
-    await POST(request)
-
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    const fetchOptions = fetchMock.mock.calls[0][1]
-    const payload = JSON.parse(fetchOptions.body)
-    expect(payload.message.length).toBe(1000)
-    expect(payload.useOpenClaw).toBe(true)
-    expect(mockJson).toHaveBeenCalledTimes(1)
-    const [body, init] = mockJson.mock.calls[0]
-    expect(body.success).toBe(true)
-    expect(init).toBeUndefined()
-  })
-
-  it('returns 400 when openclaw command has no payload', async () => {
-    setNodeEnv('test')
-    global.fetch = jest.fn() as unknown as typeof fetch
-
-    const { POST } = await import('@/app/api/chat/route')
-
-    const request = {
-      json: async () => ({ message: '/openclaw' }),
-      cookies: { get: () => undefined },
-      headers: { get: () => null },
-    } as any
-
-    await POST(request)
-
-    expect(mockJson).toHaveBeenCalledTimes(1)
-    const [body, init] = mockJson.mock.calls[0]
-    expect(body.success).toBe(false)
-    expect(body.error.code).toBe('CHAT_BAD_REQUEST')
-    expect(init?.status).toBe(400)
-  })
-
-  it('returns 400 when request json is invalid', async () => {
-    setNodeEnv('test')
-    global.fetch = jest.fn() as unknown as typeof fetch
-
-    const { POST } = await import('@/app/api/chat/route')
-
-    const request = {
-      json: async () => {
-        throw new SyntaxError('Unexpected token')
-      },
-      cookies: { get: () => undefined },
-      headers: { get: () => null },
-    } as any
-
-    await POST(request)
-
-    expect(mockJson).toHaveBeenCalledTimes(1)
-    const [body, init] = mockJson.mock.calls[0]
-    expect(body.success).toBe(false)
-    expect(body.error.code).toBe('CHAT_BAD_REQUEST')
-    expect(init?.status).toBe(400)
-  })
-
-  it('returns 400 when request json parsing throws type error', async () => {
-    setNodeEnv('test')
-    global.fetch = jest.fn() as unknown as typeof fetch
-
-    const { POST } = await import('@/app/api/chat/route')
-
-    const request = {
-      json: async () => {
-        throw new TypeError('Body is unusable')
-      },
-      cookies: { get: () => undefined },
-      headers: { get: () => null },
-    } as any
-
-    await POST(request)
-
-    expect(mockJson).toHaveBeenCalledTimes(1)
-    const [body, init] = mockJson.mock.calls[0]
-    expect(body.success).toBe(false)
-    expect(body.error.code).toBe('CHAT_BAD_REQUEST')
-    expect(init?.status).toBe(400)
-  })
-
-  it('returns 400 when request payload is null', async () => {
-    setNodeEnv('test')
-    global.fetch = jest.fn() as unknown as typeof fetch
-
-    const { POST } = await import('@/app/api/chat/route')
-
-    const request = {
-      json: async () => null,
-      cookies: { get: () => undefined },
-      headers: { get: () => null },
-    } as any
-
-    await POST(request)
-
-    expect(mockJson).toHaveBeenCalledTimes(1)
-    const [body, init] = mockJson.mock.calls[0]
-    expect(body.success).toBe(false)
-    expect(body.error.code).toBe('CHAT_BAD_REQUEST')
-    expect(init?.status).toBe(400)
-  })
-
-  it('returns 400 when runtimeModelId is not a string', async () => {
-    setNodeEnv('test')
-    const fetchMock = jest.fn()
-    global.fetch = fetchMock as unknown as typeof fetch
-
-    const { POST } = await import('@/app/api/chat/route')
-
-    const request = {
-      json: async () => ({ message: 'hello', runtimeModelId: { id: 'gpt-5' } }),
-      cookies: { get: () => undefined },
-      headers: { get: () => null },
-    } as any
-
-    await POST(request)
-
-    expect(fetchMock).not.toHaveBeenCalled()
-    expect(mockJson).toHaveBeenCalledTimes(1)
-    const [body, init] = mockJson.mock.calls[0]
-    expect(body.success).toBe(false)
-    expect(body.error.code).toBe('CHAT_BAD_REQUEST')
-    expect(init?.status).toBe(400)
-  })
-
-  it('returns 400 when runtimeModelId is blank after trim', async () => {
-    setNodeEnv('test')
-    const fetchMock = jest.fn()
-    global.fetch = fetchMock as unknown as typeof fetch
-
-    const { POST } = await import('@/app/api/chat/route')
-
-    const request = {
-      json: async () => ({ message: 'hello', runtimeModelId: '   ' }),
-      cookies: { get: () => undefined },
-      headers: { get: () => null },
-    } as any
-
-    await POST(request)
-
-    expect(fetchMock).not.toHaveBeenCalled()
-    expect(mockJson).toHaveBeenCalledTimes(1)
-    const [body, init] = mockJson.mock.calls[0]
-    expect(body.success).toBe(false)
-    expect(body.error.code).toBe('CHAT_BAD_REQUEST')
-    expect(init?.status).toBe(400)
-  })
-
-  it('returns 400 when difficultyLevel is out of range', async () => {
-    setNodeEnv('test')
-    const fetchMock = jest.fn()
-    global.fetch = fetchMock as unknown as typeof fetch
-
-    const { POST } = await import('@/app/api/chat/route')
-
-    const request = {
-      json: async () => ({ message: 'hello', difficultyLevel: 0 }),
-      cookies: { get: () => undefined },
-      headers: { get: () => null },
-    } as any
-
-    await POST(request)
-
-    expect(fetchMock).not.toHaveBeenCalled()
-    expect(mockJson).toHaveBeenCalledTimes(1)
-    const [body, init] = mockJson.mock.calls[0]
-    expect(body.success).toBe(false)
-    expect(body.error.code).toBe('CHAT_BAD_REQUEST')
-    expect(init?.status).toBe(400)
-  })
-
-  it('returns 400 when useWebSearch is not a boolean', async () => {
-    setNodeEnv('test')
-    const fetchMock = jest.fn()
-    global.fetch = fetchMock as unknown as typeof fetch
-
-    const { POST } = await import('@/app/api/chat/route')
-
-    const request = {
-      json: async () => ({ message: 'hello', useWebSearch: 'false' }),
-      cookies: { get: () => undefined },
-      headers: { get: () => null },
-    } as any
-
-    await POST(request)
-
-    expect(fetchMock).not.toHaveBeenCalled()
-    expect(mockJson).toHaveBeenCalledTimes(1)
-    const [body, init] = mockJson.mock.calls[0]
-    expect(body.success).toBe(false)
-    expect(body.error.code).toBe('CHAT_BAD_REQUEST')
-    expect(init?.status).toBe(400)
-  })
-
-  it('returns 400 when sessionId is not a string', async () => {
-    setNodeEnv('test')
-    const fetchMock = jest.fn()
-    global.fetch = fetchMock as unknown as typeof fetch
-
-    const { POST } = await import('@/app/api/chat/route')
-
-    const request = {
-      json: async () => ({ message: 'hello', sessionId: { id: 'session-1' } }),
-      cookies: { get: () => undefined },
-      headers: { get: () => null },
-    } as any
-
-    await POST(request)
-
-    expect(fetchMock).not.toHaveBeenCalled()
-    expect(mockJson).toHaveBeenCalledTimes(1)
-    const [body, init] = mockJson.mock.calls[0]
-    expect(body.success).toBe(false)
-    expect(body.error.code).toBe('CHAT_BAD_REQUEST')
-    expect(init?.status).toBe(400)
-  })
-
-  it('returns 500 when backend success response json is invalid', async () => {
-    setNodeEnv('test')
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => {
-        throw new SyntaxError('Unexpected token from backend')
-      },
-    }) as unknown as typeof fetch
+  it('returns CHAT_ERROR on unexpected exception', async () => {
+    mockProxyWithAuth.mockImplementation(() => { throw new Error('unexpected') })
 
     const { POST } = await import('@/app/api/chat/route')
 
@@ -1030,10 +337,113 @@ describe('POST /api/chat route', () => {
 
     await POST(request)
 
-    expect(mockJson).toHaveBeenCalledTimes(1)
-    const [body, init] = mockJson.mock.calls[0]
-    expect(body.success).toBe(false)
-    expect(body.error.code).toBe('CHAT_ERROR')
-    expect(init?.status).toBe(500)
+    expect(mockCreateErrorResponse).toHaveBeenCalledWith('unexpected', 'CHAT_ERROR', 500)
+  })
+
+  it('returns CHAT_ERROR with fallback message on non-Error throw', async () => {
+    mockProxyWithAuth.mockImplementation(() => { throw 'string error' })
+
+    const { POST } = await import('@/app/api/chat/route')
+
+    const request = {
+      json: async () => ({ message: 'hello' }),
+      cookies: { get: () => undefined },
+      headers: { get: () => null },
+    } as any
+
+    await POST(request)
+
+    expect(mockCreateErrorResponse).toHaveBeenCalledWith('对话请求失败', 'CHAT_ERROR', 500)
+  })
+
+  it('trims sessionId before forwarding', async () => {
+    const { POST } = await import('@/app/api/chat/route')
+
+    const request = {
+      json: async () => ({ message: 'hello', sessionId: '  session-1  ' }),
+      cookies: { get: () => undefined },
+      headers: { get: () => null },
+    } as any
+
+    await POST(request)
+
+    const proxyCall = mockProxyWithAuth.mock.calls[0]
+    expect(proxyCall[2].body.sessionId).toBe('session-1')
+  })
+
+  it('trims runtimeModelId before forwarding', async () => {
+    const { POST } = await import('@/app/api/chat/route')
+
+    const request = {
+      json: async () => ({ message: 'hello', runtimeModelId: '  model-1  ' }),
+      cookies: { get: () => undefined },
+      headers: { get: () => null },
+    } as any
+
+    await POST(request)
+
+    const proxyCall = mockProxyWithAuth.mock.calls[0]
+    expect(proxyCall[2].body.runtimeModelId).toBe('model-1')
+  })
+
+  it('coerces useWebSearch to boolean', async () => {
+    const { POST } = await import('@/app/api/chat/route')
+
+    const request = {
+      json: async () => ({ message: 'hello', useWebSearch: true }),
+      cookies: { get: () => undefined },
+      headers: { get: () => null },
+    } as any
+
+    await POST(request)
+
+    const proxyCall = mockProxyWithAuth.mock.calls[0]
+    expect(proxyCall[2].body.useWebSearch).toBe(true)
+  })
+
+  it('returns 400 when useOpenClaw is not a boolean', async () => {
+    const { POST } = await import('@/app/api/chat/route')
+
+    const request = {
+      json: async () => ({ message: 'hello', useOpenClaw: 'yes' }),
+      cookies: { get: () => undefined },
+      headers: { get: () => null },
+    } as any
+
+    await POST(request)
+
+    expect(mockCreateErrorResponse).toHaveBeenCalledWith('OpenClaw 开关无效', 'CHAT_BAD_REQUEST', 400)
+    expect(mockProxyWithAuth).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when sessionId is blank after trim', async () => {
+    const { POST } = await import('@/app/api/chat/route')
+
+    const request = {
+      json: async () => ({ message: 'hello', sessionId: '   ' }),
+      cookies: { get: () => undefined },
+      headers: { get: () => null },
+    } as any
+
+    await POST(request)
+
+    expect(mockCreateErrorResponse).toHaveBeenCalledWith('会话标识无效', 'CHAT_BAD_REQUEST', 400)
+  })
+
+  it('accepts openclaw command when payload length is exactly 1000', async () => {
+    const { POST } = await import('@/app/api/chat/route')
+
+    const message = `/openclaw ${'a'.repeat(1000)}`
+    const request = {
+      json: async () => ({ message }),
+      cookies: { get: () => undefined },
+      headers: { get: () => null },
+    } as any
+
+    await POST(request)
+
+    const proxyCall = mockProxyWithAuth.mock.calls[0]
+    expect(proxyCall[2].body.message.length).toBe(1000)
+    expect(proxyCall[2].body.useOpenClaw).toBe(true)
   })
 })

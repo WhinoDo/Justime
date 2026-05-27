@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import datetime
 from typing import Optional, Dict, Any, List
@@ -31,12 +32,12 @@ class UserService:
         return f"{raw[:2]}***"
 
     @staticmethod
-    def verify_password(plain_password: str, hashed_password: str) -> bool:
-        return pwd_context.verify(plain_password, hashed_password)
+    async def verify_password(plain_password: str, hashed_password: str) -> bool:
+        return await asyncio.to_thread(pwd_context.verify, plain_password, hashed_password)
 
     @staticmethod
-    def get_password_hash(password: str) -> str:
-        return pwd_context.hash(password)
+    async def get_password_hash(password: str) -> str:
+        return await asyncio.to_thread(pwd_context.hash, password)
 
     @staticmethod
     async def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
@@ -90,7 +91,7 @@ class UserService:
             
         # Hash password if present
         if "password" in user_data:
-            user_data["hashed_password"] = UserService.get_password_hash(user_data["password"])
+            user_data["hashed_password"] = await UserService.get_password_hash(user_data["password"])
             del user_data["password"]
 
         result = await db.db.users.insert_one(user_data)
@@ -121,7 +122,7 @@ class UserService:
         if hashed_password:
             logger.debug("Verifying hashed password...")
             try:
-                if UserService.verify_password(password, hashed_password):
+                if await UserService.verify_password(password, hashed_password):
                     logger.debug("Password verified successfully")
                     return user
                 else:
@@ -142,7 +143,7 @@ class UserService:
             if old_password == password:
                 # 如果匹配，建议并执行自动升级到哈希密码
                 logger.info("Plain text password matched. Upgrading to hash...")
-                new_hashed = UserService.get_password_hash(password)
+                new_hashed = await UserService.get_password_hash(password)
                 await db.db.users.update_one(
                     {"_id": user["_id"]},
                     {"$set": {"hashed_password": new_hashed}, "$unset": {"password": ""}}
@@ -670,7 +671,7 @@ class UserService:
             return False
         try:
             oid = ObjectId(user_id) if isinstance(user_id, str) else user_id
-            hashed_password = UserService.get_password_hash(new_password)
+            hashed_password = await UserService.get_password_hash(new_password)
             now = datetime.utcnow()
             result = await db.db.users.update_one(
                 {"_id": oid},

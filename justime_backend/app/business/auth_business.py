@@ -594,7 +594,7 @@ class AuthBusiness:
 
         user_id = token_doc["user_id"]
 
-        hashed_password = UserService.get_password_hash(new_password)
+        hashed_password = await UserService.get_password_hash(new_password)
         now = datetime.utcnow()
 
         result = await db.db.users.update_one(

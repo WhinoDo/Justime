@@ -154,9 +154,11 @@ class ChatBusiness:
             "timing": {}
         }
 
-        config_dict = await self._get_user_llm_config(user_id)
-        system_configs = await UserService.get_available_models_for_user(user_id)
-        active_id = await UserService.get_user_active_model_id(user_id)
+        config_dict, system_configs, active_id = await asyncio.gather(
+            self._get_user_llm_config(user_id),
+            UserService.get_available_models_for_user(user_id),
+            UserService.get_user_active_model_id(user_id),
+        )
         runtime_configs = chat_router.build_runtime_model_candidates(system_configs, active_id, config_dict)
 
         session_id = request.sessionId
@@ -700,9 +702,11 @@ class ChatBusiness:
                     # 继续处理，不中断流
 
             # 2. 获取LLM配置
-            config_dict = await self._get_user_llm_config(user_id)
-            system_configs = await UserService.get_available_models_for_user(user_id)
-            active_id = await UserService.get_user_active_model_id(user_id)
+            config_dict, system_configs, active_id = await asyncio.gather(
+                self._get_user_llm_config(user_id),
+                UserService.get_available_models_for_user(user_id),
+                UserService.get_user_active_model_id(user_id),
+            )
             runtime_configs = chat_router.build_runtime_model_candidates(system_configs, active_id, config_dict)
 
             if not runtime_configs:
@@ -812,8 +816,8 @@ class ChatBusiness:
 
                     yield self._format_sse_event("token", {"content": content_delta}, event_id)
 
-                    # 定期更新流上下文（每 10 个 token 更新一次）
-                    if token_index % 10 == 0:
+                    # 定期更新流上下文（每 50 个 token 更新一次）
+                    if token_index % 50 == 0:
                         await sse_stream_service.update_accumulated_content(
                             session_id, message_id,
                             accumulated_content, token_index
@@ -833,10 +837,17 @@ class ChatBusiness:
             except Exception as e:
                 logger.error(f"Failed to save AI message: {e}")
 
-            # 8. 删除流上下文（流已完成）
+            # 8. 最终更新流上下文，确保断点续传数据完整
+            if session_id and message_id:
+                await sse_stream_service.update_accumulated_content(
+                    session_id, message_id,
+                    accumulated_content, token_index
+                )
+
+            # 9. 删除流上下文（流已完成）
             await sse_stream_service.delete_context(session_id, message_id)
 
-            # 9. 记录使用量
+            # 10. 记录使用量
             try:
                 await self._record_usage_event(
                     user_id=user_id,
@@ -852,10 +863,10 @@ class ChatBusiness:
             except Exception as e:
                 logger.warning(f"Failed to record usage event: {e}")
 
-            # 10. 发送usage事件
+            # 11. 发送usage事件
             yield self._format_sse_event("usage", usage_stats)
 
-            # 11. 发送完成事件
+            # 12. 发送完成事件
             yield self._format_sse_event("done", {
                 "messageId": ai_message_id,
                 "totalMs": int((datetime.now(timezone.utc) - started_at).total_seconds() * 1000),

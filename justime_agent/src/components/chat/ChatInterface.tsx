@@ -256,20 +256,7 @@ export function ChatInterface({
         'Accept': 'text/event-stream',
       }
 
-      const rawCookieToken = document.cookie.split(';').find(c => c.trim().startsWith('access_token='))
-      if (rawCookieToken) {
-        const tokenValue = rawCookieToken.split('=')[1]
-        if (tokenValue) {
-          try {
-            const decodedToken = decodeURIComponent(tokenValue)
-            headers['Authorization'] = `Bearer ${decodedToken}`
-          } catch {
-            headers['Authorization'] = `Bearer ${tokenValue}`
-          }
-        }
-      }
-
-      if (lastEventId) {
+if (lastEventId) {
         headers['Last-Event-ID'] = lastEventId
       }
 
@@ -513,61 +500,59 @@ export function ChatInterface({
       }
 
       const data = await response.json()
-      console.log('API响应成功:', {
-        success: data.success,
-        hasResponse: !!data.data?.response,
-        fullData: data
-      })
 
-      if (data.data?.sessionId && data.data.sessionId !== sessionId) {
-        onSessionChange?.(data.data.sessionId)
+      const chatData = data.data?.data ?? data.data
+
+      if (chatData?.sessionId && chatData.sessionId !== sessionId) {
+        onSessionChange?.(chatData.sessionId)
       }
 
       if (data.success) {
-        const responseContent = data.data?.response || data.data?.message || data.response || ''
+        const responseContent = chatData?.response || chatData?.message || data.response || ''
 
         const assistantMessage: Message = {
-          id: data.data?.messageId || generateId(),
+          id: chatData?.messageId || generateId(),
           user_id: authUser?.id || 'anonymous',
           role: 'assistant',
           content: responseContent,
           task_id: currentTaskId,
-          emotion_score: data.data?.emotionScore || data.data?.emotion_score,
+          emotion_score: chatData?.emotionScore || chatData?.emotion_score,
           created_at: new Date().toISOString(),
-          timingStrategy: data.data?.timingStrategy,
-          taskAnalysis: data.data?.taskAnalysis,
-          taskDecomposition: data.data?.taskDecomposition,
-          multiTaskDecompositions: data.data?.multiTaskDecompositions,
-          suggestedEvents: data.data?.suggestedEvents,
-          ragReferences: data.data?.ragReferences
+          timingStrategy: chatData?.timingStrategy,
+          taskAnalysis: chatData?.taskAnalysis,
+          taskDecomposition: chatData?.taskDecomposition,
+          multiTaskDecompositions: chatData?.multiTaskDecompositions,
+          suggestedEvents: chatData?.suggestedEvents,
+          ragReferences: chatData?.ragReferences
         }
 
         setMessages(prev => [...prev, assistantMessage])
 
-        if (data.data.taskResult && data.data.taskResult.hasTasks) {
-          setPendingTasks(data.data.taskResult.tasks)
+        if (chatData.taskResult && chatData.taskResult.hasTasks) {
+          setPendingTasks(chatData.taskResult.tasks)
           setTaskMessageId(assistantMessage.id)
         }
 
-        if (data.data.suggestedEvents && data.data.suggestedEvents.length > 0) {
-          assistantMessage.suggestedEvents = data.data.suggestedEvents
-          setSuggestedEvents(data.data.suggestedEvents)
+        if (chatData.suggestedEvents && chatData.suggestedEvents.length > 0) {
+          assistantMessage.suggestedEvents = chatData.suggestedEvents
+          setSuggestedEvents(chatData.suggestedEvents)
           setEventMessageId(assistantMessage.id)
         }
 
-        if (data.data.taskDecomposition) {
-          setTaskDecomposition(data.data.taskDecomposition)
-          setMultiTaskDecompositions(data.data.multiTaskDecompositions || null)
+        if (chatData.taskDecomposition) {
+          setTaskDecomposition(chatData.taskDecomposition)
+          setMultiTaskDecompositions(chatData.multiTaskDecompositions || null)
           setDecompositionMessageId(assistantMessage.id)
         }
 
-        if (data.data.task) {
-          onTaskCreate?.(data.data.task)
-          setCurrentTaskId(data.data.task.id)
+        if (chatData.task) {
+          onTaskCreate?.(chatData.task)
+          setCurrentTaskId(chatData.task.id)
         }
       } else {
-        const errorDetail = data.error?.message || data.error?.detail || '未知错误'
-        const errorType = data.error?.type || 'unknown'
+        const errorObj = typeof data.error === 'object' ? data.error : null
+        const errorDetail = errorObj?.message || errorObj?.detail || (typeof data.error === 'string' ? data.error : '未知错误')
+        const errorType = errorObj?.type || 'unknown'
 
         let errorMessage = `抱歉，发生了一些错误：${errorDetail}`
 

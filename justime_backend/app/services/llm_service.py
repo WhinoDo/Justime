@@ -11,6 +11,26 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
+_shared_client: Optional[httpx.AsyncClient] = None
+
+
+async def get_shared_client() -> httpx.AsyncClient:
+    global _shared_client
+    if _shared_client is None or _shared_client.is_closed:
+        _shared_client = httpx.AsyncClient(
+            timeout=httpx.Timeout(connect=10.0, read=300.0, write=10.0, pool=10.0),
+            limits=httpx.Limits(max_connections=100, max_keepalive_connections=20),
+        )
+    return _shared_client
+
+
+async def close_shared_client():
+    global _shared_client
+    if _shared_client and not _shared_client.is_closed:
+        await _shared_client.aclose()
+        _shared_client = None
+
+
 # 流式读取超时配置
 STREAM_READ_TIMEOUT = 30.0  # 单次读取超时（秒）
 STREAM_TOTAL_TIMEOUT = 300.0  # 流式响应总超时（秒）
@@ -49,14 +69,15 @@ class LLMService:
         if max_tokens:
             payload["max_tokens"] = max_tokens
 
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            response = await client.post(
-                f"{target_api_base}/chat/completions",
-                headers=headers,
-                json=payload
-            )
-            response.raise_for_status()
-            return response.json()
+        client = await get_shared_client()
+        response = await client.post(
+            f"{target_api_base}/chat/completions",
+            headers=headers,
+            json=payload,
+            timeout=timeout,
+        )
+        response.raise_for_status()
+        return response.json()
 
     @staticmethod
     async def chat_completion_stream(
@@ -124,7 +145,7 @@ class LLMService:
         response: Optional[httpx.Response] = None
 
         try:
-            client = httpx.AsyncClient(timeout=timeout_config)
+            client = await get_shared_client()
             response = await client.post(
                 f"{target_api_base}/chat/completions",
                 headers=headers,
@@ -187,11 +208,6 @@ class LLMService:
                     await response.aclose()
                 except Exception as e:
                     logger.warning(f"Error closing response: {e}")
-            if client is not None:
-                try:
-                    await client.aclose()
-                except Exception as e:
-                    logger.warning(f"Error closing client: {e}")
 
 
 llm_service = LLMService()

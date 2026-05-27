@@ -4,14 +4,18 @@ API限流中间件
 """
 
 import time
+import re
+import asyncio
 import logging
 from collections import defaultdict
 from typing import Dict, Tuple, Optional
 from fastapi import Request, HTTPException, status
 from fastapi.responses import JSONResponse
-from threading import Lock
 
 logger = logging.getLogger(__name__)
+
+_IPV4_PATTERN = re.compile(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$')
+_IPV6_PATTERN = re.compile(r'^\[?[0-9a-fA-F:]+\]?$')
 
 
 class RateLimiter:
@@ -34,16 +38,13 @@ class RateLimiter:
         self._request_history: Dict[str, list] = defaultdict(list)
         # 存储被封禁的客户端: {key: block_until_timestamp}
         self._blocked: Dict[str, float] = {}
-        # 线程锁
-        self._lock = Lock()
+        # 异步锁
+        self._lock = asyncio.Lock()
 
     @staticmethod
     def _validate_ip(ip_str: str) -> str:
-        import re
         ip_str = ip_str.strip()
-        ipv4_pattern = r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$'
-        ipv6_pattern = r'^\[?[0-9a-fA-F:]+\]?$'
-        if re.match(ipv4_pattern, ip_str) or re.match(ipv6_pattern, ip_str):
+        if _IPV4_PATTERN.match(ip_str) or _IPV6_PATTERN.match(ip_str):
             return ip_str
         return ""
 
@@ -80,7 +81,7 @@ class RateLimiter:
             if ts > window_start
         )
 
-    def is_allowed(self, request: Request, user_id: Optional[str] = None) -> Tuple[bool, str]:
+    async def is_allowed(self, request: Request, user_id: Optional[str] = None) -> Tuple[bool, str]:
         """
         检查请求是否被允许
 
@@ -90,7 +91,7 @@ class RateLimiter:
         key = self._get_client_key(request, user_id)
         current_time = time.time()
 
-        with self._lock:
+        async with self._lock:
             # 检查是否被封禁
             if key in self._blocked:
                 block_until = self._blocked[key]
@@ -124,12 +125,12 @@ class RateLimiter:
 
             return True, ""
 
-    def get_remaining(self, request: Request, user_id: Optional[str] = None) -> Dict[str, int]:
+    async def get_remaining(self, request: Request, user_id: Optional[str] = None) -> Dict[str, int]:
         """获取剩余请求次数"""
         key = self._get_client_key(request, user_id)
         current_time = time.time()
 
-        with self._lock:
+        async with self._lock:
             self._cleanup_old_records(key, current_time)
             minute_requests = self._count_requests(key, current_time, 60)
             hour_requests = self._count_requests(key, current_time, 3600)
@@ -191,7 +192,7 @@ class RateLimitMiddleware:
             return
 
         limiter = self._get_limiter(request.url.path)
-        is_allowed, error_message = limiter.is_allowed(request)
+        is_allowed, error_message = await limiter.is_allowed(request)
 
         if not is_allowed:
             response = JSONResponse(
@@ -212,14 +213,14 @@ class RateLimitMiddleware:
 rate_limiter = RateLimiter()
 
 
-def check_rate_limit(request: Request, user_id: Optional[str] = None):
+async def check_rate_limit(request: Request, user_id: Optional[str] = None):
     """
     检查请求限流（可在路由中直接调用）
 
     Raises:
         HTTPException: 如果请求被限流
     """
-    is_allowed, error_message = rate_limiter.is_allowed(request, user_id)
+    is_allowed, error_message = await rate_limiter.is_allowed(request, user_id)
     if not is_allowed:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,

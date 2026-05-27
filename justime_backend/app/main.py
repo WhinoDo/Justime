@@ -66,6 +66,13 @@ def create_app() -> FastAPI:
         except Exception as e:
             logger.warning(f'Redis 关闭异常: {e}')
 
+        try:
+            from app.services.llm_service import close_shared_client
+            await close_shared_client()
+            logger.info("httpx 共享连接池已关闭")
+        except Exception as e:
+            logger.warning(f'httpx 共享连接池关闭异常: {e}')
+
     return app
 
 

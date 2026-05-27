@@ -96,6 +96,7 @@ export function useSSEChat(options: UseSSEChatOptions): UseSSEChatReturn {
 
   // Refs
   const serviceRef = useRef<SSEService | null>(null);
+  const accumulatedContentRef = useRef<string>('');
   const pendingMessageRef = useRef<string | null>(null);
   const pendingOptionsRef = useRef<{
     runtimeModelId?: string;
@@ -121,13 +122,14 @@ export function useSSEChat(options: UseSSEChatOptions): UseSSEChatReturn {
     const service = serviceRef.current;
 
     service.on('token', (event: SSETokenEvent) => {
-      setState(prev => ({
-        ...prev,
-        content: prev.content + event.content,
-      }));
+      setState(prev => {
+        const next = { ...prev, content: prev.content + event.content };
+        accumulatedContentRef.current = next.content;
+        return next;
+      });
 
       if (onToken) {
-        onToken(event.content, state.content + event.content);
+        onToken(event.content, accumulatedContentRef.current);
       }
 
       // Update session ID if provided
@@ -159,7 +161,7 @@ export function useSSEChat(options: UseSSEChatOptions): UseSSEChatReturn {
       }));
 
       if (onDone && event.messageId) {
-        onDone(event.messageId, state.content);
+        onDone(event.messageId, accumulatedContentRef.current);
       }
     });
 
@@ -236,6 +238,7 @@ export function useSSEChat(options: UseSSEChatOptions): UseSSEChatReturn {
     }
 
     // Reset state for new message
+    accumulatedContentRef.current = '';
     setState(prev => ({
       ...prev,
       content: '',
@@ -296,6 +299,7 @@ export function useSSEChat(options: UseSSEChatOptions): UseSSEChatReturn {
    */
   const reset = useCallback(() => {
     stop();
+    accumulatedContentRef.current = '';
     setState({
       content: '',
       isStreaming: false,

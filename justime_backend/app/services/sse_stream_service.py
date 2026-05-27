@@ -3,7 +3,6 @@ SSE 流式上下文服务
 支持 Last-Event-ID 断点续传，用于移动端网络切换场景
 """
 
-import json
 import logging
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List
@@ -19,6 +18,21 @@ SSE_STREAM_KEY_PREFIX = "sse:stream:"
 # 流上下文 TTL（秒）- 5 分钟
 SSE_STREAM_TTL = 300
 # 事件 ID 格式：{sessionId}:{messageId}:{tokenIndex}
+
+_UPDATE_ACCUMULATED_LUA = """
+local key = KEYS[1]
+local data = redis.call('GET', key)
+if not data then
+    return 0
+end
+local obj = cjson.decode(data)
+obj['accumulated_content'] = ARGV[1]
+obj['token_index'] = tonumber(ARGV[2])
+obj['updated_at'] = ARGV[3]
+local new_data = cjson.encode(obj)
+redis.call('SET', key, new_data, 'EX', tonumber(ARGV[4]))
+return 1
+"""
 
 
 @dataclass
@@ -242,6 +256,9 @@ class SSEStreamService:
         """
         更新累积内容和 token 索引
 
+        使用 Lua 脚本在 Redis 内直接修改 JSON 字段，避免完整的
+        读取-反序列化-修改-序列化-写入 循环。单次 Redis 调用完成更新。
+
         Args:
             session_id: 会话 ID
             message_id: 消息 ID
@@ -251,15 +268,29 @@ class SSEStreamService:
         Returns:
             更新成功返回 True
         """
-        context = await SSEStreamService.load_context(session_id, message_id)
-        if context is None:
-            logger.warning(f"Context not found for update: {session_id}:{message_id}")
+        if not RedisClient.is_enabled():
+            logger.debug("Redis not enabled, skip updating accumulated content")
             return False
 
-        context.accumulated_content = content
-        context.token_index = token_index
+        key = SSEStreamService._get_redis_key(session_id, message_id)
+        client = RedisClient.get_client()
+        if client is None:
+            return False
 
-        return await SSEStreamService.save_context(context)
+        try:
+            result = await client.eval(
+                _UPDATE_ACCUMULATED_LUA,
+                1,
+                key,
+                content,
+                str(token_index),
+                datetime.now(timezone.utc).isoformat(),
+                str(SSE_STREAM_TTL),
+            )
+            return result == 1
+        except Exception as e:
+            logger.warning(f"Failed to update accumulated content via Lua: {e}")
+            return False
 
     @staticmethod
     def parse_last_event_id(last_event_id: str) -> Optional[SSEEventID]:
