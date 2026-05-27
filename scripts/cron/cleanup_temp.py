@@ -9,7 +9,7 @@ import sys
 # 自动切换到虚拟环境
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.dirname(os.path.dirname(SCRIPT_DIR))
-VENV_PYTHON = os.path.join(PROJECT_DIR, "jushi_backend", ".venv", "bin", "python")
+VENV_PYTHON = os.path.join(PROJECT_DIR, "justime_backend", ".venv", "bin", "python")
 
 if os.path.exists(VENV_PYTHON) and sys.executable != VENV_PYTHON:
     os.execl(VENV_PYTHON, VENV_PYTHON, *sys.argv)

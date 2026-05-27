@@ -1,6 +1,6 @@
 # Gateway Configuration
 
-This directory contains Caddy gateway configurations for the Jushi application.
+This directory contains Caddy gateway configurations for the Justime application.
 
 ## Files
 

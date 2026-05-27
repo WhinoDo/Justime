@@ -56,7 +56,7 @@ CADDY_PORT="${CADDY_PORT:-8088}"
 tailscale serve --bg "http://127.0.0.1:${CADDY_PORT}"
 
 echo
-echo "Jushi Homelab 已启动。"
+echo "Justime Homelab 已启动。"
 echo "本机入口: http://127.0.0.1:${CADDY_PORT}"
 echo "Tailscale Serve 状态:"
 tailscale serve status

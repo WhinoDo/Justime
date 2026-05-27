@@ -9,7 +9,7 @@
 
 在终端日志中出现如下报错：
 ```
-File "/Users/zhuyuxuan/Desktop/Code/jushi/jushi_backend/app/api/v1/endpoints/auth.py", line 143, in update_llm_config
+File "/Users/zhuyuxuan/Desktop/Code/justime/justime_backend/app/api/v1/endpoints/auth.py", line 143, in update_llm_config
     return await auth_business.update_system_config(config_id, payload)
 AttributeError: 'AuthBusiness' object has no attribute 'update_system_config'
 ```

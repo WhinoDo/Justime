@@ -47,7 +47,7 @@ jobs:
         id: frontend-meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/jushi-frontend
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/justime-frontend
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
@@ -57,7 +57,7 @@ jobs:
         id: backend-meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/jushi-backend
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/justime-backend
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
@@ -66,7 +66,7 @@ jobs:
       - name: Build and push Frontend
         uses: docker/build-push-action@v5
         with:
-          context: ./jushi_agent
+          context: ./justime_agent
           file: ./deployment/homelab/frontend/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.frontend-meta.outputs.tags }}
@@ -77,7 +77,7 @@ jobs:
       - name: Build and push Backend
         uses: docker/build-push-action@v5
         with:
-          context: ./jushi_backend
+          context: ./justime_backend
           file: ./deployment/homelab/backend/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.backend-meta.outputs.tags }}
@@ -92,7 +92,7 @@ jobs:
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     environment:
       name: staging
-      url: https://staging.jushi.example.com
+      url: https://staging.justime.example.com
     
     steps:
       - name: Checkout code
@@ -105,7 +105,7 @@ jobs:
           username: ${{ secrets.STAGING_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
           script: |
-            cd /opt/jushi
+            cd /opt/justime
             git pull origin main
             docker compose --env-file deployment/homelab/.env -f deployment/homelab/docker-compose.yml build
             docker compose --env-file deployment/homelab/.env -f deployment/homelab/docker-compose.yml up -d
@@ -118,7 +118,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     environment:
       name: production
-      url: https://jushi.example.com
+      url: https://justime.example.com
     
     steps:
       - name: Checkout code
@@ -131,7 +131,7 @@ jobs:
           username: ${{ secrets.PRODUCTION_USER }}
           key: ${{ secrets.PRODUCTION_SSH_KEY }}
           script: |
-            cd /opt/jushi
+            cd /opt/justime
             git fetch --tags
             git checkout ${{ github.ref_name }}
             docker compose --env-file deployment/homelab/.env -f deployment/homelab/docker-compose.yml build
@@ -139,7 +139,7 @@ jobs:
             docker system prune -f
             
             # Create release marker
-            echo "${{ github.ref_name }}" > /opt/jushi/.release
+            echo "${{ github.ref_name }}" > /opt/justime/.release
       
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1

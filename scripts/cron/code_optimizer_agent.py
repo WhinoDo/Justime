@@ -20,8 +20,8 @@ REPORT_DIR = PROJECT_DIR / "docs" / "optimization_reports"
 
 # 扫描配置
 SCAN_CONFIG = {
-    "frontend_dir": str(PROJECT_DIR / "jushi_agent" / "src"),
-    "backend_dir": str(PROJECT_DIR / "jushi_backend" / "app"),
+    "frontend_dir": str(PROJECT_DIR / "justime_agent" / "src"),
+    "backend_dir": str(PROJECT_DIR / "justime_backend" / "app"),
 }
 
 

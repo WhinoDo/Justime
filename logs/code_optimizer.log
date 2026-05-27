@@ -13,7 +13,7 @@
 [2026-04-24 08:02:58] [WARNING] ❌ Claude CLI 未找到，使用备用方案
 [2026-04-24 08:02:58] [INFO] 使用静态分析工具进行代码检查...
 [2026-04-24 08:02:58] [WARNING] Pylint 检查失败: [Errno 2] No such file or directory: 'python'
-[2026-04-24 08:02:58] [WARNING] ESLint 检查失败: [Errno 2] No such file or directory: 'jushi_agent'
+[2026-04-24 08:02:58] [WARNING] ESLint 检查失败: [Errno 2] No such file or directory: 'justime_agent'
 [2026-04-24 08:02:58] [INFO] 📄 静态分析报告: docs/optimization_reports/static_analysis_20260424_080258.md
 [2026-04-24 08:02:58] [INFO] ============================================================
 [2026-04-24 08:02:58] [INFO] ✅ 代码优化任务完成
@@ -28,7 +28,7 @@
 [2026-04-24 08:02:58] [WARNING] ❌ Claude CLI 未找到，使用备用方案
 [2026-04-24 08:02:58] [INFO] 使用静态分析工具进行代码检查...
 [2026-04-24 08:02:58] [WARNING] Pylint 检查失败: [Errno 2] No such file or directory: 'python'
-[2026-04-24 08:02:58] [WARNING] ESLint 检查失败: [Errno 2] No such file or directory: 'jushi_agent'
+[2026-04-24 08:02:58] [WARNING] ESLint 检查失败: [Errno 2] No such file or directory: 'justime_agent'
 [2026-04-24 08:02:58] [INFO] 📄 静态分析报告: docs/optimization_reports/static_analysis_20260424_080258.md
 [2026-04-24 08:02:58] [INFO] ============================================================
 [2026-04-24 08:02:58] [INFO] ✅ 代码优化任务完成
@@ -43,7 +43,7 @@
 [2026-04-24 08:02:59] [WARNING] ❌ Claude CLI 未找到，使用备用方案
 [2026-04-24 08:02:59] [INFO] 使用静态分析工具进行代码检查...
 [2026-04-24 08:02:59] [WARNING] Pylint 检查失败: [Errno 2] No such file or directory: 'python'
-[2026-04-24 08:02:59] [WARNING] ESLint 检查失败: [Errno 2] No such file or directory: 'jushi_agent'
+[2026-04-24 08:02:59] [WARNING] ESLint 检查失败: [Errno 2] No such file or directory: 'justime_agent'
 [2026-04-24 08:02:59] [INFO] 📄 静态分析报告: docs/optimization_reports/static_analysis_20260424_080259.md
 [2026-04-24 08:02:59] [INFO] ============================================================
 [2026-04-24 08:02:59] [INFO] ✅ 代码优化任务完成
@@ -58,7 +58,7 @@
 [2026-04-24 08:02:59] [WARNING] ❌ Claude CLI 未找到，使用备用方案
 [2026-04-24 08:02:59] [INFO] 使用静态分析工具进行代码检查...
 [2026-04-24 08:02:59] [WARNING] Pylint 检查失败: [Errno 2] No such file or directory: 'python'
-[2026-04-24 08:02:59] [WARNING] ESLint 检查失败: [Errno 2] No such file or directory: 'jushi_agent'
+[2026-04-24 08:02:59] [WARNING] ESLint 检查失败: [Errno 2] No such file or directory: 'justime_agent'
 [2026-04-24 08:02:59] [INFO] 📄 静态分析报告: docs/optimization_reports/static_analysis_20260424_080259.md
 [2026-04-24 08:02:59] [INFO] ============================================================
 [2026-04-24 08:02:59] [INFO] ✅ 代码优化任务完成
@@ -73,7 +73,7 @@
 [2026-04-24 08:02:59] [WARNING] ❌ Claude CLI 未找到，使用备用方案
 [2026-04-24 08:02:59] [INFO] 使用静态分析工具进行代码检查...
 [2026-04-24 08:02:59] [WARNING] Pylint 检查失败: [Errno 2] No such file or directory: 'python'
-[2026-04-24 08:02:59] [WARNING] ESLint 检查失败: [Errno 2] No such file or directory: 'jushi_agent'
+[2026-04-24 08:02:59] [WARNING] ESLint 检查失败: [Errno 2] No such file or directory: 'justime_agent'
 [2026-04-24 08:02:59] [INFO] 📄 静态分析报告: docs/optimization_reports/static_analysis_20260424_080259.md
 [2026-04-24 08:02:59] [INFO] ============================================================
 [2026-04-24 08:02:59] [INFO] ✅ 代码优化任务完成
@@ -88,7 +88,7 @@
 [2026-04-24 08:02:59] [WARNING] ❌ Claude CLI 未找到，使用备用方案
 [2026-04-24 08:02:59] [INFO] 使用静态分析工具进行代码检查...
 [2026-04-24 08:02:59] [WARNING] Pylint 检查失败: [Errno 2] No such file or directory: 'python'
-[2026-04-24 08:02:59] [WARNING] ESLint 检查失败: [Errno 2] No such file or directory: 'jushi_agent'
+[2026-04-24 08:02:59] [WARNING] ESLint 检查失败: [Errno 2] No such file or directory: 'justime_agent'
 [2026-04-24 08:02:59] [INFO] 📄 静态分析报告: docs/optimization_reports/static_analysis_20260424_080259.md
 [2026-04-24 08:02:59] [INFO] ============================================================
 [2026-04-24 08:02:59] [INFO] ✅ 代码优化任务完成
@@ -103,7 +103,7 @@
 [2026-04-24 08:02:59] [WARNING] ❌ Claude CLI 未找到，使用备用方案
 [2026-04-24 08:02:59] [INFO] 使用静态分析工具进行代码检查...
 [2026-04-24 08:02:59] [WARNING] Pylint 检查失败: [Errno 2] No such file or directory: 'python'
-[2026-04-24 08:02:59] [WARNING] ESLint 检查失败: [Errno 2] No such file or directory: 'jushi_agent'
+[2026-04-24 08:02:59] [WARNING] ESLint 检查失败: [Errno 2] No such file or directory: 'justime_agent'
 [2026-04-24 08:02:59] [INFO] 📄 静态分析报告: docs/optimization_reports/static_analysis_20260424_080259.md
 [2026-04-24 08:02:59] [INFO] ============================================================
 [2026-04-24 08:02:59] [INFO] ✅ 代码优化任务完成
@@ -118,7 +118,7 @@
 [2026-04-24 08:02:59] [WARNING] ❌ Claude CLI 未找到，使用备用方案
 [2026-04-24 08:02:59] [INFO] 使用静态分析工具进行代码检查...
 [2026-04-24 08:02:59] [WARNING] Pylint 检查失败: [Errno 2] No such file or directory: 'python'
-[2026-04-24 08:02:59] [WARNING] ESLint 检查失败: [Errno 2] No such file or directory: 'jushi_agent'
+[2026-04-24 08:02:59] [WARNING] ESLint 检查失败: [Errno 2] No such file or directory: 'justime_agent'
 [2026-04-24 08:02:59] [INFO] 📄 静态分析报告: docs/optimization_reports/static_analysis_20260424_080259.md
 [2026-04-24 08:02:59] [INFO] ============================================================
 [2026-04-24 08:02:59] [INFO] ✅ 代码优化任务完成
@@ -133,7 +133,7 @@
 [2026-04-24 08:02:59] [WARNING] ❌ Claude CLI 未找到，使用备用方案
 [2026-04-24 08:02:59] [INFO] 使用静态分析工具进行代码检查...
 [2026-04-24 08:02:59] [WARNING] Pylint 检查失败: [Errno 2] No such file or directory: 'python'
-[2026-04-24 08:02:59] [WARNING] ESLint 检查失败: [Errno 2] No such file or directory: 'jushi_agent'
+[2026-04-24 08:02:59] [WARNING] ESLint 检查失败: [Errno 2] No such file or directory: 'justime_agent'
 [2026-04-24 08:02:59] [INFO] 📄 静态分析报告: docs/optimization_reports/static_analysis_20260424_080259.md
 [2026-04-24 08:02:59] [INFO] ============================================================
 [2026-04-24 08:02:59] [INFO] ✅ 代码优化任务完成
@@ -148,7 +148,7 @@
 [2026-04-24 08:02:59] [WARNING] ❌ Claude CLI 未找到，使用备用方案
 [2026-04-24 08:02:59] [INFO] 使用静态分析工具进行代码检查...
 [2026-04-24 08:02:59] [WARNING] Pylint 检查失败: [Errno 2] No such file or directory: 'python'
-[2026-04-24 08:02:59] [WARNING] ESLint 检查失败: [Errno 2] No such file or directory: 'jushi_agent'
+[2026-04-24 08:02:59] [WARNING] ESLint 检查失败: [Errno 2] No such file or directory: 'justime_agent'
 [2026-04-24 08:02:59] [INFO] 📄 静态分析报告: docs/optimization_reports/static_analysis_20260424_080259.md
 [2026-04-24 08:02:59] [INFO] ============================================================
 [2026-04-24 08:02:59] [INFO] ✅ 代码优化任务完成
@@ -163,7 +163,7 @@
 [2026-04-24 08:02:59] [WARNING] ❌ Claude CLI 未找到，使用备用方案
 [2026-04-24 08:02:59] [INFO] 使用静态分析工具进行代码检查...
 [2026-04-24 08:02:59] [WARNING] Pylint 检查失败: [Errno 2] No such file or directory: 'python'
-[2026-04-24 08:02:59] [WARNING] ESLint 检查失败: [Errno 2] No such file or directory: 'jushi_agent'
+[2026-04-24 08:02:59] [WARNING] ESLint 检查失败: [Errno 2] No such file or directory: 'justime_agent'
 [2026-04-24 08:02:59] [INFO] 📄 静态分析报告: docs/optimization_reports/static_analysis_20260424_080259.md
 [2026-04-24 08:02:59] [INFO] ============================================================
 [2026-04-24 08:02:59] [INFO] ✅ 代码优化任务完成
@@ -178,7 +178,7 @@
 [2026-04-24 08:02:59] [WARNING] ❌ Claude CLI 未找到，使用备用方案
 [2026-04-24 08:02:59] [INFO] 使用静态分析工具进行代码检查...
 [2026-04-24 08:02:59] [WARNING] Pylint 检查失败: [Errno 2] No such file or directory: 'python'
-[2026-04-24 08:02:59] [WARNING] ESLint 检查失败: [Errno 2] No such file or directory: 'jushi_agent'
+[2026-04-24 08:02:59] [WARNING] ESLint 检查失败: [Errno 2] No such file or directory: 'justime_agent'
 [2026-04-24 08:02:59] [INFO] 📄 静态分析报告: docs/optimization_reports/static_analysis_20260424_080259.md
 [2026-04-24 08:02:59] [INFO] ============================================================
 [2026-04-24 08:02:59] [INFO] ✅ 代码优化任务完成
@@ -193,7 +193,7 @@
 [2026-04-24 08:02:59] [WARNING] ❌ Claude CLI 未找到，使用备用方案
 [2026-04-24 08:02:59] [INFO] 使用静态分析工具进行代码检查...
 [2026-04-24 08:02:59] [WARNING] Pylint 检查失败: [Errno 2] No such file or directory: 'python'
-[2026-04-24 08:02:59] [WARNING] ESLint 检查失败: [Errno 2] No such file or directory: 'jushi_agent'
+[2026-04-24 08:02:59] [WARNING] ESLint 检查失败: [Errno 2] No such file or directory: 'justime_agent'
 [2026-04-24 08:02:59] [INFO] 📄 静态分析报告: docs/optimization_reports/static_analysis_20260424_080259.md
 [2026-04-24 08:02:59] [INFO] ============================================================
 [2026-04-24 08:02:59] [INFO] ✅ 代码优化任务完成
@@ -208,7 +208,7 @@
 [2026-04-24 08:02:59] [WARNING] ❌ Claude CLI 未找到，使用备用方案
 [2026-04-24 08:02:59] [INFO] 使用静态分析工具进行代码检查...
 [2026-04-24 08:02:59] [WARNING] Pylint 检查失败: [Errno 2] No such file or directory: 'python'
-[2026-04-24 08:02:59] [WARNING] ESLint 检查失败: [Errno 2] No such file or directory: 'jushi_agent'
+[2026-04-24 08:02:59] [WARNING] ESLint 检查失败: [Errno 2] No such file or directory: 'justime_agent'
 [2026-04-24 08:02:59] [INFO] 📄 静态分析报告: docs/optimization_reports/static_analysis_20260424_080259.md
 [2026-04-24 08:02:59] [INFO] ============================================================
 [2026-04-24 08:02:59] [INFO] ✅ 代码优化任务完成
@@ -223,7 +223,7 @@
 [2026-04-24 08:02:59] [WARNING] ❌ Claude CLI 未找到，使用备用方案
 [2026-04-24 08:02:59] [INFO] 使用静态分析工具进行代码检查...
 [2026-04-24 08:02:59] [WARNING] Pylint 检查失败: [Errno 2] No such file or directory: 'python'
-[2026-04-24 08:02:59] [WARNING] ESLint 检查失败: [Errno 2] No such file or directory: 'jushi_agent'
+[2026-04-24 08:02:59] [WARNING] ESLint 检查失败: [Errno 2] No such file or directory: 'justime_agent'
 [2026-04-24 08:02:59] [INFO] 📄 静态分析报告: docs/optimization_reports/static_analysis_20260424_080259.md
 [2026-04-24 08:02:59] [INFO] ============================================================
 [2026-04-24 08:02:59] [INFO] ✅ 代码优化任务完成
@@ -238,7 +238,7 @@
 [2026-04-24 08:02:59] [WARNING] ❌ Claude CLI 未找到，使用备用方案
 [2026-04-24 08:02:59] [INFO] 使用静态分析工具进行代码检查...
 [2026-04-24 08:02:59] [WARNING] Pylint 检查失败: [Errno 2] No such file or directory: 'python'
-[2026-04-24 08:02:59] [WARNING] ESLint 检查失败: [Errno 2] No such file or directory: 'jushi_agent'
+[2026-04-24 08:02:59] [WARNING] ESLint 检查失败: [Errno 2] No such file or directory: 'justime_agent'
 [2026-04-24 08:02:59] [INFO] 📄 静态分析报告: docs/optimization_reports/static_analysis_20260424_080259.md
 [2026-04-24 08:02:59] [INFO] ============================================================
 [2026-04-24 08:02:59] [INFO] ✅ 代码优化任务完成
@@ -253,7 +253,7 @@
 [2026-04-24 08:02:59] [WARNING] ❌ Claude CLI 未找到，使用备用方案
 [2026-04-24 08:02:59] [INFO] 使用静态分析工具进行代码检查...
 [2026-04-24 08:02:59] [WARNING] Pylint 检查失败: [Errno 2] No such file or directory: 'python'
-[2026-04-24 08:02:59] [WARNING] ESLint 检查失败: [Errno 2] No such file or directory: 'jushi_agent'
+[2026-04-24 08:02:59] [WARNING] ESLint 检查失败: [Errno 2] No such file or directory: 'justime_agent'
 [2026-04-24 08:02:59] [INFO] 📄 静态分析报告: docs/optimization_reports/static_analysis_20260424_080259.md
 [2026-04-24 08:02:59] [INFO] ============================================================
 [2026-04-24 08:02:59] [INFO] ✅ 代码优化任务完成
@@ -286,7 +286,7 @@
 [2026-04-24 13:55:52] [INFO] 检测到 Claude CLI，启动 Agent 分析...
 [2026-04-24 13:55:52] [WARNING] Claude Agent 执行失败: error: unknown option '--max-tokens'
 
-[2026-04-24 13:55:52] [INFO] 📄 报告已保存: /Users/zhuyuxuan/Desktop/Code/jushi/docs/optimization_reports/optimization_20260424_135552.md
+[2026-04-24 13:55:52] [INFO] 📄 报告已保存: /Users/zhuyuxuan/Desktop/Code/justime/docs/optimization_reports/optimization_20260424_135552.md
 [2026-04-24 13:55:52] [INFO] ==================================================
 [2026-04-24 13:55:52] [INFO] ✅ 代码优化任务完成
 [2026-04-24 13:55:52] [INFO] ==================================================
@@ -300,7 +300,7 @@
 [2026-04-24 13:58:56] [INFO] 检测到 Claude CLI，启动 Agent 分析...
 /Applications/Xcode.app/Contents/Developer/usr/bin/python3: can't open file 'code_optimizer_agent.py': [Errno 1] Operation not permitted
 [2026-04-24 14:00:23] [INFO] ✅ Claude Agent 分析完成
-[2026-04-24 14:00:23] [INFO] 📄 报告已保存: /Users/zhuyuxuan/Desktop/Code/jushi/docs/optimization_reports/optimization_20260424_140023.md
+[2026-04-24 14:00:23] [INFO] 📄 报告已保存: /Users/zhuyuxuan/Desktop/Code/justime/docs/optimization_reports/optimization_20260424_140023.md
 [2026-04-24 14:00:23] [INFO] ==================================================
 [2026-04-24 14:00:23] [INFO] ✅ 代码优化任务完成
 [2026-04-24 14:00:23] [INFO] ==================================================
@@ -334,7 +334,7 @@
 [2026-04-24 23:19:28] [INFO] 自动修复了 409 个问题
 [2026-04-24 23:19:28] [INFO] 检测到 Claude CLI，启动 Agent 深度修复...
 [2026-04-24 23:22:40] [INFO] ✅ Claude Agent 深度修复完成
-[2026-04-24 23:22:40] [INFO] 📄 报告已保存: /Users/zhuyuxuan/Desktop/Code/jushi/docs/optimization_reports/optimization_20260424_232240.md
+[2026-04-24 23:22:40] [INFO] 📄 报告已保存: /Users/zhuyuxuan/Desktop/Code/justime/docs/optimization_reports/optimization_20260424_232240.md
 [2026-04-24 23:22:40] [INFO] ==================================================
 [2026-04-24 23:22:40] [INFO] ✅ 代码优化任务完成 (修复 409/526)
 [2026-04-24 23:22:40] [INFO] ==================================================
@@ -350,7 +350,7 @@
 [2026-04-24 23:24:34] [INFO] 自动修复了 420 个问题
 [2026-04-24 23:24:34] [INFO] 检测到 Claude CLI，启动 Agent 深度修复...
 [2026-04-24 23:29:34] [WARNING] Claude Agent 执行失败: 执行超时
-[2026-04-24 23:29:34] [INFO] 📄 报告已保存: /Users/zhuyuxuan/Desktop/Code/jushi/docs/optimization_reports/optimization_20260424_232934.md
+[2026-04-24 23:29:34] [INFO] 📄 报告已保存: /Users/zhuyuxuan/Desktop/Code/justime/docs/optimization_reports/optimization_20260424_232934.md
 [2026-04-24 23:29:34] [INFO] ==================================================
 [2026-04-24 23:29:34] [INFO] ✅ 代码优化任务完成 (修复 420/540)
 [2026-04-24 23:29:34] [INFO] ==================================================
@@ -367,7 +367,7 @@
 [2026-04-24 23:34:17] [INFO] 自动修复了 487 个问题
 [2026-04-24 23:34:17] [INFO] 检测到 Claude CLI，启动 Agent 深度修复...
 [2026-04-24 23:38:15] [INFO] ✅ Claude Agent 深度修复完成
-[2026-04-24 23:38:15] [INFO] 📄 报告已保存: /Users/zhuyuxuan/Desktop/Code/jushi/docs/optimization_reports/optimization_20260424_233815.md
+[2026-04-24 23:38:15] [INFO] 📄 报告已保存: /Users/zhuyuxuan/Desktop/Code/justime/docs/optimization_reports/optimization_20260424_233815.md
 [2026-04-24 23:38:15] [INFO] ==================================================
 [2026-04-24 23:38:15] [INFO] ✅ 代码优化任务完成 (修复 487/640)
 [2026-04-24 23:38:15] [INFO] ==================================================
@@ -383,7 +383,7 @@
 [2026-04-24 23:41:08] [INFO] 自动修复了 607 个问题
 [2026-04-24 23:41:08] [INFO] 检测到 Claude CLI，启动 Agent 深度修复...
 [2026-04-24 23:46:08] [WARNING] Claude Agent 执行失败: 执行超时
-[2026-04-24 23:46:08] [INFO] 📄 报告已保存: /Users/zhuyuxuan/Desktop/Code/jushi/docs/optimization_reports/optimization_20260424_234608.md
+[2026-04-24 23:46:08] [INFO] 📄 报告已保存: /Users/zhuyuxuan/Desktop/Code/justime/docs/optimization_reports/optimization_20260424_234608.md
 [2026-04-24 23:46:08] [INFO] ==================================================
 [2026-04-24 23:46:08] [INFO] ✅ 代码优化任务完成 (修复 607/791)
 [2026-04-24 23:46:08] [INFO] ==================================================
@@ -399,7 +399,7 @@
 [2026-04-24 23:49:28] [INFO] 自动修复了 388 个问题
 [2026-04-24 23:49:28] [INFO] 检测到 Claude CLI，启动 Agent 深度修复...
 [2026-04-24 23:52:06] [INFO] ✅ Claude Agent 深度修复完成
-[2026-04-24 23:52:06] [INFO] 📄 报告已保存: /Users/zhuyuxuan/Desktop/Code/jushi/docs/optimization_reports/optimization_20260424_235206.md
+[2026-04-24 23:52:06] [INFO] 📄 报告已保存: /Users/zhuyuxuan/Desktop/Code/justime/docs/optimization_reports/optimization_20260424_235206.md
 [2026-04-24 23:52:06] [INFO] ==================================================
 [2026-04-24 23:52:06] [INFO] ✅ 代码优化任务完成 (修复 388/526)
 [2026-04-24 23:52:06] [INFO] ==================================================

@@ -50,7 +50,7 @@
 
 **基本信息**
 - **日期**：2026-04-21
-- **范围**：全项目（jushi_agent + jushi_backend + mobile）
+- **范围**：全项目（justime_agent + justime_backend + mobile）
 - **使用模型**：GLM-5
 - **发起人**：Claude (AI团队协作)
 
@@ -101,10 +101,10 @@
 
 | 序号 | 文件路径 | 行号 | 问题类型 | 问题描述 | 严重程度 | 状态 |
 |------|----------|------|----------|----------|----------|------|
-| 1 | jushi_agent/src/lib/auth/AuthService.ts | 44-45 | SECURITY | JWT密钥硬编码默认值 | P0 | 已修复 |
-| 2 | jushi_agent/src/app/api/documents/route.ts | 29 | SECURITY | JWT密钥硬编码默认值 | P0 | 已修复 |
-| 3 | jushi_agent/.next_stale_20260225_172155 | - | STYLE | 过时构建产物(531MB) | P3 | 已修复 |
-| 4 | jushi_backend/app/business/chat_business.py | 多处 | STYLE | 使用print而非logging | P2 | 已修复 |
+| 1 | justime_agent/src/lib/auth/AuthService.ts | 44-45 | SECURITY | JWT密钥硬编码默认值 | P0 | 已修复 |
+| 2 | justime_agent/src/app/api/documents/route.ts | 29 | SECURITY | JWT密钥硬编码默认值 | P0 | 已修复 |
+| 3 | justime_agent/.next_stale_20260225_172155 | - | STYLE | 过时构建产物(531MB) | P3 | 已修复 |
+| 4 | justime_backend/app/business/chat_business.py | 多处 | STYLE | 使用print而非logging | P2 | 已修复 |
 
 **修复记录**
 
@@ -129,9 +129,9 @@
 
 | 序号 | 文件路径 | 行号 | 问题类型 | 问题描述 | 严重程度 | 状态 |
 |------|----------|------|----------|----------|----------|------|
-| 1 | jushi_backend/app/core/rate_limiter.py | - | PERFORMANCE | 新增API限流中间件 | P1 | 已修复 |
-| 2 | jushi_backend/app/database/indexes.py | - | PERFORMANCE | 新增数据库索引优化 | P1 | 已修复 |
-| 3 | jushi_backend/app/business/chat_business.py | - | PERFORMANCE | 新增重试装饰器 | P2 | 已修复 |
+| 1 | justime_backend/app/core/rate_limiter.py | - | PERFORMANCE | 新增API限流中间件 | P1 | 已修复 |
+| 2 | justime_backend/app/database/indexes.py | - | PERFORMANCE | 新增数据库索引优化 | P1 | 已修复 |
+| 3 | justime_backend/app/business/chat_business.py | - | PERFORMANCE | 新增重试装饰器 | P2 | 已修复 |
 
 **修复记录**
 
@@ -155,10 +155,10 @@
 
 | 序号 | 文件路径 | 行号 | 问题类型 | 问题描述 | 严重程度 | 状态 |
 |------|----------|------|----------|----------|----------|------|
-| 1 | jushi_agent/.eslintrc.json | - | STYLE | ESLint TypeScript规则配置错误 | P1 | 已修复 |
-| 2 | jushi_agent/.prettierrc | - | STYLE | 缺少Prettier配置 | P2 | 已修复 |
-| 3 | jushi_backend/app/core/structured_logging.py | - | STYLE | 新增结构化日志 | P2 | 已修复 |
-| 4 | jushi_agent/src/lib/auth/AuthService.ts | - | STYLE | console.log未区分环境 | P2 | 已修复 |
+| 1 | justime_agent/.eslintrc.json | - | STYLE | ESLint TypeScript规则配置错误 | P1 | 已修复 |
+| 2 | justime_agent/.prettierrc | - | STYLE | 缺少Prettier配置 | P2 | 已修复 |
+| 3 | justime_backend/app/core/structured_logging.py | - | STYLE | 新增结构化日志 | P2 | 已修复 |
+| 4 | justime_agent/src/lib/auth/AuthService.ts | - | STYLE | console.log未区分环境 | P2 | 已修复 |
 
 **修复记录**
 
@@ -183,8 +183,8 @@
 
 | 序号 | 文件路径 | 行号 | 问题类型 | 问题描述 | 严重程度 | 状态 |
 |------|----------|------|----------|----------|----------|------|
-| 1 | jushi_backend/app/business/chat_business.py | 多处 | BUG | 时区处理不一致，使用datetime.now()而非datetime.now(timezone.utc) | P1 | 已修复 |
-| 2 | jushi_agent/src/components/ui/ErrorBoundary.tsx | - | MAINTAINABILITY | 缺少错误边界组件 | P2 | 已修复 |
+| 1 | justime_backend/app/business/chat_business.py | 多处 | BUG | 时区处理不一致，使用datetime.now()而非datetime.now(timezone.utc) | P1 | 已修复 |
+| 2 | justime_agent/src/components/ui/ErrorBoundary.tsx | - | MAINTAINABILITY | 缺少错误边界组件 | P2 | 已修复 |
 
 **修复记录**
 
@@ -207,10 +207,10 @@
 
 | 序号 | 文件路径 | 行号 | 问题类型 | 问题描述 | 严重程度 | 状态 |
 |------|----------|------|----------|----------|----------|------|
-| 1 | jushi_agent/src/lib/utils.ts | 35 | BUG | generateId使用Math.random()，并发场景可能冲突 | P2 | 已修复 |
-| 2 | jushi_backend/app/business/chat_business.py | - | MAINTAINABILITY | 文件过大(1540行)，需拆分 | P1 | 已创建方案 |
-| 3 | jushi_backend/app/services/session_service.py | - | MAINTAINABILITY | 新增会话服务模块 | P1 | 已创建 |
-| 4 | jushi_backend/app/services/message_service.py | - | MAINTAINABILITY | 新增消息服务模块 | P1 | 已创建 |
+| 1 | justime_agent/src/lib/utils.ts | 35 | BUG | generateId使用Math.random()，并发场景可能冲突 | P2 | 已修复 |
+| 2 | justime_backend/app/business/chat_business.py | - | MAINTAINABILITY | 文件过大(1540行)，需拆分 | P1 | 已创建方案 |
+| 3 | justime_backend/app/services/session_service.py | - | MAINTAINABILITY | 新增会话服务模块 | P1 | 已创建 |
+| 4 | justime_backend/app/services/message_service.py | - | MAINTAINABILITY | 新增消息服务模块 | P1 | 已创建 |
 
 **修复记录**
 
@@ -276,8 +276,8 @@
 
 | 模块 | Review次数 | 发现问题数 | 已修复数 |
 |------|------------|------------|----------|
-| jushi_agent | 5 | 12 | 8 |
-| jushi_backend | 5 | 23 | 17 |
+| justime_agent | 5 | 12 | 8 |
+| justime_backend | 5 | 23 | 17 |
 | mobile | 1 | 0 | 0 |
 
 ### 修复汇总
@@ -319,24 +319,24 @@
 
 | 序号 | 文件路径 | 行号 | 问题类型 | 问题描述 | 严重程度 | 状态 |
 |------|----------|------|----------|----------|----------|------|
-| 1 | jushi_agent/src/app/api/calendar/events/route.ts | 18 | SECURITY | 客户端传入userId导致越权访问风险 | P0 | 待修复 |
-| 2 | jushi_backend/app/api/v1/endpoints/knowledge.py | 81 | PERFORMANCE | 大文件一次性读入内存 | P1 | 待修复 |
-| 3 | jushi_backend/app/api/v1/endpoints/knowledge.py | 208 | PERFORMANCE | 知识库索引重建阻塞请求 | P1 | 待修复 |
-| 4 | jushi_backend/app/business/chat_business.py | 多处 | PERFORMANCE | 数据库N+1查询问题 | P1 | 待修复 |
-| 5 | jushi_backend/app | - | PERFORMANCE | 缺少Redis缓存机制 | P2 | 待修复 |
-| 6 | jushi_agent/src | 多处 | MAINTAINABILITY | 认证逻辑重复实现 | P2 | 待修复 |
-| 7 | jushi_agent/src | 多处 | MAINTAINABILITY | 加载状态处理逻辑重复 | P2 | 待修复 |
-| 8 | jushi_backend/app/business/chat_business.py | - | MAINTAINABILITY | 文件过大(1540行)，需继续拆分 | P1 | 进行中 |
-| 9 | jushi_backend/app | 多处 | STYLE | 异常处理不完整，存在裸except | P2 | 待修复 |
-| 10 | jushi_agent/src | 多处 | STYLE | console.log调试代码残留 | P3 | 待修复 |
-| 11 | jushi_backend/app | - | SUGGESTION | 缺少输入验证和XSS防护 | P1 | 待修复 |
-| 12 | jushi_backend/app | - | SUGGESTION | API速率限制未集成 | P1 | 待修复 |
-| 13 | jushi_agent/src | - | PERFORMANCE | 图片未使用Next.js Image优化 | P2 | 待修复 |
-| 14 | jushi_agent/src | - | PERFORMANCE | 缺少代码分割和懒加载 | P2 | 待修复 |
+| 1 | justime_agent/src/app/api/calendar/events/route.ts | 18 | SECURITY | 客户端传入userId导致越权访问风险 | P0 | 待修复 |
+| 2 | justime_backend/app/api/v1/endpoints/knowledge.py | 81 | PERFORMANCE | 大文件一次性读入内存 | P1 | 待修复 |
+| 3 | justime_backend/app/api/v1/endpoints/knowledge.py | 208 | PERFORMANCE | 知识库索引重建阻塞请求 | P1 | 待修复 |
+| 4 | justime_backend/app/business/chat_business.py | 多处 | PERFORMANCE | 数据库N+1查询问题 | P1 | 待修复 |
+| 5 | justime_backend/app | - | PERFORMANCE | 缺少Redis缓存机制 | P2 | 待修复 |
+| 6 | justime_agent/src | 多处 | MAINTAINABILITY | 认证逻辑重复实现 | P2 | 待修复 |
+| 7 | justime_agent/src | 多处 | MAINTAINABILITY | 加载状态处理逻辑重复 | P2 | 待修复 |
+| 8 | justime_backend/app/business/chat_business.py | - | MAINTAINABILITY | 文件过大(1540行)，需继续拆分 | P1 | 进行中 |
+| 9 | justime_backend/app | 多处 | STYLE | 异常处理不完整，存在裸except | P2 | 待修复 |
+| 10 | justime_agent/src | 多处 | STYLE | console.log调试代码残留 | P3 | 待修复 |
+| 11 | justime_backend/app | - | SUGGESTION | 缺少输入验证和XSS防护 | P1 | 待修复 |
+| 12 | justime_backend/app | - | SUGGESTION | API速率限制未集成 | P1 | 待修复 |
+| 13 | justime_agent/src | - | PERFORMANCE | 图片未使用Next.js Image优化 | P2 | 待修复 |
+| 14 | justime_agent/src | - | PERFORMANCE | 缺少代码分割和懒加载 | P2 | 待修复 |
 | 15 | 项目根目录 | - | MAINTAINABILITY | 单元测试覆盖率低(约40%) | P1 | 待修复 |
 | 16 | 项目根目录 | - | MAINTAINABILITY | 缺少集成测试 | P1 | 待修复 |
-| 17 | jushi_agent/src | - | PERFORMANCE | 缺少请求缓存机制 | P2 | 待修复 |
-| 18 | jushi_backend/app | - | MAINTAINABILITY | 依赖注入不完善 | P2 | 待修复 |
+| 17 | justime_agent/src | - | PERFORMANCE | 缺少请求缓存机制 | P2 | 待修复 |
+| 18 | justime_backend/app | - | MAINTAINABILITY | 依赖注入不完善 | P2 | 待修复 |
 
 **修复记录**
 
@@ -346,8 +346,8 @@
 
 **输出文档**
 - 技术债务分析报告：`文档/技术债务分析报告.md`
-- 前端优化报告：`jushi_agent/前端优化报告.md`
-- 后端优化报告：`jushi_backend/后端优化报告.md`
+- 前端优化报告：`justime_agent/前端优化报告.md`
+- 后端优化报告：`justime_backend/后端优化报告.md`
 
 ---
 
@@ -363,12 +363,12 @@
 
 | 序号 | 文件路径 | 行号 | 问题类型 | 问题描述 | 严重程度 | 状态 |
 |------|----------|------|----------|----------|----------|------|
-| 1 | jushi_backend/app/business/chat_business.py | 1194-1471 | STYLE | 使用print而非logging | P2 | 已修复 |
-| 2 | jushi_agent/src/lib/api/proxy.ts | 112,137 | SECURITY | console.log可能泄露敏感信息 | P2 | 已修复 |
-| 3 | jushi_agent/src/lib/utils/api-logger.ts | 多处 | STYLE | 大量console.log未做环境判断 | P2 | 待修复 |
-| 4 | jushi_agent/src/lib/ai/task-extractor.ts | 多处 | STYLE | console.log未做环境判断 | P3 | 待修复 |
-| 5 | jushi_agent/src/lib/ai/emotion-analyzer.ts | 多处 | STYLE | console.log未做环境判断 | P3 | 待修复 |
-| 6 | jushi_backend/app/services/user_service.py | 42,150 | BUG | 存在裸except异常处理 | P2 | 待修复 |
+| 1 | justime_backend/app/business/chat_business.py | 1194-1471 | STYLE | 使用print而非logging | P2 | 已修复 |
+| 2 | justime_agent/src/lib/api/proxy.ts | 112,137 | SECURITY | console.log可能泄露敏感信息 | P2 | 已修复 |
+| 3 | justime_agent/src/lib/utils/api-logger.ts | 多处 | STYLE | 大量console.log未做环境判断 | P2 | 待修复 |
+| 4 | justime_agent/src/lib/ai/task-extractor.ts | 多处 | STYLE | console.log未做环境判断 | P3 | 待修复 |
+| 5 | justime_agent/src/lib/ai/emotion-analyzer.ts | 多处 | STYLE | console.log未做环境判断 | P3 | 待修复 |
+| 6 | justime_backend/app/services/user_service.py | 42,150 | BUG | 存在裸except异常处理 | P2 | 待修复 |
 
 **修复记录**
 

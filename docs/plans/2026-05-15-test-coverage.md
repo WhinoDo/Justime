@@ -15,7 +15,7 @@
 
 ## 当前测试状态
 
-### 前端 (jushi_agent)
+### 前端 (justime_agent)
 已有测试：
 - `src/lib/api/__tests__/proxy.test.ts` - API代理认证处理
 - `src/lib/api/__tests__/config.test.ts` - API配置
@@ -30,7 +30,7 @@
 - API Routes: auth/*, calendar/*, admin/*
 - Utils: time.ts, api-logger.ts, auth-utils.ts
 
-### 后端 (jushi_backend)
+### 后端 (justime_backend)
 已有测试：
 - `tests/services/test_user_service_auth_logging.py` - 用户服务认证日志
 - `tests/services/test_chat_endpoint_session_auth.py` - 聊天端点会话认证
@@ -47,8 +47,8 @@
 ## Task 1: 前端 Hooks 测试 - useAuth
 
 **Files:**
-- Create: `jushi_agent/src/hooks/__tests__/useAuth.test.ts`
-- Test: `jushi_agent/src/hooks/useAuth.ts`
+- Create: `justime_agent/src/hooks/__tests__/useAuth.test.ts`
+- Test: `justime_agent/src/hooks/useAuth.ts`
 
 **Step 1: Write the failing test**
 
@@ -128,13 +128,13 @@ describe('useAuth', () => {
 
 **Step 2: Run test to verify it fails**
 
-Run: `cd jushi_agent && npm test -- src/hooks/__tests__/useAuth.test.ts`
+Run: `cd justime_agent && npm test -- src/hooks/__tests__/useAuth.test.ts`
 Expected: Tests may pass or fail depending on hook implementation
 
 **Step 3: Commit**
 
 ```bash
-git add jushi_agent/src/hooks/__tests__/useAuth.test.ts
+git add justime_agent/src/hooks/__tests__/useAuth.test.ts
 git commit -m "test: add useAuth hook tests"
 ```
 
@@ -143,8 +143,8 @@ git commit -m "test: add useAuth hook tests"
 ## Task 2: 前端 Hooks 测试 - useLLMConfig
 
 **Files:**
-- Create: `jushi_agent/src/hooks/__tests__/useLLMConfig.test.ts`
-- Test: `jushi_agent/src/hooks/useLLMConfig.ts`
+- Create: `justime_agent/src/hooks/__tests__/useLLMConfig.test.ts`
+- Test: `justime_agent/src/hooks/useLLMConfig.ts`
 
 **Step 1: Write the failing test**
 
@@ -238,12 +238,12 @@ describe('useLLMConfig', () => {
 
 **Step 2: Run test to verify**
 
-Run: `cd jushi_agent && npm test -- src/hooks/__tests__/useLLMConfig.test.ts`
+Run: `cd justime_agent && npm test -- src/hooks/__tests__/useLLMConfig.test.ts`
 
 **Step 3: Commit**
 
 ```bash
-git add jushi_agent/src/hooks/__tests__/useLLMConfig.test.ts
+git add justime_agent/src/hooks/__tests__/useLLMConfig.test.ts
 git commit -m "test: add useLLMConfig hook tests"
 ```
 
@@ -252,8 +252,8 @@ git commit -m "test: add useLLMConfig hook tests"
 ## Task 3: 前端 Hooks 测试 - useChatSessions
 
 **Files:**
-- Create: `jushi_agent/src/hooks/__tests__/useChatSessions.test.ts`
-- Test: `jushi_agent/src/hooks/useChatSessions.ts`
+- Create: `justime_agent/src/hooks/__tests__/useChatSessions.test.ts`
+- Test: `justime_agent/src/hooks/useChatSessions.ts`
 
 **Step 1: Write the failing test**
 
@@ -327,12 +327,12 @@ describe('useChatSessions', () => {
 
 **Step 2: Run test to verify**
 
-Run: `cd jushi_agent && npm test -- src/hooks/__tests__/useChatSessions.test.ts`
+Run: `cd justime_agent && npm test -- src/hooks/__tests__/useChatSessions.test.ts`
 
 **Step 3: Commit**
 
 ```bash
-git add jushi_agent/src/hooks/__tests__/useChatSessions.test.ts
+git add justime_agent/src/hooks/__tests__/useChatSessions.test.ts
 git commit -m "test: add useChatSessions hook tests"
 ```
 
@@ -341,12 +341,12 @@ git commit -m "test: add useChatSessions hook tests"
 ## Task 4: 前端 Utils 测试 - time.ts
 
 **Files:**
-- Create: `jushi_agent/src/lib/utils/__tests__/time.test.ts`
-- Test: `jushi_agent/src/lib/utils/time.ts`
+- Create: `justime_agent/src/lib/utils/__tests__/time.test.ts`
+- Test: `justime_agent/src/lib/utils/time.ts`
 
 **Step 1: Read the time.ts file**
 
-Run: Read `jushi_agent/src/lib/utils/time.ts`
+Run: Read `justime_agent/src/lib/utils/time.ts`
 
 **Step 2: Write the failing test**
 
@@ -427,12 +427,12 @@ describe('time utils', () => {
 
 **Step 3: Run test to verify**
 
-Run: `cd jushi_agent && npm test -- src/lib/utils/__tests__/time.test.ts`
+Run: `cd justime_agent && npm test -- src/lib/utils/__tests__/time.test.ts`
 
 **Step 4: Commit**
 
 ```bash
-git add jushi_agent/src/lib/utils/__tests__/time.test.ts
+git add justime_agent/src/lib/utils/__tests__/time.test.ts
 git commit -m "test: add time utils tests"
 ```
 
@@ -441,12 +441,12 @@ git commit -m "test: add time utils tests"
 ## Task 5: 前端 API 路由测试 - Auth Routes
 
 **Files:**
-- Create: `jushi_agent/src/app/api/auth/__tests__/login.test.ts`
-- Create: `jushi_agent/src/app/api/auth/__tests__/register.test.ts`
-- Create: `jushi_agent/src/app/api/auth/__tests__/refresh.test.ts`
-- Test: `jushi_agent/src/app/api/auth/login/route.ts`
-- Test: `jushi_agent/src/app/api/auth/register/route.ts`
-- Test: `jushi_agent/src/app/api/auth/refresh/route.ts`
+- Create: `justime_agent/src/app/api/auth/__tests__/login.test.ts`
+- Create: `justime_agent/src/app/api/auth/__tests__/register.test.ts`
+- Create: `justime_agent/src/app/api/auth/__tests__/refresh.test.ts`
+- Test: `justime_agent/src/app/api/auth/login/route.ts`
+- Test: `justime_agent/src/app/api/auth/register/route.ts`
+- Test: `justime_agent/src/app/api/auth/refresh/route.ts`
 
 **Step 1: Write the failing test for login**
 
@@ -517,12 +517,12 @@ describe('POST /api/auth/login', () => {
 
 **Step 2: Run test**
 
-Run: `cd jushi_agent && npm test -- src/app/api/auth/__tests__/login.test.ts`
+Run: `cd justime_agent && npm test -- src/app/api/auth/__tests__/login.test.ts`
 
 **Step 3: Commit**
 
 ```bash
-git add jushi_agent/src/app/api/auth/__tests__/
+git add justime_agent/src/app/api/auth/__tests__/
 git commit -m "test: add auth API route tests"
 ```
 
@@ -531,12 +531,12 @@ git commit -m "test: add auth API route tests"
 ## Task 6: 后端 Service 测试 - SecurityService
 
 **Files:**
-- Create: `jushi_backend/tests/services/test_security_service.py`
-- Test: `jushi_backend/app/services/security_service.py`
+- Create: `justime_backend/tests/services/test_security_service.py`
+- Test: `justime_backend/app/services/security_service.py`
 
 **Step 1: Read the security_service.py file**
 
-Run: Read `jushi_backend/app/services/security_service.py`
+Run: Read `justime_backend/app/services/security_service.py`
 
 **Step 2: Write the failing test**
 
@@ -618,12 +618,12 @@ if __name__ == "__main__":
 
 **Step 3: Run test**
 
-Run: `cd jushi_backend && python -m pytest tests/services/test_security_service.py -v`
+Run: `cd justime_backend && python -m pytest tests/services/test_security_service.py -v`
 
 **Step 4: Commit**
 
 ```bash
-git add jushi_backend/tests/services/test_security_service.py
+git add justime_backend/tests/services/test_security_service.py
 git commit -m "test: add security service tests"
 ```
 
@@ -632,12 +632,12 @@ git commit -m "test: add security service tests"
 ## Task 7: 后端 Service 测试 - SessionService
 
 **Files:**
-- Create: `jushi_backend/tests/services/test_session_service.py`
-- Test: `jushi_backend/app/services/session_service.py`
+- Create: `justime_backend/tests/services/test_session_service.py`
+- Test: `justime_backend/app/services/session_service.py`
 
 **Step 1: Read the session_service.py file**
 
-Run: Read `jushi_backend/app/services/session_service.py`
+Run: Read `justime_backend/app/services/session_service.py`
 
 **Step 2: Write the failing test**
 
@@ -724,12 +724,12 @@ if __name__ == "__main__":
 
 **Step 3: Run test**
 
-Run: `cd jushi_backend && python -m pytest tests/services/test_session_service.py -v`
+Run: `cd justime_backend && python -m pytest tests/services/test_session_service.py -v`
 
 **Step 4: Commit**
 
 ```bash
-git add jushi_backend/tests/services/test_session_service.py
+git add justime_backend/tests/services/test_session_service.py
 git commit -m "test: add session service tests"
 ```
 
@@ -738,12 +738,12 @@ git commit -m "test: add session service tests"
 ## Task 8: 后端 Business 测试 - AuthBusiness
 
 **Files:**
-- Create: `jushi_backend/tests/business/test_auth_business.py`
-- Test: `jushi_backend/app/business/auth_business.py`
+- Create: `justime_backend/tests/business/test_auth_business.py`
+- Test: `justime_backend/app/business/auth_business.py`
 
 **Step 1: Read the auth_business.py file**
 
-Run: Read `jushi_backend/app/business/auth_business.py`
+Run: Read `justime_backend/app/business/auth_business.py`
 
 **Step 2: Write the failing test**
 
@@ -886,12 +886,12 @@ if __name__ == "__main__":
 
 **Step 3: Run test**
 
-Run: `cd jushi_backend && python -m pytest tests/business/test_auth_business.py -v`
+Run: `cd justime_backend && python -m pytest tests/business/test_auth_business.py -v`
 
 **Step 4: Commit**
 
 ```bash
-git add jushi_backend/tests/business/test_auth_business.py
+git add justime_backend/tests/business/test_auth_business.py
 git commit -m "test: add auth business tests"
 ```
 
@@ -900,12 +900,12 @@ git commit -m "test: add auth business tests"
 ## Task 9: 后端 Business 测试 - ChatBusiness
 
 **Files:**
-- Create: `jushi_backend/tests/business/test_chat_business.py`
-- Test: `jushi_backend/app/business/chat_business.py`
+- Create: `justime_backend/tests/business/test_chat_business.py`
+- Test: `justime_backend/app/business/chat_business.py`
 
 **Step 1: Read the chat_business.py file**
 
-Run: Read `jushi_backend/app/business/chat_business.py`
+Run: Read `justime_backend/app/business/chat_business.py`
 
 **Step 2: Write the failing test**
 
@@ -1006,12 +1006,12 @@ if __name__ == "__main__":
 
 **Step 3: Run test**
 
-Run: `cd jushi_backend && python -m pytest tests/business/test_chat_business.py -v`
+Run: `cd justime_backend && python -m pytest tests/business/test_chat_business.py -v`
 
 **Step 4: Commit**
 
 ```bash
-git add jushi_backend/tests/business/test_chat_business.py
+git add justime_backend/tests/business/test_chat_business.py
 git commit -m "test: add chat business tests"
 ```
 
@@ -1020,12 +1020,12 @@ git commit -m "test: add chat business tests"
 ## Task 10: 后端 Business 测试 - AdminBusiness
 
 **Files:**
-- Create: `jushi_backend/tests/business/test_admin_business.py`
-- Test: `jushi_backend/app/business/admin_business.py`
+- Create: `justime_backend/tests/business/test_admin_business.py`
+- Test: `justime_backend/app/business/admin_business.py`
 
 **Step 1: Read the admin_business.py file**
 
-Run: Read `jushi_backend/app/business/admin_business.py`
+Run: Read `justime_backend/app/business/admin_business.py`
 
 **Step 2: Write the failing test**
 
@@ -1119,12 +1119,12 @@ if __name__ == "__main__":
 
 **Step 3: Run test**
 
-Run: `cd jushi_backend && python -m pytest tests/business/test_admin_business.py -v`
+Run: `cd justime_backend && python -m pytest tests/business/test_admin_business.py -v`
 
 **Step 4: Commit**
 
 ```bash
-git add jushi_backend/tests/business/test_admin_business.py
+git add justime_backend/tests/business/test_admin_business.py
 git commit -m "test: add admin business tests"
 ```
 
@@ -1133,10 +1133,10 @@ git commit -m "test: add admin business tests"
 ## Task 11: 前端组件测试 - Auth Forms
 
 **Files:**
-- Create: `jushi_agent/src/components/auth/__tests__/LoginForm.test.tsx`
-- Create: `jushi_agent/src/components/auth/__tests__/RegisterForm.test.tsx`
-- Test: `jushi_agent/src/components/auth/LoginForm.tsx`
-- Test: `jushi_agent/src/components/auth/RegisterForm.tsx`
+- Create: `justime_agent/src/components/auth/__tests__/LoginForm.test.tsx`
+- Create: `justime_agent/src/components/auth/__tests__/RegisterForm.test.tsx`
+- Test: `justime_agent/src/components/auth/LoginForm.tsx`
+- Test: `justime_agent/src/components/auth/RegisterForm.tsx`
 
 **Step 1: Write the failing test for LoginForm**
 
@@ -1230,12 +1230,12 @@ describe('LoginForm', () => {
 
 **Step 2: Run test**
 
-Run: `cd jushi_agent && npm test -- src/components/auth/__tests__/LoginForm.test.tsx`
+Run: `cd justime_agent && npm test -- src/components/auth/__tests__/LoginForm.test.tsx`
 
 **Step 3: Commit**
 
 ```bash
-git add jushi_agent/src/components/auth/__tests__/
+git add justime_agent/src/components/auth/__tests__/
 git commit -m "test: add auth form component tests"
 ```
 
@@ -1244,8 +1244,8 @@ git commit -m "test: add auth form component tests"
 ## Task 12: 添加测试覆盖率配置
 
 **Files:**
-- Modify: `jushi_agent/package.json`
-- Modify: `jushi_agent/jest.config.js`
+- Modify: `justime_agent/package.json`
+- Modify: `justime_agent/jest.config.js`
 
 **Step 1: Update jest.config.js for coverage**
 
@@ -1297,12 +1297,12 @@ module.exports = createJestConfig(customJestConfig)
 
 **Step 3: Run coverage report**
 
-Run: `cd jushi_agent && npm run test:coverage`
+Run: `cd justime_agent && npm run test:coverage`
 
 **Step 4: Commit**
 
 ```bash
-git add jushi_agent/jest.config.js jushi_agent/package.json
+git add justime_agent/jest.config.js justime_agent/package.json
 git commit -m "chore: configure test coverage thresholds and reporting"
 ```
 
@@ -1311,8 +1311,8 @@ git commit -m "chore: configure test coverage thresholds and reporting"
 ## Task 13: 添加后端 pytest 配置
 
 **Files:**
-- Create: `jushi_backend/pytest.ini`
-- Create: `jushi_backend/requirements-test.txt`
+- Create: `justime_backend/pytest.ini`
+- Create: `justime_backend/requirements-test.txt`
 
 **Step 1: Create pytest.ini**
 
@@ -1342,7 +1342,7 @@ httpx>=0.24.0
 **Step 3: Commit**
 
 ```bash
-git add jushi_backend/pytest.ini jushi_backend/requirements-test.txt
+git add justime_backend/pytest.ini justime_backend/requirements-test.txt
 git commit -m "chore: add pytest configuration and test dependencies"
 ```
 
@@ -1362,7 +1362,7 @@ git commit -m "chore: add pytest configuration and test dependencies"
 
 本文档描述了聚思项目的测试策略和指南。
 
-## 前端测试 (jushi_agent)
+## 前端测试 (justime_agent)
 
 ### 技术栈
 - Jest - 测试运行器
@@ -1416,7 +1416,7 @@ src/
 - 函数覆盖率: ≥ 50%
 - 行覆盖率: ≥ 50%
 
-## 后端测试 (jushi_backend)
+## 后端测试 (justime_backend)
 
 ### 技术栈
 - pytest - 测试运行器
@@ -1490,14 +1490,14 @@ git commit -m "docs: add testing guide documentation"
 
 # 前端测试
 echo "Running frontend tests..."
-cd jushi_agent
+cd justime_agent
 npm ci
 npm run test:ci
 FRONTEND_EXIT=$?
 
 # 后端测试
 echo "Running backend tests..."
-cd ../jushi_backend
+cd ../justime_backend
 pip install -r requirements-test.txt
 pip install -r requirements.txt
 pytest --cov=app --cov-report=xml --cov-report=html
@@ -1528,7 +1528,7 @@ git commit -m "chore: add unified test runner script"
 
 ## Summary
 
-This plan establishes comprehensive test coverage for the Jushi project:
+This plan establishes comprehensive test coverage for the Justime project:
 
 **Frontend Tests Added:**
 1. useAuth hook tests

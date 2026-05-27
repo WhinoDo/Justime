@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-NGROK_BIN="${NGROK_BIN:-$ROOT_DIR/jushi_agent/node_modules/.bin/ngrok}"
+NGROK_BIN="${NGROK_BIN:-$ROOT_DIR/justime_agent/node_modules/.bin/ngrok}"
 TARGET_PORT="${1:-8080}"
 LOG_DIR="$ROOT_DIR/.agent/ngrok"
 PID_FILE="$LOG_DIR/ngrok-${TARGET_PORT}.pid"
@@ -13,7 +13,7 @@ mkdir -p "$LOG_DIR"
 
 if [[ ! -x "$NGROK_BIN" ]]; then
   echo "ERROR: ngrok not found at $NGROK_BIN"
-  echo "Run: cd $ROOT_DIR/jushi_agent && npm ci"
+  echo "Run: cd $ROOT_DIR/justime_agent && npm ci"
   exit 1
 fi
 

@@ -1,4 +1,4 @@
-# Jushi (聚时) — Multica Issue 编排方案
+# Justime (聚时) — Multica Issue 编排方案
 
 > 基于 `parent_issue_id` 依赖链 + `agent_reviewer` 自动 QA 的流水线式项目推进方案。
 > 所有子 Issue 分配给 **执行工程师 GLM-5.0**，Daemon 调度器按依赖顺序自动执行。
@@ -49,7 +49,7 @@ Phase-6 (移动端与部署收尾)      ← parent: Phase-5
 | 字段 | 值 |
 |------|-----|
 | **title** | `[安全-P0] 修复客户端 userId 授权绕过漏洞` |
-| **description** | 日历与文档 API 路由信任客户端传入的 userId，允许跨用户访问。需在所有涉及 userId 的 BFF 路由与后端 endpoint 中，从 JWT token 提取真实用户身份，忽略客户端传入的 userId 参数。涉及文件：`jushi_agent/src/app/api/calendar/events/*/route.ts`、`jushi_agent/src/app/api/knowledge/*/route.ts`、`jushi_backend/app/api/v1/endpoints/calendar.py`、`jushi_backend/app/api/v1/endpoints/knowledge.py`。 |
+| **description** | 日历与文档 API 路由信任客户端传入的 userId，允许跨用户访问。需在所有涉及 userId 的 BFF 路由与后端 endpoint 中，从 JWT token 提取真实用户身份，忽略客户端传入的 userId 参数。涉及文件：`justime_agent/src/app/api/calendar/events/*/route.ts`、`justime_agent/src/app/api/knowledge/*/route.ts`、`justime_backend/app/api/v1/endpoints/calendar.py`、`justime_backend/app/api/v1/endpoints/knowledge.py`。 |
 | **assignee** | `GLM-5.0` |
 | **agent_reviewer** | `security-auditor` |
 | **labels** | `security`, `P0` |
@@ -88,7 +88,7 @@ Phase-6 (移动端与部署收尾)      ← parent: Phase-5
 | 字段 | 值 |
 |------|-----|
 | **title** | `[安全-P0] 前端 Token 校验增强 — 验证有效性而非仅检查存在性` |
-| **description** | 当前前端 `AuthGuard` 和 `AuthService` 仅检查 token 是否存在，不验证其有效性。需：1) 在前端添加 `/auth/me` 调用验证 token 有效性；2) 当返回 401 时自动触发 refresh 流程；3) refresh 失败则重定向到登录页；4) 添加 token 过期前的主动刷新机制。涉及文件：`jushi_agent/src/components/auth/AuthGuard.tsx`、`jushi_agent/src/lib/auth/AuthService.ts`。 |
+| **description** | 当前前端 `AuthGuard` 和 `AuthService` 仅检查 token 是否存在，不验证其有效性。需：1) 在前端添加 `/auth/me` 调用验证 token 有效性；2) 当返回 401 时自动触发 refresh 流程；3) refresh 失败则重定向到登录页；4) 添加 token 过期前的主动刷新机制。涉及文件：`justime_agent/src/components/auth/AuthGuard.tsx`、`justime_agent/src/lib/auth/AuthService.ts`。 |
 | **assignee** | `GLM-5.0` |
 | **agent_reviewer** | `security-auditor` |
 | **labels** | `security`, `P0` |
@@ -101,7 +101,7 @@ Phase-6 (移动端与部署收尾)      ← parent: Phase-5
 | 字段 | 值 |
 |------|-----|
 | **title** | `[Bug-P0] 修复 validators.py 中 HTTP_400_REQUEST 拼写错误` |
-| **description** | `jushi_backend/app/core/validators.py` 中使用了 `status.HTTP_400_REQUEST`，正确应为 `status.HTTP_400_BAD_REQUEST`。此拼写错误会导致运行时 AttributeError。需全局搜索确认无其他类似错误。 |
+| **description** | `justime_backend/app/core/validators.py` 中使用了 `status.HTTP_400_REQUEST`，正确应为 `status.HTTP_400_BAD_REQUEST`。此拼写错误会导致运行时 AttributeError。需全局搜索确认无其他类似错误。 |
 | **assignee** | `GLM-5.0` |
 | **agent_reviewer** | `code-reviewer` |
 | **labels** | `bug`, `P0` |
@@ -114,7 +114,7 @@ Phase-6 (移动端与部署收尾)      ← parent: Phase-5
 | 字段 | 值 |
 |------|-----|
 | **title** | `[规范-P0] 统一错误处理 — 消除 HTTP 200 + success:false 反模式` |
-| **description** | 部分端点返回 HTTP 200 + `{success: false, error: ...}`，另一部分使用 HTTPException。需：1) 定义统一错误响应模型 `ErrorResponse`；2) 所有业务错误使用 HTTPException + 正确状态码；3) 添加全局异常处理器确保格式一致；4) 更新前端错误处理逻辑适配新格式。涉及文件：`jushi_backend/app/core/exceptions.py`、所有 endpoints 文件。 |
+| **description** | 部分端点返回 HTTP 200 + `{success: false, error: ...}`，另一部分使用 HTTPException。需：1) 定义统一错误响应模型 `ErrorResponse`；2) 所有业务错误使用 HTTPException + 正确状态码；3) 添加全局异常处理器确保格式一致；4) 更新前端错误处理逻辑适配新格式。涉及文件：`justime_backend/app/core/exceptions.py`、所有 endpoints 文件。 |
 | **assignee** | `GLM-5.0` |
 | **agent_reviewer** | `code-reviewer` |
 | **labels** | `规范`, `P0` |
@@ -142,7 +142,7 @@ Phase-6 (移动端与部署收尾)      ← parent: Phase-5
 | 字段 | 值 |
 |------|-----|
 | **title** | `[架构-P1] 拆分 Chat 业务单体 (1485行 → 4 模块)` |
-| **description** | `jushi_backend/app/business/chat.py` 是 1485 行的单体文件。拆分为：1) `chat_router.py` — 请求路由与参数校验；2) `chat_executor.py` — LLM 调用与流式响应；3) `chat_persistence.py` — 消息/会话持久化；4) `chat_assembler.py` — 响应组装与任务分解集成。保持所有现有功能不变，仅做结构重组。 |
+| **description** | `justime_backend/app/business/chat.py` 是 1485 行的单体文件。拆分为：1) `chat_router.py` — 请求路由与参数校验；2) `chat_executor.py` — LLM 调用与流式响应；3) `chat_persistence.py` — 消息/会话持久化；4) `chat_assembler.py` — 响应组装与任务分解集成。保持所有现有功能不变，仅做结构重组。 |
 | **assignee** | `GLM-5.0` |
 | **agent_reviewer** | `architecture-designer` |
 | **labels** | `architecture`, `P1` |
@@ -155,7 +155,7 @@ Phase-6 (移动端与部署收尾)      ← parent: Phase-5
 | 字段 | 值 |
 |------|-----|
 | **title** | `[架构-P1] 统一前端 API 调用架构 — 消除直连 MongoDB 路径` |
-| **description** | 当前前端部分 API 路由（`api/database/*`、`api/documents`）直接查询 MongoDB，其余代理到后端。需：1) 将所有直接 MongoDB 访问迁移为后端 API 代理；2) 删除 `jushi_agent/src/lib/database/` 目录；3) 统一使用 `api/proxy.ts` 的代理模式；4) 更新所有前端 hooks 中的 API 调用路径。 |
+| **description** | 当前前端部分 API 路由（`api/database/*`、`api/documents`）直接查询 MongoDB，其余代理到后端。需：1) 将所有直接 MongoDB 访问迁移为后端 API 代理；2) 删除 `justime_agent/src/lib/database/` 目录；3) 统一使用 `api/proxy.ts` 的代理模式；4) 更新所有前端 hooks 中的 API 调用路径。 |
 | **assignee** | `GLM-5.0` |
 | **agent_reviewer** | `architecture-designer` |
 | **labels** | `architecture`, `P1` |
@@ -168,7 +168,7 @@ Phase-6 (移动端与部署收尾)      ← parent: Phase-5
 | 字段 | 值 |
 |------|-----|
 | **title** | `[安全-P1] 收紧 CORS 策略 — 限制允许的 Methods 与 Headers` |
-| **description** | 后端 CORS 配置允许所有方法和头部。需：1) 明确列出允许的 Origins（从环境变量读取）；2) 限制 Methods 为实际使用的 GET/POST/PUT/PATCH/DELETE；3) 限制 Headers 为 Content-Type/Authorization/X-CSRF-Token；4) 生产环境禁止 `allow_origins=["*"]`。涉及文件：`jushi_backend/app/core/middleware.py`。 |
+| **description** | 后端 CORS 配置允许所有方法和头部。需：1) 明确列出允许的 Origins（从环境变量读取）；2) 限制 Methods 为实际使用的 GET/POST/PUT/PATCH/DELETE；3) 限制 Headers 为 Content-Type/Authorization/X-CSRF-Token；4) 生产环境禁止 `allow_origins=["*"]`。涉及文件：`justime_backend/app/core/middleware.py`。 |
 | **assignee** | `GLM-5.0` |
 | **agent_reviewer** | `security-auditor` |
 | **labels** | `security`, `P1` |
@@ -194,7 +194,7 @@ Phase-6 (移动端与部署收尾)      ← parent: Phase-5
 | 字段 | 值 |
 |------|-----|
 | **title** | `[功能-P1] 将 Rate Limiter 接入 FastAPI 中间件链` |
-| **description** | `jushi_backend/app/core/rate_limiter.py` 已实现但未集成。需：1) 在 `app/core/middleware.py` 中注册 rate limiter 中间件；2) 按端点配置不同限速策略（auth 端点严格、chat 端点适中、健康检查豁免）；3) 将存储后端从内存迁移到 Redis（为 Phase-3 的 Redis 集成做准备）。 |
+| **description** | `justime_backend/app/core/rate_limiter.py` 已实现但未集成。需：1) 在 `app/core/middleware.py` 中注册 rate limiter 中间件；2) 按端点配置不同限速策略（auth 端点严格、chat 端点适中、健康检查豁免）；3) 将存储后端从内存迁移到 Redis（为 Phase-3 的 Redis 集成做准备）。 |
 | **assignee** | `GLM-5.0` |
 | **agent_reviewer** | `code-reviewer` |
 | **labels** | `feature`, `P1` |
@@ -248,7 +248,7 @@ Phase-6 (移动端与部署收尾)      ← parent: Phase-5
 | 字段 | 值 |
 |------|-----|
 | **title** | `[性能-P1] 知识库文件流式上传 — 替代全量内存读取` |
-| **description** | 当前知识库上传将整个文件读入内存（50MB 上限），大文件可能导致 OOM。需：1) 后端使用 `StreamingResponse`/`UploadFile` 流式接收；2) 磁盘缓冲写入代替内存缓冲；3) 添加上传进度回调；4) 前端添加上传进度条组件。涉及文件：`jushi_backend/app/api/v1/endpoints/knowledge.py`、`jushi_backend/app/services/knowledge_service.py`。 |
+| **description** | 当前知识库上传将整个文件读入内存（50MB 上限），大文件可能导致 OOM。需：1) 后端使用 `StreamingResponse`/`UploadFile` 流式接收；2) 磁盘缓冲写入代替内存缓冲；3) 添加上传进度回调；4) 前端添加上传进度条组件。涉及文件：`justime_backend/app/api/v1/endpoints/knowledge.py`、`justime_backend/app/services/knowledge_service.py`。 |
 | **assignee** | `GLM-5.0` |
 | **agent_reviewer** | `code-reviewer` |
 | **labels** | `performance`, `P1` |
@@ -274,7 +274,7 @@ Phase-6 (移动端与部署收尾)      ← parent: Phase-5
 | 字段 | 值 |
 |------|-----|
 | **title** | `[配置-P1] MongoDB 连接配置优化 — 移除 directConnection 并添加连接池` |
-| **description** | 生产配置中使用 `directConnection=True`，不适合副本集部署。需：1) 移除 `directConnection` 参数，通过环境变量控制；2) 配置连接池参数（maxPoolSize、minPoolSize、maxIdleTimeMS）；3) 添加连接超时与重试策略；4) 副本集 Read Preference 配置。涉及文件：`jushi_backend/app/database/database.py`。 |
+| **description** | 生产配置中使用 `directConnection=True`，不适合副本集部署。需：1) 移除 `directConnection` 参数，通过环境变量控制；2) 配置连接池参数（maxPoolSize、minPoolSize、maxIdleTimeMS）；3) 添加连接超时与重试策略；4) 副本集 Read Preference 配置。涉及文件：`justime_backend/app/database/database.py`。 |
 | **assignee** | `GLM-5.0` |
 | **agent_reviewer** | `code-reviewer` |
 | **labels** | `configuration`, `P1` |

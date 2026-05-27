@@ -1,11 +1,11 @@
-# Docker MongoDB `jushi-agent` 数据库表结构
+# Docker MongoDB `justime-agent` 数据库表结构
 
 > **文件作用**: 记录本地 Docker 中的 MongoDB 表结构与示例数据  
 > **创建时间**: 2026-02-24 16:24
 
 ---
 
-以下是我从您的 Docker 容器 `mongodb` 中，通过 `mongosh` 提取的 `jushi-agent` 数据库中各个集合（Collection）的结构及单条示例数据：
+以下是我从您的 Docker 容器 `mongodb` 中，通过 `mongosh` 提取的 `justime-agent` 数据库中各个集合（Collection）的结构及单条示例数据：
 
 ## 1. `system_llm_configs` (系统平台级模型配置库)
 ```json

@@ -13,7 +13,7 @@ x-healthcheck-defaults: &healthcheck-defaults
 services:
   gateway:
     image: caddy:2
-    container_name: jushi-gateway
+    container_name: justime-gateway
     restart: unless-stopped
     depends_on:
       backend:
@@ -47,9 +47,9 @@ services:
 
   frontend:
     build:
-      context: ${JUSHI_REPO_ROOT}/jushi_agent
+      context: ${JUSTIME_REPO_ROOT}/justime_agent
       dockerfile: ../deployment/homelab/frontend/Dockerfile
-    container_name: jushi-frontend
+    container_name: justime-frontend
     restart: unless-stopped
     env_file:
       - .env
@@ -94,9 +94,9 @@ services:
 
   backend:
     build:
-      context: ${JUSHI_REPO_ROOT}/jushi_backend
+      context: ${JUSTIME_REPO_ROOT}/justime_backend
       dockerfile: ../deployment/homelab/backend/Dockerfile
-    container_name: jushi-backend
+    container_name: justime-backend
     restart: unless-stopped
     env_file:
       - .env
@@ -124,7 +124,7 @@ services:
       NOTEBOOKLM_CLI_PATH: ${NOTEBOOKLM_CLI_PATH}
       OPENCLAW_ENABLED: ${OPENCLAW_ENABLED:-true}
       OPENCLAW_TIMEOUT_SECONDS: ${OPENCLAW_TIMEOUT_SECONDS:-180}
-      OPENCLAW_SESSION_PREFIX: ${OPENCLAW_SESSION_PREFIX:-jushi}
+      OPENCLAW_SESSION_PREFIX: ${OPENCLAW_SESSION_PREFIX:-justime}
       MINIMAX_API_KEY: ${MINIMAX_API_KEY}
     depends_on:
       mongodb:
@@ -159,13 +159,15 @@ services:
 
   mongodb:
     image: mongo:7
-    container_name: jushi-mongodb
+    container_name: justime-mongodb
     restart: unless-stopped
-    command: ["mongod", "--auth", "--bind_ip", "0.0.0.0"]
+    ports:
+      - "127.0.0.1:27017:27017"
+    command: ["mongod", "--bind_ip", "0.0.0.0"]
     environment:
       MONGO_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
       MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD}
-      MONGODB_DB_NAME: ${MONGODB_DB_NAME:-jushi-agent}
+      MONGODB_DB_NAME: ${MONGODB_DB_NAME:-justime-agent}
     shm_size: 256m
     volumes:
       - ./data/mongodb:/data/db
@@ -190,8 +192,10 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: jushi-redis
+    container_name: justime-redis
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - ./data/redis:/data
@@ -217,7 +221,7 @@ services:
 
   openclaw:
     image: node:24-bookworm-slim
-    container_name: jushi-openclaw
+    container_name: justime-openclaw
     restart: unless-stopped
     env_file:
       - .env

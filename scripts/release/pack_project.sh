@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 设置输出文件名
-OUTPUT_FILE="jushi_deploy_package.zip"
+OUTPUT_FILE="justime_deploy_package.zip"
 
 echo "📦 开始打包项目文件..."
 
@@ -35,5 +35,5 @@ echo "📏 文件大小: $(du -h "$OUTPUT_FILE" | cut -f1)"
 echo ""
 echo "🚀 部署建议："
 echo "1. 使用 scp 将此文件上传到服务器: scp $OUTPUT_FILE user@your-server-ip:/tmp/"
-echo "2. 在服务器解压: unzip /tmp/$OUTPUT_FILE -d /var/www/jushi"
+echo "2. 在服务器解压: unzip /tmp/$OUTPUT_FILE -d /var/www/justime"
 echo "3. 按照 .agent/workflows/deploy_to_alicloud.md 指南进行配置"

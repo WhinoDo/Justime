@@ -14,8 +14,8 @@ __pycache__/
 venv/
 env/
 .venv*/
-jushi_backend/.venv*/
-jushi_backend/.venv_runtime/
+justime_backend/.venv*/
+justime_backend/.venv_runtime/
 
 # Debug files (not for production)
 debug_*.py
@@ -32,14 +32,14 @@ build/
 .qoder/
 
 # Artifacts
-jushi_deploy_package.zip
+justime_deploy_package.zip
 *.zip
 
 # Data directories
 infrastructure/mongodb/data/
 infrastructure/data/db/*
 !infrastructure/data/db/.gitkeep
-jushi_backend/app/data/documents/book-analysis/
+justime_backend/app/data/documents/book-analysis/
 
 # IDE
 .idea/
@@ -48,7 +48,7 @@ jushi_backend/app/data/documents/book-analysis/
 *.swo
 
 # Large generated exports
-jushi_backend/app/data/documents/**/exports/
+justime_backend/app/data/documents/**/exports/
 
 # Misc
 .superpowers/

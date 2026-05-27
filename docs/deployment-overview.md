@@ -21,7 +21,7 @@
            ▼               ▼               ▼
 ┌─────────────────┐ ┌─────────────┐ ┌─────────────────┐
 │   Next.js 前端   │ │  FastAPI   │ │   静态资源      │
-│  (jushi_agent)  │ │   后端      │ │   (可选 CDN)    │
+│  (justime_agent)  │ │   后端      │ │   (可选 CDN)    │
 └────────┬────────┘ └──────┬──────┘ └─────────────────┘
          │                 │
          └────────┬────────┘
@@ -63,7 +63,7 @@ docker compose up -d
 
 适合对部署有特殊要求的场景。
 
-**文档**: [部署指南](../jushi_agent/deployment-guide.md)
+**文档**: [部署指南](../justime_agent/deployment-guide.md)
 
 **组件**:
 - Nginx 反向代理
@@ -75,7 +75,7 @@ docker compose up -d
 #### 前端 (Vercel / Netlify)
 
 ```bash
-cd jushi_agent
+cd justime_agent
 vercel --prod
 ```
 
@@ -96,34 +96,34 @@ vercel --prod
 | 组件 | 文档 | 说明 |
 |------|------|------|
 | 整体架构 | 本文档 | 系统架构和部署方式概览 |
-| 手动部署 | [deployment-guide.md](../jushi_agent/deployment-guide.md) | 服务器手动部署步骤 |
+| 手动部署 | [deployment-guide.md](../justime_agent/deployment-guide.md) | 服务器手动部署步骤 |
 | Docker 部署 | [deployment/homelab/](../deployment/homelab/) | Docker Compose 一键部署 |
 | 移动端部署 | [mobile-deployment-guide.md](./mobile-deployment-guide.md) | iOS/Android 打包发布 |
 | CI/CD | [ci-cd-setup.md](./ci-cd-setup.md) | GitHub Actions 配置 |
 
 ## 环境变量配置
 
-### 前端 (jushi_agent/.env.local)
+### 前端 (justime_agent/.env.local)
 
 ```env
 NEXT_PUBLIC_BACKEND_URL=https://your-domain.com
 NEXT_PUBLIC_APP_NAME=聚石智能助手
-MONGODB_URI=mongodb://127.0.0.1:27017/jushi_agent
+MONGODB_URI=mongodb://127.0.0.1:27017/justime_agent
 JWT_SECRET=your-jwt-secret
 ```
 
-### 后端 (jushi_backend/.env)
+### 后端 (justime_backend/.env)
 
 ```env
 JWT_SECRET=your-jwt-secret
 JWT_REFRESH_SECRET=your-refresh-secret
-MONGODB_URI=mongodb://127.0.0.1:27017/jushi-agent
-MONGODB_DB_NAME=jushi-agent
+MONGODB_URI=mongodb://127.0.0.1:27017/justime-agent
+MONGODB_DB_NAME=justime-agent
 LLM_API_KEY=your-llm-api-key
 ALLOWED_ORIGINS=["https://your-domain.com"]
 ```
 
-### 移动端 (mobile/jushi_mobile/.env.local)
+### 移动端 (mobile/justime_mobile/.env.local)
 
 ```env
 EXPO_PUBLIC_API_BASE_URL=https://api.your-domain.com
@@ -151,8 +151,8 @@ docker compose logs -f backend
 docker compose logs -f frontend
 
 # systemd 部署
-sudo journalctl -u jushi-backend -f
-sudo journalctl -u jushi-agent -f
+sudo journalctl -u justime-backend -f
+sudo journalctl -u justime-agent -f
 ```
 
 ### 健康检查
@@ -169,11 +169,11 @@ curl -I https://your-domain.com
 
 ```bash
 # MongoDB 备份
-mongodump --uri="mongodb://localhost:27017/jushi-agent" --out=/backup/$(date +%Y%m%d)
+mongodump --uri="mongodb://localhost:27017/justime-agent" --out=/backup/$(date +%Y%m%d)
 
 # Docker 环境
 docker compose exec mongodb mongodump --archive=/data/backup.archive
-docker cp jushi-mongodb:/data/backup.archive ./backup.archive
+docker cp justime-mongodb:/data/backup.archive ./backup.archive
 ```
 
 ## 常见问题

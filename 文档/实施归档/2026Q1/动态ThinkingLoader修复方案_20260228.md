@@ -9,7 +9,7 @@
 
 ## 🛠️ 修改方案
 
-我们需要重写 `jushi_agent/src/components/chat/ThinkingLoader.tsx` 文件。请让 Codex 按以下逻辑修改：
+我们需要重写 `justime_agent/src/components/chat/ThinkingLoader.tsx` 文件。请让 Codex 按以下逻辑修改：
 
 ### 1. 深度扩展意图推断（更细粒度）
 不仅要检测“排期”和“搜索”，还要对常规对话、知识检索、纯代码问题进行差异化分析。

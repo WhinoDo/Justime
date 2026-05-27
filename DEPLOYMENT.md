@@ -1,6 +1,6 @@
-# Jushi 部署指南
+# Justime 部署指南
 
-本文档提供 Jushi 项目的完整部署指南，涵盖 Docker Compose、手动部署和移动端发布。
+本文档提供 Justime 项目的完整部署指南，涵盖 Docker Compose、手动部署和移动端发布。
 
 ## 目录
 
@@ -33,7 +33,7 @@
            ▼               ▼               ▼
 ┌─────────────────┐ ┌─────────────┐ ┌─────────────────┐
 │   Next.js 前端   │ │  FastAPI   │ │   OpenClaw      │
-│  (jushi_agent)  │ │   后端      │ │   (可选)         │
+│  (justime_agent)  │ │   后端      │ │   (可选)         │
 └────────┬────────┘ └──────┬──────┘ └─────────────────┘
          │                 │
          └────────┬────────┘
@@ -70,8 +70,8 @@
 
 ```bash
 # 1. 克隆代码
-git clone <repo-url> /opt/jushi
-cd /opt/jushi
+git clone <repo-url> /opt/justime
+cd /opt/justime
 
 # 2. 配置环境变量
 cd deployment/homelab
@@ -80,7 +80,7 @@ cp .env.example .env
 # 3. 编辑配置
 vim .env
 # 必须修改:
-# - JUSHI_REPO_ROOT=/opt/jushi
+# - JUSTIME_REPO_ROOT=/opt/justime
 # - MONGO_ROOT_PASSWORD (openssl rand -hex 32) - MongoDB root 密码
 # - MONGO_APP_PASSWORD (openssl rand -hex 32) - MongoDB 应用密码
 # - JWT_SECRET (openssl rand -hex 32)
@@ -134,12 +134,12 @@ docker compose down
 
 # 数据备份
 docker compose exec mongodb mongodump --archive=/data/backup.archive
-docker cp jushi-mongodb:/data/backup.archive ./backup-$(date +%Y%m%d).archive
+docker cp justime-mongodb:/data/backup.archive ./backup-$(date +%Y%m%d).archive
 ```
 
 ## 手动部署
 
-详见 [jushi_agent/deployment-guide.md](./jushi_agent/deployment-guide.md)
+详见 [justime_agent/deployment-guide.md](./justime_agent/deployment-guide.md)
 
 ### 核心步骤
 
@@ -152,22 +152,22 @@ docker cp jushi-mongodb:/data/backup.archive ./backup-$(date +%Y%m%d).archive
 2. **安装依赖**
    ```bash
    # 前端
-   cd jushi_agent && npm ci && npm run build
+   cd justime_agent && npm ci && npm run build
    
    # 后端
-   cd jushi_backend
+   cd justime_backend
    python3 -m venv .venv
    source .venv/bin/activate
    pip install -r requirements.txt
    ```
 
 3. **配置环境变量**
-   - 前端: `jushi_agent/.env.local`
-   - 后端: `jushi_backend/.env`
+   - 前端: `justime_agent/.env.local`
+   - 后端: `justime_backend/.env`
 
 4. **创建 systemd 服务**
-   - `/etc/systemd/system/jushi-backend.service`
-   - `/etc/systemd/system/jushi-agent.service`
+   - `/etc/systemd/system/justime-backend.service`
+   - `/etc/systemd/system/justime-agent.service`
 
 5. **配置 Nginx 反向代理**
 
@@ -183,7 +183,7 @@ docker cp jushi-mongodb:/data/backup.archive ./backup-$(date +%Y%m%d).archive
 ### EAS Build (推荐)
 
 ```bash
-cd mobile/jushi_mobile
+cd mobile/justime_mobile
 
 # 配置环境
 export EXPO_PUBLIC_API_BASE_URL=https://api.your-domain.com
@@ -214,7 +214,7 @@ open *.xcworkspace  # 使用 Xcode 打包
 
 ## 环境变量配置
 
-### 前端 (jushi_agent/.env.local)
+### 前端 (justime_agent/.env.local)
 
 ```env
 # 应用配置
@@ -223,7 +223,7 @@ NEXT_PUBLIC_APP_VERSION=1.0.0
 NEXT_PUBLIC_BACKEND_URL=/backend
 
 # 数据库 (认证模式)
-MONGODB_URI=mongodb://jushi_app:<MONGO_APP_PASSWORD>@mongodb:27017/jushi-agent?authSource=jushi-agent
+MONGODB_URI=mongodb://justime_app:<MONGO_APP_PASSWORD>@mongodb:27017/justime-agent?authSource=justime-agent
 
 # 安全
 JWT_SECRET=<32字符以上随机字符串>
@@ -232,7 +232,7 @@ JWT_SECRET=<32字符以上随机字符串>
 NEXTAUTH_URL=https://your-domain.com
 ```
 
-### 后端 (jushi_backend/.env)
+### 后端 (justime_backend/.env)
 
 ```env
 # 服务配置
@@ -241,8 +241,8 @@ PORT=8080
 DEBUG=false
 
 # 数据库 (认证模式)
-MONGODB_URI=mongodb://jushi_app:<MONGO_APP_PASSWORD>@mongodb:27017/jushi-agent?authSource=jushi-agent
-MONGODB_DB_NAME=jushi-agent
+MONGODB_URI=mongodb://justime_app:<MONGO_APP_PASSWORD>@mongodb:27017/justime-agent?authSource=justime-agent
+MONGODB_DB_NAME=justime-agent
 REDIS_URL=redis://redis:6379/0
 
 # 安全 (必须配置)
@@ -267,7 +267,7 @@ OPENCLAW_GATEWAY_TOKEN=<随机字符串>
 MINIMAX_API_KEY=your-minimax-key
 ```
 
-### 移动端 (mobile/jushi_mobile/.env.local)
+### 移动端 (mobile/justime_mobile/.env.local)
 
 ```env
 EXPO_PUBLIC_API_BASE_URL=https://api.your-domain.com
@@ -314,8 +314,8 @@ docker compose logs -f --tail=100 backend
 docker compose logs -f --tail=100 frontend
 
 # systemd 部署
-sudo journalctl -u jushi-backend -f
-sudo journalctl -u jushi-agent -f
+sudo journalctl -u justime-backend -f
+sudo journalctl -u justime-agent -f
 ```
 
 ### 性能监控
@@ -336,14 +336,14 @@ docker compose exec redis redis-cli info
 ```bash
 # MongoDB 备份 (认证模式)
 docker compose exec mongodb mongodump \
-  --uri="mongodb://jushi_app:${MONGO_APP_PASSWORD}@localhost:27017/jushi-agent?authSource=jushi-agent" \
+  --uri="mongodb://justime_app:${MONGO_APP_PASSWORD}@localhost:27017/justime-agent?authSource=justime-agent" \
   --archive=/data/backup.archive
-docker cp jushi-mongodb:/data/backup.archive ./backup.archive
+docker cp justime-mongodb:/data/backup.archive ./backup.archive
 
 # MongoDB 恢复
-docker cp ./backup.archive jushi-mongodb:/data/backup.archive
+docker cp ./backup.archive justime-mongodb:/data/backup.archive
 docker compose exec mongodb mongorestore \
-  --uri="mongodb://jushi_app:${MONGO_APP_PASSWORD}@localhost:27017/jushi-agent?authSource=jushi-agent" \
+  --uri="mongodb://justime_app:${MONGO_APP_PASSWORD}@localhost:27017/justime-agent?authSource=justime-agent" \
   --archive=/data/backup.archive
 ```
 
@@ -383,6 +383,6 @@ docker compose exec mongodb mongorestore \
 ## 相关文档
 
 - [部署架构说明](./docs/deployment-overview.md)
-- [手动部署指南](./jushi_agent/deployment-guide.md)
+- [手动部署指南](./justime_agent/deployment-guide.md)
 - [移动端部署指南](./docs/mobile-deployment-guide.md)
 - [CI/CD 配置](./docs/ci-cd-setup.md)

@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 PORT="${1:-8080}"
-BACKEND_DIR="$ROOT_DIR/jushi_backend"
+BACKEND_DIR="$ROOT_DIR/justime_backend"
 BACKEND_PY="$BACKEND_DIR/.venv/bin/python"
 STATE_DIR="$ROOT_DIR/.agent/runtime"
 BACKEND_PID_FILE="$STATE_DIR/backend-${PORT}.pid"

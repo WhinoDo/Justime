@@ -36,11 +36,11 @@ ssh $REMOTE_HOST "docker info | grep 'Registry Mirrors' -A 3"
 
 # 4. 创建目录
 echo "qo 📂 创建部署目录..."
-ssh $REMOTE_HOST "mkdir -p /root/jushi-mongodb"
+ssh $REMOTE_HOST "mkdir -p /root/justime-mongodb"
 
 # 5. 传输 docker-compose.yml
 echo "Cc 📤 上传 docker-compose.yml..."
-scp ./docker-compose.yml $REMOTE_HOST:/root/jushi-mongodb/docker-compose.yml
+scp ./docker-compose.yml $REMOTE_HOST:/root/justime-mongodb/docker-compose.yml
 
 # 6. 生成 .env 并传输
 echo "📝 设置 MongoDB 密码..."
@@ -56,12 +56,12 @@ MONGO_ROOT_PASSWORD=$MONGO_PASS
 EOF
 
 echo "📤 上传环境变量..."
-scp .env.temp $REMOTE_HOST:/root/jushi-mongodb/.env
+scp .env.temp $REMOTE_HOST:/root/justime-mongodb/.env
 rm .env.temp
 
 # 7. 启动服务
 echo "🐳 启动 MongoDB..."
-ssh $REMOTE_HOST "cd /root/jushi-mongodb"
+ssh $REMOTE_HOST "cd /root/justime-mongodb"
 
 # 尝试多种方式拉取镜像
 echo "⬇️ 尝试拉取镜像..."
@@ -81,7 +81,7 @@ fi
 "
 
 if [ $? -eq 0 ]; then
-    ssh $REMOTE_HOST "cd /root/jushi-mongodb && docker-compose up -d"
+    ssh $REMOTE_HOST "cd /root/justime-mongodb && docker-compose up -d"
     echo "✅ 部署完成！"
     echo "可以通过 'ssh $REMOTE_HOST \"docker ps\"' 查看状态。"
 else

@@ -4,8 +4,8 @@ from bson import ObjectId
 from datetime import datetime
 
 # Configuration
-MONGODB_URI = "mongodb://localhost:27017/jushi-agent"
-DB_NAME = "jushi-agent"
+MONGODB_URI = "mongodb://localhost:27017/justime-agent"
+DB_NAME = "justime-agent"
 
 # Sample Task Decomposition
 SAMPLE_DECOMPOSITION = {

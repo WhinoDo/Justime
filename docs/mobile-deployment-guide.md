@@ -31,7 +31,7 @@
 创建 `.env.production` 文件：
 
 ```env
-EXPO_PUBLIC_API_BASE_URL=https://api.jushi.app
+EXPO_PUBLIC_API_BASE_URL=https://api.justime.app
 EXPO_PUBLIC_ENV=production
 EXPO_PUBLIC_DEBUG=false
 EXPO_PUBLIC_ALLOW_MANUAL_API_BASE_URL=false
@@ -47,11 +47,11 @@ EXPO_PUBLIC_ANALYTICS_ENABLED=true
   "expo": {
     "version": "1.0.0",
     "android": {
-      "package": "com.jushi.mobile",
+      "package": "com.justime.mobile",
       "versionCode": 1
     },
     "ios": {
-      "bundleIdentifier": "com.jushi.mobile",
+      "bundleIdentifier": "com.justime.mobile",
       "buildNumber": "1.0.0"
     }
   }
@@ -135,11 +135,11 @@ eas submit --platform ios --latest
 #### Android 本地构建
 
 ```bash
-cd mobile/jushi_mobile
+cd mobile/justime_mobile
 
 # 1. 设置生产环境
 export EXPO_PUBLIC_ENV=production
-export EXPO_PUBLIC_API_BASE_URL=https://api.jushi.app
+export EXPO_PUBLIC_API_BASE_URL=https://api.justime.app
 
 # 2. 生成原生工程
 npx expo prebuild --platform android
@@ -159,8 +159,8 @@ cd android
 在 `android/gradle.properties` 中添加：
 
 ```properties
-MYAPP_UPLOAD_STORE_FILE=jushi-release.keystore
-MYAPP_UPLOAD_KEY_ALIAS=jushi
+MYAPP_UPLOAD_STORE_FILE=justime-release.keystore
+MYAPP_UPLOAD_KEY_ALIAS=justime
 MYAPP_UPLOAD_STORE_PASSWORD=your_store_password
 MYAPP_UPLOAD_KEY_PASSWORD=your_key_password
 ```
@@ -169,18 +169,18 @@ MYAPP_UPLOAD_KEY_PASSWORD=your_key_password
 
 ```bash
 keytool -genkeypair -v -storetype PKCS12 \
-  -keystore jushi-release.keystore \
-  -alias jushi \
+  -keystore justime-release.keystore \
+  -alias justime \
   -keyalg RSA \
   -keysize 2048 \
   -validity 10000 \
-  -dname "CN=Jushi, OU=Mobile, O=Jushi Team, L=Beijing, ST=Beijing, C=CN"
+  -dname "CN=Justime, OU=Mobile, O=Justime Team, L=Beijing, ST=Beijing, C=CN"
 ```
 
 #### iOS 本地构建
 
 ```bash
-cd mobile/jushi_mobile
+cd mobile/justime_mobile
 
 # 1. 设置生产环境
 export EXPO_PUBLIC_ENV=production
@@ -193,7 +193,7 @@ cd ios
 pod install
 
 # 4. 使用 Xcode 打开工程
-open jushi_mobile.xcworkspace
+open justime_mobile.xcworkspace
 ```
 
 在 Xcode 中：

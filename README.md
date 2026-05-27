@@ -1,14 +1,14 @@
-# Jushi (聚石)
+# Justime (聚石)
 
 AI 智能助手平台，集成对话、日程管理、知识库、书籍分析等功能。
 
 ## 项目结构
 
 ```
-jushi/
-├── jushi_agent/          # 前端 (Next.js 14)
-├── jushi_backend/        # 后端 (FastAPI)
-├── mobile/jushi_mobile/  # 移动端 (Expo / React Native)
+justime/
+├── justime_agent/          # 前端 (Next.js 14)
+├── justime_backend/        # 后端 (FastAPI)
+├── mobile/justime_mobile/  # 移动端 (Expo / React Native)
 ├── deployment/homelab/   # Docker Compose 部署配置
 ├── infrastructure/       # 本地基础设施 (MongoDB 配置)
 ├── scripts/              # 运维脚本
@@ -41,7 +41,7 @@ jushi/
 ### 前端
 
 ```bash
-cd jushi_agent
+cd justime_agent
 npm install
 npm run dev
 ```
@@ -49,7 +49,7 @@ npm run dev
 ### 后端
 
 ```bash
-cd jushi_backend
+cd justime_backend
 python -m venv venv
 source venv/bin/activate   # Windows: venv\Scripts\activate
 pip install -r requirements.txt
@@ -59,7 +59,7 @@ python start.py
 ### 移动端
 
 ```bash
-cd mobile/jushi_mobile
+cd mobile/justime_mobile
 npm install
 cp .env.local.example .env.local
 npm start
@@ -73,23 +73,23 @@ npm start
 
 ## 环境变量
 
-### 前端 (jushi_agent/.env.local)
+### 前端 (justime_agent/.env.local)
 
 ```env
 NEXT_PUBLIC_BACKEND_URL=/backend
 NEXT_PUBLIC_APP_NAME=聚石智能助手
-MONGODB_URI=mongodb://127.0.0.1:27017/jushi_agent
+MONGODB_URI=mongodb://127.0.0.1:27017/justime_agent
 JWT_SECRET=your-jwt-secret-min-32-chars
 ```
 
-### 后端 (jushi_backend/.env)
+### 后端 (justime_backend/.env)
 
 ```env
 JWT_SECRET=your-jwt-secret-min-32-chars
 JWT_REFRESH_SECRET=your-refresh-secret-min-32-chars
 ENCRYPTION_SECRET=your-encryption-secret-min-32-chars
-MONGODB_URI=mongodb://127.0.0.1:27017/jushi-agent
-MONGODB_DB_NAME=jushi-agent
+MONGODB_URI=mongodb://127.0.0.1:27017/justime-agent
+MONGODB_DB_NAME=justime-agent
 REDIS_URL=redis://127.0.0.1:6379/0
 DEEPSEEK_API_KEY=your-api-key
 ```
@@ -126,10 +126,10 @@ docker compose up -d
 
 ```bash
 # 前端
-cd jushi_agent && npm test
+cd justime_agent && npm test
 
 # 后端
-cd jushi_backend && pytest
+cd justime_backend && pytest
 ```
 
 ### CI/CD
@@ -146,7 +146,7 @@ cd jushi_backend && pytest
 | [docs/deployment-overview.md](./docs/deployment-overview.md) | 部署架构说明 |
 | [docs/mobile-deployment-guide.md](./docs/mobile-deployment-guide.md) | 移动端打包发布 |
 | [docs/ci-cd-setup.md](./docs/ci-cd-setup.md) | CI/CD 配置 |
-| [jushi_agent/deployment-guide.md](./jushi_agent/deployment-guide.md) | 手动部署步骤 |
+| [justime_agent/deployment-guide.md](./justime_agent/deployment-guide.md) | 手动部署步骤 |
 
 ## 常见问题
 

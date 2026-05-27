@@ -9,7 +9,7 @@ import sys
 # 自动切换到虚拟环境
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.dirname(os.path.dirname(SCRIPT_DIR))
-VENV_PYTHON = os.path.join(PROJECT_DIR, "jushi_backend", ".venv", "bin", "python")
+VENV_PYTHON = os.path.join(PROJECT_DIR, "justime_backend", ".venv", "bin", "python")
 
 if os.path.exists(VENV_PYTHON) and sys.executable != VENV_PYTHON:
     os.execl(VENV_PYTHON, VENV_PYTHON, *sys.argv)
@@ -24,7 +24,7 @@ BACKUP_DIR = Path(__file__).parent.parent.parent / "backups"
 LOG_DIR = Path(__file__).parent.parent.parent / "logs"
 LOG_FILE = LOG_DIR / "backup.log"
 MONGODB_URI = os.environ.get("MONGODB_URI", "mongodb://localhost:27017")
-DB_NAME = os.environ.get("MONGODB_DB_NAME", "jushi-agent")
+DB_NAME = os.environ.get("MONGODB_DB_NAME", "justime-agent")
 RETENTION_DAYS = 7  # 保留最近7天的备份
 
 

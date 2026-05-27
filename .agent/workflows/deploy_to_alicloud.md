@@ -1,8 +1,8 @@
 ---
-description: Ubuntu Server Deployment Guide for Jushi Agent
+description: Ubuntu Server Deployment Guide for Justime Agent
 ---
 
-This guide steps you through deploying the `jushi` project (Next.js Frontend + Python/FastAPI Backend + MongoDB) to an Ubuntu 22.04/20.04 server.
+This guide steps you through deploying the `justime` project (Next.js Frontend + Python/FastAPI Backend + MongoDB) to an Ubuntu 22.04/20.04 server.
 
 ## 1. Prerequisites (Server Preparation)
 
@@ -57,21 +57,21 @@ mkdir -p /var/www
 cd /var/www
 
 # 从 GitHub 克隆项目代码 (如果是私有仓库可能需要输入账号密码或通过 SSH Key)
-git clone https://github.com/zhuyx002/jushi-agent.git jushi
+git clone https://github.com/zhuyx002/justime-agent.git justime
 # 进入项目根目录
-cd jushi
+cd justime
 ```
 
 ### Option B: Upload Zip
 
 If you packed your project using `scripts/release/pack_project.sh`:
-1.  **Local**: `scp jushi_deploy_package.zip root@<IP>:/tmp/`
+1.  **Local**: `scp justime_deploy_package.zip root@<IP>:/tmp/`
 2.  **Server**:
     ```bash
-    mkdir -p /var/www/jushi
+    mkdir -p /var/www/justime
     # 将上传到临时目录的 zip 包解压到部署目录
-    unzip /tmp/jushi_deploy_package.zip -d /var/www/jushi
-    cd /var/www/jushi
+    unzip /tmp/justime_deploy_package.zip -d /var/www/justime
+    cd /var/www/justime
     ```
 
 ## 4. Backend Deployment (Python)
@@ -80,7 +80,7 @@ If you packed your project using `scripts/release/pack_project.sh`:
 
 ```bash
 # 进入后端代码目录
-cd /var/www/jushi/jushi_backend
+cd /var/www/justime/justime_backend
 
 # 1. 配置密钥环境变量
 # 复制示例配置文件为正式配置文件
@@ -107,7 +107,7 @@ pm2 start "venv/bin/python start.py" --name backend
 
 ```bash
 # 进入前端代码目录
-cd /var/www/jushi/jushi_agent
+cd /var/www/justime/justime_agent
 
 # 1. 安装 Node.js 依赖包
 npm install
@@ -129,7 +129,7 @@ pm2 startup
 Create config file:
 ```bash
 # 创建一个新的 Nginx 站点配置文件
-sudo nano /etc/nginx/sites-available/jushi
+sudo nano /etc/nginx/sites-available/justime
 ```
 
 Paste the following:
@@ -161,7 +161,7 @@ server {
 Activate site:
 ```bash
 # 创建软链接到 sites-enabled 目录，启用该站点配置
-sudo ln -s /etc/nginx/sites-available/jushi /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/justime /etc/nginx/sites-enabled/
 # 删除 Nginx 默认的 "Welcome onto Nginx" 页面配置
 sudo rm /etc/nginx/sites-enabled/default
 # 检查 Nginx 配置文件语法是否正确

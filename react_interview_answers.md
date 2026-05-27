@@ -1,6 +1,6 @@
-# React 高频面试题分析与参考回答（结合 jushi_agent 项目）
+# React 高频面试题分析与参考回答（结合 justime_agent 项目）
 
-说明：本版本不再只讲通用概念，而是结合你当前项目 `jushi_agent` 的真实代码逻辑来回答。项目栈核心是 `Next.js 14 + React 18.3 + App Router`，主要业务模块包括聊天、日历、认证、模型配置。
+说明：本版本不再只讲通用概念，而是结合你当前项目 `justime_agent` 的真实代码逻辑来回答。项目栈核心是 `Next.js 14 + React 18.3 + App Router`，主要业务模块包括聊天、日历、认证、模型配置。
 
 ## 一、整体分析
 
@@ -23,7 +23,7 @@
 **参考回答：**
 `UI = f(state)` 的核心是：界面由状态决定，状态变化后 UI 自动重算。
 
-**项目举例（jushi_agent）：**
+**项目举例（justime_agent）：**
 在 `ChatInterface` 中，`messages`、`isLoading`、`previewOpen` 是状态源。`messages` 变更后自动渲染消息气泡；`isLoading=true` 时自动显示 `ThinkingLoader`；不需要手动增删 DOM 节点。
 
 ### 2. 虚拟DOM是什么？它解决了哪些实际问题？
@@ -337,7 +337,7 @@ React 19 支持组件内声明部分 head 相关标签并统一处理。
 
 1. **定义**：它是什么。
 2. **问题**：它解决什么。
-3. **项目例子**：在 `jushi_agent` 里你怎么用。
+3. **项目例子**：在 `justime_agent` 里你怎么用。
 
 示例（回答 `useMemo`）：
 - `useMemo` 是缓存计算结果的 Hook。

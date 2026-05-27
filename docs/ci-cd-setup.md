@@ -1,6 +1,6 @@
 # CI/CD 配置指南
 
-本文档介绍 Jushi 项目的持续集成/持续部署 (CI/CD) 配置。
+本文档介绍 Justime 项目的持续集成/持续部署 (CI/CD) 配置。
 
 ## 概述
 
@@ -183,7 +183,7 @@ on:
 部署服务器需要：
 
 1. Docker 和 Docker Compose 已安装
-2. 代码已克隆到 `/opt/jushi`
+2. 代码已克隆到 `/opt/justime`
 3. `.env` 文件已配置
 4. SSH 密钥认证已配置
 
@@ -193,16 +193,16 @@ on:
 
 ```bash
 # 前端 Lint
-cd jushi_agent && npm run lint
+cd justime_agent && npm run lint
 
 # 前端类型检查
-cd jushi_agent && npx tsc --noEmit
+cd justime_agent && npx tsc --noEmit
 
 # 前端测试
-cd jushi_agent && npm test -- --coverage
+cd justime_agent && npm test -- --coverage
 
 # 后端测试
-cd jushi_backend && pytest tests/ -v --cov=app
+cd justime_backend && pytest tests/ -v --cov=app
 ```
 
 ### 使用 act 本地运行 GitHub Actions
@@ -223,8 +223,8 @@ act -j frontend-tests
 在 README.md 中添加 CI 状态徽章：
 
 ```markdown
-[![CI](https://github.com/your-org/jushi/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/jushi/actions/workflows/ci.yml)
-[![Deploy](https://github.com/your-org/jushi/actions/workflows/deploy.yml/badge.svg)](https://github.com/your-org/jushi/actions/workflows/deploy.yml)
+[![CI](https://github.com/your-org/justime/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/justime/actions/workflows/ci.yml)
+[![Deploy](https://github.com/your-org/justime/actions/workflows/deploy.yml/badge.svg)](https://github.com/your-org/justime/actions/workflows/deploy.yml)
 ```
 
 ## 故障排除

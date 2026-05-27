@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-- **文件**: `jushi_backend/app/business/chat_business.py`
+- **文件**: `justime_backend/app/business/chat_business.py`
 - **行数**: ~1540行
 - **问题**: 单个文件职责过多，难以维护和测试
 

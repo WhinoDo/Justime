@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Jushi 项目定时任务安装脚本
+# Justime 项目定时任务安装脚本
 # 使用方法: ./install_crontab.sh
 
 set -e
@@ -10,7 +10,7 @@ PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 CRONTAB_FILE="$SCRIPT_DIR/crontab.example"
 BACKUP_FILE="$SCRIPT_DIR/crontab.backup.$(date +%Y%m%d_%H%M%S)"
 
-echo "🚀 Jushi 项目定时任务安装"
+echo "🚀 Justime 项目定时任务安装"
 echo "============================"
 echo ""
 
@@ -43,7 +43,7 @@ echo "✅ 备份已保存: $BACKUP_FILE"
 
 # 替换 crontab 文件中的变量
 TEMP_CRONTAB=$(mktemp)
-sed "s|/Users/zhuyuxuan/Desktop/Code/jushi|$PROJECT_DIR|g" "$CRONTAB_FILE" > "$TEMP_CRONTAB"
+sed "s|/Users/zhuyuxuan/Desktop/Code/justime|$PROJECT_DIR|g" "$CRONTAB_FILE" > "$TEMP_CRONTAB"
 
 # 显示将要安装的任务
 echo ""

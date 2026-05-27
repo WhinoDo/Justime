@@ -1,5 +1,5 @@
 # ==============================================================================
-# Jushi Gateway Configuration (Production HTTPS)
+# Justime Gateway Configuration (Production HTTPS)
 # ==============================================================================
 #
 # This is a production-ready Caddyfile with automatic HTTPS enabled.

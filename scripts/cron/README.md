@@ -18,7 +18,7 @@
 
 ```bash
 # 进入脚本目录
-cd /Users/zhuyuxuan/Desktop/Code/jushi/scripts/cron
+cd /Users/zhuyuxuan/Desktop/Code/justime/scripts/cron
 
 # 添加执行权限
 chmod +x install_crontab.sh
@@ -86,8 +86,8 @@ bash scripts/cron/multica_issue_monitor.sh
 - **最佳实践**: TypeScript 类型、React Hooks 规范、Python 风格
 
 ### 工作流程
-1. 扫描前端代码 (`jushi_agent/src/`)
-2. 扫描后端代码 (`jushi_backend/app/`)
+1. 扫描前端代码 (`justime_agent/src/`)
+2. 扫描后端代码 (`justime_backend/app/`)
 3. 识别问题并评估严重程度
 4. 自动修复发现的问题
 5. 生成优化报告到 `docs/optimization_reports/`

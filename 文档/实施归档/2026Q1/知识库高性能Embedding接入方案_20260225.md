@@ -11,7 +11,7 @@
 ---
 
 ## 2. 依赖补充安装建议
-在后端 (`jushi_backend`) 运行以下命令，补充缺失的模型集成工具包与文件解析包：
+在后端 (`justime_backend`) 运行以下命令，补充缺失的模型集成工具包与文件解析包：
 
 ```bash
 pip install llama-index-embeddings-huggingface
@@ -22,7 +22,7 @@ pip install docx2txt pypdf  # 支持常用的 docx 和 pdf 解析
 
 ---
 
-## 3. 核心代码改造 (`jushi_backend/app/services/rag_service.py`)
+## 3. 核心代码改造 (`justime_backend/app/services/rag_service.py`)
 
 我们需要在这个服务中进行如下重构：
 1. **全局置换 Embedding 引擎**为本地 BGE 模型。
