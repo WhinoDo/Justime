@@ -6,6 +6,7 @@ Redis 客户端封装
 import json
 import logging
 import asyncio
+import secrets
 from typing import Any, Optional, Callable, TypeVar, Union
 from datetime import timedelta
 from functools import wraps
@@ -209,24 +210,37 @@ class RedisClient:
         timeout: int = 10,
         retry_interval: float = 0.1,
         max_retries: int = 50,
-    ) -> bool:
+    ) -> Optional[str]:
         if not cls.is_enabled():
-            return True
+            return None
 
         lock_key = f"lock:{lock_name}"
         for _ in range(max_retries):
-            acquired = await cls.set(lock_key, "1", ex=timeout, nx=True)
+            identifier = secrets.token_hex(16)
+            acquired = await cls.set(lock_key, identifier, ex=timeout, nx=True)
             if acquired:
-                return True
+                return identifier
             await asyncio.sleep(retry_interval)
-        return False
+        return None
 
     @classmethod
-    async def release_lock(cls, lock_name: str) -> bool:
+    async def release_lock(cls, lock_name: str, identifier: str) -> bool:
         if not cls.is_enabled():
-            return True
+            return False
         lock_key = f"lock:{lock_name}"
-        return await cls.delete(lock_key) > 0
+        try:
+            lua_script = """
+            if redis.call("get", KEYS[1]) == ARGV[1] then
+                return redis.call("del", KEYS[1])
+            else
+                return 0
+            end
+            """
+            result = await cls._client.eval(lua_script, 1, lock_key, identifier)
+            return result == 1
+        except Exception as e:
+            logger.warning(f"Redis release_lock failed for key '{lock_key}': {e}")
+            return False
 
 
 def cached(

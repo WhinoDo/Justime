@@ -69,6 +69,7 @@ class AgentService:
         self._configs_cache: Dict[str, LLMConfig] = {}
         self._default_tools = []
         self._initialized = False
+        self._last_init_time: float = 0.0
 
     def is_runtime_available(self) -> bool:
         return SMOLAGENTS_AVAILABLE
@@ -179,11 +180,15 @@ class AgentService:
 
     async def initialize(self) -> bool:
         """初始化服务（每次刷新数据库模型池，保证后台变更即时生效）。"""
+        import time
+        if self._initialized and (time.time() - self._last_init_time) < 60:
+            return len(self._models) > 0
         if not SMOLAGENTS_AVAILABLE:
             self._configs_cache = {}
             self._models = {}
             self._default_tools = []
             self._initialized = True
+            self._last_init_time = time.time()
             return False
         configs = await self._fetch_db_configs()
         self._configs_cache = configs
@@ -198,6 +203,7 @@ class AgentService:
             self._default_tools = self._init_default_tools()
 
         self._initialized = True
+        self._last_init_time = time.time()
         return len(self._models) > 0
 
     async def get_model(self, provider: Optional[str] = None) -> Optional[LiteLLMModel]:
@@ -483,7 +489,7 @@ class AgentService:
                  final_task = f"{system_prompt}\n\n【用户任务】\n{task}"
             
             # 在线程池中运行同步的 agent.run
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             run_future = loop.run_in_executor(
                 None,
                 lambda: _run_agent_with_context(

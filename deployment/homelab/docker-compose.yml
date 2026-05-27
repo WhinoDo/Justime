@@ -163,7 +163,7 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:27017:27017"
-    command: ["mongod", "--bind_ip", "0.0.0.0"]
+    command: ["mongod", "--bind_ip", "0.0.0.0", "--auth"]
     environment:
       MONGO_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
       MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD}
@@ -196,7 +196,7 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:6379:6379"
-    command: ["redis-server", "--appendonly", "yes"]
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "200mb", "--maxmemory-policy", "allkeys-lru"]
     volumes:
       - ./data/redis:/data
     tmpfs:

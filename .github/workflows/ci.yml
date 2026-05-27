@@ -227,7 +227,7 @@ jobs:
           scan-type: 'fs'
           scan-ref: '.'
           format: 'table'
-          exit-code: '0'
+          exit-code: '1'
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
@@ -279,7 +279,8 @@ jobs:
           fi
           
           if [ "${{ needs.security-scan.result }}" != "success" ]; then
-            echo "::warning::Security scan completed with findings"
+            echo "::error::Security scan completed with findings"
+            exit 1
           fi
           
           echo "=========================================="

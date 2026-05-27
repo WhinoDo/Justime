@@ -8,7 +8,7 @@ import time
 import secrets
 import hmac
 import hashlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -209,7 +209,7 @@ class CSRFMiddleware:
 
     def _generate_csrf_token(self) -> str:
         """生成 CSRF token"""
-        timestamp = int(datetime.utcnow().timestamp())
+        timestamp = int(datetime.now(timezone.utc).timestamp())
         random_bytes = secrets.token_hex(16)
         payload = f"{timestamp}:{random_bytes}"
         signature = hmac.new(
@@ -232,7 +232,7 @@ class CSRFMiddleware:
             timestamp_str, random_bytes, signature = parts
             timestamp = int(timestamp_str)
             
-            if datetime.utcnow() > datetime.utcfromtimestamp(timestamp) + timedelta(hours=settings.CSRF_TOKEN_EXPIRE_HOURS):
+            if datetime.now(timezone.utc) > datetime.fromtimestamp(timestamp, tz=timezone.utc) + timedelta(hours=settings.CSRF_TOKEN_EXPIRE_HOURS):
                 return False
             
             payload = f"{timestamp_str}:{random_bytes}"

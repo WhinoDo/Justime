@@ -22,7 +22,9 @@
     format console
   }
 
-  encode zstd gzip
+  encode zstd gzip {
+    except /backend/api/v1/chat/stream
+  }
 
   # Security headers for all responses
   header {
@@ -44,6 +46,16 @@
 
   handle_path /healthz {
     respond "ok" 200
+  }
+
+  handle_path /backend/api/v1/chat/stream {
+    reverse_proxy backend:8080 {
+      flush_interval -1
+      transport http {
+        read_timeout 300s
+        write_timeout 300s
+      }
+    }
   }
 
   handle_path /backend/* {
