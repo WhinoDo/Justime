@@ -36,9 +36,10 @@ justime_deploy_package.zip
 *.zip
 
 # Data directories
+deployment/homelab/data/
 infrastructure/mongodb/data/
 infrastructure/data/db/*
-!infrastructure/data/db/.gitkeep
+!.gitkeep
 justime_backend/app/data/documents/book-analysis/
 
 # IDE
