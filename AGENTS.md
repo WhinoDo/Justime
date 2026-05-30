@@ -8,10 +8,10 @@
 
 | 端 | 目录 | 技术栈 | 端口 |
 |----|------|--------|------|
-| Web 前端 | `jushi_agent/` | Next.js 14, React 18, Tailwind CSS, Radix UI | 3000 |
-| 后端 | `jushi_backend/` | FastAPI, Python 3.10+, Pydantic v2, Motor (async MongoDB) | 8080 |
+| Web 前端 | `justime_agent/` | Next.js 14, React 18, Tailwind CSS, Radix UI | 3000 |
+| 后端 | `justime_backend/` | FastAPI, Python 3.10+, Pydantic v2, Motor (async MongoDB) | 8080 |
 
-**数据层**: MongoDB 7 (主数据库 `jushi-agent`) + Redis 7 (缓存/会话/SSE 断点续传)
+**数据层**: MongoDB 7 (主数据库 `justime`) + Redis 7 (缓存/会话/SSE 断点续传)
 
 **网关**: Caddy 2 (反向代理 + 自动 HTTPS)
 
@@ -20,8 +20,8 @@
 ## 目录结构
 
 ```
-jushi-agent/
-├── jushi_agent/              # Web 前端 (Next.js App Router)
+justime/
+├── justime_agent/              # Web 前端 (Next.js App Router)
 │   ├── src/
 │   │   ├── app/              # 页面路由 (App Router)
 │   │   │   ├── api/          # Next.js API Routes (BFF 代理层)
@@ -47,7 +47,7 @@ jushi-agent/
 │   ├── public/               # 静态资源 (PWA icons, sw.js)
 │   └── jest.config.js        # 测试配置
 │
-├── jushi_backend/            # Python 后端 (FastAPI)
+├── justime_backend/            # Python 后端 (FastAPI)
 │   ├── app/
 │   │   ├── api/v1/endpoints/ # API 端点
 │   │   │   ├── auth.py       # 认证 (登录/注册/Token 刷新)
@@ -153,7 +153,7 @@ jushi-agent/
 ### 启动后端
 
 ```bash
-cd jushi_backend
+cd justime_backend
 python -m venv venv
 source venv/bin/activate    # Windows: venv\Scripts\activate
 pip install -r requirements.txt
@@ -167,7 +167,7 @@ python start.py
 ### 启动前端
 
 ```bash
-cd jushi_agent
+cd justime_agent
 npm install
 # 复制并配置 .env.local (参考 .env.example)
 cp .env.example .env.local
@@ -212,7 +212,7 @@ docker compose up -d
 
 ## 数据库 (MongoDB)
 
-数据库名: `jushi-agent`
+数据库名: `justime`
 
 主要集合:
 
@@ -259,7 +259,7 @@ docker compose up -d
 ### 前端测试
 
 ```bash
-cd jushi_agent
+cd justime_agent
 npm test                  # 运行所有测试
 npm run test:watch        # 监听模式
 npm run test:coverage     # 覆盖率
@@ -271,7 +271,7 @@ npm run test:coverage     # 覆盖率
 ### 后端测试
 
 ```bash
-cd jushi_backend
+cd justime_backend
 pip install pytest pytest-asyncio pytest-cov httpx
 pytest tests/ -v --tb=short
 ```
@@ -283,17 +283,17 @@ pytest tests/ -v --tb=short
 
 ### 新增后端 API 端点
 
-1. 在 `jushi_backend/app/models/` 添加 Pydantic 请求/响应模型
-2. 在 `jushi_backend/app/services/` 添加服务方法 (如有新逻辑)
-3. 在 `jushi_backend/app/business/` 添加业务编排 (如需跨服务协调)
-4. 在 `jushi_backend/app/api/v1/endpoints/` 添加路由处理函数
-5. 在 `jushi_backend/app/api/v1/api.py` 注册路由
+1. 在 `justime_backend/app/models/` 添加 Pydantic 请求/响应模型
+2. 在 `justime_backend/app/services/` 添加服务方法 (如有新逻辑)
+3. 在 `justime_backend/app/business/` 添加业务编排 (如需跨服务协调)
+4. 在 `justime_backend/app/api/v1/endpoints/` 添加路由处理函数
+5. 在 `justime_backend/app/api/v1/api.py` 注册路由
 6. 编写测试
 
 ### 新增前端页面
 
-1. 在 `jushi_agent/src/app/` 创建路由目录和 `page.tsx`
-2. 在 `jushi_agent/src/components/` 创建组件
+1. 在 `justime_agent/src/app/` 创建路由目录和 `page.tsx`
+2. 在 `justime_agent/src/components/` 创建组件
 3. 如需后端数据: 在 `src/app/api/` 添加代理路由，在 `src/lib/api/endpoints.ts` 添加端点定义
 4. 在 `src/types/` 添加类型定义
 
@@ -307,31 +307,31 @@ pytest tests/ -v --tb=short
 ### 修改数据模型 (MongoDB)
 
 - 此项目无 ORM Migration，MongoDB 是 Schema-less
-- 在 `jushi_backend/app/models/` 修改 Pydantic 模型即可
-- 在 `jushi_backend/app/database/indexes.py` 添加新索引 (如需)
+- 在 `justime_backend/app/models/` 修改 Pydantic 模型即可
+- 在 `justime_backend/app/database/indexes.py` 添加新索引 (如需)
 - 向后兼容: 新字段必须有默认值
 
 ## 关键文件索引
 
 | 用途 | 文件路径 |
 |------|----------|
-| 后端入口 | `jushi_backend/app/main.py` |
-| 后端配置 | `jushi_backend/app/core/config.py` |
-| 路由注册 | `jushi_backend/app/api/v1/api.py` |
-| 对话核心 | `jushi_backend/app/business/chat_business.py` |
-| SSE 流服务 | `jushi_backend/app/services/sse_stream_service.py` |
-| LLM 调用 | `jushi_backend/app/services/llm_service.py` |
-| 模型路由 | `jushi_backend/app/services/model_router_service.py` |
-| RAG 服务 | `jushi_backend/app/services/rag_service.py` |
-| 对话模型 | `jushi_backend/app/models/chat.py` |
-| 前端入口页 | `jushi_agent/src/app/page.tsx` |
-| 对话页面 | `jushi_agent/src/app/chat/page.tsx` |
-| 对话组件 | `jushi_agent/src/components/chat/ChatInterface.tsx` |
-| SSE Hook | `jushi_agent/src/hooks/useSSEChat.ts` |
-| 打字机组件 | `jushi_agent/src/components/chat/TypewriterMessage.tsx` |
-| API 端点 | `jushi_agent/src/lib/api/endpoints.ts` |
-| API 代理 | `jushi_agent/src/lib/api/proxy.ts` |
-| 认证 Hook | `jushi_agent/src/hooks/useAuth.ts` |
+| 后端入口 | `justime_backend/app/main.py` |
+| 后端配置 | `justime_backend/app/core/config.py` |
+| 路由注册 | `justime_backend/app/api/v1/api.py` |
+| 对话核心 | `justime_backend/app/business/chat_business.py` |
+| SSE 流服务 | `justime_backend/app/services/sse_stream_service.py` |
+| LLM 调用 | `justime_backend/app/services/llm_service.py` |
+| 模型路由 | `justime_backend/app/services/model_router_service.py` |
+| RAG 服务 | `justime_backend/app/services/rag_service.py` |
+| 对话模型 | `justime_backend/app/models/chat.py` |
+| 前端入口页 | `justime_agent/src/app/page.tsx` |
+| 对话页面 | `justime_agent/src/app/chat/page.tsx` |
+| 对话组件 | `justime_agent/src/components/chat/ChatInterface.tsx` |
+| SSE Hook | `justime_agent/src/hooks/useSSEChat.ts` |
+| 打字机组件 | `justime_agent/src/components/chat/TypewriterMessage.tsx` |
+| API 端点 | `justime_agent/src/lib/api/endpoints.ts` |
+| API 代理 | `justime_agent/src/lib/api/proxy.ts` |
+| 认证 Hook | `justime_agent/src/hooks/useAuth.ts` |
 | Docker 部署 | `deployment/homelab/docker-compose.yml` |
 | CI 配置 | `.github/workflows/ci.yml` |
 

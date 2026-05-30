@@ -29,7 +29,7 @@ jobs:
         run: pip install pip-tools
 
       - name: Verify requirements.lock
-        working-directory: jushi_backend
+        working-directory: justime_backend
         run: |
           pip-compile --output-file=requirements.lock.check requirements.in
           if ! diff -q requirements.lock requirements.lock.check > /dev/null; then
@@ -39,7 +39,7 @@ jobs:
           rm requirements.lock.check
 
       - name: Verify requirements-dev.lock
-        working-directory: jushi_backend
+        working-directory: justime_backend
         run: |
           pip-compile --output-file=requirements-dev.lock.check requirements-dev.in
           if ! diff -q requirements-dev.lock requirements-dev.lock.check > /dev/null; then
@@ -62,28 +62,28 @@ jobs:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: |
-            jushi_agent/package-lock.json
+            justime_agent/package-lock.json
       
       - name: Frontend - Install dependencies
-        working-directory: jushi_agent
+        working-directory: justime_agent
         run: npm ci
       
       - name: Frontend - Lint
-        working-directory: jushi_agent
+        working-directory: justime_agent
         run: npm run lint
       
       - name: Frontend - Type Check
-        working-directory: jushi_agent
+        working-directory: justime_agent
         run: npx tsc --noEmit
 
   frontend-tests:
-    name: Frontend Tests (jushi_agent)
+    name: Frontend Tests (justime_agent)
     runs-on: ubuntu-latest
     needs: [code-quality, verify-lock-files]
     
     defaults:
       run:
-        working-directory: jushi_agent
+        working-directory: justime_agent
     
     steps:
       - name: Checkout code
@@ -94,7 +94,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: jushi_agent/package-lock.json
+          cache-dependency-path: justime_agent/package-lock.json
       
       - name: Install dependencies
         run: npm ci
@@ -106,14 +106,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: frontend-coverage
-          path: jushi_agent/coverage/
+          path: justime_agent/coverage/
           retention-days: 7
       
       - name: Build check
         run: npm run build
 
   backend-tests:
-    name: Backend Tests (jushi_backend)
+    name: Backend Tests (justime_backend)
     runs-on: ubuntu-latest
     needs: [code-quality, verify-lock-files]
     
@@ -130,7 +130,7 @@ jobs:
     
     defaults:
       run:
-        working-directory: jushi_backend
+        working-directory: justime_backend
     
     steps:
       - name: Checkout code
@@ -141,7 +141,7 @@ jobs:
         with:
           python-version: '3.10'
           cache: 'pip'
-          cache-dependency-path: jushi_backend/requirements-dev.lock
+          cache-dependency-path: justime_backend/requirements-dev.lock
 
       - name: Install dependencies
         run: |
@@ -161,8 +161,8 @@ jobs:
           ENCRYPTION_SECRET: ${{ secrets.TEST_ENCRYPTION_SECRET }}
           CSRF_SECRET: ${{ secrets.TEST_CSRF_SECRET }}
           DEBUG: "true"
-          MONGODB_URI: mongodb://localhost:27017/jushi_test
-          MONGODB_DB_NAME: jushi_test
+          MONGODB_URI: mongodb://localhost:27017/justime_test
+          MONGODB_DB_NAME: justime_test
         run: |
           pytest tests/ -v --tb=short --cov=app --cov-report=xml --cov-report=term-missing
       
@@ -170,7 +170,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: backend-coverage
-          path: jushi_backend/coverage.xml
+          path: justime_backend/coverage.xml
           retention-days: 7
 
   security-scan:

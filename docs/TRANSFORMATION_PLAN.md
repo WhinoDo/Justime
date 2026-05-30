@@ -144,8 +144,8 @@
 
 | # | 任务 | 说明 |
 |---|------|------|
-| 0.1 | 移除移动端 `mobile/jushi_mobile/` | 考研场景主要通过 Web + 飞书 Bot 交互，短期无需移动端 |
-| 0.2 | 移除 Capacitor 相关配置 | `jushi_agent/android/`, `capacitor.config.ts` |
+| 0.1 | 移除移动端 `mobile/justime_mobile/` | 考研场景主要通过 Web + 飞书 Bot 交互，短期无需移动端 |
+| 0.2 | 移除 Capacitor 相关配置 | `justime_agent/android/`, `capacitor.config.ts` |
 | 0.3 | 精简前端页面 | 保留：`/chat`, `/calendar`, `/knowledge`, `/admin`；移除：`/book-analysis`（功能合并到 NotebookLM Tool） |
 | 0.4 | 移除 speech 服务 | `speech.py` + 阿里云 ASR/TTS 配置（考研场景暂不需要语音） |
 | 0.5 | 清理 `node_modules 2/` 冗余目录 | git status 显示的未追踪文件 |
@@ -158,7 +158,7 @@
 #### 1.1 飞书服务层
 
 ```python
-# 新建文件：jushi_backend/app/services/feishu_service.py
+# 新建文件：justime_backend/app/services/feishu_service.py
 # 职责：封装飞书 Open API 的 Calendar/Event/Message 操作
 ```
 
@@ -186,7 +186,7 @@ FEISHU_BOT_OPEN_ID: str = ""       # Bot OpenID
 #### 1.3 飞书 Agent Tools
 
 ```python
-# 新建文件：jushi_backend/app/tools/feishu_tools.py
+# 新建文件：justime_backend/app/tools/feishu_tools.py
 # 为 Smolagents 注册的飞书工具函数
 ```
 
@@ -213,7 +213,7 @@ FEISHU_BOT_OPEN_ID: str = ""       # Bot OpenID
 | 2.6 | 考研真题录入 | 支持上传历年真题 PDF 作为 Source |
 
 ```python
-# 新建文件：jushi_backend/app/tools/notebooklm_tools.py
+# 新建文件：justime_backend/app/tools/notebooklm_tools.py
 ```
 
 | 工具名 | 功能 |
@@ -239,8 +239,8 @@ FEISHU_BOT_OPEN_ID: str = ""       # Bot OpenID
 #### 3.2 实现方案
 
 ```python
-# 重构文件：jushi_backend/app/services/agent_service.py
-# 新增文件：jushi_backend/app/business/study_agent_business.py
+# 重构文件：justime_backend/app/services/agent_service.py
+# 新增文件：justime_backend/app/business/study_agent_business.py
 ```
 
 | # | 任务 | 说明 |
@@ -282,7 +282,7 @@ STUDY_AGENT_SYSTEM_PROMPT = """你是「聚时」考研学习助手，帮助用�
 **目标：** 定义考研场景的专用数据结构。
 
 ```python
-# 新建文件：jushi_backend/app/models/study.py
+# 新建文件：justime_backend/app/models/study.py
 ```
 
 | 集合 | 用途 | 关键字段 |
@@ -355,7 +355,7 @@ Phase 0 (瘦身)  ──→  Phase 1 (飞书)  ──→  Phase 2 (NotebookLM增
 ### 后端新增文件
 
 ```
-jushi_backend/app/
+justime_backend/app/
 ├── services/
 │   └── feishu_service.py          # 飞书 Open API 封装
 ├── tools/
@@ -373,7 +373,7 @@ jushi_backend/app/
 ### 后端修改文件
 
 ```
-jushi_backend/app/
+justime_backend/app/
 ├── core/config.py                 # 增加飞书配置项
 ├── services/agent_service.py      # 增强 Agent，注册新工具
 ├── services/notebooklm_service.py # 增加科目分组逻辑
@@ -384,7 +384,7 @@ jushi_backend/app/
 ### 前端新增/修改文件
 
 ```
-jushi_agent/src/
+justime_agent/src/
 ├── app/
 │   ├── study/page.tsx             # 学习主面板
 │   ├── plan/page.tsx              # 学习计划页
@@ -495,9 +495,9 @@ deployment/homelab/
 
 | 模块 | 理由 |
 |------|------|
-| `mobile/jushi_mobile/` | 飞书 Bot + Web 已覆盖移动场景 |
+| `mobile/justime_mobile/` | 飞书 Bot + Web 已覆盖移动场景 |
 | `speech.py` + 阿里云语音 | NotebookLM Audio 已替代 |
-| `jushi_agent/android/` + Capacitor | 不再需要原生壳 |
+| `justime_agent/android/` + Capacitor | 不再需要原生壳 |
 | `book_analysis.py` (旧实现) | 合并到 NotebookLM 统一流程 |
 | `documents.py` (工作文档) | 功能与考研场景不相关 |
 
