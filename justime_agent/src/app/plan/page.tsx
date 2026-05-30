@@ -3,8 +3,8 @@
 import { useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useStudyPlan } from '@/hooks/useStudyPlan'
-import { JushiPageShell } from '@/components/layout/JushiPageShell'
-import { JushiGlassPanel } from '@/components/layout/JushiGlassPanel'
+import { JustimePageShell } from '@/components/layout/JustimePageShell'
+import { JustimeGlassPanel } from '@/components/layout/JustimeGlassPanel'
 import { StudyTimeline } from '@/components/study/StudyTimeline'
 import { Button } from '@/components/ui/button'
 import { Loader2, ArrowLeft, Plus, GraduationCap, CalendarDays } from 'lucide-react'
@@ -41,16 +41,16 @@ export default function PlanPage() {
 
   if (authLoading) {
     return (
-      <JushiPageShell blur="xl" contentClassName="flex items-center justify-center">
+      <JustimePageShell blur="xl" contentClassName="flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-white/50" />
-      </JushiPageShell>
+      </JustimePageShell>
     )
   }
 
   if (!isAuthenticated || !user) return null
 
   return (
-    <JushiPageShell fullHeight blur="lg" opacity={0.4} contentClassName="h-full overflow-y-auto">
+    <JustimePageShell fullHeight blur="lg" opacity={0.4} contentClassName="h-full overflow-y-auto">
       <div className="container mx-auto p-4 md:p-6 max-w-4xl space-y-4 pb-8">
         <div className="flex items-center justify-between bg-white/10 backdrop-blur-xl p-4 rounded-2xl border border-white/10 shadow-lg">
           <div className="flex items-center gap-3">
@@ -83,7 +83,7 @@ export default function PlanPage() {
           </Button>
         </div>
 
-        <JushiGlassPanel className="rounded-2xl p-4">
+        <JustimeGlassPanel className="rounded-2xl p-4">
           <h2 className="text-sm font-semibold text-white/80 mb-4">计划时间线</h2>
           {loading ? (
             <div className="flex justify-center py-8">
@@ -106,8 +106,8 @@ export default function PlanPage() {
               </Button>
             </div>
           )}
-        </JushiGlassPanel>
+        </JustimeGlassPanel>
       </div>
-    </JushiPageShell>
+    </JustimePageShell>
   )
 }

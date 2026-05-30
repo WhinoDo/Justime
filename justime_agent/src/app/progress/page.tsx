@@ -4,8 +4,8 @@ import { useMemo } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useStudyProgress, useProgressStats } from '@/hooks/useProgress'
 import { useStudyProfile } from '@/hooks/useStudyPlan'
-import { JushiPageShell } from '@/components/layout/JushiPageShell'
-import { JushiGlassPanel } from '@/components/layout/JushiGlassPanel'
+import { JustimePageShell } from '@/components/layout/JustimePageShell'
+import { JustimeGlassPanel } from '@/components/layout/JustimeGlassPanel'
 import { Button } from '@/components/ui/button'
 import { Loader2, ArrowLeft, BarChart3, Flame, TrendingUp } from 'lucide-react'
 import Link from 'next/link'
@@ -56,16 +56,16 @@ export default function ProgressPage() {
 
   if (authLoading) {
     return (
-      <JushiPageShell blur="xl" contentClassName="flex items-center justify-center">
+      <JustimePageShell blur="xl" contentClassName="flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-white/50" />
-      </JushiPageShell>
+      </JustimePageShell>
     )
   }
 
   if (!isAuthenticated || !user) return null
 
   return (
-    <JushiPageShell fullHeight blur="lg" opacity={0.4} contentClassName="h-full overflow-y-auto">
+    <JustimePageShell fullHeight blur="lg" opacity={0.4} contentClassName="h-full overflow-y-auto">
       <div className="container mx-auto p-4 md:p-6 max-w-5xl space-y-4 pb-8">
         <div className="flex items-center justify-between bg-white/10 backdrop-blur-xl p-4 rounded-2xl border border-white/10 shadow-lg">
           <div className="flex items-center gap-3">
@@ -100,7 +100,7 @@ export default function ProgressPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <JushiGlassPanel className="lg:col-span-2 rounded-2xl p-4">
+          <JustimeGlassPanel className="lg:col-span-2 rounded-2xl p-4">
             <h2 className="text-sm font-semibold text-white/80 mb-4">每日学习时长（近30天）</h2>
             {progressLoading ? (
               <div className="flex justify-center py-8">
@@ -139,9 +139,9 @@ export default function ProgressPage() {
                 </ResponsiveContainer>
               </div>
             )}
-          </JushiGlassPanel>
+          </JustimeGlassPanel>
 
-          <JushiGlassPanel className="rounded-2xl p-4">
+          <JustimeGlassPanel className="rounded-2xl p-4">
             <h2 className="text-sm font-semibold text-white/80 mb-4">科目分布</h2>
             {statsLoading ? (
               <div className="flex justify-center py-8">
@@ -185,10 +185,10 @@ export default function ProgressPage() {
                 </ResponsiveContainer>
               </div>
             )}
-          </JushiGlassPanel>
+          </JustimeGlassPanel>
         </div>
 
-        <JushiGlassPanel className="rounded-2xl p-4">
+        <JustimeGlassPanel className="rounded-2xl p-4">
           <h2 className="text-sm font-semibold text-white/80 mb-3">学习记录</h2>
           {progressLoading ? (
             <div className="flex justify-center py-8">
@@ -216,8 +216,8 @@ export default function ProgressPage() {
               ))}
             </div>
           )}
-        </JushiGlassPanel>
+        </JustimeGlassPanel>
       </div>
-    </JushiPageShell>
+    </JustimePageShell>
   )
 }

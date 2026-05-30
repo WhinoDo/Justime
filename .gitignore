@@ -14,8 +14,8 @@ __pycache__/
 venv/
 env/
 .venv*/
-jushi_backend/.venv*/
-jushi_backend/.venv_runtime/
+justime_backend/.venv*/
+justime_backend/.venv_runtime/
 
 # Debug files (not for production)
 debug_*.py
@@ -32,7 +32,7 @@ build/
 .qoder/
 
 # Artifacts
-jushi_deploy_package.zip
+justime_deploy_package.zip
 *.zip
 
 # Data directories
@@ -47,7 +47,7 @@ infrastructure/data/db/*
 *.swo
 
 # Large generated exports
-jushi_backend/app/data/documents/**/exports/
+justime_backend/app/data/documents/**/exports/
 
 # Misc
 .superpowers/

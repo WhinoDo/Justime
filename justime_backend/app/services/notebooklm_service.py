@@ -99,7 +99,7 @@ class NotebookLMService:
                 return notebook_id
 
         result = await self._run_cli_json([
-            "create", f"Jushi-{user_id[:8]}",
+            "create", f"Justime-{user_id[:8]}",
         ])
         nb_data = result.get("notebook", {})
         notebook_id = nb_data.get("id") or result.get("id") or result.get("notebook_id", "")

@@ -3,8 +3,8 @@
 import { useAuth } from '@/hooks/useAuth'
 import { useStudyProfile, useStudyTasks } from '@/hooks/useStudyPlan'
 import { useProgressStats } from '@/hooks/useProgress'
-import { JushiPageShell } from '@/components/layout/JushiPageShell'
-import { JushiGlassPanel } from '@/components/layout/JushiGlassPanel'
+import { JustimePageShell } from '@/components/layout/JustimePageShell'
+import { JustimeGlassPanel } from '@/components/layout/JustimeGlassPanel'
 import { ProgressOverview } from '@/components/study/ProgressOverview'
 import { DailyTasks } from '@/components/study/DailyTasks'
 import { QuickActions } from '@/components/study/QuickActions'
@@ -22,16 +22,16 @@ export default function StudyPage() {
 
   if (authLoading) {
     return (
-      <JushiPageShell blur="xl" contentClassName="flex items-center justify-center">
+      <JustimePageShell blur="xl" contentClassName="flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-white/50" />
-      </JushiPageShell>
+      </JustimePageShell>
     )
   }
 
   if (!isAuthenticated || !user) return null
 
   return (
-    <JushiPageShell fullHeight blur="lg" opacity={0.4} contentClassName="h-full overflow-y-auto">
+    <JustimePageShell fullHeight blur="lg" opacity={0.4} contentClassName="h-full overflow-y-auto">
       <div className="container mx-auto p-4 md:p-6 max-w-6xl space-y-4 pb-8">
         <div className="flex items-center justify-between bg-white/10 backdrop-blur-xl p-4 rounded-2xl border border-white/10 shadow-lg">
           <div className="flex items-center gap-3">
@@ -59,11 +59,11 @@ export default function StudyPage() {
 
         <QuickActions />
 
-        <JushiGlassPanel className="rounded-2xl p-4">
+        <JustimeGlassPanel className="rounded-2xl p-4">
           <h2 className="text-sm font-semibold text-white/80 mb-3">今日任务</h2>
           <DailyTasks tasks={tasks} loading={tasksLoading} onUpdateStatus={updateTaskStatus} />
-        </JushiGlassPanel>
+        </JustimeGlassPanel>
       </div>
-    </JushiPageShell>
+    </JustimePageShell>
   )
 }

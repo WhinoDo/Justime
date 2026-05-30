@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/hooks/useAuth'
-import { JushiPageShell } from '@/components/layout/JushiPageShell'
-import { JushiGlassPanel } from '@/components/layout/JushiGlassPanel'
+import { JustimePageShell } from '@/components/layout/JustimePageShell'
+import { JustimeGlassPanel } from '@/components/layout/JustimeGlassPanel'
 import { Button } from '@/components/ui/button'
 import { Loader2, ArrowLeft, Upload, FileText, ExternalLink, CheckCircle2 } from 'lucide-react'
 import Link from 'next/link'
@@ -73,16 +73,16 @@ export default function MaterialsPage() {
 
   if (authLoading) {
     return (
-      <JushiPageShell blur="xl" contentClassName="flex items-center justify-center">
+      <JustimePageShell blur="xl" contentClassName="flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-white/50" />
-      </JushiPageShell>
+      </JustimePageShell>
     )
   }
 
   if (!isAuthenticated || !user) return null
 
   return (
-    <JushiPageShell fullHeight blur="lg" opacity={0.4} contentClassName="h-full overflow-y-auto">
+    <JustimePageShell fullHeight blur="lg" opacity={0.4} contentClassName="h-full overflow-y-auto">
       <div className="container mx-auto p-4 md:p-6 max-w-4xl space-y-4 pb-8">
         <div className="flex items-center justify-between bg-white/10 backdrop-blur-xl p-4 rounded-2xl border border-white/10 shadow-lg">
           <div className="flex items-center gap-3">
@@ -138,7 +138,7 @@ export default function MaterialsPage() {
           ))}
         </div>
 
-        <JushiGlassPanel className="rounded-2xl p-4">
+        <JustimeGlassPanel className="rounded-2xl p-4">
           {loading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-white/30" />
@@ -178,8 +178,8 @@ export default function MaterialsPage() {
               ))}
             </div>
           )}
-        </JushiGlassPanel>
+        </JustimeGlassPanel>
       </div>
-    </JushiPageShell>
+    </JustimePageShell>
   )
 }
