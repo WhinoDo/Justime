@@ -194,6 +194,7 @@ class CSRFMiddleware:
         "/api/v1/auth/reset-password",
         "/api/v1/health",
         "/api/v1/health/",
+        "/api/v1/feishu/webhook",
     }
     
     CSRF_EXEMPT_PREFIXES = (

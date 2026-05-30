@@ -54,8 +54,20 @@ def create_app() -> FastAPI:
         except Exception as e:
             logger.warning(f'Redis 连接失败，缓存功能不可用: {e}')
 
+        try:
+            from app.services.scheduler_service import scheduler_service
+            scheduler_service.start()
+        except Exception as e:
+            logger.warning(f'定时调度器启动失败: {e}')
+
     @app.on_event("shutdown")
     async def shutdown_event():
+        try:
+            from app.services.scheduler_service import scheduler_service
+            scheduler_service.shutdown()
+        except Exception as e:
+            logger.warning(f'定时调度器关闭异常: {e}')
+
         await close_mongo_connection()
         logger.info("数据库连接已关闭")
         

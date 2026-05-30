@@ -44,6 +44,21 @@ INDEX_CONFIG = {
         {"keys": [("userId", 1), ("status", 1)], "name": "idx_user_status"},
         {"keys": [("_id", 1)], "name": "idx_doc_id"},
     ],
+    "study_tasks": [
+        {"keys": [("userId", 1), ("scheduledDate", 1)], "name": "idx_user_scheduled"},
+        {"keys": [("userId", 1), ("status", 1)], "name": "idx_user_status"},
+        {"keys": [("planId", 1)], "name": "idx_plan"},
+    ],
+    "study_progress": [
+        {"keys": [("userId", 1), ("date", 1)], "name": "idx_user_date"},
+        {"keys": [("userId", 1), ("subject", 1)], "name": "idx_user_subject"},
+    ],
+    "review_schedule": [
+        {"keys": [("userId", 1), ("nextReview", 1)], "name": "idx_user_next_review"},
+    ],
+    "study_materials": [
+        {"keys": [("userId", 1), ("subject", 1)], "name": "idx_user_subject"},
+    ],
 }
 
 

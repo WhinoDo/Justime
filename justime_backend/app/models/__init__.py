@@ -43,6 +43,24 @@ from app.models.agent import (
     AgentProvidersResponse
 )
 
+from app.models.study import (
+    StudyProfileCreate,
+    StudyProfileUpdate,
+    StudyProfileOut,
+    StudyPlanCreate,
+    StudyPlanUpdate,
+    StudyPlanOut,
+    StudyTaskCreate,
+    StudyTaskUpdate,
+    StudyTaskOut,
+    StudyProgressCreate,
+    StudyProgressOut,
+    ReviewScheduleCreate,
+    ReviewScheduleOut,
+    StudyMaterialCreate,
+    StudyMaterialOut,
+)
+
 __all__ = [
     # Common
     "ErrorDetail",
@@ -75,4 +93,20 @@ __all__ = [
     "AgentToolsResponse",
     "LLMProviderInfo",
     "AgentProvidersResponse",
+    # Study
+    "StudyProfileCreate",
+    "StudyProfileUpdate",
+    "StudyProfileOut",
+    "StudyPlanCreate",
+    "StudyPlanUpdate",
+    "StudyPlanOut",
+    "StudyTaskCreate",
+    "StudyTaskUpdate",
+    "StudyTaskOut",
+    "StudyProgressCreate",
+    "StudyProgressOut",
+    "ReviewScheduleCreate",
+    "ReviewScheduleOut",
+    "StudyMaterialCreate",
+    "StudyMaterialOut",
 ]

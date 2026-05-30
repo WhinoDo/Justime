@@ -50,6 +50,15 @@ export const API_ENDPOINTS = {
     CHUNKED_CANCEL: (uploadId: string) => `/api/knowledge/chunked/${uploadId}`,
   },
 
+  STUDY: {
+    PROFILE: '/api/study/profile',
+    PLAN: '/api/study/plan',
+    TASKS: '/api/study/tasks',
+    TASK_DETAIL: (id: string) => `/api/study/tasks/${id}`,
+    PROGRESS: '/api/study/progress',
+    CHAT: '/api/study/chat',
+  },
+
   ADMIN: {
     USERS: '/api/admin/users',
     USER: (userId: string) => `/api/admin/users/${userId}`,
@@ -61,12 +70,5 @@ export const API_ENDPOINTS = {
     API_KEYS: '/api/admin/apikeys',
     API_KEY: (keyId: string) => `/api/admin/apikeys/${keyId}`,
     STATS: '/api/admin/stats',
-  },
-
-  BOOK_ANALYSIS: {
-    PROJECTS: '/api/book-analysis/projects',
-    PROJECT: (projectId: string) => `/api/book-analysis/projects/${projectId}`,
-    PROJECT_CHAPTERS: (projectId: string) => `/api/book-analysis/projects/${projectId}/chapters`,
-    PROJECT_RUN: (projectId: string) => `/api/book-analysis/projects/${projectId}/run`,
   },
 } as const

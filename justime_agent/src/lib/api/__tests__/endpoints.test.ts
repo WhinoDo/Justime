@@ -90,15 +90,5 @@ describe('API_ENDPOINTS', () => {
     })
   })
 
-  describe('BOOK_ANALYSIS', () => {
-    it('应该定义正确的书籍分析端点', () => {
-      expect(API_ENDPOINTS.BOOK_ANALYSIS.PROJECTS).toBe('/api/book-analysis/projects')
-    })
 
-    it('应该生成动态的书籍分析端点', () => {
-      expect(API_ENDPOINTS.BOOK_ANALYSIS.PROJECT('project-123')).toBe('/api/book-analysis/projects/project-123')
-      expect(API_ENDPOINTS.BOOK_ANALYSIS.PROJECT_CHAPTERS('project-123')).toBe('/api/book-analysis/projects/project-123/chapters')
-      expect(API_ENDPOINTS.BOOK_ANALYSIS.PROJECT_RUN('project-123')).toBe('/api/book-analysis/projects/project-123/run')
-    })
-  })
 })

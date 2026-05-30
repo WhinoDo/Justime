@@ -1,76 +1,85 @@
 """
 NotebookLM 服务层
-封装 notebooklm-py 客户端，提供统一异步接口，用于替代本地 LlamaIndex RAG 的检索/问答能力。
+通过 notebooklm CLI 子进程调用 Google NotebookLM，提供统一异步接口。
 每个用户对应独立的 NotebookLM Notebook，文档同步上传到 Google NotebookLM 云端。
 """
 
 import asyncio
 import hashlib
+import json
 import logging
+import os
+import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from app.core.config import settings
 from app.database import db
-from bson.errors import InvalidId
 
 logger = logging.getLogger(__name__)
 
-try:
-    from notebooklm import NotebookLMClient, RPCError
-except ImportError:
-    NotebookLMClient = None
-    RPCError = Exception
-    logger.warning("notebooklm-py not installed, NotebookLM features will be unavailable")
-
-# 客户端单例，在首次调用时惰性初始化
-_client: Optional[Any] = None
-_client_lock = asyncio.Lock()
-
-
-async def _get_client() -> "NotebookLMClient":
-    """获取或创建 NotebookLM 客户端单例（带 keepalive 保持 Cookie 刷新）。"""
-    global _client
-    if _client is not None and _client.is_connected:
-        return _client
-
-    async with _client_lock:
-        if _client is not None and _client.is_connected:
-            return _client
-
-        if NotebookLMClient is None:
-            raise RuntimeError("notebooklm-py 未安装，请运行 pip install 'notebooklm-py[browser]'")
-
-        storage_path = settings.NOTEBOOKLM_STORAGE_PATH or None
-        profile = settings.NOTEBOOKLM_PROFILE or None
-
-        client = await NotebookLMClient.from_storage(
-            path=storage_path,
-            profile=profile,
-            keepalive=300.0,
-        )
-        await client.__aenter__()
-        _client = client
-        logger.info("NotebookLM client initialized successfully")
-        return _client
-
-
-async def close_client() -> None:
-    """关闭 NotebookLM 客户端。应用关闭时调用。"""
-    global _client
-    if _client is not None:
-        try:
-            await _client.__aexit__(None, None, None)
-        except Exception as e:
-            logger.warning(f"Error closing NotebookLM client: {e}")
-        _client = None
-
 
 class NotebookLMService:
-    """封装 NotebookLM 操作，每用户独立 Notebook。"""
+    """封装 NotebookLM 操作，通过 CLI 子进程调用。"""
 
-    # ── Notebook 生命周期 ──────────────────────────────────────
+    async def _validate_cli(self) -> None:
+        """验证 CLI 是否可用。"""
+        cli_path = shutil.which(settings.NOTEBOOKLM_CLI_PATH)
+        if cli_path is None:
+            raise RuntimeError("未找到 notebooklm CLI，请先安装 notebooklm-py")
+        storage_path = Path.home() / ".notebooklm" / "storage_state.json"
+        if not os.getenv("NOTEBOOKLM_AUTH_JSON") and not storage_path.exists():
+            raise RuntimeError("未检测到 NotebookLM 登录态，请先执行 notebooklm login")
+        try:
+            await self._run_cli_text(["auth", "check"])
+        except Exception as exc:
+            raise RuntimeError(f"NotebookLM 认证检查失败: {exc}") from exc
+
+    async def _run_cli_json(
+        self,
+        args: List[str],
+        timeout: int = 60,
+    ) -> Dict[str, Any]:
+        """调用 notebooklm CLI (带 --json) 并解析 JSON 输出。"""
+        json_args = list(args) + ["--json"]
+        stdout = await self._run_cli_text(json_args, timeout=timeout)
+        try:
+            parsed = json.loads(stdout)
+        except Exception as exc:
+            raise RuntimeError(f"NotebookLM 返回非 JSON 输出: {stdout[:300]}") from exc
+        if not isinstance(parsed, dict):
+            raise RuntimeError("NotebookLM 返回 JSON 不是对象")
+        return parsed
+
+    async def _run_cli_text(
+        self,
+        args: List[str],
+        timeout: int = 60,
+    ) -> str:
+        """调用 notebooklm CLI 并返回文本输出。"""
+        env = os.environ.copy()
+        process = await asyncio.create_subprocess_exec(
+            settings.NOTEBOOKLM_CLI_PATH,
+            *args,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            env=env,
+        )
+        try:
+            stdout, stderr = await asyncio.wait_for(
+                process.communicate(),
+                timeout=max(30, timeout),
+            )
+        except asyncio.TimeoutError as exc:
+            process.kill()
+            raise RuntimeError(f"NotebookLM 命令超时: {' '.join(args)}") from exc
+
+        stdout_text = (stdout or b"").decode("utf-8", errors="ignore").strip()
+        stderr_text = (stderr or b"").decode("utf-8", errors="ignore").strip()
+        if process.returncode != 0:
+            raise RuntimeError(stderr_text or stdout_text or f"NotebookLM 命令失败: {' '.join(args)}")
+        return stdout_text
 
     async def get_or_create_notebook(self, user_id: str) -> str:
         """获取用户对应的 Notebook ID，不存在则创建并持久化映射到 MongoDB。"""
@@ -79,15 +88,23 @@ class NotebookLMService:
 
         if notebook_id:
             try:
-                client = await _get_client()
-                await client.notebooks.get(notebook_id)
+                result = await self._run_cli_json(["list"])
+                notebooks = result.get("notebooks", [])
+                for nb in notebooks:
+                    if nb.get("id") == notebook_id:
+                        return notebook_id
+                logger.warning(f"Notebook {notebook_id} not found in list, will create a new one")
+            except Exception:
+                logger.warning(f"Notebook list check failed, assuming {notebook_id} still exists")
                 return notebook_id
-            except (RPCError, ValueError, TypeError) as e:
-                logger.warning(f"Notebook {notebook_id} not found, will create a new one: {e}")
 
-        client = await _get_client()
-        nb = await client.notebooks.create(f"Justime-{user_id[:8]}")
-        notebook_id = nb.id
+        result = await self._run_cli_json([
+            "create", f"Jushi-{user_id[:8]}",
+        ])
+        nb_data = result.get("notebook", {})
+        notebook_id = nb_data.get("id") or result.get("id") or result.get("notebook_id", "")
+        if not notebook_id:
+            raise RuntimeError(f"创建 Notebook 失败，CLI 返回: {result}")
 
         await db.db.users.update_one(
             {"_id": _to_object_id(user_id)},
@@ -101,23 +118,35 @@ class NotebookLMService:
         logger.info(f"Created NotebookLM notebook {notebook_id} for user {user_id[:8]}")
         return notebook_id
 
-    # ── Source 管理 ────────────────────────────────────────────
-
     async def upload_source(self, user_id: str, file_path: Path) -> Dict[str, Any]:
         """将本地文件作为 source 添加到用户的 Notebook。"""
         notebook_id = await self.get_or_create_notebook(user_id)
-        client = await _get_client()
 
-        try:
-            source = await client.sources.add_file(notebook_id, file_path)
-        except RPCError as e:
-            logger.error(f"Failed to upload source to NotebookLM: {e}")
-            raise RuntimeError(f"NotebookLM 上传失败: {e}") from e
+        result = await self._run_cli_json([
+            "source", "add", str(file_path),
+            "--type", "file",
+            "-n", notebook_id,
+        ], timeout=settings.BOOK_ANALYSIS_SOURCE_ADD_TIMEOUT_SECONDS)
+
+        src_data = result.get("source", {})
+        source_id = src_data.get("id") or result.get("id") or result.get("source_id", "")
+        source_title = src_data.get("title") or result.get("title", file_path.name)
+
+        if source_id:
+            try:
+                await self._run_cli_json(
+                    ["source", "wait", source_id,
+                     "-n", notebook_id,
+                     "--timeout", str(settings.BOOK_ANALYSIS_SOURCE_WAIT_TIMEOUT_SECONDS)],
+                    timeout=settings.BOOK_ANALYSIS_SOURCE_WAIT_TIMEOUT_SECONDS,
+                )
+            except Exception as e:
+                logger.warning(f"Source wait failed for {source_id}: {e}")
 
         source_record = {
             "filename": file_path.name,
-            "source_id": source.id,
-            "source_title": source.title,
+            "source_id": source_id,
+            "source_title": source_title,
             "synced_at": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -125,7 +154,7 @@ class NotebookLMService:
             {"_id": _to_object_id(user_id)},
             {"$push": {"notebooklm_sources": source_record}},
         )
-        logger.info(f"Uploaded source {file_path.name} → {source.id} for user {user_id[:8]}")
+        logger.info(f"Uploaded source {file_path.name} → {source_id} for user {user_id[:8]}")
         return source_record
 
     async def remove_source(self, user_id: str, filename: str) -> bool:
@@ -141,11 +170,16 @@ class NotebookLMService:
         if not notebook_id:
             return False
 
-        client = await _get_client()
-        try:
-            await client.sources.delete(notebook_id, target["source_id"])
-        except RPCError as e:
-            logger.warning(f"Failed to delete source from NotebookLM: {e}")
+        source_id = target.get("source_id", "")
+        if source_id:
+            try:
+                await self._run_cli_text([
+                    "source", "delete", source_id,
+                    "-n", notebook_id,
+                    "-y",
+                ])
+            except Exception as e:
+                logger.warning(f"Failed to delete source from NotebookLM: {e}")
 
         await db.db.users.update_one(
             {"_id": _to_object_id(user_id)},
@@ -157,42 +191,71 @@ class NotebookLMService:
     async def list_sources(self, user_id: str) -> List[Dict[str, Any]]:
         """列出 Notebook 中所有 source。"""
         notebook_id = await self.get_or_create_notebook(user_id)
-        client = await _get_client()
-        sources = await client.sources.list(notebook_id)
+        result = await self._run_cli_json([
+            "source", "list", "-n", notebook_id,
+        ])
+
+        raw_sources = result.get("sources", [])
+        if isinstance(raw_sources, dict):
+            raw_sources = [raw_sources]
+
         return [
             {
-                "source_id": s.id,
-                "title": s.title,
-                "kind": str(s.kind),
-                "is_ready": s.is_ready,
+                "source_id": s.get("id", ""),
+                "title": s.get("title", ""),
+                "kind": str(s.get("type", "")),
+                "is_ready": s.get("status") == "ready",
             }
-            for s in sources
+            for s in raw_sources
         ]
 
     async def sync_all_sources(self, user_id: str, docs_dir: Path) -> str:
         """将本地文档目录的所有文件同步到 NotebookLM（用于重建索引场景）。"""
         notebook_id = await self.get_or_create_notebook(user_id)
-        client = await _get_client()
 
-        # 清除 Notebook 中的旧 source
-        existing_sources = await client.sources.list(notebook_id)
-        for src in existing_sources:
-            try:
-                await client.sources.delete(notebook_id, src.id)
-            except Exception as e:
-                logger.warning(f"Failed to delete old source {src.id}: {e}")
+        existing = await self.list_sources(user_id)
+        for src in existing:
+            source_id = src.get("source_id", "")
+            if source_id:
+                try:
+                    await self._run_cli_text([
+                        "source", "delete", source_id,
+                        "-n", notebook_id,
+                        "-y",
+                    ])
+                except Exception as e:
+                    logger.warning(f"Failed to delete old source {source_id}: {e}")
 
-        # 上传目录下所有文件
         new_records = []
         if docs_dir.exists():
             for file_path in docs_dir.iterdir():
                 if file_path.is_file() and not file_path.name.startswith("."):
                     try:
-                        source = await client.sources.add_file(notebook_id, file_path)
+                        result = await self._run_cli_json([
+                            "source", "add", str(file_path),
+                            "--type", "file",
+                            "-n", notebook_id,
+                        ], timeout=settings.BOOK_ANALYSIS_SOURCE_ADD_TIMEOUT_SECONDS)
+
+                        src_data = result.get("source", {})
+                        source_id = src_data.get("id") or result.get("id") or result.get("source_id", "")
+                        source_title = src_data.get("title") or result.get("title", file_path.name)
+
+                        if source_id:
+                            try:
+                                await self._run_cli_json(
+                                    ["source", "wait", source_id,
+                                     "-n", notebook_id,
+                                     "--timeout", str(settings.BOOK_ANALYSIS_SOURCE_WAIT_TIMEOUT_SECONDS)],
+                                    timeout=settings.BOOK_ANALYSIS_SOURCE_WAIT_TIMEOUT_SECONDS,
+                                )
+                            except Exception as e:
+                                logger.warning(f"Source wait failed for {source_id}: {e}")
+
                         new_records.append({
                             "filename": file_path.name,
-                            "source_id": source.id,
-                            "source_title": source.title,
+                            "source_id": source_id,
+                            "source_title": source_title,
                             "synced_at": datetime.now(timezone.utc).isoformat(),
                         })
                     except Exception as e:
@@ -204,20 +267,21 @@ class NotebookLMService:
         )
         return f"已同步 {len(new_records)} 个文件到 NotebookLM"
 
-    # ── 问答 ──────────────────────────────────────────────────
-
     async def ask(self, user_id: str, question: str) -> Dict[str, Any]:
         """向用户 Notebook 提问，返回 answer + 结构化引用。"""
         notebook_id = await self.get_or_create_notebook(user_id)
-        client = await _get_client()
 
         try:
-            result = await client.chat.ask(notebook_id, question)
-        except RPCError as e:
+            result = await self._run_cli_json([
+                "ask", question, "-n", notebook_id,
+            ])
+        except Exception as e:
             logger.error(f"NotebookLM ask failed: {e}")
             return {"answer": f"NotebookLM 查询出错: {e}", "references": []}
 
-        # 转换引用为项目统一格式
+        answer = result.get("answer", "")
+        raw_references = result.get("references", [])
+
         references = []
         user = await db.db.users.find_one({"_id": _to_object_id(user_id)})
         source_map = {
@@ -225,14 +289,18 @@ class NotebookLMService:
             for s in (user or {}).get("notebooklm_sources", [])
         }
 
-        for ref in (result.references or []):
-            source_info = source_map.get(ref.source_id, {})
-            filename = source_info.get("filename", ref.source_id)
-            snippet = (ref.cited_text or "").strip()
-            reference_seed = f"{filename}|{ref.source_id}"
+        for ref in raw_references:
+            if isinstance(ref, str):
+                continue
+            if not isinstance(ref, dict):
+                continue
+            ref_source_id = ref.get("source_id", "")
+            source_info = source_map.get(ref_source_id, {})
+            filename = source_info.get("filename", ref_source_id)
+            snippet = (ref.get("cited_text") or ref.get("text") or "").strip()
+            reference_seed = f"{filename}|{ref_source_id}"
             reference_id = hashlib.sha1(reference_seed.encode("utf-8")).hexdigest()
 
-            # 合并到已有文件引用或新增
             existing = next((r for r in references if r["fileName"] == filename), None)
             if existing:
                 existing["score"] = max(existing["score"], 1.0)
@@ -249,42 +317,46 @@ class NotebookLMService:
                 })
 
         return {
-            "answer": result.answer,
+            "answer": answer,
             "references": references,
         }
-
-    # ── 高级能力（音频/视频/摘要等）────────────────────────────
 
     async def generate_audio(self, user_id: str, instructions: str = "") -> Dict[str, Any]:
         """生成音频概览（播客）。"""
         notebook_id = await self.get_or_create_notebook(user_id)
-        client = await _get_client()
-        status = await client.artifacts.generate_audio(notebook_id, instructions=instructions)
-        final = await client.artifacts.wait_for_completion(notebook_id, status.task_id, timeout=600)
+        args = ["generate", "audio"]
+        if instructions:
+            args.append(instructions)
+        args.extend(["-n", notebook_id, "--wait"])
+
+        result = await self._run_cli_json(args, timeout=600)
+
         return {
-            "task_id": status.task_id,
-            "is_complete": final.is_complete,
-            "url": final.url,
-            "status": final.status,
+            "task_id": result.get("task_id", ""),
+            "is_complete": result.get("status") == "completed",
+            "url": result.get("url", ""),
+            "status": result.get("status", "pending"),
         }
 
     async def get_notebook_summary(self, user_id: str) -> str:
         """获取 Notebook 的 AI 生成摘要。"""
         notebook_id = await self.get_or_create_notebook(user_id)
-        client = await _get_client()
-        return await client.notebooks.get_summary(notebook_id)
+        result = await self._run_cli_json([
+            "generate", "report",
+            "--format", "study-guide",
+            "-n", notebook_id,
+            "--wait",
+        ], timeout=300)
+        return result.get("content") or result.get("text") or result.get("summary", "")
 
-
-# ── 工具函数 ──────────────────────────────────────────────────
 
 def _to_object_id(user_id: str):
     """将字符串 user_id 转为 MongoDB ObjectId。"""
     from bson import ObjectId
     try:
         return ObjectId(user_id)
-    except (InvalidId, TypeError, ValueError):
+    except Exception:
         return user_id
 
 
-# 全局实例
 notebooklm_service = NotebookLMService()

@@ -170,6 +170,18 @@ export interface SuggestedCalendarEvent {
   resources?: Array<{ title: string; url: string; type?: string }>
 }
 
+export type { Subject, TaskStatus, TaskType } from './study'
+export type {
+  StudyProfile,
+  StudyPlan,
+  PlanPhase,
+  StudyTask,
+  StudyProgress,
+  ReviewSchedule,
+  StudyMaterial,
+  ProgressStats,
+} from './study'
+
 // 任务类型
 export interface Task {
   id: string

@@ -28,6 +28,52 @@ from app.services.calendar_tools import (
     clear_current_request_context as clear_calendar_request_context,
 )
 
+try:
+    from app.tools.notebooklm_tools import (
+        NOTEBOOKLM_TOOLS,
+        get_pending_notebooklm_outputs,
+        clear_pending_notebooklm_outputs,
+        set_current_request_context as set_notebooklm_request_context,
+        clear_current_request_context as clear_notebooklm_request_context,
+    )
+except Exception:
+    NOTEBOOKLM_TOOLS = []
+
+    def get_pending_notebooklm_outputs(request_id=None):
+        return []
+
+    def clear_pending_notebooklm_outputs(request_id=None):
+        return None
+
+    def set_notebooklm_request_context(request_id, user_id=None):
+        return None
+
+    def clear_notebooklm_request_context():
+        return None
+
+try:
+    from app.tools.study_tools import (
+        STUDY_TOOLS,
+        get_pending_study_outputs,
+        clear_pending_study_outputs,
+        set_current_request_context as set_study_request_context,
+        clear_current_request_context as clear_study_request_context,
+    )
+except Exception:
+    STUDY_TOOLS = []
+
+    def get_pending_study_outputs(request_id=None):
+        return []
+
+    def clear_pending_study_outputs(request_id=None):
+        return None
+
+    def set_study_request_context(request_id, user_id=None):
+        return None
+
+    def clear_study_request_context():
+        return None
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -54,10 +100,14 @@ except ImportError:
 def _run_agent_with_context(agent: CodeAgent, final_task: str, request_id: str, user_id: Optional[str]):
     set_calendar_request_context(request_id)
     set_current_request_context(request_id, user_id)
+    set_notebooklm_request_context(request_id, user_id)
+    set_study_request_context(request_id, user_id)
     try:
         return agent.run(final_task, return_full_result=True)
     finally:
         clear_current_request_context()
+        clear_notebooklm_request_context()
+        clear_study_request_context()
         clear_calendar_request_context()
 
 
@@ -140,6 +190,24 @@ class AgentService:
                 logger.debug(f"Loaded tool: {tool_name}")
         except Exception as e:
             logger.warning(f"Failed to load calendar tools: {e}")
+
+        # 加载 NotebookLM 工具
+        try:
+            for tool in NOTEBOOKLM_TOOLS:
+                tools.append(tool)
+                tool_name = tool.name if hasattr(tool, 'name') else tool.__name__
+                logger.debug(f"Loaded tool: {tool_name}")
+        except Exception as e:
+            logger.warning(f"Failed to load NotebookLM tools: {e}")
+
+        # 加载学习工具
+        try:
+            for tool in STUDY_TOOLS:
+                tools.append(tool)
+                tool_name = tool.name if hasattr(tool, 'name') else tool.__name__
+                logger.debug(f"Loaded tool: {tool_name}")
+        except Exception as e:
+            logger.warning(f"Failed to load study tools: {e}")
 
         return tools
     
@@ -468,6 +536,8 @@ class AgentService:
         # 运行前清空请求桶，防止残留数据串扰
         clear_pending_suggestions(effective_request_id)
         clear_pending_rag_references(effective_request_id)
+        clear_pending_notebooklm_outputs(effective_request_id)
+        clear_pending_study_outputs(effective_request_id)
 
         try:
             agent = await self.create_agent(
@@ -535,6 +605,41 @@ class AgentService:
                         }
                     )
             clear_pending_rag_references(effective_request_id)
+
+            notebooklm_pending = get_pending_notebooklm_outputs(effective_request_id)
+            for observation in notebooklm_pending:
+                if isinstance(observation, dict):
+                    obs_type = observation.get("type", "")
+                    tool_name_map = {
+                        "notebooklm_query": "query_knowledge",
+                        "notebooklm_upload": "upload_study_material",
+                        "notebooklm_summary": "generate_study_summary",
+                        "notebooklm_podcast": "generate_review_podcast",
+                        "notebooklm_sources": "list_study_sources",
+                    }
+                    tool_outputs.append({
+                        "tool_name": tool_name_map.get(obs_type, "notebooklm"),
+                        "observation": observation,
+                    })
+            clear_pending_notebooklm_outputs(effective_request_id)
+
+            study_pending = get_pending_study_outputs(effective_request_id)
+            for observation in study_pending:
+                if isinstance(observation, dict):
+                    obs_type = observation.get("type", "")
+                    study_tool_name_map = {
+                        "study_plan_generated": "generate_study_plan",
+                        "study_progress_recorded": "record_study_progress",
+                        "review_scheduled": "schedule_review",
+                        "exam_trends_analyzed": "analyze_exam_trends",
+                        "weekly_report_generated": "generate_weekly_report",
+                        "sprint_plan_generated": "create_sprint_plan",
+                    }
+                    tool_outputs.append({
+                        "tool_name": study_tool_name_map.get(obs_type, "study_tool"),
+                        "observation": observation,
+                    })
+            clear_pending_study_outputs(effective_request_id)
             
             # 方法2: 从 agent.memory 或 agent.steps 提取 (通用方法)
             # Smolagents 可能将步骤存储在 memory.steps 或 logs 中
@@ -569,22 +674,43 @@ class AgentService:
                      step_data["action"] = str(step.tool_calls[0])
                 
                 if has_action_output:
-                     obs_data = step.action_output
-                     
-                     if isinstance(obs_data, dict):
-                        obs_type = obs_data.get("type")
-                        # 仅在方法1未捕获到时才从此补充（去重）
-                        if obs_type and obs_type not in seen_types and obs_type in [
+                      obs_data = step.action_output
+                      
+                      if isinstance(obs_data, dict):
+                         obs_type = obs_data.get("type")
+                         if obs_type and obs_type not in seen_types and obs_type in [
                             "calendar_event_suggestion",
                             "task_decomposition_suggestion",
                             "batch_calendar_events",
                             "rag_references",
+                            "notebooklm_query",
+                            "notebooklm_upload",
+                            "notebooklm_summary",
+                            "notebooklm_podcast",
+                            "notebooklm_sources",
+                            "study_plan_generated",
+                            "study_progress_recorded",
+                            "review_scheduled",
+                            "exam_trends_analyzed",
+                            "weekly_report_generated",
+                            "sprint_plan_generated",
                         ]:
                             tool_name_map = {
                                 "calendar_event_suggestion": "suggest_calendar_event",
                                 "task_decomposition_suggestion": "suggest_task_decomposition",
                                 "batch_calendar_events": "create_batch_calendar_events",
                                 "rag_references": "retrieve_knowledge",
+                                "notebooklm_query": "query_knowledge",
+                                "notebooklm_upload": "upload_study_material",
+                                "notebooklm_summary": "generate_study_summary",
+                                "notebooklm_podcast": "generate_review_podcast",
+                                "notebooklm_sources": "list_study_sources",
+                                "study_plan_generated": "generate_study_plan",
+                                "study_progress_recorded": "record_study_progress",
+                                "review_scheduled": "schedule_review",
+                                "exam_trends_analyzed": "analyze_exam_trends",
+                                "weekly_report_generated": "generate_weekly_report",
+                                "sprint_plan_generated": "create_sprint_plan",
                             }
                             tool_outputs.append({
                                 "tool_name": tool_name_map.get(obs_type, "unknown"),
@@ -610,12 +736,34 @@ class AgentService:
                             "task_decomposition_suggestion",
                             "batch_calendar_events",
                             "rag_references",
+                            "notebooklm_query",
+                            "notebooklm_upload",
+                            "notebooklm_summary",
+                            "notebooklm_podcast",
+                            "notebooklm_sources",
+                            "study_plan_generated",
+                            "study_progress_recorded",
+                            "review_scheduled",
+                            "exam_trends_analyzed",
+                            "weekly_report_generated",
+                            "sprint_plan_generated",
                         ]:
                             tool_name_map = {
                                 "calendar_event_suggestion": "suggest_calendar_event",
                                 "task_decomposition_suggestion": "suggest_task_decomposition",
                                 "batch_calendar_events": "create_batch_calendar_events",
                                 "rag_references": "retrieve_knowledge",
+                                "notebooklm_query": "query_knowledge",
+                                "notebooklm_upload": "upload_study_material",
+                                "notebooklm_summary": "generate_study_summary",
+                                "notebooklm_podcast": "generate_review_podcast",
+                                "notebooklm_sources": "list_study_sources",
+                                "study_plan_generated": "generate_study_plan",
+                                "study_progress_recorded": "record_study_progress",
+                                "review_scheduled": "schedule_review",
+                                "exam_trends_analyzed": "analyze_exam_trends",
+                                "weekly_report_generated": "generate_weekly_report",
+                                "sprint_plan_generated": "create_sprint_plan",
                             }
                             tool_outputs.append({
                                 "tool_name": tool_name_map.get(obs_type, "unknown"),
@@ -643,6 +791,8 @@ class AgentService:
             logger.error(f"Agent task execution timeout: {timeout_seconds}s")
             clear_pending_suggestions(effective_request_id)
             clear_pending_rag_references(effective_request_id)
+            clear_pending_notebooklm_outputs(effective_request_id)
+            clear_pending_study_outputs(effective_request_id)
             return {
                 "success": False,
                 "error": f"Agent 执行超时（{timeout_seconds}s）"
@@ -651,6 +801,8 @@ class AgentService:
             logger.error(f"Agent task execution failed: {e}")
             clear_pending_suggestions(effective_request_id)
             clear_pending_rag_references(effective_request_id)
+            clear_pending_notebooklm_outputs(effective_request_id)
+            clear_pending_study_outputs(effective_request_id)
             return {
                 "success": False,
                 "error": str(e)

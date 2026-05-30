@@ -21,7 +21,6 @@ openai>=1.0.0
 
 # Aliyun OSS
 oss2>=2.18.5
-aliyun-python-sdk-core==2.15.1
 
 # Database - MongoDB
 pymongo>=4.6.0

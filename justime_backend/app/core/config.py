@@ -129,6 +129,15 @@ class Settings(BaseSettings):
         "如果任务信息不足，明确说明缺失项，不要编造。"
     )
 
+    # 飞书集成配置
+    FEISHU_APP_ID: str = ""
+    FEISHU_APP_SECRET: str = ""
+    FEISHU_CLI_PATH: str = "feishu_cli"
+    FEISHU_ENCRYPT_KEY: str = ""
+    FEISHU_VERIFICATION_TOKEN: str = ""
+    FEISHU_CALENDAR_ID: str = ""
+    FEISHU_BOT_OPEN_ID: str = ""
+
     # MongoDB 连接池配置
     MONGODB_MAX_POOL_SIZE: int = 50
     MONGODB_MIN_POOL_SIZE: int = 5

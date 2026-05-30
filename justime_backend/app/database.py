@@ -85,6 +85,26 @@ async def _create_indexes() -> None:
         await db.db.token_usage.create_index([("sessionId", 1)])
         logger.info("✅ Token使用记录索引创建完成")
 
+        # 学习科目 Notebook 映射索引
+        await db.db.study_notebooks.create_index([("user_id", 1), ("subject", 1)], unique=True)
+        logger.info("✅ 学习科目Notebook映射索引创建完成")
+
+        # 考研学习相关索引
+        await db.db.study_profiles.create_index([("userId", 1)], unique=True)
+        await db.db.study_plans.create_index([("userId", 1), ("createdAt", -1)])
+        await db.db.study_tasks.create_index([("userId", 1), ("scheduledDate", 1)])
+        await db.db.study_tasks.create_index([("userId", 1), ("status", 1)])
+        await db.db.study_progress.create_index([("userId", 1), ("date", -1)])
+        await db.db.review_schedules.create_index([("userId", 1), ("nextReview", 1)])
+        await db.db.review_schedules.create_index([("userId", 1), "subject"])
+        logger.info("✅ 考研学习相关索引创建完成")
+
+        await db.db.exam_papers.create_index([("userId", 1), ("subject", 1), ("year", -1)])
+        await db.db.exam_trends.create_index([("userId", 1), ("subject", 1)])
+        await db.db.practice_questions.create_index([("userId", 1), ("subject", 1)])
+        await db.db.study_reports.create_index([("userId", 1), ("reportType", 1), ("generatedAt", -1)])
+        logger.info("✅ 真题解析与报告相关索引创建完成")
+
     except Exception as e:
         logger.warning(f"⚠️ 创建索引时出现警告: {e}")
 

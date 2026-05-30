@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">Justime Agent</string>
-    <string name="title_activity_main">Justime Agent</string>
-    <string name="package_name">com.justime.agent</string>
-    <string name="custom_url_scheme">com.justime.agent</string>
-</resources>

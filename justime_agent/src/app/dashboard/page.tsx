@@ -11,10 +11,10 @@ import {
   Settings,
   User,
   Database,
-  BookOpen,
   ArrowRight,
   Sparkles,
-  ShieldCheck
+  ShieldCheck,
+  GraduationCap
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { JustimeBackground } from '@/components/ui/JustimeBackground'
@@ -79,6 +79,15 @@ export default function DashboardPage() {
       borderColor: "border-purple-400/30"
     },
     {
+      title: "考研学习",
+      description: "制定学习计划、追踪进度、管理复习节奏",
+      icon: GraduationCap,
+      href: "/study",
+      color: "text-cyan-200",
+      bgColor: "bg-cyan-500/20",
+      borderColor: "border-cyan-400/30"
+    },
+    {
       title: "知识库",
       description: "管理个人文档，构建专属的知识体系",
       icon: Database,
@@ -87,15 +96,7 @@ export default function DashboardPage() {
       bgColor: "bg-indigo-500/20",
       borderColor: "border-indigo-400/30"
     },
-    {
-      title: "书籍分析",
-      description: "上传书籍 PDF，逐章调用 NotebookLM 生成可阅读分析页",
-      icon: BookOpen,
-      href: "/book-analysis",
-      color: "text-cyan-200",
-      bgColor: "bg-cyan-500/20",
-      borderColor: "border-cyan-400/30"
-    },
+
     {
       title: "模型配置",
       description: "自定义 AI 模型参数与 API 设置",

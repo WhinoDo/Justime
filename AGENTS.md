@@ -1,18 +1,17 @@
-# Justime Agent 开发指南
+# Jushi Agent 开发指南
 
 > 本文档是面向 AI Agent 的项目操作手册。任何被分配到此仓库任务的 Agent 都应首先阅读本文档，了解项目全貌后再动手编码。
 
 ## 项目概述
 
-**聚石 (Justime)** 是一个 AI 智能助手平台，集对话、日程管理、知识库、书籍分析等功能于一体。项目采用前后端分离 + 移动端的三端架构。
+**聚石 (Jushi)** 是一个 AI 智能助手平台，集对话、日程管理、知识库、书籍分析等功能于一体。项目采用前后端分离的双端架构。
 
 | 端 | 目录 | 技术栈 | 端口 |
 |----|------|--------|------|
-| Web 前端 | `justime_agent/` | Next.js 14, React 18, Tailwind CSS, Radix UI | 3000 |
-| 后端 | `justime_backend/` | FastAPI, Python 3.10+, Pydantic v2, Motor (async MongoDB) | 8080 |
-| 移动端 | `mobile/justime_mobile/` | Expo 54, React Native 0.81, Expo Router | Expo Dev |
+| Web 前端 | `jushi_agent/` | Next.js 14, React 18, Tailwind CSS, Radix UI | 3000 |
+| 后端 | `jushi_backend/` | FastAPI, Python 3.10+, Pydantic v2, Motor (async MongoDB) | 8080 |
 
-**数据层**: MongoDB 7 (主数据库 `justime-agent`) + Redis 7 (缓存/会话/SSE 断点续传)
+**数据层**: MongoDB 7 (主数据库 `jushi-agent`) + Redis 7 (缓存/会话/SSE 断点续传)
 
 **网关**: Caddy 2 (反向代理 + 自动 HTTPS)
 
@@ -21,8 +20,8 @@
 ## 目录结构
 
 ```
-justime-agent/
-├── justime_agent/              # Web 前端 (Next.js App Router)
+jushi-agent/
+├── jushi_agent/              # Web 前端 (Next.js App Router)
 │   ├── src/
 │   │   ├── app/              # 页面路由 (App Router)
 │   │   │   ├── api/          # Next.js API Routes (BFF 代理层)
@@ -31,7 +30,6 @@ justime-agent/
 │   │   │   ├── chat/         # AI 对话页面
 │   │   │   ├── calendar/     # 日程管理页面
 │   │   │   ├── knowledge/    # 知识库页面
-│   │   │   ├── book-analysis/# 书籍分析页面
 │   │   │   └── dashboard/    # 仪表盘
 │   │   ├── components/       # UI 组件
 │   │   │   ├── chat/         # 对话相关组件 (ChatInterface, MessageBubble, TypewriterMessage 等)
@@ -47,11 +45,9 @@ justime-agent/
 │   │   │   └── task/         # 任务分解
 │   │   └── types/            # TypeScript 类型定义
 │   ├── public/               # 静态资源 (PWA icons, sw.js)
-│   ├── capacitor.config.ts   # Capacitor 混合应用配置
-│   ├── android/              # Android 原生壳 (Capacitor)
 │   └── jest.config.js        # 测试配置
 │
-├── justime_backend/            # Python 后端 (FastAPI)
+├── jushi_backend/            # Python 后端 (FastAPI)
 │   ├── app/
 │   │   ├── api/v1/endpoints/ # API 端点
 │   │   │   ├── auth.py       # 认证 (登录/注册/Token 刷新)
@@ -59,7 +55,6 @@ justime-agent/
 │   │   │   ├── admin.py      # 后台管理 (用户/模型配置)
 │   │   │   ├── calendar.py   # 日历 CRUD
 │   │   │   ├── knowledge.py  # 知识库管理
-│   │   │   ├── speech.py     # 语音服务 (阿里云 ASR/TTS)
 │   │   │   ├── book_analysis.py # 书籍分析
 │   │   │   ├── documents.py  # 工作文档
 │   │   │   ├── agent.py      # AI Agent 端点
@@ -88,19 +83,6 @@ justime-agent/
 │   │   └── main.py           # FastAPI 应用入口
 │   ├── tests/                # Pytest 测试
 │   └── requirements.txt      # Python 依赖
-│
-├── mobile/justime_mobile/      # 移动端 (Expo)
-│   ├── app/                  # Expo Router 页面
-│   │   ├── (tabs)/           # 底部导航 Tab
-│   │   └── settings/         # 设置页面
-│   ├── components/
-│   │   ├── chat/             # 对话组件 (ChatInputBox, ChatMessageList, ThinkingBubble)
-│   │   └── schedule/         # 日程组件
-│   ├── hooks/
-│   │   ├── useChatScreenLogic.ts # 对话屏幕逻辑
-│   │   └── useSSEChat.ts     # SSE 流式对话 Hook
-│   ├── context/              # React Context (AuthContext)
-│   └── constants/            # 常量 (api-endpoints, theme)
 │
 ├── deployment/homelab/       # Docker Compose 部署
 │   ├── docker-compose.yml
@@ -150,7 +132,6 @@ justime-agent/
 
 - 后端: `SSEStreamService` + Redis 保存流上下文，支持 `Last-Event-ID` 断点续传
 - 前端 Web: `useSSEChat` Hook + `TypewriterMessage` 组件 (打字机效果)
-- 前端移动: `useSSEChat.ts` + 网络切换自动重连
 - SSE 事件类型: `start` → `token`(多次) → `metadata` → `usage` → `done` / `error`
 
 ### 认证体系
@@ -172,7 +153,7 @@ justime-agent/
 ### 启动后端
 
 ```bash
-cd justime_backend
+cd jushi_backend
 python -m venv venv
 source venv/bin/activate    # Windows: venv\Scripts\activate
 pip install -r requirements.txt
@@ -186,21 +167,12 @@ python start.py
 ### 启动前端
 
 ```bash
-cd justime_agent
+cd jushi_agent
 npm install
 # 复制并配置 .env.local (参考 .env.example)
 cp .env.example .env.local
 npm run dev
 # 前端运行在 http://localhost:3000
-```
-
-### 启动移动端
-
-```bash
-cd mobile/justime_mobile
-npm install
-cp .env.local.example .env.local
-npm start    # Expo Dev Server
 ```
 
 ### Docker Compose 一键启动
@@ -225,7 +197,6 @@ docker compose up -d
 | `/calendar/*` | 日历 | 事件 CRUD |
 | `/knowledge/*` | 知识库 | 文档管理/RAG (可选依赖) |
 | `/book-analysis/*` | 书籍 | NotebookLM 集成 |
-| `/speech/*` | 语音 | 阿里云 ASR/TTS |
 | `/documents/*` | 文档 | 工作文档 |
 | `/agent/*` | Agent | OpenClaw 集成 |
 | `/health` | 健康检查 | 服务状态 |
@@ -241,7 +212,7 @@ docker compose up -d
 
 ## 数据库 (MongoDB)
 
-数据库名: `justime-agent`
+数据库名: `jushi-agent`
 
 主要集合:
 
@@ -283,19 +254,12 @@ docker compose up -d
 - **类型**: 所有 API 请求/响应必须有 TypeScript 类型定义 (`src/types/`)
 - **命名**: 文件名 `PascalCase`(组件) 或 `camelCase`(工具)，组件导出用命名导出
 
-### 移动端 (Expo / React Native)
-
-- **路由**: Expo Router (file-based)，页面在 `app/` 目录
-- **组件**: 与 Web 端独立，不共享代码
-- **网络**: SSE 对话复用 `useSSEChat` Hook，支持断线重连
-- **导航**: 底部 Tab + Stack 导航
-
 ## 测试
 
 ### 前端测试
 
 ```bash
-cd justime_agent
+cd jushi_agent
 npm test                  # 运行所有测试
 npm run test:watch        # 监听模式
 npm run test:coverage     # 覆盖率
@@ -307,7 +271,7 @@ npm run test:coverage     # 覆盖率
 ### 后端测试
 
 ```bash
-cd justime_backend
+cd jushi_backend
 pip install pytest pytest-asyncio pytest-cov httpx
 pytest tests/ -v --tb=short
 ```
@@ -319,17 +283,17 @@ pytest tests/ -v --tb=short
 
 ### 新增后端 API 端点
 
-1. 在 `justime_backend/app/models/` 添加 Pydantic 请求/响应模型
-2. 在 `justime_backend/app/services/` 添加服务方法 (如有新逻辑)
-3. 在 `justime_backend/app/business/` 添加业务编排 (如需跨服务协调)
-4. 在 `justime_backend/app/api/v1/endpoints/` 添加路由处理函数
-5. 在 `justime_backend/app/api/v1/api.py` 注册路由
+1. 在 `jushi_backend/app/models/` 添加 Pydantic 请求/响应模型
+2. 在 `jushi_backend/app/services/` 添加服务方法 (如有新逻辑)
+3. 在 `jushi_backend/app/business/` 添加业务编排 (如需跨服务协调)
+4. 在 `jushi_backend/app/api/v1/endpoints/` 添加路由处理函数
+5. 在 `jushi_backend/app/api/v1/api.py` 注册路由
 6. 编写测试
 
 ### 新增前端页面
 
-1. 在 `justime_agent/src/app/` 创建路由目录和 `page.tsx`
-2. 在 `justime_agent/src/components/` 创建组件
+1. 在 `jushi_agent/src/app/` 创建路由目录和 `page.tsx`
+2. 在 `jushi_agent/src/components/` 创建组件
 3. 如需后端数据: 在 `src/app/api/` 添加代理路由，在 `src/lib/api/endpoints.ts` 添加端点定义
 4. 在 `src/types/` 添加类型定义
 
@@ -339,37 +303,35 @@ pytest tests/ -v --tb=short
 2. 后端: 在 `sse_stream_service.py` 注册新事件
 3. 前端 Web: 在 `useSSEChat.ts` 添加事件回调
 4. 前端 Web: 在 `ChatInterface.tsx` 或 `TypewriterMessage.tsx` 处理新事件展示
-5. 前端移动: 同步更新 `mobile/justime_mobile/hooks/useSSEChat.ts`
 
 ### 修改数据模型 (MongoDB)
 
 - 此项目无 ORM Migration，MongoDB 是 Schema-less
-- 在 `justime_backend/app/models/` 修改 Pydantic 模型即可
-- 在 `justime_backend/app/database/indexes.py` 添加新索引 (如需)
+- 在 `jushi_backend/app/models/` 修改 Pydantic 模型即可
+- 在 `jushi_backend/app/database/indexes.py` 添加新索引 (如需)
 - 向后兼容: 新字段必须有默认值
 
 ## 关键文件索引
 
 | 用途 | 文件路径 |
 |------|----------|
-| 后端入口 | `justime_backend/app/main.py` |
-| 后端配置 | `justime_backend/app/core/config.py` |
-| 路由注册 | `justime_backend/app/api/v1/api.py` |
-| 对话核心 | `justime_backend/app/business/chat_business.py` |
-| SSE 流服务 | `justime_backend/app/services/sse_stream_service.py` |
-| LLM 调用 | `justime_backend/app/services/llm_service.py` |
-| 模型路由 | `justime_backend/app/services/model_router_service.py` |
-| RAG 服务 | `justime_backend/app/services/rag_service.py` |
-| 对话模型 | `justime_backend/app/models/chat.py` |
-| 前端入口页 | `justime_agent/src/app/page.tsx` |
-| 对话页面 | `justime_agent/src/app/chat/page.tsx` |
-| 对话组件 | `justime_agent/src/components/chat/ChatInterface.tsx` |
-| SSE Hook | `justime_agent/src/hooks/useSSEChat.ts` |
-| 打字机组件 | `justime_agent/src/components/chat/TypewriterMessage.tsx` |
-| API 端点 | `justime_agent/src/lib/api/endpoints.ts` |
-| API 代理 | `justime_agent/src/lib/api/proxy.ts` |
-| 认证 Hook | `justime_agent/src/hooks/useAuth.ts` |
-| 移动端对话 | `mobile/justime_mobile/hooks/useSSEChat.ts` |
+| 后端入口 | `jushi_backend/app/main.py` |
+| 后端配置 | `jushi_backend/app/core/config.py` |
+| 路由注册 | `jushi_backend/app/api/v1/api.py` |
+| 对话核心 | `jushi_backend/app/business/chat_business.py` |
+| SSE 流服务 | `jushi_backend/app/services/sse_stream_service.py` |
+| LLM 调用 | `jushi_backend/app/services/llm_service.py` |
+| 模型路由 | `jushi_backend/app/services/model_router_service.py` |
+| RAG 服务 | `jushi_backend/app/services/rag_service.py` |
+| 对话模型 | `jushi_backend/app/models/chat.py` |
+| 前端入口页 | `jushi_agent/src/app/page.tsx` |
+| 对话页面 | `jushi_agent/src/app/chat/page.tsx` |
+| 对话组件 | `jushi_agent/src/components/chat/ChatInterface.tsx` |
+| SSE Hook | `jushi_agent/src/hooks/useSSEChat.ts` |
+| 打字机组件 | `jushi_agent/src/components/chat/TypewriterMessage.tsx` |
+| API 端点 | `jushi_agent/src/lib/api/endpoints.ts` |
+| API 代理 | `jushi_agent/src/lib/api/proxy.ts` |
+| 认证 Hook | `jushi_agent/src/hooks/useAuth.ts` |
 | Docker 部署 | `deployment/homelab/docker-compose.yml` |
 | CI 配置 | `.github/workflows/ci.yml` |
 
@@ -386,9 +348,8 @@ pytest tests/ -v --tb=short
 ## CI/CD
 
 - **CI** (`.github/workflows/ci.yml`): 推送到 main/master 时触发
-  - Code Quality: lint + typecheck (前端 + 移动端)
+  - Code Quality: lint + typecheck (前端)
   - Frontend Tests: Jest + 覆盖率 + build 检查
-  - Mobile Tests: typecheck
   - Backend Tests: Pytest + MongoDB service
   - Security Scan: Trivy
 - **Deploy** (`.github/workflows/deploy.yml`): 推送到 main 或打 tag 时触发
@@ -399,5 +360,4 @@ pytest tests/ -v --tb=short
 
 1. `knowledge` 模块 (LlamaIndex) 启动时可能因依赖缺失而跳过，这是预期行为
 2. 前端 `src/app/api/` 是代理层，业务逻辑应放在组件或 `lib/` 中
-3. 移动端和 Web 端的 `useSSEChat` 是独立实现，修改时需同步更新两端
-4. 后端无数据库 Migration 工具，新增集合/索引需手动在 `database/indexes.py` 中添加
+3. 后端无数据库 Migration 工具，新增集合/索引需手动在 `database/indexes.py` 中添加
