@@ -86,7 +86,7 @@ const userInitial = computed(() => {
       <!-- Logo -->
       <div class="h-16 flex items-center px-6 border-b border-white/10">
         <span class="text-xl font-bold text-white drop-shadow-md">
-          聚时管理后台
+          矩时管理后台
         </span>
         <button
           class="ml-auto lg:hidden text-white/70 hover:text-white transition-colors"

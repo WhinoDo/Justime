@@ -255,7 +255,7 @@ FEISHU_BOT_OPEN_ID: str = ""       # Bot OpenID
 #### 3.3 Agent System Prompt (考研专用)
 
 ```python
-STUDY_AGENT_SYSTEM_PROMPT = """你是「聚时」考研学习助手，帮助用户高效备考。
+STUDY_AGENT_SYSTEM_PROMPT = """你是「矩时」考研学习助手，帮助用户高效备考。
 
 ## 核心能力
 1. **学习计划制定** — 根据目标院校、考试科目、剩余时间制定个性化计划

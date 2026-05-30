@@ -35,7 +35,7 @@ describe('ChatInterface', () => {
     render(<ChatInterface />)
 
     await waitFor(() => {
-      expect(screen.getByText('聚时智能助手')).toBeInTheDocument()
+      expect(screen.getByText('矩时智能助手')).toBeInTheDocument()
     })
     expect(screen.getByPlaceholderText('输入 "@" 唤起常用语，或粘贴代码快速提问')).toBeInTheDocument()
   })

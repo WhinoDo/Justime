@@ -31,7 +31,7 @@ describe('TaskPlanner', () => {
     it('应该生成包含用户消息的提示词', () => {
       const prompt = TaskPlanner.generateTaskPrompt('帮我规划明天的学习')
       expect(prompt).toContain('帮我规划明天的学习')
-      expect(prompt).toContain('聚时')
+      expect(prompt).toContain('矩时')
     })
 
     it('应该包含时间上下文', () => {

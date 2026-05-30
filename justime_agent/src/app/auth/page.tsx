@@ -77,7 +77,7 @@ function AuthContent() {
 
   return (
     <AuthPageShell
-      title={mode === 'login' ? '登录到聚时' : '加入聚时'}
+      title={mode === 'login' ? '登录到矩时' : '加入矩时'}
       subtitle="智能对话 · 情绪分析 · 任务规划"
       footer={(
         <>
@@ -92,7 +92,7 @@ function AuthContent() {
           </div>
 
           <div className="mt-4 text-center text-xs text-gray-200 drop-shadow">
-            <p>© 2024 聚时AI助手. 保留所有权利.</p>
+            <p>© 2024 矩时AI助手. 保留所有权利.</p>
           </div>
         </>
       )}

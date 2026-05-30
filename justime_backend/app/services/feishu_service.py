@@ -265,7 +265,7 @@ class FeishuService:
             await self.send_message(
                 receive_id=open_id,
                 msg_type="text",
-                content=json.dumps({"text": "请先在聚石平台绑定飞书账号"}, ensure_ascii=False),
+                content=json.dumps({"text": "请先在矩时平台绑定飞书账号"}, ensure_ascii=False),
             )
             return
 

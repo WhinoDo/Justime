@@ -95,7 +95,7 @@ export const ChatHeader = memo(function ChatHeader({
           </div>
           <div>
             <h2 className="text-xl font-bold tracking-tight text-white">
-              聚时智能助手
+              矩时智能助手
             </h2>
             <p className="text-sm text-white/55">
               情绪感知 · 任务拆解 · 智能陪伴

@@ -152,7 +152,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
           创建账户
         </CardTitle>
         <p className="text-center text-white/75">
-          注册新账户，开始使用聚时AI助手
+          注册新账户，开始使用矩时AI助手
         </p>
       </CardHeader>
 

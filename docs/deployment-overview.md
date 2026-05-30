@@ -1,6 +1,6 @@
-# 聚时项目部署总览
+# 矩时项目部署总览
 
-本文档提供聚时项目各组件的部署指南索引和整体架构说明。
+本文档提供矩时项目各组件的部署指南索引和整体架构说明。
 
 ## 系统架构
 
@@ -107,7 +107,7 @@ vercel --prod
 
 ```env
 NEXT_PUBLIC_BACKEND_URL=https://your-domain.com
-NEXT_PUBLIC_APP_NAME=聚石智能助手
+NEXT_PUBLIC_APP_NAME=矩时智能助手
 MONGODB_URI=mongodb://127.0.0.1:27017/justime_agent
 JWT_SECRET=your-jwt-secret
 ```

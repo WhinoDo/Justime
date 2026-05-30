@@ -47,7 +47,7 @@ function LoginContent() {
 
   return (
     <AuthPageShell
-      title="登录到聚时"
+      title="登录到矩时"
       subtitle="智能对话 · 情绪分析 · 任务规划"
       footer={(
         <div className="mt-4 text-center text-xs text-gray-200 drop-shadow">

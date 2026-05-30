@@ -1,4 +1,4 @@
-# Justime (聚时) — Multica Issue 编排方案
+# Justime (矩时) — Multica Issue 编排方案
 
 > 基于 `parent_issue_id` 依赖链 + `agent_reviewer` 自动 QA 的流水线式项目推进方案。
 > 所有子 Issue 分配给 **执行工程师 GLM-5.0**，Daemon 调度器按依赖顺序自动执行。

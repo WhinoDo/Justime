@@ -1,4 +1,4 @@
-# 聚石项目腾讯云部署指南（CVM 版）
+# 矩时项目腾讯云部署指南（CVM 版）
 
 本文档是 `deployment-guide.md` 的腾讯云专用版本，适用于：
 - 前端：`justime_agent`（Next.js 14）
@@ -76,7 +76,7 @@ git clone <你的仓库地址> .
 
 ```env
 NEXT_PUBLIC_BACKEND_URL=https://your-domain.com
-NEXT_PUBLIC_APP_NAME=聚石智能助手
+NEXT_PUBLIC_APP_NAME=矩时智能助手
 NEXT_PUBLIC_APP_VERSION=1.0.0
 
 MONGODB_URI=mongodb://127.0.0.1:27017/justime_agent

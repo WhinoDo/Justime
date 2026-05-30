@@ -18,7 +18,7 @@ const goToAdmin = () => {
   <div class="min-h-screen relative overflow-hidden flex flex-col items-center justify-center text-white">
     <div class="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900"></div>
     <div class="relative z-10 text-center space-y-6">
-      <h1 class="text-4xl font-bold">聚时 Agent</h1>
+      <h1 class="text-4xl font-bold">矩时 Agent</h1>
       <p class="text-white/70">Vue 3 版本</p>
       <div class="flex gap-4 justify-center">
         <button

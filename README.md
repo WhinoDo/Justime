@@ -1,4 +1,4 @@
-# Justime (聚石)
+# Justime (矩时)
 
 AI 智能助手平台，集成对话、日程管理、知识库、书籍分析等功能。
 
@@ -77,7 +77,7 @@ npm start
 
 ```env
 NEXT_PUBLIC_BACKEND_URL=/backend
-NEXT_PUBLIC_APP_NAME=聚石智能助手
+NEXT_PUBLIC_APP_NAME=矩时智能助手
 MONGODB_URI=mongodb://127.0.0.1:27017/justime_agent
 JWT_SECRET=your-jwt-secret-min-32-chars
 ```

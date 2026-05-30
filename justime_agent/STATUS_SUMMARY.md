@@ -124,7 +124,7 @@ MONGODB_URI=mongodb://localhost:27017/justime_agent
 NEXT_PUBLIC_BACKEND_URL=http://127.0.0.1:8080
 
 # 应用信息
-NEXT_PUBLIC_APP_NAME=聚石智能助手
+NEXT_PUBLIC_APP_NAME=矩时智能助手
 NEXT_PUBLIC_APP_VERSION=1.0.0
 
 # 数据库

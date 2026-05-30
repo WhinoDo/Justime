@@ -28,7 +28,7 @@ export function PWAInstallBanner() {
     <div className="fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-md rounded-lg border bg-background p-4 shadow-lg">
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1">
-          <h3 className="font-semibold">安装聚时应用</h3>
+          <h3 className="font-semibold">安装矩时应用</h3>
           <p className="mt-1 text-sm text-muted-foreground">
             安装到主屏幕，获得更好的体验和离线支持
           </p>

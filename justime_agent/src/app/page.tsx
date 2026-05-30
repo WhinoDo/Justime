@@ -28,7 +28,7 @@ export default function HomePage() {
         <div className="relative z-10 w-full max-w-md space-y-8 text-center p-4">
           <div className="space-y-4">
             <h1 className="text-4xl font-bold text-white tracking-tight">
-              聚时
+              矩时
             </h1>
             <p className="text-lg text-white/80 font-light">
               Loading...
@@ -52,7 +52,7 @@ export default function HomePage() {
           {/* Header */}
           <div className="space-y-4">
             <h1 className="text-5xl font-bold text-white tracking-tight drop-shadow-lg">
-              聚时
+              矩时
             </h1>
             <p className="text-xl text-white/90 font-medium tracking-wide">
               智能情绪评估与任务规划助手

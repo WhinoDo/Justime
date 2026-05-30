@@ -84,7 +84,7 @@ export default function AdminLayout({
                     {/* Logo */}
                     <div className="h-16 flex items-center px-6 border-b border-white/10">
                         <span className="text-xl font-bold text-white drop-shadow-md">
-                            聚时管理后台
+                            矩时管理后台
                         </span>
                         <button
                             className="ml-auto lg:hidden text-white/70 hover:text-white transition-colors"
