@@ -243,8 +243,8 @@ export default function CalendarPage() {
 
       <div className="relative z-10 container mx-auto p-4 md:p-6 max-w-7xl h-screen flex flex-col">
         {/* 页面头部 */}
-        <div className="flex items-center justify-between mb-4 flex-shrink-0 bg-white/10 backdrop-blur-xl p-4 rounded-2xl border border-white/10 shadow-lg">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between mb-4 flex-shrink-0 bg-white/10 backdrop-blur-xl p-4 rounded-2xl border border-white/10 shadow-lg">
+          <div className="flex items-center justify-between sm:justify-start gap-4">
             <Link href="/dashboard">
               <Button variant="ghost" size="sm" className="text-white/70 hover:bg-white/10 hover:text-white">
                 <ArrowLeft className="w-4 h-4 mr-2" />
@@ -258,19 +258,19 @@ export default function CalendarPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={loadEvents}
               disabled={loading}
-              className="bg-white/5 border-white/10 text-white hover:bg-white/10"
+              className="bg-white/5 border-white/10 text-white hover:bg-white/10 flex-1 sm:flex-initial justify-center"
             >
               <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
             <Button
-              className="bg-indigo-600 hover:bg-indigo-500 text-white border-0 shadow-lg shadow-indigo-500/20"
+              className="bg-indigo-600 hover:bg-indigo-500 text-white border-0 shadow-lg shadow-indigo-500/20 flex-1 sm:flex-initial justify-center"
               onClick={() => {
                 setSelectedEvent(null)
                 setSelectedSlot({
@@ -284,8 +284,8 @@ export default function CalendarPage() {
               New Event
             </Button>
 
-            <Link href="/chat">
-              <Button variant="outline" title="Chat Assistant" className="bg-white/5 border-white/10 text-white hover:bg-white/10">
+            <Link href="/chat" className="flex-1 sm:flex-initial">
+              <Button variant="outline" title="Chat Assistant" className="w-full bg-white/5 border-white/10 text-white hover:bg-white/10 justify-center">
                 <MessageCircle className="w-4 h-4 mr-2" />
                 Chat
               </Button>

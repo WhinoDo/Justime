@@ -90,10 +90,22 @@ class StudyAgentBusiness:
 
     async def generate_and_sync_plan(self, user_id: str, profile_data: dict) -> dict:
         profile = await self.get_profile(user_id)
+        clean_profile_data = {k: v for k, v in (profile_data or {}).items() if v is not None and v != "" and v != []}
+
         if not profile:
-            profile = await self.create_profile(user_id, profile_data)
-        else:
-            profile = await self.create_profile(user_id, profile_data)
+            if not clean_profile_data.get("subjects") or not clean_profile_data.get("examDate"):
+                return {"success": False, "error": "请先创建考研配置，包括备考科目与考试日期"}
+            profile = await self.create_profile(user_id, clean_profile_data)
+        elif clean_profile_data:
+            merged = {**profile, **clean_profile_data}
+            merged.pop("id", None)
+            merged.pop("userId", None)
+            merged.pop("createdAt", None)
+            merged.pop("updatedAt", None)
+            profile = await self.create_profile(user_id, merged)
+
+        if not profile or not profile.get("subjects") or not profile.get("examDate"):
+            return {"success": False, "error": "考研配置中的备考科目与考试日期不能为空"}
 
         target_school = profile.get("targetSchool", "")
         target_major = profile.get("targetMajor", "")

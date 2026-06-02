@@ -51,7 +51,9 @@ async def generate_plan(
     profile_data = payload or {}
     result = await study_agent_business.generate_and_sync_plan(user_id, profile_data)
     if not result.get("success"):
-        raise HTTPException(status_code=500, detail=result.get("error", "生成计划失败"))
+        error_detail = result.get("error", "生成计划失败")
+        status_code = 400 if any(k in error_detail for k in ["配置", "科目", "日期"]) else 500
+        raise HTTPException(status_code=status_code, detail=error_detail)
     return {"success": True, "data": result.get("data", {})}
 
 
@@ -184,5 +186,7 @@ async def create_sprint_plan(
 
     result = await study_report_service.generate_sprint_plan(user_id, days_before_exam)
     if not result.get("success"):
-        raise HTTPException(status_code=500, detail=result.get("error", "生成冲刺计划失败"))
+        error_detail = result.get("error", "生成冲刺计划失败")
+        status_code = 400 if "配置" in error_detail else 500
+        raise HTTPException(status_code=status_code, detail=error_detail)
     return {"success": True, "data": result.get("data", {})}

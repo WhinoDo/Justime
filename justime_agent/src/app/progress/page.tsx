@@ -67,8 +67,8 @@ export default function ProgressPage() {
   return (
     <JustimePageShell fullHeight blur="lg" opacity={0.4} contentClassName="h-full overflow-y-auto">
       <div className="container mx-auto p-4 md:p-6 max-w-5xl space-y-4 pb-8">
-        <div className="flex items-center justify-between bg-white/10 backdrop-blur-xl p-4 rounded-2xl border border-white/10 shadow-lg">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between bg-white/10 backdrop-blur-xl p-4 rounded-2xl border border-white/10 shadow-lg">
+          <div className="flex items-center justify-between sm:justify-start gap-3">
             <Link href="/study">
               <Button variant="ghost" size="sm" className="text-white/70 hover:bg-white/10 hover:text-white">
                 <ArrowLeft className="w-4 h-4 mr-2" />
@@ -83,7 +83,7 @@ export default function ProgressPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4 text-sm">
+          <div className="flex items-center justify-end gap-4 text-sm bg-white/5 sm:bg-transparent p-2 sm:p-0 rounded-xl border border-white/5 sm:border-0">
             {stats?.streakDays != null && (
               <div className="flex items-center gap-1.5 text-orange-300">
                 <Flame className="h-4 w-4" />

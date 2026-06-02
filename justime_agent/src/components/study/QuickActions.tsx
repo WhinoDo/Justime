@@ -45,7 +45,7 @@ const actions: QuickAction[] = [
 
 export function QuickActions() {
   return (
-    <div className="grid grid-cols-4 gap-2">
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
       {actions.map((action, i) => (
         <Link
           key={i}

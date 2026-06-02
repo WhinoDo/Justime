@@ -53,3 +53,7 @@ justime_backend/app/data/documents/**/exports/
 .superpowers/
 .windsurf/
 architecture_workbench/
+
+# Personal study/interview notes
+personal/
+
