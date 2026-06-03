@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import {
   Loader2,
   MessageSquare,
@@ -18,10 +18,16 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { JustimeBackground } from '@/components/ui/JustimeBackground'
+import { gsap } from 'gsap'
+import { useGSAP } from '@gsap/react'
+
+// Register useGSAP plugin
+gsap.registerPlugin(useGSAP)
 
 export default function DashboardPage() {
   const { user, isLoading, isAuthenticated } = useAuth()
   const [greeting, setGreeting] = useState('')
+  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const hour = new Date().getHours()
@@ -31,6 +37,28 @@ export default function DashboardPage() {
     else if (hour < 18) setGreeting('下午好')
     else setGreeting('晚上好')
   }, [])
+
+  useGSAP(() => {
+    if (isLoading) return
+
+    // Animate the header section in
+    gsap.from(".animate-header", {
+      y: 20,
+      autoAlpha: 0,
+      duration: 0.6,
+      ease: "power3.out"
+    })
+
+    // Stagger animate all dashboard cards
+    gsap.from(".animate-card", {
+      y: 30,
+      autoAlpha: 0,
+      duration: 0.8,
+      stagger: 0.08,
+      ease: "power3.out",
+      clearProps: "all"
+    })
+  }, { scope: containerRef, dependencies: [isLoading] })
 
   if (isLoading) {
     return (
@@ -127,13 +155,13 @@ export default function DashboardPage() {
   ]
 
   return (
-    <div className="min-h-screen relative overflow-hidden font-sans">
+    <div ref={containerRef} className="min-h-screen relative overflow-hidden font-sans">
       <JustimeBackground blur="lg" opacity={0.5} />
 
-      <div className="relative z-10 container mx-auto px-6 py-12 max-w-6xl animate-in fade-in zoom-in-95 duration-700">
+      <div className="relative z-10 container mx-auto px-6 py-12 max-w-6xl">
 
         {/* Header Section */}
-        <div className="mb-12 space-y-2">
+        <div className="animate-header mb-12 space-y-2 opacity-0">
           <div className="flex items-center gap-3 mb-4">
             <div className="h-12 w-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20">
               <Sparkles className="h-6 w-6 text-yellow-200 animate-pulse" />
@@ -153,7 +181,7 @@ export default function DashboardPage() {
             <Link
               key={index}
               href={card.href}
-              className="group block relative"
+              className="animate-card group block relative opacity-0"
             >
               <div className={cn(
                 "h-full p-6 rounded-3xl border shadow-xl relative overflow-hidden",
@@ -198,7 +226,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Footer */}
-        <div className="mt-16 text-center">
+        <div className="mt-16 text-center animate-card opacity-0">
           <p className="text-xs text-white/30 font-mono tracking-widest uppercase">
             JUSTIME WORKBENCH v0.5.0
           </p>

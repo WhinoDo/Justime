@@ -23,11 +23,11 @@ export interface ChatHeaderProps {
   /** Whether the chat is empty (no messages) */
   isEmpty: boolean
   /** Authenticated user object */
-  authUser?: { id: string; name?: string; email: string } | null
+  authUser?: { id: string; name?: string; email?: string } | null
   /** Currently selected model ID */
   selectedModel?: string
   /** Error message for model loading */
-  _modelError?: string | null
+  modelError?: string | null
   /** Whether web search is enabled */
   useWebSearch: boolean
   /** Whether time helper is shown */
@@ -48,7 +48,7 @@ export const ChatHeader = memo(function ChatHeader({
   isEmpty,
   authUser,
   selectedModel,
-  _modelError,
+  modelError,
   useWebSearch,
   showTimeHelper,
   useStreaming,

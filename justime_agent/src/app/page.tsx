@@ -4,13 +4,19 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Loader2, User, LogOut, Shield, ArrowRight } from 'lucide-react'
 import { JustimeBackground } from '@/components/ui/JustimeBackground'
+import { gsap } from 'gsap'
+import { useGSAP } from '@gsap/react'
+
+// Register the useGSAP plugin
+gsap.registerPlugin(useGSAP)
 
 export default function HomePage() {
   const { user, isLoading, isAuthenticated, logout } = useAuth()
   const router = useRouter()
+  const containerRef = useRef<HTMLDivElement>(null)
 
   // 处理登出
   const handleLogout = async () => {
@@ -19,6 +25,20 @@ export default function HomePage() {
       router.push('/')
     }
   }
+
+  useGSAP(() => {
+    if (isLoading) return
+
+    // Stagger reveal animation for hero elements
+    gsap.from(".animate-reveal", {
+      y: 24,
+      autoAlpha: 0,
+      duration: 0.8,
+      stagger: 0.12,
+      ease: "power3.out",
+      clearProps: "all"
+    })
+  }, { scope: containerRef, dependencies: [isLoading] })
 
   // 如果正在加载，显示加载状态
   if (isLoading) {
@@ -43,28 +63,28 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden font-sans">
+    <div ref={containerRef} className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden font-sans">
       <JustimeBackground blur="sm" opacity={0.3} />
 
-      <div className="relative z-10 w-full max-w-lg animate-in fade-in zoom-in-95 duration-700">
+      <div className="relative z-10 w-full max-w-lg">
         <div className="bg-white/10 backdrop-blur-2xl border border-white/20 shadow-2xl rounded-3xl p-8 space-y-8 text-center ring-1 ring-white/10">
 
           {/* Header */}
           <div className="space-y-4">
-            <h1 className="text-5xl font-bold text-white tracking-tight drop-shadow-lg">
+            <h1 className="animate-reveal text-5xl font-bold text-white tracking-tight drop-shadow-lg opacity-0">
               矩时
             </h1>
-            <p className="text-xl text-white/90 font-medium tracking-wide">
+            <p className="animate-reveal text-xl text-white/90 font-medium tracking-wide opacity-0">
               智能情绪评估与任务规划助手
             </p>
-            <p className="text-sm text-white/70 leading-relaxed max-w-xs mx-auto">
+            <p className="animate-reveal text-sm text-white/70 leading-relaxed max-w-xs mx-auto opacity-0">
               基于 AI 的情绪感知与自动化任务拆解，助你摆脱焦虑，高效行动。
             </p>
           </div>
 
           {/* User Status */}
           {isAuthenticated && user && (
-            <div className="bg-black/20 rounded-2xl p-4 border border-white/10 backdrop-blur-sm">
+            <div className="animate-reveal bg-black/20 rounded-2xl p-4 border border-white/10 backdrop-blur-sm opacity-0">
               <div className="flex items-center justify-center space-x-2 mb-2">
                 <div className="h-8 w-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
                   <User className="h-4 w-4 text-emerald-400" />
@@ -87,13 +107,13 @@ export default function HomePage() {
             {/* Actions */}
             {isAuthenticated ? (
               <>
-                <Link href="/dashboard" className="block transform transition-transform hover:scale-[1.02]">
+                <Link href="/dashboard" className="animate-reveal block transform transition-transform hover:scale-[1.02] opacity-0">
                   <Button className="w-full h-12 text-lg bg-white text-gray-900 hover:bg-white/90 border-0 shadow-lg shadow-white/10 rounded-xl font-semibold">
                     进入工作台 <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="animate-reveal grid grid-cols-2 gap-3 opacity-0">
                   <Link href="/profile" className="block">
                     <Button variant="outline" className="w-full h-11 bg-white/5 border-white/20 text-white hover:bg-white/10 hover:border-white/40 hover:text-white rounded-xl">
                       个人信息
@@ -111,13 +131,13 @@ export default function HomePage() {
               </>
             ) : (
               <>
-                <Link href="/login" className="block transform transition-transform hover:scale-[1.02]">
+                <Link href="/login" className="animate-reveal block transform transition-transform hover:scale-[1.02] opacity-0">
                   <Button className="w-full h-12 text-lg bg-white text-gray-900 hover:bg-white/90 border-0 shadow-lg shadow-white/10 rounded-xl font-semibold">
                     立即登录
                   </Button>
                 </Link>
 
-                <Link href="/auth?mode=register" className="block transform transition-transform hover:scale-[1.02]">
+                <Link href="/auth?mode=register" className="animate-reveal block transform transition-transform hover:scale-[1.02] opacity-0">
                   <Button variant="outline" className="w-full h-12 text-lg bg-white/10 text-white border-white/20 hover:bg-white/20 hover:border-white/30 backdrop-blur-md rounded-xl">
                     注册账户
                   </Button>
@@ -125,13 +145,13 @@ export default function HomePage() {
               </>
             )}
 
-            <div className="text-xs text-white/40 pt-4 font-mono tracking-widest uppercase">
+            <div className="animate-reveal text-xs text-white/40 pt-4 font-mono tracking-widest uppercase opacity-0">
               {isAuthenticated ? 'Justime Agent System v1.0' : 'Emotion-Driven Task Agent'}
             </div>
           </div>
 
           {/* Features Footer */}
-          <div className="grid grid-cols-2 gap-2 text-xs text-white/60 pt-2 border-t border-white/10">
+          <div className="animate-reveal grid grid-cols-2 gap-2 text-xs text-white/60 pt-2 border-t border-white/10 opacity-0">
             <p className="flex items-center justify-center gap-1">✨ 情绪评估</p>
             <p className="flex items-center justify-center gap-1">🎯 任务拆解</p>
             <p className="flex items-center justify-center gap-1">⏰ 专注训练</p>

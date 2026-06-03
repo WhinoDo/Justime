@@ -74,79 +74,7 @@ export function ChatInterface({
   const [useStreaming, setUseStreaming] = useState(true)
   const [lastEventId, setLastEventId] = useState<string | null>(null)
 
-  // ==================== Effects ====================
-
-  // Load history when sessionId changes
-  useEffect(() => {
-    if (sessionId) {
-      const loadHistory = async () => {
-        try {
-          setMessages([])
-          setTimingStrategy(null)
-          setTaskAnalysis(null)
-          setSelectedReference(null)
-          setPreviewOpen(false)
-
-          const res = await fetch(API_ENDPOINTS.CHAT.SESSION_MESSAGES(sessionId))
-          const data = await res.json()
-
-          if (data.messages && Array.isArray(data.messages)) {
-            const formattedMessages: Message[] = data.messages.map((msg: MessageFromAPI) => ({
-              id: msg._id,
-              user_id: msg.role === 'user' ? (authUser?.id || 'anonymous') : 'ai',
-              role: msg.role === 'user' ? 'user' : 'assistant',
-              content: msg.content,
-              created_at: msg.timestamp,
-              taskDecomposition: msg.taskDecomposition,
-              multiTaskDecompositions: msg.multiTaskDecompositions,
-              suggestedEvents: msg.suggestedEvents,
-              timingStrategy: msg.timingStrategy,
-              taskAnalysis: msg.taskAnalysis,
-              ragReferences: msg.ragReferences
-            }))
-            setMessages(formattedMessages)
-          }
-        } catch (error) {
-          console.error('加载历史消息失败:', error)
-        }
-      }
-      loadHistory()
-    } else {
-      setMessages([])
-      setTimingStrategy(null)
-      setTaskAnalysis(null)
-      setSelectedReference(null)
-      setPreviewOpen(false)
-    }
-  }, [sessionId, authUser?.id])
-
-  // Load provider models on mount
-  useEffect(() => {
-    const initializeApp = async () => {
-      try {
-        await loadProviderModels()
-      } catch (error) {
-        console.error('加载模型配置失败:', error)
-      }
-    }
-    initializeApp()
-  }, [loadProviderModels])
-
-  // Load full content when RAG preview tab changes
-  useEffect(() => {
-    if (!previewOpen || activeTab !== 'full' || !selectedReference) {
-      return
-    }
-    loadFullContent(selectedReference)
-  }, [previewOpen, activeTab, selectedReference, loadFullContent])
-
   // ==================== Callbacks ====================
-
-  const handleReferenceClick = useCallback((reference: RagReference) => {
-    setSelectedReference(reference)
-    setPreviewOpen(true)
-    setActiveTab('snippets')
-  }, [])
 
   const loadFullContent = useCallback(async (reference: RagReference) => {
     const docPath = reference?.docPath
@@ -236,6 +164,78 @@ export function ChatInterface({
       setModelError('加载模型配置失败')
     }
   }, [])
+
+  const handleReferenceClick = useCallback((reference: RagReference) => {
+    setSelectedReference(reference)
+    setPreviewOpen(true)
+    setActiveTab('snippets')
+  }, [])
+
+  // ==================== Effects ====================
+
+  // Load history when sessionId changes
+  useEffect(() => {
+    if (sessionId) {
+      const loadHistory = async () => {
+        try {
+          setMessages([])
+          setTimingStrategy(null)
+          setTaskAnalysis(null)
+          setSelectedReference(null)
+          setPreviewOpen(false)
+
+          const res = await fetch(API_ENDPOINTS.CHAT.SESSION_MESSAGES(sessionId))
+          const data = await res.json()
+
+          if (data.messages && Array.isArray(data.messages)) {
+            const formattedMessages: Message[] = data.messages.map((msg: MessageFromAPI) => ({
+              id: msg._id,
+              user_id: msg.role === 'user' ? (authUser?.id || 'anonymous') : 'ai',
+              role: msg.role === 'user' ? 'user' : 'assistant',
+              content: msg.content,
+              created_at: msg.timestamp,
+              taskDecomposition: msg.taskDecomposition,
+              multiTaskDecompositions: msg.multiTaskDecompositions,
+              suggestedEvents: msg.suggestedEvents,
+              timingStrategy: msg.timingStrategy,
+              taskAnalysis: msg.taskAnalysis,
+              ragReferences: msg.ragReferences
+            }))
+            setMessages(formattedMessages)
+          }
+        } catch (error) {
+          console.error('加载历史消息失败:', error)
+        }
+      }
+      loadHistory()
+    } else {
+      setMessages([])
+      setTimingStrategy(null)
+      setTaskAnalysis(null)
+      setSelectedReference(null)
+      setPreviewOpen(false)
+    }
+  }, [sessionId, authUser?.id])
+
+  // Load provider models on mount
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        await loadProviderModels()
+      } catch (error) {
+        console.error('加载模型配置失败:', error)
+      }
+    }
+    initializeApp()
+  }, [loadProviderModels])
+
+  // Load full content when RAG preview tab changes
+  useEffect(() => {
+    if (!previewOpen || activeTab !== 'full' || !selectedReference) {
+      return
+    }
+    loadFullContent(selectedReference)
+  }, [previewOpen, activeTab, selectedReference, loadFullContent])
 
   const handleStreamingMessage = useCallback(async (userMessageContent: string) => {
     const streamingMsgId = generateId()

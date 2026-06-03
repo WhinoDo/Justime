@@ -6,7 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 COPY requirements-homelab.lock ./requirements-homelab.lock
-RUN pip install --user -r requirements-homelab.lock
+RUN pip install -r requirements-homelab.lock
 
 FROM python:3.11-slim AS runtime
 
@@ -21,10 +21,8 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --shell /bin/bash appuser
 
-COPY --from=builder /root/.local /root/.local
+COPY --from=builder /usr/local /usr/local
 COPY --chown=appuser:appuser . .
-
-ENV PATH=/root/.local/bin:$PATH
 
 USER appuser
 

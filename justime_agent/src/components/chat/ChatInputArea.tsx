@@ -11,8 +11,8 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
-import { RagReference, RagPreviewTab, RagFullContentState } from '@/types'
-import { RagReferencePreviewPanel } from './RagReferencePreviewPanel'
+import { RagReference } from '@/types'
+import { RagReferencePreviewPanel, RagPreviewTab, RagFullContentState } from './RagReferencePreviewPanel'
 
 export interface ModelOption {
   id: string
@@ -43,7 +43,7 @@ export interface ChatInputAreaProps {
   /** Callback when model selection changes */
   onModelChange: (modelId: string) => void
   /** Ref for the textarea element */
-  textareaRef?: React.RefObject<HTMLTextAreaElement | null>
+  textareaRef?: React.RefObject<HTMLTextAreaElement>
   /** RAG preview panel state */
   previewOpen?: boolean
   selectedReference?: RagReference | null
@@ -93,7 +93,7 @@ export const ChatInputArea = memo(function ChatInputArea({
                 open={previewOpen}
                 reference={selectedReference}
                 activeTab={activeTab}
-                onTabChange={onTabChange}
+                onTabChange={onTabChange || (() => {})}
                 fullContentState={fullContentState}
                 isFullContentLoading={isFullContentLoading}
                 onClose={onPreviewClose}

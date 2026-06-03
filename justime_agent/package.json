@@ -41,6 +41,8 @@
     "dayjs": "^1.11.13",
     "dotenv": "^17.2.1",
     "framer-motion": "^12.29.2",
+    "gsap": "^3.12.5",
+    "@gsap/react": "^2.1.1",
     "jose": "^6.2.3",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.408.0",

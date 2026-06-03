@@ -4,8 +4,8 @@
 #
 #    pip-compile --output-file=requirements-homelab.lock requirements-homelab.in
 #
---index-url https://mirrors.aliyun.com/pypi/simple/
---trusted-host mirrors.aliyun.com
+--index-url https://pypi.tuna.tsinghua.edu.cn/simple
+--trusted-host pypi.tuna.tsinghua.edu.cn
 
 aiohappyeyeballs==2.6.1
     # via aiohttp
@@ -356,6 +356,8 @@ python-dotenv==1.0.0
     #   pydantic-settings
     #   smolagents
     #   uvicorn
+python-json-logger==2.0.7
+    # via -r requirements.in
 python-multipart==0.0.6
     # via -r requirements.in
 pytz==2026.2

@@ -2,7 +2,8 @@
 
 import { useRef, useEffect, memo } from 'react'
 import { MessageCircle } from 'lucide-react'
-import { Message, RagReference, TaskDecomposition, SuggestedCalendarEvent, SubtaskItem, TaskItem } from '@/types'
+import { Message, RagReference, TaskDecomposition, SuggestedCalendarEvent, SubtaskItem } from '@/types'
+import { TaskItem } from '@/lib/ai/task-planner'
 import dynamic from 'next/dynamic'
 import { TaskSelector } from './TaskSelector'
 import { SuggestedEventCard } from './SuggestedEventCard'
@@ -51,7 +52,7 @@ export interface MessageListProps {
   onExpandDecomposition: (messageId: string | null) => void
   onCancelDecomposition: (messageId: string) => void
   /** User ID for message attribution */
-  _authUserId?: string
+  authUserId?: string
 }
 
 export const MessageList = memo(function MessageList({
@@ -73,7 +74,7 @@ export const MessageList = memo(function MessageList({
   onConfirmDecomposition,
   onExpandDecomposition,
   onCancelDecomposition,
-  _authUserId,
+  authUserId,
 }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
 

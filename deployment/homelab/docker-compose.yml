@@ -109,6 +109,10 @@ services:
       REDIS_URL: ${REDIS_URL}
       JWT_SECRET: ${JWT_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_PASSWORD_RESET_SECRET: ${JWT_PASSWORD_RESET_SECRET}
+      ENCRYPTION_SECRET: ${ENCRYPTION_SECRET}
+      CSRF_SECRET: ${CSRF_SECRET}
+      HF_ENDPOINT: https://hf-mirror.com
       ROUTER_ENABLED: ${ROUTER_ENABLED:-true}
       ENABLE_ROUTING_META: ${ENABLE_ROUTING_META:-true}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
@@ -163,8 +167,9 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:27017:27017"
-    command: ["mongod", "--bind_ip", "0.0.0.0", "--auth"]
     environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
       MONGO_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
       MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD}
       MONGODB_DB_NAME: ${MONGODB_DB_NAME:-justime-agent}

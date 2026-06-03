@@ -45,3 +45,4 @@ redis>=5.0.0
 
 # Security
 cryptography>=42.0.0
+python-json-logger>=2.0.0

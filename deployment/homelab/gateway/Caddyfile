@@ -22,9 +22,10 @@
     format console
   }
 
-  encode zstd gzip {
-    except /backend/api/v1/chat/stream
+  @not_stream {
+    not path /backend/api/v1/chat/stream
   }
+  encode @not_stream zstd gzip
 
   # Security headers for all responses
   header {
