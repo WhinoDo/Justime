@@ -16,7 +16,7 @@ function AuthContent() {
   const { isAuthenticated, isLoading } = useAuth()
 
   const [mode, setMode] = useState<'login' | 'register'>('login')
-  const [redirectTo, setRedirectTo] = useState<string>('/')
+  const [redirectTo, setRedirectTo] = useState<string>('/dashboard')
 
   useEffect(() => {
     // 从URL参数获取模式和重定向地址

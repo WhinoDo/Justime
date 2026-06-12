@@ -113,7 +113,7 @@ export function ThinkingLoader({ input }: ThinkingLoaderProps) {
     const CurrentIcon = steps[step].icon || Sparkles
 
     return (
-        <div className="flex items-center gap-3 p-2 rounded-lg bg-gray-50/50 dark:bg-gray-800/30">
+        <div className="flex items-center gap-3 px-4 py-3 rounded-2xl rounded-bl-md border border-white/10 bg-white/10 dark:bg-white/10 backdrop-blur-xl shadow-md text-white/90">
             <div className="relative flex items-center justify-center w-8 h-8">
                 <div className="absolute inset-0 bg-blue-500/20 rounded-full animate-ping" />
                 <div className="relative flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 shadow-md">
@@ -129,7 +129,7 @@ export function ThinkingLoader({ input }: ThinkingLoaderProps) {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -5 }}
                         transition={{ duration: 0.3 }}
-                        className="text-sm font-medium text-gray-600 dark:text-gray-300"
+                        className="text-sm font-medium text-white/80 dark:text-white/80"
                     >
                         {steps[step].text}
                     </motion.span>
@@ -141,17 +141,17 @@ export function ThinkingLoader({ input }: ThinkingLoaderProps) {
                 <motion.div
                     animate={{ scale: [1, 1.2, 1] }}
                     transition={{ repeat: Infinity, duration: 1, delay: 0 }}
-                    className="w-1 h-1 bg-gray-400 rounded-full"
+                    className="w-1.5 h-1.5 bg-white/60 rounded-full"
                 />
                 <motion.div
                     animate={{ scale: [1, 1.2, 1] }}
                     transition={{ repeat: Infinity, duration: 1, delay: 0.2 }}
-                    className="w-1 h-1 bg-gray-400 rounded-full"
+                    className="w-1.5 h-1.5 bg-white/60 rounded-full"
                 />
                 <motion.div
                     animate={{ scale: [1, 1.2, 1] }}
                     transition={{ repeat: Infinity, duration: 1, delay: 0.4 }}
-                    className="w-1 h-1 bg-gray-400 rounded-full"
+                    className="w-1.5 h-1.5 bg-white/60 rounded-full"
                 />
             </div>
         </div>

@@ -15,7 +15,9 @@ Run these commands inside the `justime_backend/` directory:
 - **Start FastAPI Server**: `python start.py` (runs on `http://127.0.0.1:8080` with reload enabled)
 - **Run All Tests**: `pytest tests/ -v --tb=short`
 - **Run Specific Test File**: `pytest tests/test_sse.py -v --tb=short`
-- **Format Code**: `ruff format .` or `black .`
+- **Lint Code**: `ruff check .`
+- **Lint with Auto-fix**: `ruff check --fix .`
+- **Format Code**: `ruff format .`
 
 ---
 

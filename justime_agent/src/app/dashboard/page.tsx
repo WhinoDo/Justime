@@ -42,22 +42,16 @@ export default function DashboardPage() {
     if (isLoading) return
 
     // Animate the header section in
-    gsap.from(".animate-header", {
-      y: 20,
-      autoAlpha: 0,
-      duration: 0.6,
-      ease: "power3.out"
-    })
+    gsap.fromTo(".animate-header", 
+      { y: 20, autoAlpha: 0 },
+      { y: 0, autoAlpha: 1, duration: 0.6, ease: "power3.out" }
+    )
 
     // Stagger animate all dashboard cards
-    gsap.from(".animate-card", {
-      y: 30,
-      autoAlpha: 0,
-      duration: 0.8,
-      stagger: 0.08,
-      ease: "power3.out",
-      clearProps: "all"
-    })
+    gsap.fromTo(".animate-card", 
+      { y: 30, autoAlpha: 0 },
+      { y: 0, autoAlpha: 1, duration: 0.8, stagger: 0.08, ease: "power3.out" }
+    )
   }, { scope: containerRef, dependencies: [isLoading] })
 
   if (isLoading) {

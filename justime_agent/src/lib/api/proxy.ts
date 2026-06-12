@@ -57,6 +57,39 @@ function normalizeAuthToken(token: string | null): string | null {
   return `Bearer ${unquotedToken}`;
 }
 
+interface CsrfResult {
+  token: string | null;
+  setCookieHeader: string | null;
+}
+
+async function getOrFetchCsrfToken(request: NextRequest): Promise<CsrfResult> {
+  const token = request.cookies?.get?.('csrf_token')?.value || null;
+  if (token) {
+    return { token, setCookieHeader: null };
+  }
+
+  if (process.env.NODE_ENV === 'test') {
+    return { token: null, setCookieHeader: null };
+  }
+
+  try {
+    const csrfUrl = API_CONFIG.getFullUrl('/auth/csrf-token');
+    const res = await fetch(csrfUrl, { method: 'GET', credentials: 'include' });
+    if (res.ok) {
+      const setCookie = res.headers.get('set-cookie');
+      if (setCookie) {
+        const match = setCookie.match(/csrf_token=([^;]+)/);
+        if (match) {
+          return { token: match[1], setCookieHeader: setCookie };
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Failed to pre-fetch CSRF token:', err);
+  }
+  return { token: null, setCookieHeader: null };
+}
+
 /**
  * 代理请求到后端服务
  */
@@ -82,6 +115,11 @@ export async function proxyToBackend(
       ...DEFAULT_HEADERS,
       ...headers
     };
+
+    const { token: csrfToken, setCookieHeader: csrfSetCookie } = await getOrFetchCsrfToken(request);
+    if (csrfToken) {
+      requestHeaders['X-CSRF-Token'] = csrfToken;
+    }
 
     // 对 multipart 请求移除默认 JSON Content-Type，让 fetch 自动附加带 boundary 的 header
     if (isMultipart) {
@@ -217,9 +255,12 @@ export async function proxyToBackend(
     );
 
     // 转发Set-Cookie头
-    const setCookieHeader = response.headers.get('set-cookie');
-    if (setCookieHeader) {
+    const setCookieHeader = response.headers?.get?.('set-cookie');
+    if (setCookieHeader && typeof nextResponse.headers?.set === 'function') {
       nextResponse.headers.set('set-cookie', setCookieHeader);
+    }
+    if (csrfSetCookie && typeof nextResponse.headers?.append === 'function') {
+      nextResponse.headers.append('set-cookie', csrfSetCookie);
     }
 
     return nextResponse;
@@ -302,7 +343,7 @@ export function validateRequiredFields(
 }
 
 export function getAccessToken(request: NextRequest): string | null {
-  return request.cookies.get('access_token')?.value ?? null
+  return request.cookies?.get?.('access_token')?.value ?? null
 }
 
 export function resolveAuthorizationHeader(request: NextRequest): string | null {
@@ -363,6 +404,16 @@ export async function proxyWithAuth(
       Authorization: authorization,
     }
 
+    const { token: csrfToken, setCookieHeader: csrfSetCookie } = await getOrFetchCsrfToken(request)
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken
+    }
+
+    const cookieHeader = request.headers.get('cookie')
+    if (cookieHeader) {
+      headers['Cookie'] = cookieHeader
+    }
+
     let requestBody: string | undefined
     if (body !== undefined) {
       headers['Content-Type'] = 'application/json'
@@ -384,11 +435,31 @@ export async function proxyWithAuth(
     })
 
     const result = await parseProxyResponse(response)
-    if (!response.ok) {
-      return createErrorResponse(resolveErrorMessage(result as Record<string, unknown> | null, errorMessage), errorCode, response.status)
+    
+    const nextResponse = (() => {
+      if (!response.ok) {
+        return createErrorResponse(resolveErrorMessage(result as Record<string, unknown> | null, errorMessage), errorCode, response.status)
+      }
+
+      // 如果后端返回的数据已经是格式化好的标准响应，解包它的 data 避免双重嵌套
+      if (result && typeof result === 'object' && 'success' in result && 'data' in result) {
+        const backendResult = result as { success: boolean; data: any; message?: string }
+        return createSuccessResponse(backendResult.data, backendResult.message || successMessage)
+      }
+
+      return createSuccessResponse(result, successMessage)
+    })()
+
+    // 转发Set-Cookie头
+    const setCookieHeader = response.headers?.get?.('set-cookie')
+    if (setCookieHeader && typeof nextResponse.headers?.set === 'function') {
+      nextResponse.headers.set('set-cookie', setCookieHeader)
+    }
+    if (csrfSetCookie && typeof nextResponse.headers?.append === 'function') {
+      nextResponse.headers.append('set-cookie', csrfSetCookie)
     }
 
-    return createSuccessResponse(result, successMessage)
+    return nextResponse
   } catch (error) {
     return createErrorResponse(
       error instanceof Error ? error.message : '服务器内部错误',

@@ -14,7 +14,7 @@ from app.models.auth import (
 )
 
 from datetime import timedelta, datetime
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from app.core.normalizers import normalize_bool, normalize_capabilities, normalize_priority
 from app.services.security_service import SecurityService
 from app.services.encryption_service import encryption_service
@@ -42,7 +42,9 @@ class AuthBusiness:
             displayName=display_name,
             profile=UserProfile(**profile_data),
             isEmailVerified=user.get("isEmailVerified", False),
-            role=user.get("role", "user")
+            role=user.get("role", "user"),
+            feishuBinding=bool(user.get("feishuOpenId")),
+            feishuOpenId=user.get("feishuOpenId")
         )
 
     @staticmethod
@@ -618,4 +620,58 @@ class AuthBusiness:
             message="密码重置成功，请使用新密码登录"
         )
 
+    @staticmethod
+    async def bind_feishu(user_id: str, feishu_open_id: Optional[str]) -> AuthResponse:
+        from bson import ObjectId
+        from fastapi import HTTPException
+        from app.services.user_service import UserService
+        from app.database import db
+
+        user = await UserService.get_user_by_id(user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="用户不存在")
+
+        if feishu_open_id:
+            feishu_open_id = feishu_open_id.strip()
+            # 校验是否已被其他用户绑定
+            existing_user = await db.db.users.find_one({"feishuOpenId": feishu_open_id, "_id": {"$ne": ObjectId(user_id)}})
+            if existing_user:
+                raise HTTPException(status_code=400, detail="该飞书账号已被其他账户绑定")
+
+            # 绑定
+            await db.db.users.update_one(
+                {"_id": ObjectId(user_id)},
+                {"$set": {"feishuOpenId": feishu_open_id, "updated_at": datetime.utcnow()}}
+            )
+            # 兼容：在 study_profiles 中也写入
+            await db.db.study_profiles.update_one(
+                {"userId": user_id},
+                {"$set": {"feishuOpenId": feishu_open_id, "updated_at": datetime.utcnow()}},
+                upsert=True
+            )
+        else:
+            # 解绑
+            await db.db.users.update_one(
+                {"_id": ObjectId(user_id)},
+                {"$unset": {"feishuOpenId": ""}, "$set": {"updated_at": datetime.utcnow()}}
+            )
+            await db.db.study_profiles.update_one(
+                {"userId": user_id},
+                {"$unset": {"feishuOpenId": ""}, "$set": {"updated_at": datetime.utcnow()}}
+            )
+
+        # 使缓存失效
+        await CacheService.invalidate_user_data(user_id)
+
+        # 重新获取完整用户资料并返回
+        updated_user = await UserService.get_user_by_id(user_id)
+        profile = await UserService.get_user_profile(user_id)
+        safe_user = AuthBusiness._build_safe_user(updated_user or user, profile)
+        return AuthResponse(
+            success=True,
+            message="绑定成功" if feishu_open_id else "解绑成功",
+            data=AuthData(user=safe_user)
+        )
+
 auth_business = AuthBusiness()
+

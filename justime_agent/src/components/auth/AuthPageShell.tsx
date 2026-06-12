@@ -23,12 +23,10 @@ export function AuthStateShell({ children }: { children: React.ReactNode }) {
   const containerRef = useRef<HTMLDivElement>(null)
 
   useGSAP(() => {
-    gsap.from(".animate-state-card", {
-      scale: 0.95,
-      autoAlpha: 0,
-      duration: 0.5,
-      ease: "power2.out"
-    })
+    gsap.fromTo(".animate-state-card", 
+      { scale: 0.95, autoAlpha: 0 },
+      { scale: 1, autoAlpha: 1, duration: 0.5, ease: "power2.out" }
+    )
   }, { scope: containerRef })
 
   return (
@@ -47,22 +45,16 @@ export function AuthPageShell({ title, subtitle, children, footer }: AuthPageShe
 
   useGSAP(() => {
     // Beautiful reveal of the authentication card
-    gsap.from(".animate-auth-card", {
-      scale: 0.96,
-      y: 20,
-      autoAlpha: 0,
-      duration: 0.6,
-      ease: "back.out(1.2)"
-    })
+    gsap.fromTo(".animate-auth-card", 
+      { scale: 0.96, y: 20, autoAlpha: 0 },
+      { scale: 1, y: 0, autoAlpha: 1, duration: 0.6, ease: "back.out(1.2)" }
+    )
 
     // Gentle rotate/bounce on the branding icon
-    gsap.from(".animate-brand-icon", {
-      rotation: -10,
-      scale: 0.8,
-      duration: 0.8,
-      delay: 0.2,
-      ease: "elastic.out(1, 0.5)"
-    })
+    gsap.fromTo(".animate-brand-icon", 
+      { rotation: -10, scale: 0.8 },
+      { rotation: 0, scale: 1, duration: 0.8, delay: 0.2, ease: "elastic.out(1, 0.5)" }
+    )
   }, { scope: containerRef })
 
   return (

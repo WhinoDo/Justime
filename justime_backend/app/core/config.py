@@ -68,7 +68,11 @@ class Settings(BaseSettings):
     YOUTUBE_SUMMARY_OUTPUT_DIR: str = "output/youtube_summaries"
     YOUTUBE_JOB_TIMEOUT_SECONDS: int = 7200
 
+    # OpenAI 配置（兼容旧环境变量）
+    OPENAI_API_KEY: str = ""
+
     # NotebookLM 书籍分析配置
+    NOTEBOOKLM_ENABLED: bool = False
     NOTEBOOKLM_CLI_PATH: str = "notebooklm"
     BOOK_ANALYSIS_SOURCE_WAIT_TIMEOUT_SECONDS: int = 180
     BOOK_ANALYSIS_COMMAND_TIMEOUT_SECONDS: int = 300
@@ -77,6 +81,7 @@ class Settings(BaseSettings):
     # MongoDB配置
     MONGODB_URI: str = "mongodb://localhost:27017/justime-agent"
     MONGODB_DB_NAME: str = "justime-agent"
+    MONGODB_DIRECT_CONNECTION: bool = False
     
     # Redis配置
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -155,11 +160,21 @@ class Settings(BaseSettings):
     CHUNKED_UPLOAD_THRESHOLD: int = 10 * 1024 * 1024
     CHUNK_SIZE: int = 1024 * 1024
 
+    # 飞书集成配置
+    FEISHU_INTEGRATION_ENABLED: bool = False
+    FEISHU_APP_ID: str = ""
+    FEISHU_APP_SECRET: str = ""
+    FEISHU_CALENDAR_ID: str = ""
+
     @model_validator(mode="after")
     def validate_required_secrets(self):
         required_secrets = ["JWT_SECRET", "JWT_REFRESH_SECRET", "JWT_PASSWORD_RESET_SECRET", "ENCRYPTION_SECRET"]
         if self.CSRF_ENABLED:
             required_secrets.append("CSRF_SECRET")
+        
+        if self.FEISHU_INTEGRATION_ENABLED:
+            if not str(self.FEISHU_APP_ID or "").strip() or not str(self.FEISHU_APP_SECRET or "").strip():
+                raise ValueError("启用飞书集成 (FEISHU_INTEGRATION_ENABLED=True) 时，FEISHU_APP_ID 和 FEISHU_APP_SECRET 必须配置")
         
         missing_fields = [
             field

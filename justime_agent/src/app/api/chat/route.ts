@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     }
 
     let normalizedSessionId: string | undefined
-    if (sessionId !== undefined) {
+    if (sessionId !== undefined && sessionId !== null) {
       if (typeof sessionId !== 'string') {
         return badRequest('会话标识无效')
       }

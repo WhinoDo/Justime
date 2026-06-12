@@ -110,6 +110,8 @@ class SafeUser(BaseModel):
     isEmailVerified: bool = False
     role: str = "user"
     needsVerification: bool = False
+    feishuBinding: bool = False
+    feishuOpenId: Optional[str] = None
 
 
 class LLMConfig(BaseModel):

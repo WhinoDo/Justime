@@ -1,12 +1,11 @@
-'use client'
-
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { TimeUtils, dayjs } from '@/lib/utils/time'
+import { TimeUtils } from '@/lib/utils/time'
 import { Clock, Calendar, Zap, ArrowRight } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface TimeAwareTaskInputProps {
   onTaskCreate?: (taskDescription: string) => void
@@ -65,41 +64,29 @@ export function TimeAwareTaskInput({ onTaskCreate, className }: TimeAwareTaskInp
     }
   }
 
-  const getTimeOfDayColor = (timeOfDay: string) => {
-    switch (timeOfDay) {
-      case '清晨': return 'bg-orange-100 text-orange-800'
-      case '上午': return 'bg-green-100 text-green-800'
-      case '中午': return 'bg-yellow-100 text-yellow-800'
-      case '下午': return 'bg-blue-100 text-blue-800'
-      case '晚上': return 'bg-purple-100 text-purple-800'
-      case '深夜': return 'bg-gray-100 text-gray-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
-  }
-
   return (
-    <Card className={className}>
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Clock className="h-5 w-5" />
+    <Card className={cn("border-0 bg-transparent text-white shadow-none", className)}>
+      <CardHeader className="pb-3 px-0 pt-0">
+        <CardTitle className="flex items-center gap-2 text-lg text-white font-medium">
+          <Clock className="h-5 w-5 text-blue-300" />
           智能时间助手
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 px-0 pb-0">
         {/* 当前时间显示 */}
-        <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
-          <Calendar className="h-4 w-4 text-blue-600" />
-          <span className="text-sm font-medium text-blue-900">
+        <div className="flex items-center gap-2 p-3 bg-white/10 dark:bg-white/10 border border-white/10 rounded-xl">
+          <Calendar className="h-4 w-4 text-blue-300" />
+          <span className="text-sm font-medium text-white/90">
             {currentTime.formatted.datetime}
           </span>
-          <Badge className={getTimeOfDayColor(currentTime.timeOfDay)}>
+          <Badge className="bg-blue-500/20 text-blue-200 border border-blue-500/30 font-normal">
             {currentTime.timeOfDay}
           </Badge>
         </div>
 
         {/* 快速时间选择 */}
         <div className="space-y-2">
-          <h4 className="text-sm font-medium text-gray-700">快速时间选择</h4>
+          <h4 className="text-xs font-semibold text-white/60 uppercase tracking-wider">快速时间选择</h4>
           <div className="grid grid-cols-2 gap-2">
             {suggestedTimes.map((timeSlot, index) => (
               <Button
@@ -107,11 +94,11 @@ export function TimeAwareTaskInput({ onTaskCreate, className }: TimeAwareTaskInp
                 variant="outline"
                 size="sm"
                 onClick={() => handleQuickTimeInsert(timeSlot)}
-                className="justify-start text-left h-auto p-2"
+                className="justify-start text-left h-auto p-2.5 border-white/10 dark:border-white/10 bg-white/5 dark:bg-white/5 hover:bg-white/10 dark:hover:bg-white/10 text-white hover:text-white rounded-xl"
               >
                 <div className="flex flex-col items-start">
-                  <span className="font-medium text-xs">{timeSlot.label}</span>
-                  <span className="text-xs text-gray-500">
+                  <span className="font-medium text-xs text-white/80">{timeSlot.label}</span>
+                  <span className="text-[10px] text-white/50 mt-0.5">
                     {TimeUtils.formatForDisplay(timeSlot.startTime, 'HH:mm')} - {TimeUtils.formatForDisplay(timeSlot.endTime, 'HH:mm')}
                   </span>
                 </div>
@@ -122,19 +109,20 @@ export function TimeAwareTaskInput({ onTaskCreate, className }: TimeAwareTaskInp
 
         {/* 任务输入 */}
         <div className="space-y-2">
-          <h4 className="text-sm font-medium text-gray-700">任务描述</h4>
+          <h4 className="text-xs font-semibold text-white/60 uppercase tracking-wider">任务描述</h4>
           <div className="flex gap-2">
             <Input
               value={taskInput}
               onChange={(e) => setTaskInput(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="描述你的任务，例如：明天上午复习数学，或者2小时后开会..."
-              className="flex-1"
+              className="flex-1 bg-white/5 dark:bg-white/5 border-white/10 dark:border-white/10 text-white placeholder:text-white/40 rounded-xl focus-visible:ring-1 focus-visible:ring-white/20 focus-visible:ring-offset-0"
             />
             <Button 
               onClick={handleSubmit}
               disabled={!taskInput.trim()}
               size="sm"
+              className="bg-white hover:bg-white/90 text-gray-900 rounded-xl px-3 shrink-0"
             >
               <ArrowRight className="h-4 w-4" />
             </Button>
@@ -142,9 +130,9 @@ export function TimeAwareTaskInput({ onTaskCreate, className }: TimeAwareTaskInp
         </div>
 
         {/* 时间表达式提示 */}
-        <div className="p-3 bg-gray-50 rounded-lg">
-          <h4 className="text-sm font-medium text-gray-700 mb-2">💡 支持的时间表达式</h4>
-          <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
+        <div className="p-3 bg-white/5 dark:bg-white/5 border border-white/10 rounded-xl">
+          <h4 className="text-xs font-semibold text-white/80 mb-2">💡 支持的时间表达式</h4>
+          <div className="grid grid-cols-2 gap-2 text-xs text-white/60">
             <div>• 今天/明天/后天</div>
             <div>• 上午/下午/晚上</div>
             <div>• 2小时后/30分钟后</div>
@@ -156,7 +144,7 @@ export function TimeAwareTaskInput({ onTaskCreate, className }: TimeAwareTaskInp
 
         {/* 示例任务 */}
         <div className="space-y-2">
-          <h4 className="text-sm font-medium text-gray-700">💭 示例任务</h4>
+          <h4 className="text-xs font-semibold text-white/60 uppercase tracking-wider">💭 示例任务</h4>
           <div className="space-y-1">
             {[
               '明天上午9点复习高数第三章',
@@ -169,9 +157,9 @@ export function TimeAwareTaskInput({ onTaskCreate, className }: TimeAwareTaskInp
                 variant="ghost"
                 size="sm"
                 onClick={() => setTaskInput(example)}
-                className="justify-start text-left h-auto p-2 text-xs text-gray-600 hover:text-gray-900"
+                className="justify-start text-left h-auto py-2 px-3 text-xs text-white/70 hover:text-white hover:bg-white/10 dark:hover:bg-white/10 rounded-lg w-full"
               >
-                <Zap className="h-3 w-3 mr-1" />
+                <Zap className="h-3 w-3 mr-2 text-yellow-300 animate-pulse" />
                 {example}
               </Button>
             ))}

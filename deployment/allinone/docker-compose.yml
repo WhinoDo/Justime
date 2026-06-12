@@ -1,0 +1,30 @@
+services:
+  # 矩时 (Justime) 究极 All-in-One 单容器服务
+  # 前端 UI (3000)、后端 API (8080)、MongoDB 数据库 (27017) 以及 Redis 缓存 (6379) 全内聚于此容器！
+  # 宿主机上仅需启动此一个容器服务，即可随时进行一键整套启动与停止，极其方便！
+  justime-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: justime-allinone-app
+    restart: always
+    volumes:
+      # 挂载项目目录以支持自动 git pull 与代码热更新
+      - ../../:/app
+      # 在容器内建立匿名卷以隔离 node_modules，防范编译冲突
+      - /app/justime_agent/node_modules
+      # 将容器内的数据库与缓存数据路径映射至宿主机，确保启停时数据完璧保留
+      - ./data/db:/data/db
+      - ./data/redis:/data/redis
+    ports:
+      - "3001:3000"    # 前端 UI 主页面
+      - "8081:8080"    # 后端 API 主端点
+      - "27018:27017"  # 数据库映射 (供宿主机 GUI 工具直连查看)
+      - "6378:6379"    # Redis 映射 (供宿主机客户端直连查看)
+    environment:
+      - NODE_ENV=production
+      # 显式配置 Next.js BFF 代理在容器内以 127.0.0.1 通讯，最大程度保障 API 响应速度
+      - BACKEND_INTERNAL_URL=http://127.0.0.1:8080
+      # 在同一个容器内部署，数据库与 Redis 连接直接指向本地环路网卡 127.0.0.1，实现最高并发速度！
+      - MONGODB_URI=mongodb://127.0.0.1:27017/justime-agent
+      - REDIS_URL=redis://127.0.0.1:6379/0

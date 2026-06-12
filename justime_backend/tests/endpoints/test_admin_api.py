@@ -554,6 +554,22 @@ class TestAdminModelCRUD:
         )
         assert response.status_code == 400
 
+    async def test_model_connection_no_key(self, client: AsyncClient, admin_auth_headers, clean_db):
+        """测试模型连接当未提供API Key时应失败且明确提示"""
+        payload = {
+            "base_url": "https://api.deepseek.com",
+            "model_id": "deepseek-v4-pro",
+        }
+        response = await client.post(
+            "/api/v1/admin/models/test",
+            json=payload,
+            headers=admin_auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is False
+        assert "API Key" in data["message"]
+
 
 class TestAdminApiKeyCRUD:
     """测试管理员 API Key CRUD 操作"""

@@ -366,3 +366,20 @@ async def forgot_password(payload: ForgotPasswordRequest) -> AuthResponse:
 async def reset_password(payload: ResetPasswordRequest, response: Response) -> AuthResponse:
     """通过重置 token 设置新密码"""
     return await auth_business.reset_password(payload.token, payload.new_password)
+
+
+from pydantic import BaseModel
+from typing import Optional
+
+class FeishuBindRequest(BaseModel):
+    feishuOpenId: Optional[str] = None
+
+@router.put("/feishu-bind", response_model=AuthResponse, summary="绑定或解绑飞书账号")
+async def bind_feishu(
+    payload: FeishuBindRequest,
+    current_user: CurrentUser
+) -> AuthResponse:
+    """绑定或解绑当前用户的飞书 OpenID"""
+    user_id = str(current_user["_id"])
+    return await auth_business.bind_feishu(user_id, payload.feishuOpenId)
+

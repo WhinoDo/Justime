@@ -5,6 +5,9 @@ import os
 # Add parent directory to path to allow importing app modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from app.database import db, connect_to_mongo, close_mongo_connection
 from app.services.user_service import UserService
 from app.core.config import settings

@@ -59,3 +59,25 @@ When modifying any part of the project, follow these general principles:
 4. **Architectural Separation**:
    - Keep frontend business logic isolated from presentation components.
    - Do not call the backend FastAPI port (e.g. `8080`) directly from Web components; always route API requests through Next.js BFF proxy `/api/v1/*` to manage CORS and secure cookies properly.
+
+---
+
+## 🤖 Agent Mandatory Enforcement Rules
+
+These rules are **non-negotiable** and must be followed on every code change. Do not skip any step.
+
+1. **Run lint + tests after every code modification**:
+   - Frontend: `cd justime_agent && npm run lint && npm test`
+   - Backend: `cd justime_backend && ruff check . && pytest tests/ -v --tb=short`
+   - Mobile: `cd mobile/justime_mobile && npm run lint`
+2. **Never commit code that fails lint**. Fix all errors before considering the task done.
+3. **SSE-related changes MUST be synchronized across Web and Mobile**. Both `justime_agent/src/hooks/useSSEChat.ts` and `mobile/justime_mobile/hooks/useSSEChat.ts` must be updated together. Use the `/add-sse-feature` skill for any SSE work.
+4. **New API endpoints MUST follow the layered pattern**: `model` → `service` → `business` → `endpoint` → `route registration`. Use the `/add-backend-api` skill.
+5. **All new MongoDB fields MUST have default values** for backwards compatibility (schema-less database).
+6. **No debug code in commits**: Remove all `console.log`, `print()`, `breakpoint`, and temporary logging before finalizing.
+7. **No hardcoded secrets**: All credentials, tokens, and API keys must come from environment variables.
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->

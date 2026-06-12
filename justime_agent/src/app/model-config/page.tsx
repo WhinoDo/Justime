@@ -6,11 +6,18 @@ import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useAuth } from '@/hooks/useAuth'
 import { useLLMConfigs } from '@/hooks/useLLMConfig'
-import { BarChart3, Bot, ChevronLeft, Loader2 } from 'lucide-react'
+import { BarChart3, Bot, ChevronLeft, Loader2, HelpCircle, Lock, CheckCircle2, XCircle, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { JustimeBackground } from '@/components/ui/JustimeBackground'
 import { API_ENDPOINTS } from '@/lib/api/endpoints'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 
 // Usage Types
 interface DailyUsagePoint {
@@ -47,6 +54,161 @@ function ModelConfigContent() {
   const { isAuthenticated, isLoading: authLoading } = useAuth()
   const { configs, updateConfig, isLoading: configsLoading } = useLLMConfigs()
   const searchParams = useSearchParams()
+
+  // Feishu states
+  const [feishuConfig, setFeishuConfig] = useState({
+    enabled: false,
+    status: 'disabled',
+    appId: '',
+    calendarId: '',
+    message: ''
+  })
+  const [feishuLoading, setFeishuLoading] = useState(false)
+  const [guideOpen, setGuideOpen] = useState(false)
+  const [guideContent, setGuideContent] = useState('')
+
+  const loadFeishuStatus = async () => {
+    try {
+      setFeishuLoading(true)
+      const response = await fetch('/api/calendar/feishu/config-status')
+      const result = await response.json()
+      if (result.success && result.data) {
+        setFeishuConfig(result.data)
+      }
+    } catch (error) {
+      console.error('加载飞书配置状态失败:', error)
+    } finally {
+      setFeishuLoading(false)
+    }
+  }
+
+  const loadGuideContent = async () => {
+    if (guideContent) return
+    try {
+      const response = await fetch('/FEISHU_CONFIG_GUIDE.md')
+      const text = await response.text()
+      setGuideContent(text)
+    } catch (error) {
+      console.error('加载飞书配置指引 Markdown 失败:', error)
+      setGuideContent('加载指引失败，请稍后重试。')
+    }
+  }
+
+  // 辅助解析行内代码 ``
+  const parseInlineCode = (text: string) => {
+    if (!text.includes('`')) return text
+    const parts = text.split('`')
+    return parts.map((part, i) => {
+      if (i % 2 === 1) {
+        return (
+          <code key={i} className="px-1.5 py-0.5 rounded bg-black/40 border border-white/10 font-mono text-xs text-indigo-300">
+            {part}
+          </code>
+        )
+      }
+      return part
+    })
+  }
+
+  const renderMarkdown = (md: string) => {
+    if (!md) return <div className="text-white/60 text-xs py-8 text-center flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin text-indigo-400" /> 加载指引中...</div>
+    
+    const lines = md.split('\n')
+    return (
+      <div className="space-y-4 text-white/80 text-sm leading-relaxed max-h-[60vh] overflow-y-auto pr-2 font-sans">
+        {lines.map((line, index) => {
+          const trimmed = line.trim()
+          if (!trimmed) return <div key={index} className="h-2" />
+          
+          if (trimmed.startsWith('# ')) {
+            return (
+              <h1 key={index} className="text-lg font-bold text-white border-b border-white/10 pb-2 mt-4 mb-2 flex items-center gap-2">
+                {trimmed.replace('# ', '')}
+              </h1>
+            )
+          }
+          if (trimmed.startsWith('## ')) {
+            return (
+              <h2 key={index} className="text-sm font-semibold text-indigo-300 mt-4 mb-1">
+                {trimmed.replace('## ', '')}
+              </h2>
+            )
+          }
+          if (trimmed.startsWith('### ')) {
+            return (
+              <h3 key={index} className="text-xs font-semibold text-white/90 mt-3 mb-1">
+                {trimmed.replace('### ', '')}
+              </h3>
+            )
+          }
+          
+          if (trimmed.startsWith('> [!')) {
+            const isImportant = trimmed.includes('!IMPORTANT')
+            const isWarning = trimmed.includes('!WARNING')
+            
+            // 简单提取后续文本作为提示内容
+            const nextLine = lines[index + 1] || ''
+            const alertText = nextLine.trim().startsWith('- ') || nextLine.trim().length > 0
+              ? nextLine.trim().replace(/^>\s*/, '')
+              : '安全提示信息'
+
+            return (
+              <div
+                key={index}
+                className={`p-3.5 rounded-xl border backdrop-blur-md my-3 ${
+                  isImportant
+                    ? 'bg-red-500/10 border-red-500/30 text-red-200'
+                    : isWarning
+                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-200'
+                    : 'bg-indigo-500/10 border-indigo-500/30 text-indigo-200'
+                }`}
+              >
+                <p className="font-semibold text-xs uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                  {isImportant ? '⚠️ 重要提醒' : isWarning ? '⚡ 警告说明' : '💡 配置建议'}
+                </p>
+                <div className="text-xs opacity-90 leading-normal">
+                  {parseInlineCode(alertText)}
+                </div>
+              </div>
+            )
+          }
+          
+          if (index > 0 && lines[index - 1].trim().startsWith('> [!')) {
+            return null
+          }
+          
+          if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+            const itemText = trimmed.substring(2)
+            return (
+              <ul key={index} className="list-disc pl-5 space-y-1">
+                <li className="text-white/70 text-xs">
+                  {parseInlineCode(itemText)}
+                </li>
+              </ul>
+            )
+          }
+          
+          if (/^\d+\.\s*/.test(trimmed)) {
+            const match = trimmed.match(/^(\d+\.\s*)(.*)/)
+            const itemText = match ? match[2] : trimmed
+            return (
+              <ol key={index} className="list-decimal pl-5 space-y-1">
+                <li className="text-white/70 text-xs">
+                  {parseInlineCode(itemText)}
+                </li>
+              </ol>
+            )
+          }
+          
+          if (trimmed === '---') {
+            return <hr key={index} className="border-white/10 my-3" />
+          }
+          
+          return <p key={index} className="text-xs text-white/70">{parseInlineCode(trimmed)}</p>
+        })}
+      </div>
+    )
+  }
 
   // Usage states
   const [usageLoading, setUsageLoading] = useState(false)
@@ -126,6 +288,7 @@ function ModelConfigContent() {
   useEffect(() => {
     if (isAuthenticated) {
       loadTokenUsage()
+      loadFeishuStatus()
     }
   }, [isAuthenticated, usageDays, usageScope])
 
@@ -573,6 +736,108 @@ function ModelConfigContent() {
                     选择左侧模型后可设置 Temperature 参数。
                   </div>
                 )}
+              </div>
+
+              {/* 飞书集成配置卡片 */}
+              <div className="mt-6 max-w-4xl">
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-5 space-y-4">
+                  <div className="flex items-center justify-between flex-wrap gap-3">
+                    <div className="space-y-1">
+                      <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                        <Lock className="w-5 h-5 text-sky-300" />
+                        飞书日历映射集成
+                      </h2>
+                      <p className="text-xs text-white/50">将平台日历与您的飞书日程进行双向无缝映射</p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Dialog open={guideOpen} onOpenChange={(open) => {
+                        setGuideOpen(open)
+                        if (open) void loadGuideContent()
+                      }}>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setGuideOpen(true)
+                            void loadGuideContent()
+                          }}
+                          className="h-8 px-3 border-white/10 bg-white/5 text-white/90 hover:bg-white/10 flex items-center gap-1.5 text-xs font-normal"
+                        >
+                          <HelpCircle className="w-4 h-4 text-sky-400" />
+                          配置向导 💡
+                        </Button>
+                        <DialogContent className="sm:max-w-[650px] bg-gray-950/95 backdrop-blur-2xl border border-white/10 shadow-2xl p-6 rounded-3xl">
+                          <DialogHeader className="border-b border-white/10 pb-3">
+                            <DialogTitle className="text-white text-lg font-bold flex items-center gap-2">
+                              <HelpCircle className="w-5 h-5 text-indigo-400" />
+                              飞书 API Key & Secret 获取指引
+                            </DialogTitle>
+                          </DialogHeader>
+                          
+                          {renderMarkdown(guideContent)}
+
+                          <div className="flex justify-end border-t border-white/10 pt-3 mt-4">
+                            <Button
+                              type="button"
+                              onClick={() => setGuideOpen(false)}
+                              className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl h-9 text-xs"
+                            >
+                              我明白了
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={loadFeishuStatus}
+                        disabled={feishuLoading}
+                        className="h-8 px-3 border-white/10 bg-white/5 text-white/90 hover:bg-white/10 text-xs font-normal"
+                      >
+                        {feishuLoading ? '自检中...' : '重新检测'}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-white/5 bg-black/40 p-4 space-y-3.5">
+                    <div className="flex items-center justify-between flex-wrap gap-2 text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="text-white/60 text-xs">连通状态:</span>
+                        {feishuConfig.status === 'connected' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-400/20">
+                            <CheckCircle2 className="w-3 h-3" />
+                            成功连通飞书
+                          </span>
+                        ) : feishuConfig.status === 'error' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-red-500/20 text-red-300 border border-red-400/20">
+                            <XCircle className="w-3.5 h-3.5" />
+                            连通失败
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-gray-500/20 text-gray-300 border border-white/10">
+                            <Lock className="w-3.5 h-3.5" />
+                            未启用/已关闭
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-white/40 font-mono">App ID: {feishuConfig.appId || '暂无'}</span>
+                    </div>
+
+                    <div className="border-t border-white/5 pt-3 space-y-2 text-xs">
+                      <div className="flex items-center justify-between text-white/60">
+                        <span>日历配置映射 ID:</span>
+                        <span className="font-mono text-white/80">{feishuConfig.calendarId || '默认主日历'}</span>
+                      </div>
+                      <p className={`mt-2 ${feishuConfig.status === 'connected' ? 'text-emerald-300/80' : 'text-white/50'}`}>
+                        ℹ️ {feishuConfig.message || '若需要启用飞书日历，请修改后端的 .env 环境变量并重启服务。'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
                 </>
               )}

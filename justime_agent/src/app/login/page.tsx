@@ -13,7 +13,7 @@ function LoginContent() {
   const searchParams = useSearchParams()
   const { isAuthenticated, isLoading: authLoading } = useAuth()
 
-  const [redirectTo, setRedirectTo] = useState<string>('/')
+  const [redirectTo, setRedirectTo] = useState<string>('/dashboard')
 
   useEffect(() => {
     const redirectParam = searchParams.get('redirect')

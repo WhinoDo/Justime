@@ -48,6 +48,10 @@ export default function ProfilePage() {
         notes: ''
     })
 
+    const [feishuOpenIdInput, setFeishuOpenIdInput] = useState('')
+    const [isFeishuBinding, setIsFeishuBinding] = useState(false)
+    const [feishuMessage, setFeishuMessage] = useState<string | null>(null)
+
     const handleLogout = async () => {
         await logout()
         router.push('/auth?mode=login')
@@ -154,6 +158,66 @@ export default function ProfilePage() {
             setHabitSaveMessage('保存失败，请稍后重试。')
         } finally {
             setIsHabitSaving(false)
+        }
+    }
+
+    const handleBindFeishu = async () => {
+        if (!feishuOpenIdInput.trim()) return
+        setIsFeishuBinding(true)
+        setFeishuMessage(null)
+        try {
+            const response = await fetch(API_ENDPOINTS.AUTH.FEISHU_BIND, {
+                method: 'PUT',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ feishuOpenId: feishuOpenIdInput.trim() })
+            })
+            const result = await response.json()
+            if (!result.success) {
+                throw new Error(result.message || '绑定失败')
+            }
+            if (result.data?.user) {
+                updateUser({
+                    feishuBinding: result.data.user.feishuBinding,
+                    feishuOpenId: result.data.user.feishuOpenId
+                })
+            }
+            setFeishuMessage('飞书绑定成功！')
+            setFeishuOpenIdInput('')
+        } catch (error) {
+            console.error('绑定飞书失败:', error)
+            setFeishuMessage(error instanceof Error ? error.message : '绑定失败，请稍后重试。')
+        } finally {
+            setIsFeishuBinding(false)
+        }
+    }
+
+    const handleUnbindFeishu = async () => {
+        setIsFeishuBinding(true)
+        setFeishuMessage(null)
+        try {
+            const response = await fetch(API_ENDPOINTS.AUTH.FEISHU_BIND, {
+                method: 'PUT',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ feishuOpenId: null })
+            })
+            const result = await response.json()
+            if (!result.success) {
+                throw new Error(result.message || '解绑失败')
+            }
+            if (result.data?.user) {
+                updateUser({
+                    feishuBinding: false,
+                    feishuOpenId: undefined
+                })
+            }
+            setFeishuMessage('已成功解除绑定。')
+        } catch (error) {
+            console.error('解绑飞书失败:', error)
+            setFeishuMessage(error instanceof Error ? error.message : '解绑失败，请稍后重试。')
+        } finally {
+            setIsFeishuBinding(false)
         }
     }
 
@@ -310,6 +374,71 @@ export default function ProfilePage() {
                                     </div>
                                 </div>
                             </div>
+                        </div>
+
+                        {/* Feishu Account Binding */}
+                        <div className="bg-black/20 rounded-2xl p-6 border border-white/10 space-y-4">
+                            <div>
+                                <h3 className="text-white font-semibold flex items-center gap-2">
+                                    <Shield className="h-5 w-5 text-indigo-300" />
+                                    飞书账号绑定
+                                </h3>
+                                <p className="text-white/40 text-xs mt-1">绑定飞书账号以通过飞书机器人使用 AI 助理与同步日历日程</p>
+                            </div>
+
+                            {user.feishuBinding ? (
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+                                        <div className="flex flex-col">
+                                            <span className="text-emerald-300 font-medium text-sm">已绑定飞书账号</span>
+                                            <span className="text-[10px] text-white/50 font-mono mt-0.5">OpenID: {user.feishuOpenId || '已关联'}</span>
+                                        </div>
+                                        <Badge variant="outline" className="bg-emerald-500/20 border-emerald-400/30 text-emerald-100">
+                                            已激活
+                                        </Badge>
+                                    </div>
+                                    <Button
+                                        onClick={handleUnbindFeishu}
+                                        disabled={isFeishuBinding}
+                                        variant="destructive"
+                                        className="h-10 px-5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-100 border border-rose-500/30 rounded-xl w-full"
+                                    >
+                                        {isFeishuBinding ? '解绑中...' : '解除绑定'}
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="text-xs text-white/60 space-y-2 bg-white/5 p-4 rounded-xl border border-white/5 leading-relaxed">
+                                        <p className="font-semibold text-white/90">👉 快速绑定流程：</p>
+                                        <ol className="list-decimal pl-4 space-y-1">
+                                            <li>在飞书客户端搜索并添加机器人客户 <b>“矩时日程助手”</b> (由系统管理员创建)；</li>
+                                            <li>给机器人发送任意文字（如 <code>绑定</code>），机器人将回复您的 <b>OpenID</b>；</li>
+                                            <li>将该 OpenID 复制并粘贴到下方输入框，点击绑定即可。</li>
+                                        </ol>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <input
+                                            value={feishuOpenIdInput}
+                                            onChange={(e) => setFeishuOpenIdInput(e.target.value)}
+                                            placeholder="请输入飞书 OpenID (如 ou_xxx)"
+                                            className="flex-1 h-10 rounded-xl bg-white/5 border border-white/15 px-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-indigo-400/40"
+                                            disabled={isFeishuBinding}
+                                        />
+                                        <Button
+                                            onClick={handleBindFeishu}
+                                            disabled={isFeishuBinding || !feishuOpenIdInput.trim()}
+                                            className="h-10 px-5 bg-indigo-500/30 hover:bg-indigo-500/40 text-indigo-100 border border-indigo-400/30 rounded-xl"
+                                        >
+                                            {isFeishuBinding ? '绑定中...' : '绑定'}
+                                        </Button>
+                                    </div>
+                                    {feishuMessage && (
+                                        <p className={`text-xs ${feishuMessage.includes('成功') ? 'text-emerald-300' : 'text-rose-300'}`}>
+                                            {feishuMessage}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         {/* Profile Info */}

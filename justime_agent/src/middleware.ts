@@ -12,7 +12,7 @@ const protectedRoutes = [
   '/model-config',
 ]
 
-const publicOnlyRoutes = ['/auth']
+const publicOnlyRoutes = ['/auth', '/login']
 
 function isRouteMatched(pathname: string, route: string) {
   return pathname === route || pathname.startsWith(`${route}/`)

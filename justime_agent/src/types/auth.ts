@@ -120,6 +120,7 @@ export interface SafeUser {
   lastLoginAt?: string
   createdAt?: string
   feishuBinding?: boolean
+  feishuOpenId?: string
 }
 
 // 认证结果接口

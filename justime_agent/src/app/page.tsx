@@ -30,14 +30,10 @@ export default function HomePage() {
     if (isLoading) return
 
     // Stagger reveal animation for hero elements
-    gsap.from(".animate-reveal", {
-      y: 24,
-      autoAlpha: 0,
-      duration: 0.8,
-      stagger: 0.12,
-      ease: "power3.out",
-      clearProps: "all"
-    })
+    gsap.fromTo(".animate-reveal", 
+      { y: 24, autoAlpha: 0 },
+      { y: 0, autoAlpha: 1, duration: 0.8, stagger: 0.12, ease: "power3.out" }
+    )
   }, { scope: containerRef, dependencies: [isLoading] })
 
   // 如果正在加载，显示加载状态

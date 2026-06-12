@@ -75,7 +75,6 @@ export function ChatInterface({
   const [lastEventId, setLastEventId] = useState<string | null>(null)
 
   // ==================== Callbacks ====================
-
   const loadFullContent = useCallback(async (reference: RagReference) => {
     const docPath = reference?.docPath
     if (!docPath) return
@@ -170,7 +169,6 @@ export function ChatInterface({
     setPreviewOpen(true)
     setActiveTab('snippets')
   }, [])
-
   // ==================== Effects ====================
 
   // Load history when sessionId changes
@@ -236,6 +234,7 @@ export function ChatInterface({
     }
     loadFullContent(selectedReference)
   }, [previewOpen, activeTab, selectedReference, loadFullContent])
+
 
   const handleStreamingMessage = useCallback(async (userMessageContent: string) => {
     const streamingMsgId = generateId()

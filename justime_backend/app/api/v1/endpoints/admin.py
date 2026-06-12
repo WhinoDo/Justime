@@ -12,6 +12,10 @@ from app.models.admin import (
     UserModelAccessUpdateRequest,
     UserRoleUpdateRequest,
     UserStatusUpdateRequest,
+    TestConnectionRequest,
+    TestConnectionResult,
+    NotebookLMStatus,
+    NotebookLMAuthRequest,
 )
 from app.api.deps import parse_object_id, AdminUser as AdminDep
 from app.business.admin_business import admin_business
@@ -141,6 +145,25 @@ async def delete_model(model_id: str, _: AdminDep) -> Dict[str, Any]:
     return {"success": True, "message": f"模型 {model_id} 已删除"}
 
 
+@router.post("/models/test", response_model=TestConnectionResult, summary="测试 API 连接")
+async def test_model_connection(
+    payload: TestConnectionRequest,
+    _: AdminDep
+) -> TestConnectionResult:
+    """测试指定模型配置的 API 连接可用性"""
+    result = await admin_business.test_connection(
+        base_url=payload.base_url,
+        api_key=payload.api_key,
+        api_key_id=payload.api_key_id,
+        model_id=payload.model_id,
+    )
+    return TestConnectionResult(
+        success=result["success"],
+        message=result["message"],
+        latency_ms=result.get("latency_ms")
+    )
+
+
 @router.get("/stats", response_model=SystemStats, summary="获取系统统计")
 async def get_stats(_: AdminDep) -> SystemStats:
     """获取系统运行统计信息"""
@@ -170,3 +193,101 @@ async def invalidate_all_cache(_: AdminDep) -> Dict[str, Any]:
         CacheService.reset_cache_stats()
         return {"success": True, "message": "缓存统计已重置，Redis 缓存将按 TTL 自然过期"}
     return {"success": False, "message": "Redis 未启用"}
+
+
+@router.get("/notebooklm/status", response_model=NotebookLMStatus, summary="获取 NotebookLM 配置与登录状态")
+async def get_notebooklm_status(_: AdminDep) -> NotebookLMStatus:
+    """获取系统全局 NotebookLM 登录与配置状态"""
+    import os
+    from pathlib import Path
+    from app.services.notebooklm_service import notebooklm_service
+    
+    configured = False
+    method = "none"
+    status_str = "not_configured"
+    message = "未检测到 NotebookLM 登录凭证"
+
+    storage_path = Path.home() / ".notebooklm" / "storage_state.json"
+    
+    if os.getenv("NOTEBOOKLM_AUTH_JSON"):
+        configured = True
+        method = "env"
+    elif storage_path.exists():
+        configured = True
+        method = "file"
+
+    if configured:
+        try:
+            # 运行内部认证 check 命令
+            await notebooklm_service._validate_cli()
+            status_str = "active"
+            message = "NotebookLM 谷歌登录态有效"
+        except Exception as e:
+            status_str = "expired"
+            message = f"NotebookLM 谷歌登录态无效或已过期: {e}"
+
+    return NotebookLMStatus(
+        configured=configured,
+        method=method,
+        status=status_str,
+        message=message
+    )
+
+
+@router.post("/notebooklm/auth", summary="更新 NotebookLM 谷歌登录凭证")
+async def update_notebooklm_auth(
+    payload: NotebookLMAuthRequest,
+    _: AdminDep
+) -> Dict[str, Any]:
+    """上传并覆盖系统全局 NotebookLM 谷歌登录凭证 (storage_state.json 内容)"""
+    import json
+    from pathlib import Path
+    from app.services.notebooklm_service import notebooklm_service
+
+    # 1. 验证 JSON 格式
+    try:
+        json_data = json.loads(payload.auth_json)
+        if not isinstance(json_data, dict):
+            raise ValueError("JSON 必须是对象结构")
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"无效的 JSON 数据格式: {e}"
+        )
+
+    # 2. 写入文件
+    storage_dir = Path.home() / ".notebooklm"
+    storage_path = storage_dir / "storage_state.json"
+
+    backup_content = None
+    if storage_path.exists():
+        try:
+            backup_content = storage_path.read_text(encoding="utf-8")
+        except Exception:
+            pass
+
+    try:
+        storage_dir.mkdir(parents=True, exist_ok=True)
+        storage_path.write_text(payload.auth_json, encoding="utf-8")
+        
+        # 3. 验证 CLI 命令是否可用及证书是否生效
+        await notebooklm_service._validate_cli()
+    except Exception as e:
+        # 如果新上传的凭证报错，则回滚备份
+        if backup_content is not None:
+            try:
+                storage_path.write_text(backup_content, encoding="utf-8")
+            except Exception:
+                pass
+        else:
+            try:
+                storage_path.unlink(missing_ok=True)
+            except Exception:
+                pass
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"认证凭证验证失败，已回退。原因: {e}"
+        )
+
+    return {"success": True, "message": "NotebookLM 谷歌账号登录凭证更新并验证成功"}
+

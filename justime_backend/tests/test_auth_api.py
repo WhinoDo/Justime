@@ -393,3 +393,26 @@ class TestLLMConfig:
         response = await client.get("/api/v1/auth/llm-configs")
         
         assert response.status_code == 401
+
+
+class TestFeishuBind:
+    async def test_bind_feishu_unauthorized(self, client: AsyncClient, clean_db):
+        response = await client.put("/api/v1/auth/feishu-bind", json={"feishuOpenId": "ou_test"})
+        assert response.status_code == 401
+
+    async def test_bind_feishu_success(self, client: AsyncClient, auth_headers, clean_db):
+        response = await client.put("/api/v1/auth/feishu-bind", json={"feishuOpenId": "ou_test_123"}, headers=auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["data"]["user"]["feishuBinding"] is True
+        assert data["data"]["user"]["feishuOpenId"] == "ou_test_123"
+
+        # 解绑
+        response = await client.put("/api/v1/auth/feishu-bind", json={"feishuOpenId": None}, headers=auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["data"]["user"]["feishuBinding"] is False
+        assert data["data"]["user"]["feishuOpenId"] is None
+

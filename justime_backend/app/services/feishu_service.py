@@ -262,10 +262,18 @@ class FeishuService:
         user_id = await self._resolve_user_id(open_id)
         if not user_id:
             logger.warning("handle_message_event: cannot resolve open_id=%s", open_id)
+            bind_text = (
+                f"⚠️ 您尚未绑定矩时账号，无法使用 AI 日程与学习助手功能。\n\n"
+                f"您的飞书 OpenID 为：\n{open_id}\n\n"
+                f"👉 绑定方法：\n"
+                f"1. 登录 矩时网页端；\n"
+                f"2. 前往「个人信息」->「飞书账号绑定」；\n"
+                f"3. 填入上述 OpenID 并点击绑定即可。"
+            )
             await self.send_message(
                 receive_id=open_id,
                 msg_type="text",
-                content=json.dumps({"text": "请先在矩时平台绑定飞书账号"}, ensure_ascii=False),
+                content=json.dumps({"text": bind_text}, ensure_ascii=False),
             )
             return
 

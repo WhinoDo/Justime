@@ -43,7 +43,7 @@ const withPWA = require('next-pwa')({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone', // Enable standalone output for smaller Docker images
+  output: process.env.NODE_ENV === 'production' ? 'standalone' : undefined, // Only standalone in production
   images: {
     domains: ['avatars.githubusercontent.com', 'lh3.googleusercontent.com'],
   },

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ServerCog, KeyRound, Shield } from 'lucide-react'
+import { ServerCog, KeyRound, Shield, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export default function AdminSettingsPage() {
@@ -32,6 +32,15 @@ export default function AdminSettingsPage() {
             color: 'text-emerald-300',
             bg: 'bg-emerald-500/20',
             ring: 'ring-emerald-500/30',
+        },
+        {
+            title: 'NotebookLM 谷歌认证',
+            description: '管理系统全局谷歌账号登录态，用于同步云端书籍分析项目。',
+            icon: Sparkles,
+            href: '/admin/notebooklm',
+            color: 'text-sky-300',
+            bg: 'bg-sky-500/20',
+            ring: 'ring-sky-500/30',
         },
     ]
 

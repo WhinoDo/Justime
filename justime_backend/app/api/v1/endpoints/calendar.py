@@ -2,6 +2,7 @@
 日历事件 API 端点
 """
 
+import logging
 import asyncio
 from datetime import datetime
 from typing import Any, Optional
@@ -10,6 +11,7 @@ from bson import ObjectId
 from pymongo import ReturnDocument
 from fastapi import APIRouter, HTTPException, Query, status
 
+from app.core.config import settings
 from app.api.deps import parse_object_id, CurrentUser
 from app.database import db
 from app.models.calendar import (
@@ -18,7 +20,9 @@ from app.models.calendar import (
     YouTubeSummaryJobCreate,
 )
 from app.services.youtube_summary_service import youtube_summary_service
+from app.business.feishu_calendar import FeishuCalendarBusiness
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -53,6 +57,25 @@ async def list_events(
     type: Optional[str] = Query(None, description="事件类型"),
 ):
     user_id = str(current_user["_id"])
+
+    if settings.FEISHU_INTEGRATION_ENABLED:
+        try:
+            events = await FeishuCalendarBusiness.list_events(
+                user_id=user_id,
+                start_date=startDate,
+                end_date=endDate
+            )
+            if type:
+                events = [e for e in events if e.get("type") == type]
+            return {
+                "success": True,
+                "data": {
+                    "events": events
+                }
+            }
+        except Exception as e:
+            logger.error(f"Feishu list_events failed: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"飞书日历拉取失败: {e}")
 
     query = {
         "userId": user_id,
@@ -93,6 +116,19 @@ async def get_event(
     current_user: CurrentUser
 ):
     user_id = str(current_user["_id"])
+
+    if settings.FEISHU_INTEGRATION_ENABLED:
+        try:
+            event = await FeishuCalendarBusiness.get_event(user_id, event_id)
+            if not event:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="事件不存在")
+            return {"success": True, "data": {"event": event}}
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Feishu get_event failed: {e}")
+            raise HTTPException(status_code=500, detail=f"获取飞书日程详情失败: {e}")
+
     # 使用验证器验证 ObjectId
     oid = parse_object_id(event_id, "事件ID")
 
@@ -112,6 +148,19 @@ async def create_event(
         raise HTTPException(status_code=400, detail="结束时间必须晚于开始时间")
 
     user_id = str(current_user["_id"])
+
+    if settings.FEISHU_INTEGRATION_ENABLED:
+        try:
+            event = await FeishuCalendarBusiness.create_event(user_id, payload)
+            return {
+                "success": True,
+                "data": {"event": event},
+                "message": "飞书日程同步创建成功"
+            }
+        except Exception as e:
+            logger.error(f"Feishu create_event failed: {e}")
+            raise HTTPException(status_code=500, detail=f"飞书日程创建失败: {e}")
+
     event_doc = payload.dict()
     event_doc["userId"] = user_id
     event_doc["createdAt"] = datetime.utcnow()
@@ -134,6 +183,19 @@ async def update_event(
     current_user: CurrentUser
 ):
     user_id = str(current_user["_id"])
+
+    if settings.FEISHU_INTEGRATION_ENABLED:
+        try:
+            event = await FeishuCalendarBusiness.update_event(user_id, event_id, payload)
+            return {
+                "success": True,
+                "data": {"event": event},
+                "message": "飞书日程同步更新成功"
+            }
+        except Exception as e:
+            logger.error(f"Feishu update_event failed: {e}")
+            raise HTTPException(status_code=500, detail=f"飞书日程更新失败: {e}")
+
     # 使用验证器验证 ObjectId
     oid = parse_object_id(event_id, "事件ID")
 
@@ -176,6 +238,15 @@ async def delete_event(
     current_user: CurrentUser
 ):
     user_id = str(current_user["_id"])
+
+    if settings.FEISHU_INTEGRATION_ENABLED:
+        try:
+            await FeishuCalendarBusiness.delete_event(user_id, event_id)
+            return {"success": True, "message": "飞书日程删除成功"}
+        except Exception as e:
+            logger.error(f"Feishu delete_event failed: {e}")
+            raise HTTPException(status_code=500, detail=f"飞书日程删除失败: {e}")
+
     # 使用验证器验证 ObjectId
     oid = parse_object_id(event_id, "事件ID")
 
@@ -292,3 +363,44 @@ async def get_youtube_summary_job_status(
             "completedAt": _to_jsonable(job.get("completedAt")),
         },
     }
+
+
+@router.get("/feishu/config-status", summary="查询飞书日历映射集成状态")
+async def get_feishu_config_status(current_user: CurrentUser):
+    if not settings.FEISHU_INTEGRATION_ENABLED:
+        return {
+            "success": True,
+            "data": {
+                "enabled": False,
+                "status": "disabled",
+                "appId": "",
+                "calendarId": "",
+                "message": "飞书集成已在后端关闭"
+            }
+        }
+        
+    try:
+        from app.services.feishu_service import FeishuService
+        token = await FeishuService.get_tenant_access_token()
+        return {
+            "success": True,
+            "data": {
+                "enabled": True,
+                "status": "connected",
+                "appId": settings.FEISHU_APP_ID,
+                "calendarId": settings.FEISHU_CALENDAR_ID or "默认主日历",
+                "message": "已成功连通飞书开放平台"
+            }
+        }
+    except Exception as e:
+        return {
+            "success": True,
+            "data": {
+                "enabled": True,
+                "status": "error",
+                "appId": settings.FEISHU_APP_ID,
+                "calendarId": settings.FEISHU_CALENDAR_ID or "默认主日历",
+                "message": f"连通失败: {e}"
+            }
+        }
+

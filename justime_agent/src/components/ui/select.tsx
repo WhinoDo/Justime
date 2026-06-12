@@ -90,11 +90,11 @@ const SelectValue: React.FC<SelectValueProps> = ({ placeholder, children }) => {
 
   // 如果有children，优先使用children
   if (children) {
-    return <span className="block truncate text-gray-900 dark:text-gray-100">{children}</span>
+    return <span className="block truncate text-inherit">{children}</span>
   }
 
   return (
-    <span className="block truncate text-gray-900 dark:text-gray-100">
+    <span className="block truncate text-inherit">
       {displayValue || placeholder}
     </span>
   )

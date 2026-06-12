@@ -104,14 +104,14 @@ export const ChatInputArea = memo(function ChatInputArea({
         )}
 
         {/* Input container with glassmorphism */}
-        <div className="relative mx-auto max-w-3xl overflow-hidden rounded-[28px] border border-white/15 bg-white/10 shadow-2xl shadow-black/15 backdrop-blur-2xl transition-all duration-300 focus-within:ring-2 focus-within:ring-white/20">
+        <div className="relative mx-auto max-w-3xl overflow-hidden rounded-3xl border border-white/10 dark:border-white/10 bg-white/5 dark:bg-black/20 shadow-lg shadow-black/10 backdrop-blur-xl transition-all duration-300 focus-within:border-white/20 focus-within:bg-white/8 dark:focus-within:bg-black/30 focus-within:ring-1 focus-within:ring-white/10">
           <Textarea
             ref={textareaRef}
             value={input}
             onChange={(e) => onInputChange(e.target.value)}
             onKeyPress={onKeyPress}
             placeholder={`输入 "@" 唤起常用语，或粘贴代码快速提问`}
-            className="h-32 resize-none overflow-y-auto border-0 bg-transparent px-6 py-4 text-base text-white placeholder:text-white/45 focus-visible:ring-0 focus-visible:ring-offset-0"
+            className="h-32 resize-none overflow-y-auto border-0 dark:border-0 bg-transparent dark:bg-transparent px-6 py-4 text-base text-white dark:text-white placeholder:text-white/35 focus-visible:ring-0 focus-visible:ring-offset-0"
             disabled={isLoading}
           />
 
@@ -121,15 +121,21 @@ export const ChatInputArea = memo(function ChatInputArea({
                 value={selectedModel}
                 onValueChange={onModelChange}
               >
-                <SelectTrigger className="h-9 min-w-[150px] rounded-xl border-white/10 bg-white/5 px-3 text-white shadow-none hover:bg-white/10 focus:ring-0">
+                <SelectTrigger className="h-9 min-w-[150px] rounded-xl border-white/10 dark:border-white/10 bg-white/5 dark:bg-white/5 px-3 text-white dark:text-white shadow-none hover:bg-white/10 dark:hover:bg-white/10 focus:ring-0 focus:outline-none">
                   <div className="flex items-center gap-1.5 text-xs text-white/75">
                     <Bot className={modelError ? 'h-4 w-4 text-red-300' : 'h-4 w-4 text-blue-200'} />
                     <SelectValue placeholder={modelError ? '模型拉取失败' : '加载模型中...'} />
                   </div>
                 </SelectTrigger>
-                <SelectContent className="bottom-full left-0 mb-1 origin-bottom">
+                <SelectContent className="bottom-full left-0 mb-1 origin-bottom border border-white/10 dark:border-white/10 bg-black/60 dark:bg-black/60 backdrop-blur-xl shadow-2xl text-white">
                   {availableModels.map((model) => (
-                    <SelectItem key={model.id} value={model.id} className="text-xs">
+                    <SelectItem
+                      key={model.id}
+                      value={model.id}
+                      className={`text-xs text-white/80 dark:text-white/80 hover:bg-white/10 dark:hover:bg-white/10 focus:bg-white/10 dark:focus:bg-white/10 rounded-lg py-1.5 px-3 transition-colors ${
+                        selectedModel === model.id ? 'bg-white/15 dark:bg-white/15 text-white dark:text-white' : ''
+                      }`}
+                    >
                       {model.name}
                     </SelectItem>
                   ))}

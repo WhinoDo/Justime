@@ -87,3 +87,17 @@ class TestConnectionResult(BaseModel):
     success: bool = Field(..., description="连接是否成功")
     message: str = Field(..., description="结果消息")
     latency_ms: Optional[int] = Field(None, description="响应延迟(毫秒)")
+
+
+class NotebookLMStatus(BaseModel):
+    """NotebookLM 配置状态"""
+    configured: bool = Field(..., description="是否已配置")
+    method: Literal["file", "env", "none"] = Field(..., description="配置方式")
+    status: Literal["active", "expired", "not_configured"] = Field(..., description="登录态状态")
+    message: str = Field(..., description="说明消息")
+
+
+class NotebookLMAuthRequest(BaseModel):
+    """NotebookLM 登录凭证更新请求"""
+    auth_json: str = Field(..., min_length=1, description="Google storage_state.json 的 JSON 文本")
+

@@ -13,6 +13,7 @@ export const API_ENDPOINTS = {
     LLM_USAGE_DAILY: (days: number, scope: string) => `/api/auth/llm-usage/daily?days=${days}&scope=${scope}`,
     FORGOT_PASSWORD: '/api/auth/forgot-password',
     RESET_PASSWORD: '/api/auth/reset-password',
+    FEISHU_BIND: '/api/auth/feishu-bind',
   },
 
   CHAT: {
@@ -70,5 +71,6 @@ export const API_ENDPOINTS = {
     API_KEYS: '/api/admin/apikeys',
     API_KEY: (keyId: string) => `/api/admin/apikeys/${keyId}`,
     STATS: '/api/admin/stats',
+    NOTEBOOKLM: '/api/admin/notebooklm',
   },
 } as const

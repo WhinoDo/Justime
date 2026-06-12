@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 // 后端 SSE 端点
-const BACKEND_STREAM_URL = process.env.BACKEND_URL || 'http://localhost:8000'
+const BACKEND_STREAM_URL = 
+  process.env.BACKEND_INTERNAL_URL ||
+  process.env.BACKEND_URL || 
+  process.env.NEXT_PUBLIC_BACKEND_URL || 
+  'http://localhost:8080'
 const SSE_ENDPOINT = `${BACKEND_STREAM_URL}/api/v1/chat/stream`
 
 export async function POST(request: NextRequest) {
