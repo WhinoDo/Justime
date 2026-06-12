@@ -73,7 +73,7 @@ export async function middleware(request: NextRequest) {
     if (isTokenExpired(token)) {
       const response = NextResponse.redirect(new URL('/auth?mode=login', request.url))
       response.cookies.delete('access_token')
-      response.cookies.delete('refresh-token')
+      response.cookies.delete('refresh_token')
       return response
     }
 
@@ -81,7 +81,7 @@ export async function middleware(request: NextRequest) {
     if (!isValid) {
       const response = NextResponse.redirect(new URL('/auth?mode=login', request.url))
       response.cookies.delete('access_token')
-      response.cookies.delete('refresh-token')
+      response.cookies.delete('refresh_token')
       return response
     }
   }

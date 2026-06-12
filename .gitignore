@@ -39,6 +39,16 @@ justime_deploy_package.zip
 infrastructure/mongodb/data/
 infrastructure/data/db/*
 !infrastructure/data/db/.gitkeep
+deployment/allinone/data/
+deployment/homelab/data/
+justime_backend/app/data/documents/book-analysis/
+
+# Local runtime logs
+logs/
+
+# Mobile / native build artifacts
+justime_agent/android/
+**/.expo/
 
 # IDE
 .idea/

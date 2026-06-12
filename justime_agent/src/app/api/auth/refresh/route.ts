@@ -19,13 +19,13 @@ export async function POST(request: NextRequest) {
     const backendUrl = API_CONFIG.getFullUrl('/auth/refresh')
 
     // 获取cookie并传递给后端
-    const refreshToken = request.cookies.get('refresh-token')?.value
+    const refreshToken = request.cookies.get('refresh_token')?.value
 
     const response = await fetch(backendUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Cookie': refreshToken ? `refresh-token=${refreshToken}` : ''
+        'Cookie': refreshToken ? `refresh_token=${refreshToken}` : ''
       },
       body: JSON.stringify({
         refreshToken: refreshToken || undefined

@@ -47,7 +47,7 @@ describe('auth-cookies', () => {
       })
 
       expect(mockResponse.cookies.set).toHaveBeenCalledWith(
-        'refresh-token',
+        'refresh_token',
         'test-refresh-token',
         expect.objectContaining({
           httpOnly: true,
@@ -140,7 +140,7 @@ describe('auth-cookies', () => {
       clearAuthCookies(mockResponse)
 
       expect(mockResponse.cookies.set).toHaveBeenCalledWith(
-        'refresh-token',
+        'refresh_token',
         '',
         expect.objectContaining({
           maxAge: 0,

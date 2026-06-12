@@ -180,11 +180,11 @@ describe('Auth API Routes', () => {
       }))
 
       const cookieCalls = mockCookiesSet.mock.calls.filter(
-        (call: any[]) => call[0] === 'access_token' || call[0] === 'refresh-token'
+        (call: any[]) => call[0] === 'access_token' || call[0] === 'refresh_token'
       )
       expect(cookieCalls.length).toBe(2)
       const accessCookie = cookieCalls.find((c: any[]) => c[0] === 'access_token')
-      const refreshCookie = cookieCalls.find((c: any[]) => c[0] === 'refresh-token')
+      const refreshCookie = cookieCalls.find((c: any[]) => c[0] === 'refresh_token')
       expect(accessCookie[1]).toBe('access-tok')
       expect(refreshCookie[1]).toBe('refresh-tok')
     })
@@ -293,7 +293,7 @@ describe('Auth API Routes', () => {
       }))
 
       const cookieCalls = mockCookiesSet.mock.calls.filter(
-        (call: any[]) => call[0] === 'access_token' || call[0] === 'refresh-token'
+        (call: any[]) => call[0] === 'access_token' || call[0] === 'refresh_token'
       )
       expect(cookieCalls.length).toBe(0)
     })
@@ -383,11 +383,11 @@ describe('Auth API Routes', () => {
       }))
 
       const cookieCalls = mockCookiesSet.mock.calls.filter(
-        (call: any[]) => call[0] === 'access_token' || call[0] === 'refresh-token'
+        (call: any[]) => call[0] === 'access_token' || call[0] === 'refresh_token'
       )
       expect(cookieCalls.length).toBe(2)
       const accessCookie = cookieCalls.find((c: any[]) => c[0] === 'access_token')
-      const refreshCookie = cookieCalls.find((c: any[]) => c[0] === 'refresh-token')
+      const refreshCookie = cookieCalls.find((c: any[]) => c[0] === 'refresh_token')
       expect(accessCookie[1]).toBe('access-tok')
       expect(refreshCookie[1]).toBe('refresh-tok')
     })
@@ -514,7 +514,7 @@ describe('Auth API Routes', () => {
       }))
 
       const cookieCalls = mockCookiesSet.mock.calls.filter(
-        (call: any[]) => call[0] === 'access_token' || call[0] === 'refresh-token'
+        (call: any[]) => call[0] === 'access_token' || call[0] === 'refresh_token'
       )
       expect(cookieCalls.length).toBe(0)
     })
@@ -902,7 +902,7 @@ describe('Auth API Routes', () => {
       expect(fetchMock).toHaveBeenCalledTimes(1)
       const [url, options] = fetchMock.mock.calls[0]
       expect(url).toBe('http://backend.local/api/v1/auth/refresh')
-      expect(options.headers.Cookie).toBe('refresh-token=stored-refresh-token')
+      expect(options.headers.Cookie).toBe('refresh_token=stored-refresh-token')
       const body = JSON.parse(options.body)
       expect(body.refreshToken).toBe('stored-refresh-token')
     })
@@ -950,11 +950,11 @@ describe('Auth API Routes', () => {
       }))
 
       const cookieCalls = mockCookiesSet.mock.calls.filter(
-        (call: any[]) => call[0] === 'access_token' || call[0] === 'refresh-token'
+        (call: any[]) => call[0] === 'access_token' || call[0] === 'refresh_token'
       )
       expect(cookieCalls.length).toBe(2)
       const accessCookie = cookieCalls.find((c: any[]) => c[0] === 'access_token')
-      const refreshCookie = cookieCalls.find((c: any[]) => c[0] === 'refresh-token')
+      const refreshCookie = cookieCalls.find((c: any[]) => c[0] === 'refresh_token')
       expect(accessCookie[1]).toBe('new-access-tok')
       expect(refreshCookie[1]).toBe('new-refresh-tok')
     })
@@ -1063,7 +1063,7 @@ describe('Auth API Routes', () => {
       }))
 
       const cookieCalls = mockCookiesSet.mock.calls.filter(
-        (call: any[]) => call[0] === 'access_token' || call[0] === 'refresh-token'
+        (call: any[]) => call[0] === 'access_token' || call[0] === 'refresh_token'
       )
       expect(cookieCalls.length).toBe(0)
     })
@@ -1100,17 +1100,17 @@ describe('Auth API Routes', () => {
       expect(body.message).toBe('登出成功')
     })
 
-    it('clears access_token and refresh-token cookies', async () => {
+    it('clears access_token and refresh_token cookies', async () => {
       const { POST } = await import('@/app/api/auth/logout/route')
 
       await POST(makeRequest())
 
       const cookieCalls = mockCookiesSet.mock.calls.filter(
-        (call: any[]) => call[0] === 'access_token' || call[0] === 'refresh-token'
+        (call: any[]) => call[0] === 'access_token' || call[0] === 'refresh_token'
       )
       expect(cookieCalls.length).toBe(2)
       const accessCookie = cookieCalls.find((c: any[]) => c[0] === 'access_token')
-      const refreshCookie = cookieCalls.find((c: any[]) => c[0] === 'refresh-token')
+      const refreshCookie = cookieCalls.find((c: any[]) => c[0] === 'refresh_token')
       expect(accessCookie[1]).toBe('')
       expect(accessCookie[2].maxAge).toBe(0)
       expect(refreshCookie[1]).toBe('')
@@ -1123,7 +1123,7 @@ describe('Auth API Routes', () => {
       await POST(makeRequest())
 
       const cookieCalls = mockCookiesSet.mock.calls.filter(
-        (call: any[]) => call[0] === 'access_token' || call[0] === 'refresh-token'
+        (call: any[]) => call[0] === 'access_token' || call[0] === 'refresh_token'
       )
       for (const call of cookieCalls) {
         expect(call[2].httpOnly).toBe(true)

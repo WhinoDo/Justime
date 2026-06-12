@@ -214,11 +214,11 @@ describe('middleware', () => {
       expect(redirectUrl.searchParams.get('mode')).toBe('login')
     })
 
-    it('deletes access_token and refresh-token cookies on expired token', async () => {
+    it('deletes access_token and refresh_token cookies on expired token', async () => {
       const req = createMockRequest('/dashboard', { token: 'expired-token' })
       await middleware(req)
       expect(mockCookiesDelete).toHaveBeenCalledWith('access_token')
-      expect(mockCookiesDelete).toHaveBeenCalledWith('refresh-token')
+      expect(mockCookiesDelete).toHaveBeenCalledWith('refresh_token')
     })
 
     it('does not include redirect param in expired token redirect', async () => {
@@ -254,14 +254,14 @@ describe('middleware', () => {
       const req = createMockRequest('/dashboard', { token: 'invalid-token' })
       await middleware(req)
       expect(mockCookiesDelete).toHaveBeenCalledWith('access_token')
-      expect(mockCookiesDelete).toHaveBeenCalledWith('refresh-token')
+      expect(mockCookiesDelete).toHaveBeenCalledWith('refresh_token')
     })
 
     it('deletes cookies for all protected routes when token is invalid', async () => {
       const req = createMockRequest('/admin', { token: 'invalid-token' })
       await middleware(req)
       expect(mockCookiesDelete).toHaveBeenCalledWith('access_token')
-      expect(mockCookiesDelete).toHaveBeenCalledWith('refresh-token')
+      expect(mockCookiesDelete).toHaveBeenCalledWith('refresh_token')
     })
   })
 
@@ -350,7 +350,7 @@ describe('middleware', () => {
       await middleware(req)
       expect(mockRedirect).toHaveBeenCalled()
       expect(mockCookiesDelete).toHaveBeenCalledWith('access_token')
-      expect(mockCookiesDelete).toHaveBeenCalledWith('refresh-token')
+      expect(mockCookiesDelete).toHaveBeenCalledWith('refresh_token')
     })
 
     it('treats token with missing exp claim as expired', async () => {

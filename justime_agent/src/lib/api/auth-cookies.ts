@@ -27,7 +27,7 @@ export function setAuthCookies(
   }
 
   if (refreshToken) {
-    response.cookies.set('refresh-token', refreshToken, {
+    response.cookies.set('refresh_token', refreshToken, {
       httpOnly: true,
       secure: isSecureCookie(),
       sameSite: 'lax',
@@ -48,7 +48,7 @@ export function clearAuthCookies(response: NextResponse) {
     path: '/'
   })
 
-  response.cookies.set('refresh-token', '', {
+  response.cookies.set('refresh_token', '', {
     httpOnly: true,
     secure: isSecureCookie(),
     sameSite: 'lax',
