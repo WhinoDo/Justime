@@ -181,6 +181,21 @@ export type {
   StudyMaterial,
   ProgressStats,
 } from './study'
+export type {
+  TaskProcess,
+  Milestone,
+  Blocker,
+  AISuggestion,
+  AIAssessment,
+  Evidence,
+  KnowledgeOutput,
+  VaultConfig,
+  TaskPhase,
+  TaskPriority,
+  TaskCategory,
+  ProgressSource,
+  KnowledgeFormat,
+} from './taskProcess'
 
 // 任务类型
 export interface Task {

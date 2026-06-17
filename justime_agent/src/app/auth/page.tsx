@@ -10,10 +10,13 @@ import { LoginForm } from '@/components/auth/LoginForm'
 import { RegisterForm } from '@/components/auth/RegisterForm'
 import { useAuth } from '@/hooks/useAuth'
 import { useAuthRedirect } from '@/hooks/useAuthRedirect'
+import { useDesktopRuntime } from '@/hooks/useDesktopRuntime'
+import { cn } from '@/lib/utils'
 
 function AuthContent() {
   const searchParams = useSearchParams()
   const { isAuthenticated, isLoading } = useAuth()
+  const { isDesktop } = useDesktopRuntime()
 
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [redirectTo, setRedirectTo] = useState<string>('/dashboard')
@@ -55,8 +58,8 @@ function AuthContent() {
     return (
       <AuthStateShell>
         <div className="text-center">
-          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-white" />
-          <p className="mt-4 text-white/65">加载中...</p>
+          <div className={cn("mx-auto h-8 w-8 animate-spin rounded-full border-b-2", isDesktop ? "border-violet-600" : "border-white")} />
+          <p className={cn("mt-4", isDesktop ? "text-[#6d6680]" : "text-white/[0.65]")}>加载中...</p>
         </div>
       </AuthStateShell>
     )
@@ -67,9 +70,9 @@ function AuthContent() {
       <AuthStateShell>
         <div className="text-center">
           <div className="animate-pulse">
-            <Sparkles className="mx-auto mb-4 h-12 w-12 text-amber-200" />
+            <Sparkles className={cn("mx-auto mb-4 h-12 w-12", isDesktop ? "text-violet-500" : "text-amber-200")} />
           </div>
-          <p className="text-white/65">已登录，正在跳转...</p>
+          <p className={cn(isDesktop ? "text-[#6d6680]" : "text-white/[0.65]")}>已登录，正在跳转...</p>
         </div>
       </AuthStateShell>
     )
@@ -84,14 +87,14 @@ function AuthContent() {
           <div className="mt-2 text-center">
             <Button
               variant="link"
-              className="text-white hover:text-orange-200"
+              className={cn("font-medium", isDesktop ? "text-violet-600 hover:text-violet-700" : "text-white hover:text-orange-200")}
               onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
             >
               {mode === 'login' ? '没有账户？点击注册' : '已有账户？点击登录'}
             </Button>
           </div>
 
-          <div className="mt-4 text-center text-xs text-gray-200 drop-shadow">
+          <div className={cn("mt-4 text-center text-xs", isDesktop ? "text-[#8b7aa8]" : "text-gray-200 drop-shadow")}>
             <p>© 2024 矩时AI助手. 保留所有权利.</p>
           </div>
         </>
@@ -120,7 +123,7 @@ export default function AuthPage() {
       <AuthStateShell>
         <div className="text-center">
           <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-white" />
-          <p className="mt-4 text-white/65">加载中...</p>
+          <p className="mt-4 text-white/[0.65]">加载中...</p>
         </div>
       </AuthStateShell>
     }>

@@ -182,6 +182,63 @@ export function BigCalendar({
           color: rgba(255, 255, 255, 0.9);
         }
 
+        /* Desktop Light Theme Overrides */
+        html[data-justime-runtime="desktop"] .calendar-theme-glass .rbc-calendar {
+          color: #171421;
+        }
+        html[data-justime-runtime="desktop"] .calendar-theme-glass .rbc-header {
+          color: #6d6680;
+          border-bottom-color: rgba(112, 77, 171, 0.15);
+        }
+        html[data-justime-runtime="desktop"] .calendar-theme-glass .rbc-month-row,
+        html[data-justime-runtime="desktop"] .calendar-theme-glass .rbc-day-bg,
+        html[data-justime-runtime="desktop"] .calendar-theme-glass .rbc-time-content,
+        html[data-justime-runtime="desktop"] .calendar-theme-glass .rbc-time-header-content {
+          border-color: rgba(112, 77, 171, 0.08) !important;
+        }
+        html[data-justime-runtime="desktop"] .calendar-theme-glass .rbc-day-bg + .rbc-day-bg {
+          border-left-color: rgba(112, 77, 171, 0.08);
+        }
+        html[data-justime-runtime="desktop"] .calendar-theme-glass .rbc-today {
+          background: linear-gradient(to bottom right, rgba(112, 77, 171, 0.05), transparent);
+        }
+        html[data-justime-runtime="desktop"] .calendar-theme-glass .rbc-off-range-bg {
+          background: rgba(112, 77, 171, 0.04);
+        }
+        html[data-justime-runtime="desktop"] .calendar-theme-glass .rbc-timeslot-group {
+          border-bottom-color: rgba(112, 77, 171, 0.04) !important;
+        }
+        html[data-justime-runtime="desktop"] .calendar-theme-glass .rbc-time-gutter .rbc-timeslot-group {
+          border-color: rgba(112, 77, 171, 0.08);
+        }
+        html[data-justime-runtime="desktop"] .calendar-theme-glass .rbc-label {
+          color: #8b7aa8;
+        }
+        html[data-justime-runtime="desktop"] .calendar-theme-glass .rbc-current-time-indicator {
+          background-color: #7c3aed; /* violet-600 */
+        }
+        html[data-justime-runtime="desktop"] .calendar-theme-glass ::-webkit-scrollbar-thumb {
+          background: rgba(112, 77, 171, 0.15);
+        }
+        html[data-justime-runtime="desktop"] .calendar-theme-glass ::-webkit-scrollbar-thumb:hover {
+          background: rgba(112, 77, 171, 0.25);
+        }
+        html[data-justime-runtime="desktop"] .rbc-overlay {
+          background: rgba(255, 255, 255, 0.95) !important;
+          border: 1px solid rgba(112, 77, 171, 0.15) !important;
+          box-shadow: 0 20px 40px rgba(112, 77, 171, 0.1) !important;
+        }
+        html[data-justime-runtime="desktop"] .rbc-overlay-header {
+          border-bottom-color: rgba(112, 77, 171, 0.1) !important;
+          color: #171421 !important;
+        }
+        html[data-justime-runtime="desktop"] .calendar-theme-glass .rbc-time-header.rbc-overflowing {
+          border-right-color: rgba(112, 77, 171, 0.1);
+        }
+        html[data-justime-runtime="desktop"] .calendar-theme-glass .rbc-header + .rbc-header {
+          border-left-color: rgba(112, 77, 171, 0.08);
+        }
+
         /* Transparent Backgrounds */
         .calendar-theme-glass .rbc-month-view, 
         .calendar-theme-glass .rbc-time-view, 

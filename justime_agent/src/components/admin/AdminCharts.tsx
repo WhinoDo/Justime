@@ -12,6 +12,7 @@ import {
     XAxis,
     YAxis
 } from 'recharts'
+import { cn } from '@/lib/utils'
 
 interface Stats {
     total_users: number
@@ -69,75 +70,86 @@ function formatTokens(value: number): string {
 
 interface AdminChartsProps {
     stats: Stats | null
+    isDesktop?: boolean
 }
 
-export function AdminCharts({ stats }: AdminChartsProps) {
+export function AdminCharts({ stats, isDesktop }: AdminChartsProps) {
     const trendData = useMemo(() => buildMockTrendData(stats), [stats])
 
     return (
         <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
-            <div className="xl:col-span-3 rounded-2xl border border-white/20 bg-white/5 backdrop-blur-xl shadow-2xl p-4 lg:p-6">
+            <div className={cn(
+                "xl:col-span-3 rounded-2xl border p-4 lg:p-6",
+                isDesktop
+                    ? "bg-white/[0.68] border-violet-200/[0.45] shadow-[0_12px_40px_rgba(112,77,171,0.06)]"
+                    : "border-white/20 bg-white/5 backdrop-blur-xl shadow-2xl"
+            )}>
                 <div className="mb-4">
-                    <h3 className="text-white text-lg font-semibold">近 7 天 Token 消耗趋势</h3>
-                    <p className="text-white/60 text-xs mt-1">基于当前总量推演的日级趋势，用于可视化预览</p>
+                    <h3 className={cn("text-lg font-semibold", isDesktop ? "text-[#171421]" : "text-white")}>近 7 天 Token 消耗趋势</h3>
+                    <p className={cn("text-xs mt-1", isDesktop ? "text-[#6d6680]" : "text-white/60")}>基于当前总量推演 of 日级趋势，用于可视化预览</p>
                 </div>
                 <div className="h-[280px]">
                     <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={trendData}>
                             <defs>
                                 <linearGradient id="tokenGradient" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.55} />
-                                    <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.05} />
+                                    <stop offset="0%" stopColor={isDesktop ? "#7c3aed" : "#3b82f6"} stopOpacity={0.55} />
+                                    <stop offset="100%" stopColor={isDesktop ? "#7c3aed" : "#3b82f6"} stopOpacity={0.05} />
                                 </linearGradient>
                             </defs>
-                            <CartesianGrid stroke="rgba(255,255,255,0.12)" strokeDasharray="3 3" />
-                            <XAxis dataKey="date" tick={{ fill: 'rgba(255,255,255,0.72)', fontSize: 12 }} axisLine={{ stroke: 'rgba(255,255,255,0.18)' }} tickLine={false} />
-                            <YAxis tickFormatter={(v) => formatTokens(v)} tick={{ fill: 'rgba(255,255,255,0.72)', fontSize: 12 }} axisLine={{ stroke: 'rgba(255,255,255,0.18)' }} tickLine={false} />
+                            <CartesianGrid stroke={isDesktop ? "rgba(112, 77, 171, 0.1)" : "rgba(255,255,255,0.12)"} strokeDasharray="3 3" />
+                            <XAxis dataKey="date" tick={{ fill: isDesktop ? "#6d6680" : "rgba(255,255,255,0.72)", fontSize: 12 }} axisLine={{ stroke: isDesktop ? "rgba(112, 77, 171, 0.15)" : "rgba(255,255,255,0.18)" }} tickLine={false} />
+                            <YAxis tickFormatter={(v) => formatTokens(v)} tick={{ fill: isDesktop ? "#6d6680" : "rgba(255,255,255,0.72)", fontSize: 12 }} axisLine={{ stroke: isDesktop ? "rgba(112, 77, 171, 0.15)" : "rgba(255,255,255,0.18)" }} tickLine={false} />
                             <Tooltip
                                 formatter={(value: number) => [value.toLocaleString(), 'Token']}
                                 contentStyle={{
-                                    backgroundColor: 'rgba(17,24,39,0.96)',
-                                    border: '1px solid rgba(255,255,255,0.16)',
+                                    backgroundColor: isDesktop ? 'rgba(255,255,255,0.96)' : 'rgba(17,24,39,0.96)',
+                                    border: isDesktop ? '1px solid rgba(112,77,171,0.18)' : '1px solid rgba(255,255,255,0.16)',
                                     borderRadius: '10px',
-                                    color: '#fff'
+                                    color: isDesktop ? '#171421' : '#fff'
                                 }}
-                                labelStyle={{ color: 'rgba(255,255,255,0.88)' }}
+                                labelStyle={{ color: isDesktop ? '#6d6680' : 'rgba(255,255,255,0.88)' }}
                             />
                             <Area
                                 type="monotone"
                                 dataKey="tokens"
-                                stroke="#60a5fa"
+                                stroke={isDesktop ? "#8b5cf6" : "#60a5fa"}
                                 strokeWidth={2}
                                 fill="url(#tokenGradient)"
-                                activeDot={{ r: 4, stroke: '#93c5fd', fill: '#dbeafe' }}
+                                activeDot={{ r: 4, stroke: isDesktop ? '#c084fc' : '#93c5fd', fill: isDesktop ? '#faf5ff' : '#dbeafe' }}
                             />
                         </AreaChart>
                     </ResponsiveContainer>
                 </div>
             </div>
 
-            <div className="xl:col-span-2 rounded-2xl border border-white/20 bg-white/5 backdrop-blur-xl shadow-2xl p-4 lg:p-6">
+            <div className={cn(
+                "xl:col-span-2 rounded-2xl border p-4 lg:p-6",
+                isDesktop
+                    ? "bg-white/[0.68] border-violet-200/[0.45] shadow-[0_12px_40px_rgba(112,77,171,0.06)]"
+                    : "border-white/20 bg-white/5 backdrop-blur-xl shadow-2xl"
+            )}>
                 <div className="mb-4">
-                    <h3 className="text-white text-lg font-semibold">用户增长与活跃</h3>
-                    <p className="text-white/60 text-xs mt-1">近 7 天新增用户与活跃用户对比</p>
+                    <h3 className={cn("text-lg font-semibold", isDesktop ? "text-[#171421]" : "text-white")}>用户增长与活跃</h3>
+                    <p className={cn("text-xs mt-1", isDesktop ? "text-[#6d6680]" : "text-white/60")}>近 7 天新增用户与活跃用户对比</p>
                 </div>
                 <div className="h-[280px]">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={trendData}>
-                            <CartesianGrid stroke="rgba(255,255,255,0.12)" strokeDasharray="3 3" />
-                            <XAxis dataKey="date" tick={{ fill: 'rgba(255,255,255,0.72)', fontSize: 12 }} axisLine={{ stroke: 'rgba(255,255,255,0.18)' }} tickLine={false} />
-                            <YAxis tick={{ fill: 'rgba(255,255,255,0.72)', fontSize: 12 }} axisLine={{ stroke: 'rgba(255,255,255,0.18)' }} tickLine={false} />
+                            <CartesianGrid stroke={isDesktop ? "rgba(112, 77, 171, 0.1)" : "rgba(255,255,255,0.12)"} strokeDasharray="3 3" />
+                            <XAxis dataKey="date" tick={{ fill: isDesktop ? "#6d6680" : "rgba(255,255,255,0.72)", fontSize: 12 }} axisLine={{ stroke: isDesktop ? "rgba(112, 77, 171, 0.15)" : "rgba(255,255,255,0.18)" }} tickLine={false} />
+                            <YAxis tick={{ fill: isDesktop ? "#6d6680" : "rgba(255,255,255,0.72)", fontSize: 12 }} axisLine={{ stroke: isDesktop ? "rgba(112, 77, 171, 0.15)" : "rgba(255,255,255,0.18)" }} tickLine={false} />
                             <Tooltip
                                 contentStyle={{
-                                    backgroundColor: 'rgba(17,24,39,0.96)',
-                                    border: '1px solid rgba(255,255,255,0.16)',
+                                    backgroundColor: isDesktop ? 'rgba(255,255,255,0.96)' : 'rgba(17,24,39,0.96)',
+                                    border: isDesktop ? '1px solid rgba(112,77,171,0.18)' : '1px solid rgba(255,255,255,0.16)',
                                     borderRadius: '10px',
-                                    color: '#fff'
+                                    color: isDesktop ? '#171421' : '#fff'
                                 }}
-                                labelStyle={{ color: 'rgba(255,255,255,0.88)' }}
+                                labelStyle={{ color: isDesktop ? '#6d6680' : 'rgba(255,255,255,0.88)' }}
                             />
-                            <Bar dataKey="newUsers" name="新增用户" fill="#34d399" radius={[6, 6, 0, 0]} />
-                            <Bar dataKey="activeUsers" name="活跃用户" fill="#38bdf8" radius={[6, 6, 0, 0]} />
+                            <Bar dataKey="newUsers" name="新增用户" fill={isDesktop ? "#7c3aed" : "#34d399"} radius={[6, 6, 0, 0]} />
+                            <Bar dataKey="activeUsers" name="活跃用户" fill={isDesktop ? "#c084fc" : "#38bdf8"} radius={[6, 6, 0, 0]} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>

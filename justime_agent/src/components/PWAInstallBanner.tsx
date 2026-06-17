@@ -4,10 +4,16 @@ import { usePWAInstall } from "@/hooks/usePWAInstall";
 import { Button } from "@/components/ui/button";
 import { Download, WifiOff, X } from "lucide-react";
 import { useState } from "react";
+import { useDesktopRuntime } from "@/hooks/useDesktopRuntime";
 
 export function PWAInstallBanner() {
   const { canInstall, isInstalled, isOffline, install } = usePWAInstall();
+  const { isDesktop } = useDesktopRuntime();
   const [dismissed, setDismissed] = useState(false);
+
+  if (isDesktop) {
+    return null;
+  }
 
   if (isOffline) {
     return (

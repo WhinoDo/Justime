@@ -95,7 +95,7 @@ describe('ChatInterface', () => {
     const deepThinkButton = screen.getByRole('button', { name: /深度思考/i })
     await user.click(deepThinkButton)
 
-    expect(deepThinkButton).toHaveClass('bg-white/15')
+    expect(deepThinkButton).toHaveClass('bg-white/[0.15]')
   })
 
   it('应该显示日历链接', async () => {
@@ -173,5 +173,28 @@ describe('ChatInterface', () => {
     await waitFor(() => {
       expect(screen.getByText('你好')).toBeInTheDocument()
     })
+  })
+
+  it('renders desktop density with context inspector', async () => {
+    render(<ChatInterface density="desktop" initialTaskId="task-1" initialTaskTitle="桌面端 UI 优化" />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Agent Console')).toBeInTheDocument()
+    })
+
+    expect(screen.getByText('上下文检查器')).toBeInTheDocument()
+    expect(screen.getAllByText('桌面端 UI 优化').length).toBeGreaterThan(0)
+  })
+
+  it('focuses input when focusSignal changes', async () => {
+    const { rerender } = render(<ChatInterface focusSignal={0} />)
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('输入 "@" 唤起常用语，或粘贴代码快速提问')).toBeInTheDocument()
+    })
+
+    rerender(<ChatInterface focusSignal={1} />)
+
+    expect(screen.getByPlaceholderText('输入 "@" 唤起常用语，或粘贴代码快速提问')).toHaveFocus()
   })
 })

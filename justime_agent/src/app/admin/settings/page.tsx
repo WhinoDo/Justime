@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ServerCog, KeyRound, Shield, Sparkles } from 'lucide-react'
+import { ServerCog, KeyRound, Shield, Sparkles, Terminal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export default function AdminSettingsPage() {
@@ -42,6 +42,15 @@ export default function AdminSettingsPage() {
             bg: 'bg-sky-500/20',
             ring: 'ring-sky-500/30',
         },
+        {
+            title: '飞书 CLI 安装',
+            description: '安装和配置飞书官方 CLI 工具，启用 MCP Agent 能力。',
+            icon: Terminal,
+            href: '/admin/feishu-cli',
+            color: 'text-orange-300',
+            bg: 'bg-orange-500/20',
+            ring: 'ring-orange-500/30',
+        },
     ]
 
     return (
@@ -54,7 +63,7 @@ export default function AdminSettingsPage() {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {settingsGroups.map((group) => (
                     <Link key={group.href} href={group.href}>
-                        <div className="group p-6 rounded-2xl bg-white/5 backdrop-blur-md border border-white/15 shadow-xl transition-all hover:bg-white/10 hover:border-white/25 cursor-pointer">
+                        <div className="group p-6 rounded-2xl bg-white/5 backdrop-blur-md border border-white/[0.15] shadow-xl transition-all hover:bg-white/10 hover:border-white/25 cursor-pointer">
                             <div className={`h-12 w-12 rounded-xl ${group.bg} ring-1 ${group.ring} flex items-center justify-center ${group.color} mb-4`}>
                                 <group.icon className="h-6 w-6" />
                             </div>

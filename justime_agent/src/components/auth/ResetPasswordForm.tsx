@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Lock, Eye, EyeOff, AlertCircle, CheckCircle, RefreshCw } from 'lucide-react'
+import { useDesktopRuntime } from '@/hooks/useDesktopRuntime'
+import { cn } from '@/lib/utils'
 
 interface ResetPasswordFormProps {
   token?: string
@@ -17,6 +19,7 @@ interface ResetPasswordFormProps {
 export function ResetPasswordForm({ token: propToken, onSuccess }: ResetPasswordFormProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { isDesktop } = useDesktopRuntime()
   const token = propToken || searchParams?.get('token') || ''
 
   const [newPassword, setNewPassword] = useState('')
@@ -91,12 +94,12 @@ export function ResetPasswordForm({ token: propToken, onSuccess }: ResetPassword
   }
 
   return (
-    <Card className="w-full max-w-md mx-auto border border-white/8 bg-transparent shadow-none text-gray-100">
+    <Card className={cn("w-full max-w-md mx-auto border bg-transparent shadow-none", isDesktop ? "border-violet-200/20 text-[#171421]" : "border-white/[0.08] text-gray-100")}>
       <CardHeader>
-        <CardTitle className="text-center text-2xl font-bold text-white">
+        <CardTitle className={cn("text-center text-2xl font-bold", isDesktop ? "text-[#171421]" : "text-white")}>
           重置密码
         </CardTitle>
-        <p className="text-center text-white/75">
+        <p className={cn("text-center text-xs mt-1", isDesktop ? "text-[#6d6680]" : "text-white/75")}>
           请输入您的新密码
         </p>
       </CardHeader>
@@ -104,19 +107,19 @@ export function ResetPasswordForm({ token: propToken, onSuccess }: ResetPassword
       <CardContent className="space-y-4">
         {/* 错误和成功提示 */}
         {error && (
-          <Alert variant="destructive" className="bg-red-500/20 border-red-500/50 text-white">
-            <AlertCircle className="h-4 w-4 text-red-200" />
+          <Alert variant="destructive" className={cn("border-0", isDesktop ? "bg-rose-50 text-rose-800" : "bg-red-500/20 border-red-500/50 text-white")}>
+            <AlertCircle className="h-4 w-4" />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
 
         {success && (
-          <Alert className="border-green-500/50 bg-green-500/20 text-white">
-            <CheckCircle className="h-4 w-4 text-green-200" />
-            <AlertDescription className="text-green-100">
+          <Alert className={cn("border-0", isDesktop ? "bg-emerald-50 text-emerald-800" : "border-green-500/50 bg-green-500/20 text-white")}>
+            <CheckCircle className="h-4 w-4" />
+            <AlertDescription>
               {success}
               <br />
-              <span className="text-sm opacity-75">即将跳转到登录页面...</span>
+              <span className={cn("text-xs opacity-75 mt-1 block", isDesktop ? "text-emerald-700" : "text-green-100")}>即将跳转到登录页面...</span>
             </AlertDescription>
           </Alert>
         )}
@@ -124,24 +127,34 @@ export function ResetPasswordForm({ token: propToken, onSuccess }: ResetPassword
         {/* 表单 */}
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* 新密码 */}
-          <div className="space-y-2">
-            <Label htmlFor="newPassword" className="text-white/85">新密码 *</Label>
+          <div className="space-y-2 font-medium">
+            <Label htmlFor="newPassword" className={isDesktop ? "text-[#171421] text-xs font-semibold" : "text-white/[0.85] text-xs font-medium"}>新密码 *</Label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/50" />
+              <Lock className={cn("absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4", isDesktop ? "text-violet-400" : "text-white/50")} />
               <Input
                 id="newPassword"
                 type={showPassword ? 'text' : 'password'}
                 placeholder="请输入新密码（至少8位）"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="pl-10 pr-10 bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-orange-300 focus-visible:border-orange-300/70"
+                className={cn(
+                  "pl-10 pr-10 text-sm",
+                  isDesktop
+                    ? "bg-white border-violet-200 text-[#171421] placeholder:text-[#8b7aa8]/60 focus-visible:ring-violet-300 focus-visible:border-violet-400"
+                    : "bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-orange-300 focus-visible:border-orange-300/70"
+                )}
                 disabled={isLoading || !token}
               />
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-white/70 hover:bg-white/10 hover:text-white"
+                className={cn(
+                  "absolute right-2 top-1/2 transform -translate-y-1/2",
+                  isDesktop
+                    ? "text-violet-400 hover:bg-violet-50 hover:text-violet-600"
+                    : "text-white/70 hover:bg-white/10 hover:text-white"
+                )}
                 onClick={() => setShowPassword(!showPassword)}
                 disabled={isLoading}
               >
@@ -151,17 +164,22 @@ export function ResetPasswordForm({ token: propToken, onSuccess }: ResetPassword
           </div>
 
           {/* 确认密码 */}
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword" className="text-white/85">确认密码 *</Label>
+          <div className="space-y-2 font-medium">
+            <Label htmlFor="confirmPassword" className={isDesktop ? "text-[#171421] text-xs font-semibold" : "text-white/[0.85] text-xs font-medium"}>确认密码 *</Label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/50" />
+              <Lock className={cn("absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4", isDesktop ? "text-violet-400" : "text-white/50")} />
               <Input
                 id="confirmPassword"
                 type={showPassword ? 'text' : 'password'}
                 placeholder="请再次输入新密码"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="pl-10 bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-orange-300 focus-visible:border-orange-300/70"
+                className={cn(
+                  "pl-10 text-sm",
+                  isDesktop
+                    ? "bg-white border-violet-200 text-[#171421] placeholder:text-[#8b7aa8]/60 focus-visible:ring-violet-300 focus-visible:border-violet-400"
+                    : "bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-orange-300 focus-visible:border-orange-300/70"
+                )}
                 disabled={isLoading || !token}
               />
             </div>
@@ -170,7 +188,12 @@ export function ResetPasswordForm({ token: propToken, onSuccess }: ResetPassword
           {/* 提交按钮 */}
           <Button
             type="submit"
-            className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white border-0"
+            className={cn(
+              "w-full border-0 font-medium",
+              isDesktop
+                ? "bg-violet-600 hover:bg-violet-500 text-white shadow-sm"
+                : "bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white"
+            )}
             disabled={isLoading || !token}
           >
             {isLoading ? (

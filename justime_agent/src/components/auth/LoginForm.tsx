@@ -9,6 +9,8 @@ import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useAuth } from '@/hooks/useAuth'
+import { useDesktopRuntime } from '@/hooks/useDesktopRuntime'
+import { cn } from '@/lib/utils'
 import {
   Eye,
   EyeOff,
@@ -28,6 +30,7 @@ interface LoginFormProps {
 
 export function LoginForm({ onSuccess, onSwitchToRegister, redirectTo }: LoginFormProps) {
   const { login, isLoading } = useAuth()
+  const { isDesktop } = useDesktopRuntime()
   const router = useRouter()
 
   const [formData, setFormData] = useState({
@@ -91,12 +94,12 @@ export function LoginForm({ onSuccess, onSwitchToRegister, redirectTo }: LoginFo
   }
 
   return (
-    <Card className="w-full max-w-md mx-auto border border-white/8 bg-transparent shadow-none text-gray-100">
+    <Card className={cn("w-full max-w-md mx-auto border bg-transparent shadow-none", isDesktop ? "border-violet-200/20 text-[#171421]" : "border-white/[0.08] text-gray-100")}>
       <CardHeader>
-        <CardTitle className="text-center text-2xl font-bold text-white">
+        <CardTitle className={cn("text-center text-2xl font-bold", isDesktop ? "text-[#171421]" : "text-white")}>
           登录账户
         </CardTitle>
-        <p className="text-center text-white/75">
+        <p className={cn("text-center text-xs mt-1", isDesktop ? "text-[#6d6680]" : "text-white/75")}>
           欢迎回来，请登录您的账户
         </p>
       </CardHeader>
@@ -104,57 +107,72 @@ export function LoginForm({ onSuccess, onSwitchToRegister, redirectTo }: LoginFo
       <CardContent className="space-y-4">
         {/* 错误和成功提示 */}
         {error && (
-          <Alert variant="destructive" className="bg-red-500/20 border-red-500/50 text-white">
-            <AlertCircle className="h-4 w-4 text-red-200" />
+          <Alert variant="destructive" className={cn("border-0", isDesktop ? "bg-rose-50 text-rose-800" : "bg-red-500/20 border-red-500/50 text-white")}>
+            <AlertCircle className="h-4 w-4" />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
 
         {success && (
-          <Alert className="border-green-500/50 bg-green-500/20 text-white">
-            <CheckCircle className="h-4 w-4 text-green-200" />
-            <AlertDescription className="text-green-100">{success}</AlertDescription>
+          <Alert className={cn("border-0", isDesktop ? "bg-emerald-50 text-emerald-800" : "border-green-500/50 bg-green-500/20 text-white")}>
+            <CheckCircle className="h-4 w-4" />
+            <AlertDescription>{success}</AlertDescription>
           </Alert>
         )}
 
         {/* 登录表单 */}
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* 用户名/邮箱 */}
-          <div className="space-y-2">
-            <Label htmlFor="identifier" className="text-white/85">用户名或邮箱 *</Label>
+          <div className="space-y-2 font-medium">
+            <Label htmlFor="identifier" className={isDesktop ? "text-[#171421] text-xs font-semibold" : "text-white/[0.85] text-xs font-medium"}>用户名或邮箱 *</Label>
             <div className="relative">
-              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/50" />
+              <User className={cn("absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4", isDesktop ? "text-violet-400" : "text-white/50")} />
               <Input
                 id="identifier"
                 type="text"
                 placeholder="请输入用户名或邮箱"
                 value={formData.identifier}
                 onChange={(e) => handleInputChange('identifier', e.target.value)}
-                className="pl-10 bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-orange-300 focus-visible:border-orange-300/70"
+                className={cn(
+                  "pl-10 text-sm",
+                  isDesktop
+                    ? "bg-white border-violet-200 text-[#171421] placeholder:text-[#8b7aa8]/60 focus-visible:ring-violet-300 focus-visible:border-violet-400"
+                    : "bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-orange-300 focus-visible:border-orange-300/70"
+                )}
                 disabled={isSubmitting}
               />
             </div>
           </div>
 
           {/* 密码 */}
-          <div className="space-y-2">
-            <Label htmlFor="password" className="text-white/85">密码 *</Label>
+          <div className="space-y-2 font-medium">
+            <Label htmlFor="password" className={isDesktop ? "text-[#171421] text-xs font-semibold" : "text-white/[0.85] text-xs font-medium"}>密码 *</Label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/50" />
+              <Lock className={cn("absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4", isDesktop ? "text-violet-400" : "text-white/50")} />
               <Input
                 id="password"
                 type={showPassword ? 'text' : 'password'}
                 placeholder="请输入密码"
                 value={formData.password}
                 onChange={(e) => handleInputChange('password', e.target.value)}
-                className="pl-10 pr-10 bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-orange-300 focus-visible:border-orange-300/70"
+                className={cn(
+                  "pl-10 pr-10 text-sm",
+                  isDesktop
+                    ? "bg-white border-violet-200 text-[#171421] placeholder:text-[#8b7aa8]/60 focus-visible:ring-violet-300 focus-visible:border-violet-400"
+                    : "bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-orange-300 focus-visible:border-orange-300/70"
+                )}
                 disabled={isSubmitting}
               />
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-white/70 hover:bg-white/10 hover:text-white"
+                className={cn(
+                  "absolute right-2 top-1/2 transform -translate-y-1/2",
+                  isDesktop
+                    ? "text-violet-400 hover:bg-violet-50 hover:text-violet-600"
+                    : "text-white/70 hover:bg-white/10 hover:text-white"
+                )}
                 onClick={() => setShowPassword(!showPassword)}
                 disabled={isSubmitting}
               >
@@ -170,9 +188,13 @@ export function LoginForm({ onSuccess, onSwitchToRegister, redirectTo }: LoginFo
               checked={formData.rememberMe}
               onCheckedChange={(checked) => handleInputChange('rememberMe', checked)}
               disabled={isSubmitting}
-              className="border-white/50 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500"
+              className={cn(
+                isDesktop
+                  ? "border-violet-300 data-[state=checked]:bg-violet-600 data-[state=checked]:border-violet-600"
+                  : "border-white/50 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500"
+              )}
             />
-            <Label htmlFor="rememberMe" className="text-sm text-white/75">
+            <Label htmlFor="rememberMe" className={cn("text-xs", isDesktop ? "text-[#6d6680]" : "text-white/75")}>
               记住我（30天内免登录）
             </Label>
           </div>
@@ -180,7 +202,12 @@ export function LoginForm({ onSuccess, onSwitchToRegister, redirectTo }: LoginFo
           {/* 登录按钮 */}
           <Button
             type="submit"
-            className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white border-0"
+            className={cn(
+              "w-full border-0 font-medium",
+              isDesktop
+                ? "bg-violet-600 hover:bg-violet-500 text-white shadow-sm"
+                : "bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white"
+            )}
             disabled={isSubmitting || isLoading}
           >
             {isSubmitting ? (
@@ -197,23 +224,23 @@ export function LoginForm({ onSuccess, onSwitchToRegister, redirectTo }: LoginFo
           </Button>
         </form>
 
-{/* 底部链接 */}
-        <div className="text-center space-y-2">
+        {/* 底部链接 */}
+        <div className="text-center space-y-1 pt-2">
           <div className="text-sm">
             <Button
               variant="link"
-              className="p-0 h-auto text-orange-300 hover:text-orange-200"
+              className={cn("p-0 h-auto font-medium", isDesktop ? "text-violet-600 hover:text-violet-700" : "text-orange-300 hover:text-orange-200")}
               onClick={() => router.push('/auth/forgot-password')}
             >
               忘记密码？
             </Button>
           </div>
 
-          <div className="text-sm text-white/75">
+          <div className={cn("text-xs", isDesktop ? "text-[#6d6680]" : "text-white/75")}>
             还没有账户？
             <Button
               variant="link"
-              className="p-0 h-auto ml-1 text-orange-300 hover:text-orange-200"
+              className={cn("p-0 h-auto ml-1 font-medium", isDesktop ? "text-violet-600 hover:text-violet-700" : "text-orange-300 hover:text-orange-200")}
               onClick={onSwitchToRegister}
             >
               立即注册

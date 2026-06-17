@@ -53,7 +53,7 @@ export function MessageBubble({ message, onTaskCreate, onReferenceClick }: Messa
       <div className={cn(
         "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 shadow-md",
         isUser
-          ? "bg-white/15 text-white"
+          ? "bg-white/[0.15] text-white"
           : "bg-white/10 text-emerald-100"
       )}>
         {isUser ? <User size={16} /> : <Bot size={16} />}
@@ -68,7 +68,7 @@ export function MessageBubble({ message, onTaskCreate, onReferenceClick }: Messa
         <div className={cn(
           'relative max-w-full rounded-2xl border px-4 py-3 shadow-sm transition-all duration-200 hover:shadow-md',
           isUser
-            ? 'rounded-br-md border-white/10 bg-white/15 text-white'
+            ? 'rounded-br-md border-white/10 bg-white/[0.15] text-white'
             : 'rounded-bl-md border-white/10 bg-white/10 text-white/90'
         )}>
           {/* 任务分析元数据（仅对非通用对话展示） */}
@@ -97,7 +97,7 @@ export function MessageBubble({ message, onTaskCreate, onReferenceClick }: Messa
             'prose prose-sm max-w-none',
             isUser
               ? 'prose-invert prose-headings:text-white prose-p:text-white prose-strong:text-white prose-em:text-white prose-code:text-white prose-code:bg-white/10'
-              : 'prose-invert prose-headings:text-white prose-p:text-white/85 prose-strong:text-white prose-em:text-white/85 prose-code:text-white prose-code:bg-white/10'
+              : 'prose-invert prose-headings:text-white prose-p:text-white/[0.85] prose-strong:text-white prose-em:text-white/[0.85] prose-code:text-white prose-code:bg-white/10'
           )}>
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
@@ -161,7 +161,7 @@ export function MessageBubble({ message, onTaskCreate, onReferenceClick }: Messa
                   <blockquote className={cn(
                     "border-l-4 pl-4 py-2 my-2 italic",
                     isUser
-                      ? 'border-white/30 text-white/85'
+                      ? 'border-white/30 text-white/[0.85]'
                       : 'border-white/20 text-white/70'
                   )}>
                     {children}
@@ -189,7 +189,7 @@ export function MessageBubble({ message, onTaskCreate, onReferenceClick }: Messa
                     'border border-white/10 px-3 py-2 text-left font-semibold',
                     isUser
                       ? 'bg-white/10 text-white'
-                      : 'bg-white/5 text-white/85'
+                      : 'bg-white/5 text-white/[0.85]'
                   )}>
                     {children}
                   </th>
@@ -217,11 +217,11 @@ export function MessageBubble({ message, onTaskCreate, onReferenceClick }: Messa
                   key={reference.referenceId}
                   type="button"
                   onClick={() => onReferenceClick?.(reference)}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/10 px-2.5 py-1.5 text-xs text-white/80 transition-colors hover:bg-white/15"
+                  className="inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/10 px-2.5 py-1.5 text-xs text-white/80 transition-colors hover:bg-white/[0.15]"
                 >
                   <FileText className="h-3.5 w-3.5" />
                   <span className="max-w-[180px] truncate">{reference.fileName || reference.docPath}</span>
-                  <span className="text-[10px] text-white/45">
+                  <span className="text-[10px] text-white/[0.45]">
                     {reference.snippets?.length || 0} 段
                   </span>
                 </button>

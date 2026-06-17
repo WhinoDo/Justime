@@ -11,25 +11,35 @@ import { ChatHeader, ChatHeaderProps } from './ChatHeader'
 import { ChatInputArea, ChatInputAreaProps } from './ChatInputArea'
 import { MessageList, MessageListProps } from './MessageList'
 import { RagPreviewTab, RagFullContentState } from './RagReferencePreviewPanel'
+import { ChatContextInspector } from './ChatContextInspector'
 
 export interface ChatInterfaceProps {
   initialMessages?: Message[]
   onTaskCreate?: (task: SubtaskItem) => void
   sessionId?: string | null
   onSessionChange?: (sessionId: string) => void
+  initialTaskId?: string | null
+  initialTaskTitle?: string | null
+  density?: 'comfortable' | 'desktop'
+  focusSignal?: number
 }
 
 export function ChatInterface({
   initialMessages = [],
   onTaskCreate,
   sessionId,
-  onSessionChange
+  onSessionChange,
+  initialTaskId,
+  initialTaskTitle,
+  density = 'comfortable',
+  focusSignal = 0,
 }: ChatInterfaceProps) {
   // ==================== State ====================
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [currentTaskId, setCurrentTaskId] = useState<string | undefined>()
+  const [currentTaskId, setCurrentTaskId] = useState<string | undefined>(initialTaskId || undefined)
+  const [currentTaskLabel, setCurrentTaskLabel] = useState<string | null>(initialTaskTitle || null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const { user: authUser } = useAuth()
 
@@ -170,6 +180,42 @@ export function ChatInterface({
     setActiveTab('snippets')
   }, [])
   // ==================== Effects ====================
+
+  useEffect(() => {
+    if (focusSignal > 0) {
+      textareaRef.current?.focus()
+    }
+  }, [focusSignal])
+
+  useEffect(() => {
+    setCurrentTaskId(initialTaskId || undefined)
+    setCurrentTaskLabel(initialTaskTitle || null)
+  }, [initialTaskId, initialTaskTitle])
+
+  useEffect(() => {
+    if (!currentTaskId) {
+      setCurrentTaskLabel(null)
+      return
+    }
+    if (currentTaskLabel && currentTaskLabel !== currentTaskId) {
+      return
+    }
+    const run = async () => {
+      try {
+        const res = await fetch(API_ENDPOINTS.TASK_PROCESS.DETAIL(currentTaskId), {
+          credentials: 'include',
+          cache: 'no-store',
+        })
+        const payload = await res.json()
+        if (payload.success) {
+          setCurrentTaskLabel(payload.data.task?.title || currentTaskId)
+        }
+      } catch {
+        setCurrentTaskLabel(currentTaskId)
+      }
+    }
+    run()
+  }, [currentTaskId, currentTaskLabel])
 
   // Load history when sessionId changes
   useEffect(() => {
@@ -547,6 +593,7 @@ if (lastEventId) {
         if (chatData.task) {
           onTaskCreate?.(chatData.task)
           setCurrentTaskId(chatData.task.id)
+          setCurrentTaskLabel(chatData.task.title || chatData.task.id)
         }
       } else {
         const errorObj = typeof data.error === 'object' ? data.error : null
@@ -763,6 +810,7 @@ if (lastEventId) {
   const handleClearChat = useCallback(() => {
     setMessages([])
     setCurrentTaskId(undefined)
+    setCurrentTaskLabel(null)
     setTimingStrategy(null)
     setTaskAnalysis(null)
   }, [])
@@ -779,10 +827,14 @@ if (lastEventId) {
     useWebSearch,
     showTimeHelper,
     useStreaming,
+    currentTaskLabel,
     onClearChat: handleClearChat,
     onToggleTimeHelper: () => setShowTimeHelper(!showTimeHelper),
     onToggleWebSearch: () => setUseWebSearch(!useWebSearch),
     onToggleStreaming: () => setUseStreaming(!useStreaming),
+    density,
+    showBackButton: density !== 'desktop',
+    showHistoryLink: density !== 'desktop',
   }
 
   const messageListProps: MessageListProps = {
@@ -814,6 +866,7 @@ if (lastEventId) {
       ))
     },
     authUserId: authUser?.id,
+    density,
   }
 
   const inputAreaProps: ChatInputAreaProps = {
@@ -836,23 +889,48 @@ if (lastEventId) {
     isFullContentLoading: fullContentLoadingPath === selectedReference?.docPath,
     onPreviewClose: () => setPreviewOpen(false),
     onTabChange: setActiveTab,
+    density,
+    previewPlacement: density === 'desktop' ? 'inspector' : 'floating',
+  }
+
+  const mainChat = (
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <ChatHeader {...headerProps} />
+      <MessageList {...messageListProps} />
+      <ChatInputArea {...inputAreaProps}>
+        {showTimeHelper && (
+          <div className={density === 'desktop' ? "border-t border-violet-200/40 bg-white/50 p-4" : "border-t border-white/10 bg-white/[0.03] p-4"}>
+            <TimeAwareTaskInput
+              onTaskCreate={handleTimeAwareTaskCreate}
+            />
+          </div>
+        )}
+      </ChatInputArea>
+    </div>
+  )
+
+  if (density === 'desktop') {
+    return (
+      <div className="grid h-full min-h-0 min-w-0 grid-cols-[minmax(0,1fr)_var(--desktop-inspector-width)] text-[#171421]">
+        {mainChat}
+        <ChatContextInspector
+          currentTaskLabel={currentTaskLabel}
+          selectedModel={selectedModel}
+          previewOpen={previewOpen}
+          selectedReference={selectedReference}
+          activeTab={activeTab}
+          fullContentState={selectedReference?.docPath ? fullContentCache[selectedReference.docPath] : undefined}
+          isFullContentLoading={fullContentLoadingPath === selectedReference?.docPath}
+          onPreviewClose={() => setPreviewOpen(false)}
+          onTabChange={setActiveTab}
+        />
+      </div>
+    )
   }
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col text-white">
-      <div className="flex min-w-0 min-h-0 flex-1 flex-col">
-        <ChatHeader {...headerProps} />
-        <MessageList {...messageListProps} />
-        <ChatInputArea {...inputAreaProps}>
-          {showTimeHelper && (
-            <div className="border-t border-white/10 bg-white/[0.03] p-4">
-              <TimeAwareTaskInput
-                onTaskCreate={handleTimeAwareTaskCreate}
-              />
-            </div>
-          )}
-        </ChatInputArea>
-      </div>
+      {mainChat}
     </div>
   )
 }

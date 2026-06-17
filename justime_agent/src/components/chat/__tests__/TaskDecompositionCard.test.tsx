@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TaskDecompositionCard } from '../TaskDecompositionCard'
 
@@ -14,149 +14,79 @@ const mockDecomposition = {
     subtask_count: 3,
   },
   subtasks: [
-    { title: '任务1', duration_hours: 2, order: 1, description: '第一个任务' },
-    { title: '任务2', duration_hours: 3, order: 2, description: '第二个任务' },
-    { title: '任务3', duration_hours: 1, order: 3, description: '第三个任务' },
+    { id: '1', title: '任务1', duration_hours: 2, order: 1, description: '第一个任务' },
+    { id: '2', title: '任务2', duration_hours: 3, order: 2, description: '第二个任务' },
+    { id: '3', title: '任务3', duration_hours: 1, order: 3, description: '第三个任务' },
   ],
   message: '任务分解成功',
 }
 
 describe('TaskDecompositionCard', () => {
-  const mockOnConfirm = jest.fn()
-  const mockOnCancel = jest.fn()
+  const mockOnExpand = jest.fn()
+  const mockOnDismiss = jest.fn()
 
   beforeEach(() => {
     jest.clearAllMocks()
   })
 
-  it('应该渲染任务分解卡片', () => {
+  it('renders decomposition summary card', () => {
     render(
       <TaskDecompositionCard
         decomposition={mockDecomposition}
-        onConfirm={mockOnConfirm}
-        onCancel={mockOnCancel}
-      />
+        isExpanded={false}
+        onExpand={mockOnExpand}
+        onDismiss={mockOnDismiss}
+      />,
     )
 
     expect(screen.getByText('测试项目')).toBeInTheDocument()
-    expect(screen.getByText('AI 生成的任务分解方案')).toBeInTheDocument()
+    expect(screen.getByText('AI 已生成概要时间表')).toBeInTheDocument()
+    expect(screen.getByText('总工时')).toBeInTheDocument()
   })
 
-  it('应该显示项目统计信息', () => {
+  it('shows preview subtasks', () => {
     render(
       <TaskDecompositionCard
         decomposition={mockDecomposition}
-        onConfirm={mockOnConfirm}
-        onCancel={mockOnCancel}
-      />
+        isExpanded={false}
+        onExpand={mockOnExpand}
+        onDismiss={mockOnDismiss}
+      />,
     )
 
-    expect(screen.getByText('3 天')).toBeInTheDocument()
-    expect(screen.getByText(/已选/)).toBeInTheDocument()
+    expect(screen.getByText('任务1')).toBeInTheDocument()
+    expect(screen.getByText('任务2')).toBeInTheDocument()
+    expect(screen.getByText('任务3')).toBeInTheDocument()
   })
 
-  it('应该显示所有子任务', () => {
-    render(
-      <TaskDecompositionCard
-        decomposition={mockDecomposition}
-        onConfirm={mockOnConfirm}
-        onCancel={mockOnCancel}
-      />
-    )
-
-    expect(screen.getByText(/1\. 任务1/)).toBeInTheDocument()
-    expect(screen.getByText(/2\. 任务2/)).toBeInTheDocument()
-    expect(screen.getByText(/3\. 任务3/)).toBeInTheDocument()
-  })
-
-  it('应该能够展开和收起', async () => {
+  it('triggers expand and dismiss actions', async () => {
     const user = userEvent.setup()
-
     render(
       <TaskDecompositionCard
         decomposition={mockDecomposition}
-        onConfirm={mockOnConfirm}
-        onCancel={mockOnCancel}
-      />
+        isExpanded={false}
+        onExpand={mockOnExpand}
+        onDismiss={mockOnDismiss}
+      />,
     )
 
-    expect(screen.getByText('全选')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /查看详细日程安排/i }))
+    expect(mockOnExpand).toHaveBeenCalled()
 
-    const collapseButton = screen.getByRole('button', { name: '' })
-    await user.click(collapseButton)
-
-    await waitFor(() => {
-      expect(screen.queryByText('全选')).not.toBeInTheDocument()
-    })
+    await user.click(screen.getByRole('button', { name: '忽略' }))
+    expect(mockOnDismiss).toHaveBeenCalled()
   })
 
-  it('应该能够全选和取消全选', async () => {
-    const user = userEvent.setup()
-
-    render(
+  it('returns null when expanded', () => {
+    const { container } = render(
       <TaskDecompositionCard
         decomposition={mockDecomposition}
-        onConfirm={mockOnConfirm}
-        onCancel={mockOnCancel}
-      />
+        isExpanded
+        onExpand={mockOnExpand}
+        onDismiss={mockOnDismiss}
+      />,
     )
 
-    await user.click(screen.getByText('取消全选'))
-    expect(screen.getByText('已选 0/3')).toBeInTheDocument()
-
-    await user.click(screen.getByText('全选'))
-    expect(screen.getByText('已选 3/3')).toBeInTheDocument()
-  })
-
-  it('应该能够点击取消按钮', async () => {
-    const user = userEvent.setup()
-
-    render(
-      <TaskDecompositionCard
-        decomposition={mockDecomposition}
-        onConfirm={mockOnConfirm}
-        onCancel={mockOnCancel}
-      />
-    )
-
-    await user.click(screen.getByText('取消'))
-    expect(mockOnCancel).toHaveBeenCalled()
-  })
-
-  it('应该能够确认添加任务', async () => {
-    const user = userEvent.setup()
-    mockOnConfirm.mockResolvedValue(undefined)
-
-    render(
-      <TaskDecompositionCard
-        decomposition={mockDecomposition}
-        onConfirm={mockOnConfirm}
-        onCancel={mockOnCancel}
-      />
-    )
-
-    const confirmButton = screen.getByText(/添加.*个任务到日历/)
-    await user.click(confirmButton)
-
-    await waitFor(() => {
-      expect(mockOnConfirm).toHaveBeenCalled()
-    })
-  })
-
-  it('确认按钮在没有选中任务时应该禁用', async () => {
-    const user = userEvent.setup()
-
-    render(
-      <TaskDecompositionCard
-        decomposition={mockDecomposition}
-        onConfirm={mockOnConfirm}
-        onCancel={mockOnCancel}
-      />
-    )
-
-    await user.click(screen.getByText('取消全选'))
-
-    const confirmButton = screen.getByText(/添加.*个任务到日历/)
-    expect(confirmButton).toBeDisabled()
+    expect(container.firstChild).toBeNull()
   })
 })

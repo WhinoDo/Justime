@@ -9,6 +9,9 @@ import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { SlotInfo, View } from 'react-big-calendar'
 import { JustimeBackground } from '@/components/ui/JustimeBackground'
+import { JustimePageShell } from '@/components/layout/JustimePageShell'
+import { useDesktopRuntime } from '@/hooks/useDesktopRuntime'
+import { cn } from '@/lib/utils'
 import { API_ENDPOINTS } from '@/lib/api/endpoints'
 
 const BigCalendar = dynamic(
@@ -38,6 +41,7 @@ const DaySchedulePanel = dynamic(
 
 export default function CalendarPage() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth()
+  const { isDesktop } = useDesktopRuntime()
   const [events, setEvents] = useState<CalendarEventData[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -199,41 +203,144 @@ export default function CalendarPage() {
   // 认证加载中
   if (authLoading) {
     return (
-      <div className="min-h-screen relative flex items-center justify-center overflow-hidden">
-        <JustimeBackground blur="xl" />
-        <div className="relative z-10 flex flex-col items-center gap-3">
-          <RefreshCw className="h-8 w-8 animate-spin text-white/50" />
-          <p className="text-white/60 text-sm font-light tracking-widest uppercase">Syncing Calendar</p>
+      <JustimePageShell fullHeight variant={isDesktop ? "desktop" : "immersive"} blur={isDesktop ? "none" : "xl"} opacity={isDesktop ? 0 : 0.45} contentClassName="flex items-center justify-center">
+        <div className={isDesktop ? "rounded-2xl border border-violet-200/[0.45] bg-white/[0.68] px-6 py-5 text-center shadow-[0_24px_80px_rgba(112,77,171,0.14)] backdrop-blur-2xl" : "relative z-10 flex flex-col items-center gap-3"}>
+          <Loader2 className={cn("h-8 w-8 animate-spin mx-auto mb-4", isDesktop ? "text-violet-500" : "text-white/50")} />
+          <p className={cn("text-sm font-light tracking-widest uppercase", isDesktop ? "text-[#8b7aa8]" : "text-white/60")}>Syncing Calendar</p>
         </div>
-      </div>
+      </JustimePageShell>
     )
   }
 
   // 未登录提示
   if (!isAuthenticated || !user) {
     return (
-      <div className="min-h-screen relative flex items-center justify-center overflow-hidden">
-        <JustimeBackground blur="lg" opacity={0.6} />
-        <div className="relative z-10 w-full max-w-md mx-auto text-center space-y-6 p-8 bg-white/10 backdrop-blur-2xl border border-white/20 rounded-3xl shadow-2xl">
+      <JustimePageShell fullHeight variant={isDesktop ? "desktop" : "immersive"} blur={isDesktop ? "none" : "lg"} opacity={isDesktop ? 0 : 0.6} contentClassName="flex items-center justify-center">
+        <div className={isDesktop ? "w-full max-w-md mx-auto text-center space-y-6 p-8 bg-white/[0.68] border border-violet-200/[0.45] rounded-3xl shadow-[0_24px_80px_rgba(112,77,171,0.14)] backdrop-blur-2xl" : "relative z-10 w-full max-w-md mx-auto text-center space-y-6 p-8 bg-white/10 backdrop-blur-2xl border border-white/20 rounded-3xl shadow-2xl"}>
           <div className="space-y-4">
-            <div className="h-20 w-20 mx-auto rounded-full bg-blue-500/20 flex items-center justify-center ring-1 ring-blue-500/40">
-              <CalendarIcon className="h-10 w-10 text-blue-300" />
+            <div className={cn("h-20 w-20 mx-auto rounded-full flex items-center justify-center ring-1", isDesktop ? "bg-violet-100 ring-violet-200" : "bg-blue-500/20 ring-blue-500/40")}>
+              <CalendarIcon className={cn("h-10 w-10", isDesktop ? "text-violet-600" : "text-blue-300")} />
             </div>
-            <h2 className="text-xl font-bold text-white">Login Required</h2>
-            <p className="text-white/70">
+            <h2 className={cn("text-xl font-bold", isDesktop ? "text-[#171421]" : "text-white")}>Login Required</h2>
+            <p className={isDesktop ? "text-[#6d6680]" : "text-white/70"}>
               Please login to view and manage your schedule.
             </p>
           </div>
           <div className="space-y-3">
             <Link href="/auth?mode=login&redirect=/calendar" className="block">
-              <Button className="w-full h-11 bg-white text-gray-900 border-0 hover:bg-white/90 font-medium rounded-xl">Login Now</Button>
+              <Button className={cn("w-full h-11 font-medium rounded-xl border-0", isDesktop ? "bg-violet-600 text-white hover:bg-violet-500 shadow-sm" : "bg-white text-gray-900 hover:bg-white/90")}>Login Now</Button>
             </Link>
             <Link href="/dashboard" className="block">
-              <Button variant="ghost" className="w-full text-white/50 hover:text-white hover:bg-white/5">Back to Dashboard</Button>
+              <Button variant="ghost" className={isDesktop ? "w-full text-[#6d6680] hover:text-[#171421] hover:bg-violet-50/50" : "w-full text-white/50 hover:text-white hover:bg-white/5"}>Back to Dashboard</Button>
             </Link>
           </div>
         </div>
-      </div>
+      </JustimePageShell>
+    )
+  }
+
+  if (isDesktop) {
+    return (
+      <JustimePageShell variant="desktop" blur="none" opacity={0} contentClassName="h-screen flex flex-col px-6 py-6 overflow-hidden">
+        {/* 页面头部 */}
+        <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between mb-4 flex-shrink-0 bg-white/[0.68] p-4 rounded-2xl border border-violet-200/[0.45] shadow-[0_12px_40px_rgba(112,77,171,0.06)] backdrop-blur-2xl">
+          <div className="flex items-center justify-between sm:justify-start gap-4">
+            <Link href="/dashboard">
+              <Button variant="ghost" size="sm" className="text-[#6d6680] hover:bg-violet-50/80 hover:text-[#171421] rounded-full">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-2xl font-semibold text-[#171421] tracking-tight">
+                My Calendar
+              </h1>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={loadEvents}
+              disabled={loading}
+              className="bg-white/60 border-violet-200/50 text-[#5a4c73] hover:bg-white/[0.85] flex-1 sm:flex-initial justify-center"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Button
+              className="bg-violet-600 hover:bg-violet-500 text-white border-0 shadow-sm flex-1 sm:flex-initial justify-center"
+              onClick={() => {
+                setSelectedEvent(null)
+                setSelectedSlot({
+                  start: new Date(),
+                  end: new Date(Date.now() + 60 * 60 * 1000),
+                })
+                setDialogOpen(true)
+              }}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              New Event
+            </Button>
+
+            <Link href="/chat" className="flex-1 sm:flex-initial">
+              <Button variant="outline" title="Chat Assistant" className="w-full bg-white/60 border-violet-200/50 text-[#5a4c73] hover:bg-white/[0.85] justify-center">
+                <MessageCircle className="w-4 h-4 mr-2" />
+                Chat
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        {/* 日历主体 */}
+        <div className="flex-1 bg-white/70 border border-violet-200/40 shadow-[0_24px_80px_rgba(112,77,171,0.08)] rounded-2xl overflow-hidden p-2 backdrop-blur-2xl">
+          {loading && events.length === 0 ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center p-8">
+                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-violet-500" />
+                <p className="text-[#8b7aa8] font-medium">Loading Schedule...</p>
+              </div>
+            </div>
+          ) : (
+            <BigCalendar
+              events={events}
+              view={view}
+              onViewChange={setView}
+              onSelectEvent={handleSelectEvent}
+              onSelectSlot={handleSelectSlot}
+              onEventDrop={handleEventDrop}
+              onEventResize={handleEventResize}
+            />
+          )}
+        </div>
+
+        {/* Dialogs */}
+        <EventDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          event={selectedEvent}
+          defaultStart={selectedSlot?.start}
+          defaultEnd={selectedSlot?.end}
+          onSave={handleSaveEvent}
+          onDelete={handleDeleteEvent}
+        />
+
+        <DaySchedulePanel
+          date={selectedDay}
+          events={events}
+          onClose={() => setSelectedDay(null)}
+          onAddEvent={(start) => {
+            setSelectedEvent(null)
+            setSelectedSlot({
+              start: start,
+              end: new Date(start.getTime() + 60 * 60 * 1000)
+            })
+            setDialogOpen(true)
+          }}
+          onEditEvent={handleSelectEvent}
+        />
+      </JustimePageShell>
     )
   }
 

@@ -18,6 +18,7 @@ import {
   Trash2
 } from 'lucide-react'
 import { useState, useEffect, memo } from 'react'
+import { cn } from '@/lib/utils'
 
 export interface ChatHeaderProps {
   /** Whether the chat is empty (no messages) */
@@ -42,6 +43,14 @@ export interface ChatHeaderProps {
   onToggleWebSearch: () => void
   /** Callback when streaming mode is toggled */
   onToggleStreaming: () => void
+  /** Currently bound task label */
+  currentTaskLabel?: string | null
+  /** UI density variant */
+  density?: 'comfortable' | 'desktop'
+  /** Toggle showing back navigation */
+  showBackButton?: boolean
+  /** Toggle showing chat history */
+  showHistoryLink?: boolean
 }
 
 export const ChatHeader = memo(function ChatHeader({
@@ -52,10 +61,14 @@ export const ChatHeader = memo(function ChatHeader({
   useWebSearch,
   showTimeHelper,
   useStreaming,
+  currentTaskLabel,
   onClearChat,
   onToggleTimeHelper,
   onToggleWebSearch,
   onToggleStreaming,
+  density = 'comfortable',
+  showBackButton = true,
+  showHistoryLink = true,
 }: ChatHeaderProps) {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
@@ -81,24 +94,43 @@ export const ChatHeader = memo(function ChatHeader({
     setTheme(themes[nextIndex])
   }
 
+  const isDesktop = density === 'desktop'
+
   return (
-    <div className="sticky top-0 z-40 border-b border-white/10 bg-black/10 px-4 py-4 backdrop-blur-xl md:px-6">
+    <div className={cn(
+      'sticky top-0 z-40 border-b backdrop-blur-xl',
+      isDesktop
+        ? 'border-violet-200/40 bg-white/[0.58] px-4 py-2.5 text-[#171421] shadow-[0_10px_36px_rgba(112,77,171,0.08)]'
+        : 'border-white/10 bg-black/10 px-4 py-4 md:px-6'
+    )}>
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex items-center gap-3">
-          <Link href="/dashboard">
-            <Button variant="ghost" size="icon" className="mr-1 rounded-2xl border border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white">
-              <ChevronRight className="h-5 w-5 rotate-180" />
-            </Button>
-          </Link>
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/15 bg-white/15 shadow-lg shadow-black/10">
-            <Sparkles className="h-5 w-5 text-amber-200" />
+          {showBackButton && (
+            <Link href="/dashboard">
+              <Button variant="ghost" size="icon" className="mr-1 rounded-2xl border border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white">
+                <ChevronRight className="h-5 w-5 rotate-180" />
+              </Button>
+            </Link>
+          )}
+          <div className={cn(
+            'flex h-11 w-11 items-center justify-center rounded-2xl',
+            isDesktop
+              ? 'border border-violet-200/50 bg-white/70 shadow-sm text-violet-600'
+              : 'border border-white/[0.15] bg-white/[0.15] shadow-lg shadow-black/10 text-amber-200'
+          )}>
+            <Sparkles className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="text-xl font-bold tracking-tight text-white">
-              矩时智能助手
+            <h2 className={cn(
+              'font-bold tracking-tight',
+              isDesktop ? 'text-[#171421] text-sm' : 'text-xl text-white'
+            )}>
+              {isDesktop ? 'Agent Console' : '矩时智能助手'}
             </h2>
-            <p className="text-sm text-white/55">
-              情绪感知 · 任务拆解 · 智能陪伴
+            <p className={cn(
+              isDesktop ? 'text-[#6d6680] text-xs' : 'text-sm text-white/[0.55]'
+            )}>
+              {isDesktop ? '任务推进 · 上下文检查 · 知识沉淀' : '情绪感知 · 任务拆解 · 智能陪伴'}
             </p>
           </div>
         </div>
@@ -106,20 +138,45 @@ export const ChatHeader = memo(function ChatHeader({
           {/* Model selector */}
           {authUser && (
             <div className="flex items-center gap-2">
+              {currentTaskLabel ? (
+                <Link href="/tasks">
+                  <div className={cn(
+                    'flex cursor-pointer items-center gap-1 rounded-xl border px-2.5 py-1.5 transition-colors',
+                    isDesktop
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                      : 'border-emerald-200/20 bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/[0.15]'
+                  )}>
+                    <Clock className={cn('h-3 w-3', isDesktop ? 'text-emerald-600' : 'text-emerald-200')} />
+                    <span className="max-w-[180px] truncate text-xs font-medium">
+                      {currentTaskLabel}
+                    </span>
+                  </div>
+                </Link>
+              ) : null}
               {selectedModel ? (
                 <Link href="/model-config?from=/chat">
-                  <div className="flex cursor-pointer items-center gap-1 rounded-xl border border-white/10 bg-white/10 px-2.5 py-1.5 transition-colors hover:bg-white/15">
-                    <Bot className="h-3 w-3 text-blue-200" />
-                    <span className="text-xs font-medium text-white/80">
+                  <div className={cn(
+                    'flex cursor-pointer items-center gap-1 rounded-xl border px-2.5 py-1.5 transition-colors',
+                    isDesktop
+                      ? 'border-violet-200/50 bg-white/70 text-[#5a4c73] hover:bg-white/80'
+                      : 'border-white/10 bg-white/10 text-white/80 hover:bg-white/[0.15]'
+                  )}>
+                    <Bot className={cn('h-3 w-3', isDesktop ? 'text-violet-500' : 'text-blue-200')} />
+                    <span className="text-xs font-medium">
                       {selectedModel}
                     </span>
                   </div>
                 </Link>
               ) : (
                 <Link href="/model-config?from=/chat">
-                  <div className="flex cursor-pointer items-center gap-1 rounded-xl border border-amber-200/20 bg-amber-500/10 px-2.5 py-1.5 transition-colors hover:bg-amber-500/15">
-                    <AlertTriangle className="h-3 w-3 text-amber-200" />
-                    <span className="text-xs font-medium text-amber-100">
+                  <div className={cn(
+                    'flex cursor-pointer items-center gap-1 rounded-xl border px-2.5 py-1.5 transition-colors',
+                    isDesktop
+                      ? 'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100'
+                      : 'border-amber-200/20 bg-amber-500/10 text-amber-100 hover:bg-amber-500/[0.15]'
+                  )}>
+                    <AlertTriangle className={cn('h-3 w-3', isDesktop ? 'text-amber-500' : 'text-amber-200')} />
+                    <span className="text-xs font-medium">
                       未配置模型
                     </span>
                   </div>
@@ -133,7 +190,12 @@ export const ChatHeader = memo(function ChatHeader({
             <Button
               variant="ghost"
               size="sm"
-              className="rounded-2xl border border-white/10 bg-white/5 text-amber-200 hover:bg-white/10 hover:text-white"
+              className={cn(
+                'rounded-xl border transition-colors',
+                isDesktop
+                  ? 'border-violet-200/50 bg-white/60 text-[#5a4c73] hover:bg-white/80 hover:text-[#171421]'
+                  : 'rounded-2xl border-white/10 bg-white/5 text-amber-200 hover:bg-white/10 hover:text-white'
+              )}
               title="日历管理"
             >
               <Calendar className="w-4 h-4" />
@@ -145,7 +207,16 @@ export const ChatHeader = memo(function ChatHeader({
             variant="ghost"
             size="sm"
             onClick={onToggleTimeHelper}
-            className={`rounded-2xl border border-white/10 transition-colors ${showTimeHelper ? 'bg-white/15 text-emerald-100' : 'bg-white/5 text-white/55 hover:bg-white/10 hover:text-white'}`}
+            className={cn(
+              'rounded-xl border transition-colors',
+              isDesktop
+                ? showTimeHelper
+                  ? 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                  : 'border-violet-200/50 bg-white/60 text-[#5a4c73] hover:bg-white/80 hover:text-[#171421]'
+                : showTimeHelper
+                  ? 'rounded-2xl border-white/10 bg-white/[0.15] text-emerald-100'
+                  : 'rounded-2xl border-white/10 bg-white/5 text-white/[0.55] hover:bg-white/10 hover:text-white'
+            )}
             title="智能时间助手"
           >
             <Clock className="w-4 h-4" />
@@ -156,7 +227,16 @@ export const ChatHeader = memo(function ChatHeader({
             variant="ghost"
             size="sm"
             onClick={onToggleWebSearch}
-            className={`rounded-2xl border border-white/10 transition-colors ${useWebSearch ? 'bg-white/15 text-sky-100' : 'bg-white/5 text-white/55 hover:bg-white/10 hover:text-white'}`}
+            className={cn(
+              'rounded-xl border transition-colors',
+              isDesktop
+                ? useWebSearch
+                  ? 'border-sky-300 bg-sky-50 text-sky-800 hover:bg-sky-100'
+                  : 'border-violet-200/50 bg-white/60 text-[#5a4c73] hover:bg-white/80 hover:text-[#171421]'
+                : useWebSearch
+                  ? 'rounded-2xl border-white/10 bg-white/[0.15] text-sky-100'
+                  : 'rounded-2xl border-white/10 bg-white/5 text-white/[0.55] hover:bg-white/10 hover:text-white'
+            )}
             title={useWebSearch ? "已开启网页搜索" : "点击开启网页搜索"}
           >
             <Globe className="w-4 h-4" />
@@ -167,37 +247,63 @@ export const ChatHeader = memo(function ChatHeader({
             variant="ghost"
             size="sm"
             onClick={onToggleStreaming}
-            className={`rounded-2xl border border-white/10 transition-colors ${useStreaming ? 'bg-white/15 text-emerald-100' : 'bg-white/5 text-white/55 hover:bg-white/10 hover:text-white'}`}
+            className={cn(
+              'rounded-xl border transition-colors',
+              isDesktop
+                ? useStreaming
+                  ? 'border-violet-300 bg-violet-50 text-violet-800 hover:bg-violet-100'
+                  : 'border-violet-200/50 bg-white/60 text-[#5a4c73] hover:bg-white/80 hover:text-[#171421]'
+                : useStreaming
+                  ? 'rounded-2xl border-white/10 bg-white/[0.15] text-emerald-100'
+                  : 'rounded-2xl border-white/10 bg-white/5 text-white/[0.55] hover:bg-white/10 hover:text-white'
+            )}
             title={useStreaming ? "已开启流式输出（打字机效果）" : "点击开启流式输出"}
           >
             <Sparkles className="w-4 h-4" />
           </Button>
 
           {/* Chat history button */}
-          <Link href="/chat/history">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="rounded-2xl border border-white/10 bg-white/5 text-violet-200 hover:bg-white/10 hover:text-white"
-              title="查看聊天记录"
-            >
-              <MessageCircle className="w-4 h-4" />
-            </Button>
-          </Link>
+          {showHistoryLink && (
+            <Link href="/chat/history">
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  'rounded-xl border transition-colors',
+                  isDesktop
+                    ? 'border-violet-200/50 bg-white/60 text-[#5a4c73] hover:bg-white/80 hover:text-[#171421]'
+                    : 'rounded-2xl border-white/10 bg-white/5 text-violet-200 hover:bg-white/10 hover:text-white'
+                )}
+                title="查看聊天记录"
+              >
+                <MessageCircle className="w-4 h-4" />
+              </Button>
+            </Link>
+          )}
 
           <Button
             variant="ghost"
             size="sm"
             onClick={toggleTheme}
-            className="rounded-2xl border border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
+            className={cn(
+              'rounded-xl border transition-colors',
+              isDesktop
+                ? 'border-violet-200/50 bg-white/60 text-[#5a4c73] hover:bg-white/80 hover:text-[#171421]'
+                : 'rounded-2xl border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'
+            )}
           >
             {getThemeIcon()}
           </Button>
           <Button
-            variant="outline"
+            variant={isDesktop ? "ghost" : "outline"}
             size="sm"
             onClick={onClearChat}
-            className="rounded-2xl border-white/10 bg-white/5 text-white/70 hover:border-red-200/40 hover:bg-red-500/10 hover:text-red-100"
+            className={cn(
+              'rounded-xl border transition-colors',
+              isDesktop
+                ? 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 disabled:opacity-50'
+                : 'rounded-2xl border-white/10 bg-white/5 text-white/70 hover:border-red-200/40 hover:bg-red-500/10 hover:text-red-100'
+            )}
             disabled={isEmpty}
           >
             <Trash2 className="w-4 h-4 mr-2" />

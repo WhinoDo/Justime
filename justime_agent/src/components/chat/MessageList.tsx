@@ -10,6 +10,7 @@ import { SuggestedEventCard } from './SuggestedEventCard'
 import { EditableTaskPlan } from './EditableTaskPlan'
 import { ThinkingLoader } from './ThinkingLoader'
 import { TypewriterMessage } from './TypewriterMessage'
+import { cn } from '@/lib/utils'
 
 const MessageBubble = dynamic(
   () => import('./MessageBubble').then((mod) => mod.MessageBubble),
@@ -28,6 +29,7 @@ const MessageBubble = dynamic(
 )
 
 export interface MessageListProps {
+  density?: 'comfortable' | 'desktop'
   messages: Message[]
   isLoading: boolean
   streamingMessage: Message | null
@@ -75,6 +77,7 @@ export const MessageList = memo(function MessageList({
   onExpandDecomposition,
   onCancelDecomposition,
   authUserId,
+  density = 'comfortable',
 }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -89,30 +92,56 @@ export const MessageList = memo(function MessageList({
   }, [messages])
 
   const isEmpty = messages.length === 0
+  const isDesktop = density === 'desktop'
 
   if (isEmpty && !streamingContent) {
     return (
-      <div className="flex-1 overflow-y-auto px-4 py-6 md:px-6 scroll-smooth">
+      <div className={cn(
+        'flex-1 overflow-y-auto scroll-smooth',
+        isDesktop ? 'desktop-scrollbar px-6 py-5' : 'px-4 py-6 md:px-6'
+      )}>
         <div className="flex h-full flex-col items-center justify-center space-y-6 text-center">
-          <div className="flex h-24 w-24 items-center justify-center rounded-[28px] border border-white/15 bg-white/10 shadow-2xl shadow-black/10">
-            <MessageCircle className="h-12 w-12 text-white/80" />
+          <div className={cn(
+            "flex h-24 w-24 items-center justify-center rounded-[28px] border shadow-2xl",
+            isDesktop
+              ? "border-violet-200 bg-white/70 shadow-violet-200/20"
+              : "border-white/[0.15] bg-white/10 shadow-black/10"
+          )}>
+            <MessageCircle className={cn("h-12 w-12", isDesktop ? "text-violet-600" : "text-white/80")} />
           </div>
           <div className="space-y-2">
-            <h3 className="text-xl font-semibold text-white">
-              开始对话
+            <h3 className={cn("font-semibold", isDesktop ? "text-[#171421] text-base" : "text-xl text-white")}>
+              {isDesktop ? '等待任务上下文' : '开始对话'}
             </h3>
-            <p className="max-w-md text-white/60">
-              告诉我你现在的任务或感受，我会根据你的情绪状态提供个性化的帮助和任务拆解建议
+            <p className={cn("max-w-md", isDesktop ? "text-[#6d6680] text-sm" : "text-sm text-white/60")}>
+              {isDesktop
+                ? '输入当前要推进的任务、粘贴错误日志，或从左侧选择一个会话继续。'
+                : '告诉我你现在的任务或感受，我会根据你的情绪状态提供个性化的帮助和任务拆解建议'}
             </p>
           </div>
           <div className="flex flex-wrap justify-center gap-2">
-            <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-sm text-white/75">
+            <span className={cn(
+              "rounded-full border px-3 py-1 text-sm font-medium",
+              isDesktop
+                ? "border-violet-200 bg-white/60 text-[#5a4c73]"
+                : "border-white/10 bg-white/10 text-white/75"
+            )}>
               情绪感知
             </span>
-            <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-sm text-white/75">
+            <span className={cn(
+              "rounded-full border px-3 py-1 text-sm font-medium",
+              isDesktop
+                ? "border-violet-200 bg-white/60 text-[#5a4c73]"
+                : "border-white/10 bg-white/10 text-white/75"
+            )}>
               任务拆解
             </span>
-            <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-sm text-white/75">
+            <span className={cn(
+              "rounded-full border px-3 py-1 text-sm font-medium",
+              isDesktop
+                ? "border-violet-200 bg-white/60 text-[#5a4c73]"
+                : "border-white/10 bg-white/10 text-white/75"
+            )}>
               智能陪伴
             </span>
           </div>
@@ -122,7 +151,10 @@ export const MessageList = memo(function MessageList({
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-6 md:px-6 scroll-smooth">
+    <div className={cn(
+      "flex-1 overflow-y-auto scroll-smooth",
+      isDesktop ? "desktop-scrollbar px-6 py-5" : "px-4 py-6 md:px-6"
+    )}>
       {messages.map((message, index) => (
         <div key={message.id || `msg-${index}`}>
           <MessageBubble
@@ -229,7 +261,7 @@ const TaskDecompositionCard = memo(function TaskDecompositionCard({
 
   return (
     <div className="ml-11 mt-2">
-      <div className="rounded-2xl border border-white/15 bg-white/10 p-4 shadow-xl shadow-black/10 backdrop-blur-xl">
+      <div className="rounded-2xl border border-white/[0.15] bg-white/10 p-4 shadow-xl shadow-black/10 backdrop-blur-xl">
         <div className="mb-3 flex items-center gap-2">
           <div className="rounded-xl border border-white/10 bg-white/10 p-2">
             <svg className="h-5 w-5 text-violet-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -247,7 +279,7 @@ const TaskDecompositionCard = memo(function TaskDecompositionCard({
         </div>
 
         {decomp.project?.description && (
-          <p className="mb-3 line-clamp-2 text-sm text-white/65">
+          <p className="mb-3 line-clamp-2 text-sm text-white/[0.65]">
             {decomp.project.description}
           </p>
         )}
@@ -257,19 +289,19 @@ const TaskDecompositionCard = memo(function TaskDecompositionCard({
             <div className="text-lg font-bold text-white">
               {(decomp.subtasks || []).length}
             </div>
-            <div className="text-xs text-white/45">子任务</div>
+            <div className="text-xs text-white/[0.45]">子任务</div>
           </div>
           <div className="rounded-xl border border-white/10 bg-white/10 p-2 text-center">
             <div className="text-lg font-bold text-white">
               {decomp.project?.total_days || '—'}
             </div>
-            <div className="text-xs text-white/45">天</div>
+            <div className="text-xs text-white/[0.45]">天</div>
           </div>
           <div className="rounded-xl border border-white/10 bg-white/10 p-2 text-center">
             <div className="text-lg font-bold text-white">
               {totalHours}
             </div>
-            <div className="text-xs text-white/45">总工时</div>
+            <div className="text-xs text-white/[0.45]">总工时</div>
           </div>
         </div>
 
@@ -280,7 +312,7 @@ const TaskDecompositionCard = memo(function TaskDecompositionCard({
                 {task.order || idx + 1}
               </span>
               <span className="flex-1 truncate">{task.title}</span>
-              <span className="text-xs text-white/45">{task.duration_hours}h</span>
+              <span className="text-xs text-white/[0.45]">{task.duration_hours}h</span>
             </div>
           ))}
           {(decomp.subtasks || []).length > 4 && (
@@ -305,7 +337,7 @@ const TaskDecompositionCard = memo(function TaskDecompositionCard({
           </button>
           <button
             onClick={() => onCancelDecomposition(message.id)}
-            className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+            className="rounded-xl border border-white/[0.15] bg-white/5 px-4 py-2 text-sm font-medium text-white/70 transition-colors hover:bg-white/10 hover:text-white"
           >
             忽略
           </button>

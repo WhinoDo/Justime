@@ -81,8 +81,8 @@ export default function ChatHistoryPanel({
               key={session._id}
               type="button"
               className={`group relative w-full rounded-2xl border p-4 text-left transition-all duration-300 ${activeSessionId === session._id
-                  ? 'border-white/20 bg-white/15 shadow-lg shadow-black/10'
-                  : 'border-white/10 bg-white/5 hover:border-white/15 hover:bg-white/10'
+                  ? 'border-white/20 bg-white/[0.15] shadow-lg shadow-black/10'
+                  : 'border-white/10 bg-white/5 hover:border-white/[0.15] hover:bg-white/10'
                 }`}
               onClick={() => handleSelect(session)}
             >
@@ -100,7 +100,7 @@ export default function ChatHistoryPanel({
                     </p>
                   )}
 
-                  <div className="mt-2 flex items-center gap-3 font-mono text-xs text-white/35">
+                  <div className="mt-2 flex items-center gap-3 font-mono text-xs text-white/[0.35]">
                     <span className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
                       {formatDate(session.updatedAt)}
@@ -109,7 +109,7 @@ export default function ChatHistoryPanel({
                 </div>
 
                 <div className="flex items-center opacity-60 transition-opacity group-hover:opacity-100">
-                  <ChevronRight className="h-4 w-4 text-white/45" />
+                  <ChevronRight className="h-4 w-4 text-white/[0.45]" />
                 </div>
               </div>
             </button>

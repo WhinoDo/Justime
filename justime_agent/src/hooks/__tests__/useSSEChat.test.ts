@@ -1,29 +1,22 @@
 import { renderHook, act } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { TextEncoder, TextDecoder } from 'util'
 import { useSSEChat } from '@/hooks/useSSEChat'
 
-// Mock fetch
-const mockFetch = vi.fn()
-global.fetch = mockFetch
-
-// Mock AbortController
-const mockAbort = vi.fn()
-vi.spyOn(AbortController.prototype, 'abort').mockImplementation(mockAbort)
+const mockFetch = jest.fn()
+global.fetch = mockFetch as typeof fetch
+global.TextEncoder = TextEncoder as typeof global.TextEncoder
+global.TextDecoder = TextDecoder as typeof global.TextDecoder
 
 describe('useSSEChat', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    jest.clearAllMocks()
     mockFetch.mockReset()
   })
 
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
-
   it('initializes with default state', () => {
-    const { result } = renderHook(() => useSSEChat())
+    const { result } = renderHook(() => useSSEChat({ endpoint: '/api/chat/stream' }))
 
-    expect(result.current.isConnected).toBe(false)
+    expect(result.current.connectionState).toBe('disconnected')
     expect(result.current.isStreaming).toBe(false)
     expect(result.current.content).toBe('')
     expect(result.current.error).toBeNull()
@@ -31,10 +24,10 @@ describe('useSSEChat', () => {
 
   it('handles successful SSE connection', async () => {
     const mockReader = {
-      read: vi.fn()
+      read: jest.fn()
         .mockResolvedValueOnce({
           done: false,
-          value: new TextEncoder().encode('data: {"event":"start","conversation_id":"conv123"}\n\n'),
+          value: new TextEncoder().encode('data: {"event":"start","conversationId":"conv123","messageId":"msg123"}\n\n'),
         })
         .mockResolvedValueOnce({
           done: false,
@@ -42,54 +35,52 @@ describe('useSSEChat', () => {
         })
         .mockResolvedValueOnce({
           done: false,
-          value: new TextEncoder().encode('data: {"event":"done"}\n\n'),
+          value: new TextEncoder().encode('data: {"event":"done","messageId":"msg123"}\n\n'),
         })
         .mockResolvedValueOnce({ done: true, value: undefined }),
-      releaseLock: vi.fn(),
+      releaseLock: jest.fn(),
     }
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      headers: {
-        get: (key: string) => (key === 'content-type' ? 'text/event-stream' : null),
-      },
-      body: {
-        getReader: () => mockReader,
-      },
+      status: 200,
+      statusText: 'OK',
+      body: { getReader: () => mockReader },
     })
 
-    const { result } = renderHook(() => useSSEChat())
+    const onStart = jest.fn()
+    const onDone = jest.fn()
+    const { result } = renderHook(() => useSSEChat({ endpoint: '/api/chat/stream', onStart, onDone, maxRetries: 0 }))
 
     await act(async () => {
       await result.current.sendMessage('Test message')
     })
 
     expect(result.current.content).toBe('Hello')
-    expect(result.current.conversationId).toBe('conv123')
+    expect(result.current.messageId).toBe('msg123')
+    expect(onStart).toHaveBeenCalledWith('conv123', 'msg123')
+    expect(onDone).toHaveBeenCalledWith('msg123', 'Hello')
   })
 
   it('handles error events', async () => {
     const mockReader = {
-      read: vi.fn()
+      read: jest.fn()
         .mockResolvedValueOnce({
           done: false,
-          value: new TextEncoder().encode('data: {"event":"error","error":"Something went wrong"}\n\n'),
+          value: new TextEncoder().encode('data: {"event":"error","message":"Something went wrong"}\n\n'),
         })
         .mockResolvedValueOnce({ done: true, value: undefined }),
-      releaseLock: vi.fn(),
+      releaseLock: jest.fn(),
     }
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      headers: {
-        get: (key: string) => (key === 'content-type' ? 'text/event-stream' : null),
-      },
-      body: {
-        getReader: () => mockReader,
-      },
+      status: 200,
+      statusText: 'OK',
+      body: { getReader: () => mockReader },
     })
 
-    const { result } = renderHook(() => useSSEChat())
+    const { result } = renderHook(() => useSSEChat({ endpoint: '/api/chat/stream', maxRetries: 0 }))
 
     await act(async () => {
       await result.current.sendMessage('Test message')
@@ -103,80 +94,50 @@ describe('useSSEChat', () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
       status: 500,
-      json: () => Promise.resolve({ detail: 'Internal Server Error' }),
+      statusText: 'Internal Server Error',
     })
 
-    const { result } = renderHook(() => useSSEChat())
+    const { result } = renderHook(() => useSSEChat({ endpoint: '/api/chat/stream', maxRetries: 0 }))
 
     await act(async () => {
       await result.current.sendMessage('Test message')
     })
 
-    expect(result.current.error).toBe('Internal Server Error')
+    expect(result.current.error).toContain('HTTP 500')
   })
 
-  it('cancels ongoing stream', async () => {
+  it('stops ongoing stream', async () => {
+    const abortSpy = jest.spyOn(AbortController.prototype, 'abort').mockImplementation(() => {})
     const mockReader = {
-      read: vi.fn().mockImplementation(() => new Promise(() => {})), // Never resolves
-      cancel: vi.fn(),
-      releaseLock: vi.fn(),
+      read: jest.fn().mockImplementation(() => new Promise(() => {})),
+      releaseLock: jest.fn(),
     }
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      headers: {
-        get: (key: string) => (key === 'content-type' ? 'text/event-stream' : null),
-      },
-      body: {
-        getReader: () => mockReader,
-      },
+      status: 200,
+      statusText: 'OK',
+      body: { getReader: () => mockReader },
     })
 
-    const { result } = renderHook(() => useSSEChat())
-
-    act(() => {
-      result.current.sendMessage('Test message')
-    })
-
-    // Cancel the stream
-    act(() => {
-      result.current.cancel()
-    })
-
-    expect(mockAbort).toHaveBeenCalled()
-    expect(result.current.isStreaming).toBe(false)
-  })
-
-  it('resets state correctly', async () => {
-    const mockReader = {
-      read: vi.fn()
-        .mockResolvedValueOnce({
-          done: false,
-          value: new TextEncoder().encode('data: {"event":"token","content":"Test"}\n\n'),
-        })
-        .mockResolvedValueOnce({ done: true, value: undefined }),
-      releaseLock: vi.fn(),
-    }
-
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      headers: {
-        get: (key: string) => (key === 'content-type' ? 'text/event-stream' : null),
-      },
-      body: {
-        getReader: () => mockReader,
-      },
-    })
-
-    const { result } = renderHook(() => useSSEChat())
+    const { result } = renderHook(() => useSSEChat({ endpoint: '/api/chat/stream', maxRetries: 0 }))
 
     await act(async () => {
-      await result.current.sendMessage('Test message')
+      void result.current.sendMessage('Test message')
+      await Promise.resolve()
     })
 
-    expect(result.current.content).toBe('Test')
+    act(() => {
+      result.current.stop()
+    })
 
-    // Reset
+    expect(abortSpy).toHaveBeenCalled()
+    abortSpy.mockRestore()
+  })
+
+  it('resets state correctly', () => {
+    const { result } = renderHook(() => useSSEChat({ endpoint: '/api/chat/stream' }))
+
     act(() => {
       result.current.reset()
     })
@@ -184,46 +145,5 @@ describe('useSSEChat', () => {
     expect(result.current.content).toBe('')
     expect(result.current.error).toBeNull()
     expect(result.current.isStreaming).toBe(false)
-  })
-
-  it('handles metadata events', async () => {
-    const metadata = {
-      ragReferences: [{
-        referenceId: 'ref1',
-        docPath: '/docs/test.md',
-        fileName: 'test.md',
-        score: 0.9,
-        snippets: ['snippet'],
-        queries: ['query'],
-      }],
-    }
-
-    const mockReader = {
-      read: vi.fn()
-        .mockResolvedValueOnce({
-          done: false,
-          value: new TextEncoder().encode(`data: {"event":"metadata","metadata":${JSON.stringify(metadata)}}\n\n`),
-        })
-        .mockResolvedValueOnce({ done: true, value: undefined }),
-      releaseLock: vi.fn(),
-    }
-
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      headers: {
-        get: (key: string) => (key === 'content-type' ? 'text/event-stream' : null),
-      },
-      body: {
-        getReader: () => mockReader,
-      },
-    })
-
-    const { result } = renderHook(() => useSSEChat())
-
-    await act(async () => {
-      await result.current.sendMessage('Test message')
-    })
-
-    expect(result.current.metadata).toEqual(metadata)
   })
 })

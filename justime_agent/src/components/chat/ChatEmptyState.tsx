@@ -16,7 +16,7 @@ export const ChatEmptyState = memo(function ChatEmptyState({
 }: ChatEmptyStateProps) {
   return (
     <div className="flex h-full flex-col items-center justify-center space-y-6 text-center">
-      <div className="flex h-24 w-24 items-center justify-center rounded-[28px] border border-white/15 bg-white/10 shadow-2xl shadow-black/10">
+      <div className="flex h-24 w-24 items-center justify-center rounded-[28px] border border-white/[0.15] bg-white/10 shadow-2xl shadow-black/10">
         <MessageCircle className="h-12 w-12 text-white/80" />
       </div>
       <div className="space-y-2">

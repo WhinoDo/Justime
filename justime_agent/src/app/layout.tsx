@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/toaster";
 import { PWAInstallBanner } from "@/components/PWAInstallBanner";
+import { DesktopRuntimeProvider } from "@/components/layout/DesktopRuntimeProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -43,11 +44,13 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
-          <Toaster />
-          <PWAInstallBanner />
+          <DesktopRuntimeProvider>
+            {children}
+            <Toaster />
+            <PWAInstallBanner />
+          </DesktopRuntimeProvider>
         </ThemeProvider>
       </body>
     </html>
   );
-} 
+}

@@ -1,75 +1,67 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { TypewriterMessage } from '@/components/chat/TypewriterMessage'
+import type { Message } from '@/types'
 
-// Mock next-themes
-vi.mock('next-themes', () => ({
+jest.mock('next-themes', () => ({
   useTheme: () => ({ theme: 'dark' }),
 }))
 
+function buildMessage(partial: Partial<Message>): Message {
+  return {
+    id: 'msg-1',
+    user_id: 'user-1',
+    role: 'assistant',
+    content: '',
+    created_at: '2024-01-01T00:00:00Z',
+    ...partial,
+  }
+}
+
 describe('TypewriterMessage', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    jest.clearAllMocks()
   })
 
-  it('renders static content when not streaming', async () => {
+  it('renders static content when not streaming', () => {
     render(
       <TypewriterMessage
         content="Hello World"
         isStreaming={false}
-        message={{ role: 'assistant', content: 'Hello World' }}
-        instant={true}
-      />
+        message={buildMessage({ content: 'Hello World' })}
+        instant
+      />,
     )
 
-    // Content should be rendered immediately
     expect(screen.getByText('Hello World')).toBeInTheDocument()
   })
 
-  it('shows cursor when streaming', () => {
-    render(
+  it('shows cursor block when streaming', () => {
+    const { container } = render(
       <TypewriterMessage
         content="Hello"
-        isStreaming={true}
-        message={{ role: 'assistant', content: 'Hello' }}
-        showCursor={true}
-      />
+        isStreaming
+        message={buildMessage({ content: 'Hello' })}
+      />,
     )
 
-    // Should show the cursor character
-    expect(screen.getByText('|')).toBeInTheDocument()
+    expect(container.querySelector('.bg-emerald-300')).toBeInTheDocument()
   })
 
-  it('renders user message with correct styling', () => {
+  it('renders user message content', () => {
     render(
       <TypewriterMessage
         content="User message"
         isStreaming={false}
-        message={{ role: 'user', content: 'User message' }}
-        instant={true}
-      />
+        message={buildMessage({ role: 'user', content: 'User message' })}
+        instant
+      />,
     )
 
-    // User avatar should be present
     expect(screen.getByText('User message')).toBeInTheDocument()
   })
 
-  it('renders assistant message with correct styling', () => {
-    render(
-      <TypewriterMessage
-        content="Assistant response"
-        isStreaming={false}
-        message={{ role: 'assistant', content: 'Assistant response' }}
-        instant={true}
-      />
-    )
-
-    // Content should be present
-    expect(screen.getByText('Assistant response')).toBeInTheDocument()
-  })
-
-  it('handles RAG references click', async () => {
-    const mockReferenceClick = vi.fn()
+  it('handles RAG references click', () => {
+    const mockReferenceClick = jest.fn()
     const ragReferences = [
       {
         referenceId: 'ref1',
@@ -85,49 +77,37 @@ describe('TypewriterMessage', () => {
       <TypewriterMessage
         content="Response with references"
         isStreaming={false}
-        message={{
-          role: 'assistant',
-          content: 'Response with references',
-          ragReferences,
-        }}
+        message={buildMessage({ content: 'Response with references', ragReferences })}
         onReferenceClick={mockReferenceClick}
-        instant={true}
-      />
+        instant
+      />,
     )
 
-    // Reference button should be present
     const refButton = screen.getByRole('button', { name: /test.md/i })
-    expect(refButton).toBeInTheDocument()
-
-    // Click should trigger callback
     fireEvent.click(refButton)
     expect(mockReferenceClick).toHaveBeenCalledWith(ragReferences[0])
   })
 
   it('animates content with typewriter effect', async () => {
-    vi.useFakeTimers()
+    jest.useFakeTimers()
 
     render(
       <TypewriterMessage
         content="Hello World"
-        isStreaming={true}
-        message={{ role: 'assistant', content: '' }}
-        typewriterSpeed={10}
-      />
+        isStreaming
+        message={buildMessage({ content: '' })}
+        speed={10}
+      />,
     )
 
-    // Initially, only first character should appear
-    await waitFor(() => {
-      expect(screen.getByText(/H/)).toBeInTheDocument()
+    act(() => {
+      jest.advanceTimersByTime(200)
     })
-
-    // Advance timers to complete animation
-    vi.advanceTimersByTime(200)
 
     await waitFor(() => {
       expect(screen.getByText('Hello World')).toBeInTheDocument()
     })
 
-    vi.useRealTimers()
+    jest.useRealTimers()
   })
 })

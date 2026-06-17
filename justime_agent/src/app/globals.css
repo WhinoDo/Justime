@@ -258,3 +258,96 @@
   }
 }
 
+@layer base {
+  html[data-justime-runtime="desktop"] {
+    --background: 270 100% 99%;
+    --foreground: 257 24% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 257 24% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 257 24% 10%;
+    --primary: 263 74% 58%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 262 100% 97%;
+    --secondary-foreground: 258 26% 20%;
+    --muted: 260 43% 95%;
+    --muted-foreground: 257 13% 45%;
+    --accent: 275 92% 94%;
+    --accent-foreground: 258 34% 24%;
+    --destructive: 351 72% 56%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 263 38% 82%;
+    --input: 263 38% 82%;
+    --ring: 263 74% 58%;
+    --radius: 0.75rem;
+
+    --desktop-titlebar-height: 52px;
+    --desktop-sidebar-width: 286px;
+    --desktop-inspector-width: 360px;
+    --desktop-panel-radius: 12px;
+    --desktop-hairline: 263 38% 82%;
+    --desktop-glass-bg: 255 255 255 / 0.68;
+    --desktop-glass-strong: 255 255 255 / 0.84;
+    --desktop-lilac-bg: 247 242 255 / 0.76;
+    --desktop-lilac-strong: 238 231 255 / 0.88;
+    --desktop-shadow: 112 77 171 / 0.18;
+  }
+
+  html[data-justime-runtime="desktop"] body {
+    background:
+      radial-gradient(circle at 18% 8%, rgba(255, 255, 255, 0.96) 0, rgba(255, 255, 255, 0) 32%),
+      radial-gradient(circle at 88% 18%, rgba(232, 217, 255, 0.72) 0, rgba(232, 217, 255, 0) 34%),
+      linear-gradient(135deg, #ffffff 0%, #fbfaff 34%, #f4edff 68%, #eadcff 100%) !important;
+    color: hsl(257 24% 10%) !important;
+    padding: 0;
+  }
+}
+
+@layer utilities {
+  .desktop-drag-region {
+    -webkit-app-region: drag;
+  }
+
+  .desktop-no-drag {
+    -webkit-app-region: no-drag;
+  }
+
+  .desktop-window-safe-top {
+    padding-top: var(--desktop-titlebar-height);
+  }
+
+  .desktop-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(196 181 253 / 0.72) transparent;
+  }
+
+  .desktop-scrollbar::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  .desktop-scrollbar::-webkit-scrollbar-thumb {
+    background: rgb(196 181 253 / 0.72);
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background-clip: content-box;
+  }
+
+  .desktop-glass-surface {
+    border: 1px solid rgba(126, 87, 194, 0.14);
+    background: rgba(255, 255, 255, 0.68);
+    box-shadow: 0 24px 80px rgba(112, 77, 171, 0.14);
+    backdrop-filter: blur(24px) saturate(1.25);
+  }
+
+  .desktop-lilac-surface {
+    border: 1px solid rgba(126, 87, 194, 0.16);
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.74), rgba(238, 231, 255, 0.72));
+    box-shadow: 0 18px 60px rgba(112, 77, 171, 0.12);
+    backdrop-filter: blur(28px) saturate(1.22);
+  }
+
+  html[data-justime-runtime="desktop"] .desktop-focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white;
+  }
+}

@@ -14,20 +14,37 @@ import {
   ArrowRight,
   Sparkles,
   ShieldCheck,
-  GraduationCap
+  FolderKanban
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { JustimeBackground } from '@/components/ui/JustimeBackground'
+import { JustimePageShell } from '@/components/layout/JustimePageShell'
+import { useDesktopRuntime } from '@/hooks/useDesktopRuntime'
 import { gsap } from 'gsap'
 import { useGSAP } from '@gsap/react'
 
 // Register useGSAP plugin
 gsap.registerPlugin(useGSAP)
 
+function getDesktopCardColor(title: string) {
+  switch (title) {
+    case 'AI 助手对话': return { bg: 'bg-blue-100', text: 'text-blue-700' }
+    case '日程管理': return { bg: 'bg-orange-100', text: 'text-orange-700' }
+    case '聊天记录': return { bg: 'bg-purple-100', text: 'text-purple-700' }
+    case '任务驾驶舱': return { bg: 'bg-indigo-100', text: 'text-indigo-700' }
+    case '知识库': return { bg: 'bg-emerald-100', text: 'text-emerald-700' }
+    case '模型配置': return { bg: 'bg-sky-100', text: 'text-sky-700' }
+    case '个人中心': return { bg: 'bg-rose-100', text: 'text-rose-700' }
+    case '后台管理': return { bg: 'bg-amber-100', text: 'text-amber-700' }
+    default: return { bg: 'bg-violet-100', text: 'text-violet-700' }
+  }
+}
+
 export default function DashboardPage() {
   const { user, isLoading, isAuthenticated } = useAuth()
   const [greeting, setGreeting] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)
+  const { isDesktop } = useDesktopRuntime()
 
   useEffect(() => {
     const hour = new Date().getHours()
@@ -54,6 +71,17 @@ export default function DashboardPage() {
     )
   }, { scope: containerRef, dependencies: [isLoading] })
 
+  if (isLoading && isDesktop) {
+    return (
+      <JustimePageShell fullHeight variant="desktop" blur="none" opacity={0} contentClassName="flex items-center justify-center">
+        <div className="rounded-2xl border border-violet-200/[0.45] bg-white/[0.68] px-6 py-5 text-center shadow-[0_24px_80px_rgba(112,77,171,0.14)] backdrop-blur-2xl">
+          <Loader2 className="mx-auto h-7 w-7 animate-spin text-violet-500" />
+          <p className="mt-3 text-xs font-medium uppercase tracking-[0.18em] text-[#8b7aa8]">Loading Workbench</p>
+        </div>
+      </JustimePageShell>
+    )
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
@@ -71,7 +99,6 @@ export default function DashboardPage() {
   const isAdmin = role === 'admin'
 
   // 仪表盘功能卡片配置
-  // Updated Colors: Lighter, more pastel/glass-friendly
   const cards = [
     {
       title: "AI 助手对话",
@@ -101,13 +128,13 @@ export default function DashboardPage() {
       borderColor: "border-purple-400/30"
     },
     {
-      title: "考研学习",
-      description: "制定学习计划、追踪进度、管理复习节奏",
-      icon: GraduationCap,
-      href: "/study",
-      color: "text-cyan-200",
-      bgColor: "bg-cyan-500/20",
-      borderColor: "border-cyan-400/30"
+      title: "任务驾驶舱",
+      description: "按 Before / During / After 管理任务进程与知识沉淀",
+      icon: FolderKanban,
+      href: "/tasks",
+      color: "text-lime-200",
+      bgColor: "bg-lime-500/20",
+      borderColor: "border-lime-400/30"
     },
     {
       title: "知识库",
@@ -118,7 +145,6 @@ export default function DashboardPage() {
       bgColor: "bg-indigo-500/20",
       borderColor: "border-indigo-400/30"
     },
-
     {
       title: "模型配置",
       description: "自定义 AI 模型参数与 API 设置",
@@ -147,6 +173,48 @@ export default function DashboardPage() {
       borderColor: "border-amber-400/30"
     }] : [])
   ]
+
+  if (isDesktop) {
+    return (
+      <JustimePageShell variant="desktop" blur="none" opacity={0} contentClassName="min-h-screen px-6 py-8">
+        <div ref={containerRef} className="mx-auto max-w-6xl">
+          <div className="mb-8 rounded-3xl border border-violet-200/[0.45] bg-white/[0.66] p-7 shadow-[0_24px_80px_rgba(112,77,171,0.12)] backdrop-blur-2xl">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-violet-200/50 bg-white/70 text-violet-600 shadow-sm">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-semibold tracking-tight text-[#171421]">
+                  {greeting}，{user?.username || '朋友'}
+                </h1>
+                <p className="mt-1 text-sm text-[#6d6680]">今天的任务、日程和知识入口都在这里。</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {cards.map((card, index) => {
+              const desktopColors = getDesktopCardColor(card.title)
+              return (
+                <Link key={index} href={card.href} className="group block">
+                  <div className="h-full rounded-2xl border border-violet-200/[0.45] bg-white/[0.64] p-5 shadow-[0_18px_60px_rgba(112,77,171,0.10)] backdrop-blur-2xl transition hover:-translate-y-0.5 hover:border-violet-300/70 hover:bg-white/[0.82]">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className={cn('rounded-xl p-2.5', desktopColors.bg)}>
+                        <card.icon className={cn('h-5 w-5', desktopColors.text)} />
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-[#8b7aa8] transition group-hover:translate-x-0.5 group-hover:text-violet-600" />
+                    </div>
+                    <h2 className="mt-4 text-base font-semibold text-[#171421]">{card.title}</h2>
+                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-[#6d6680]">{card.description}</p>
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+      </JustimePageShell>
+    )
+  }
 
   return (
     <div ref={containerRef} className="min-h-screen relative overflow-hidden font-sans">

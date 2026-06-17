@@ -51,13 +51,18 @@ export const API_ENDPOINTS = {
     CHUNKED_CANCEL: (uploadId: string) => `/api/knowledge/chunked/${uploadId}`,
   },
 
-  STUDY: {
-    PROFILE: '/api/study/profile',
-    PLAN: '/api/study/plan',
-    TASKS: '/api/study/tasks',
-    TASK_DETAIL: (id: string) => `/api/study/tasks/${id}`,
-    PROGRESS: '/api/study/progress',
-    CHAT: '/api/study/chat',
+  TASK_PROCESS: {
+    BASE: '/api/task-processes',
+    DETAIL: (taskId: string) => `/api/task-processes/${taskId}`,
+    AGENT: (taskId: string) => `/api/task-processes/${taskId}/agent`,
+    EVIDENCE: (taskId: string) => `/api/task-processes/${taskId}/evidence`,
+    TIME_LOG: (taskId: string) => `/api/task-processes/${taskId}/evidence/time-log`,
+    KNOWLEDGE_OUTPUTS: (taskId: string) => `/api/task-processes/${taskId}/knowledge-outputs`,
+    GENERATE_KNOWLEDGE: (taskId: string) => `/api/task-processes/${taskId}/knowledge-outputs/generate`,
+    KNOWLEDGE_OUTPUT_DETAIL: (outputId: string) => `/api/task-processes/knowledge-outputs/${outputId}`,
+    PUBLISH_KNOWLEDGE: (outputId: string) => `/api/task-processes/knowledge-outputs/${outputId}/publish`,
+    ROLLBACK_KNOWLEDGE: (outputId: string) => `/api/task-processes/knowledge-outputs/${outputId}/rollback`,
+    VAULT_CONFIG: '/api/task-processes/vault-config',
   },
 
   ADMIN: {
@@ -72,5 +77,7 @@ export const API_ENDPOINTS = {
     API_KEY: (keyId: string) => `/api/admin/apikeys/${keyId}`,
     STATS: '/api/admin/stats',
     NOTEBOOKLM: '/api/admin/notebooklm',
+    FEISHU_CLI: '/api/admin/feishu-cli',
+    FEISHU_CLI_AUTH_STATUS: '/api/admin/feishu-cli?action=auth-status',
   },
 } as const

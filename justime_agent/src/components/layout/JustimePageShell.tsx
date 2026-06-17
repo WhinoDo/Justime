@@ -10,6 +10,7 @@ interface JustimePageShellProps {
   blur?: 'none' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl'
   opacity?: number
   fullHeight?: boolean
+  variant?: 'immersive' | 'desktop'
 }
 
 export function JustimePageShell({
@@ -19,16 +20,22 @@ export function JustimePageShell({
   blur = 'lg',
   opacity = 0.45,
   fullHeight = false,
+  variant = 'immersive',
 }: JustimePageShellProps) {
   return (
     <div
       className={cn(
         'relative overflow-hidden',
         fullHeight ? 'h-screen' : 'min-h-screen',
+        variant === 'desktop' && 'bg-[#fbfaff] text-[#171421]',
         className
       )}
     >
-      <JustimeBackground blur={blur} opacity={opacity} />
+      <JustimeBackground
+        blur={blur}
+        opacity={opacity}
+        variant={variant === 'desktop' ? 'desktop' : 'immersive'}
+      />
       <div className={cn('relative z-10', fullHeight ? 'h-full' : 'min-h-screen', contentClassName)}>
         {children}
       </div>

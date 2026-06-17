@@ -236,7 +236,7 @@ const TypewriterMessageInner = ({
           )}
 
           {/* Markdown 渲染 */}
-          <div className="prose prose-sm prose-invert max-w-none prose-headings:text-white prose-p:text-white/85 prose-strong:text-white prose-em:text-white/85">
+          <div className="prose prose-sm prose-invert max-w-none prose-headings:text-white prose-p:text-white/[0.85] prose-strong:text-white prose-em:text-white/[0.85]">
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
               {displayedContent || ''}
             </ReactMarkdown>
@@ -259,11 +259,11 @@ const TypewriterMessageInner = ({
                   key={reference.referenceId}
                   type="button"
                   onClick={() => onReferenceClick?.(reference)}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/10 px-2.5 py-1.5 text-xs text-white/80 transition-colors hover:bg-white/15"
+                  className="inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/10 px-2.5 py-1.5 text-xs text-white/80 transition-colors hover:bg-white/[0.15]"
                 >
                   <FileText className="h-3.5 w-3.5" />
                   <span className="max-w-[180px] truncate">{reference.fileName || reference.docPath}</span>
-                  <span className="text-[10px] text-white/45">
+                  <span className="text-[10px] text-white/[0.45]">
                     {reference.snippets?.length || 0} 段
                   </span>
                 </button>
