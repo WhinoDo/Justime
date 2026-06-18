@@ -18,7 +18,6 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/useAuth'
-import { JustimeBackground } from '@/components/ui/JustimeBackground'
 
 export default function AdminLayout({
     children,
@@ -64,8 +63,7 @@ export default function AdminLayout({
 
     if (!user || user.role !== 'admin') {
         return (
-            <div className="min-h-screen relative overflow-hidden flex items-center justify-center text-white">
-                <JustimeBackground blur="lg" opacity={0.6} />
+            <div className="min-h-screen relative overflow-hidden flex items-center justify-center bg-background">
                 <div className="relative z-10 text-center space-y-4">
                     <ShieldAlert className="w-16 h-16 text-red-500 mx-auto" />
                     <h1 className="text-2xl font-bold text-white">访问被拒绝</h1>
@@ -79,8 +77,7 @@ export default function AdminLayout({
     }
 
     return (
-        <div className="min-h-screen relative overflow-hidden font-sans flex text-white">
-            <JustimeBackground blur="lg" opacity={0.6} />
+        <div className="min-h-screen relative overflow-hidden font-sans flex bg-background">
             {/* Sidebar */}
             <aside
                 className={`fixed inset-y-0 left-0 z-50 w-64 bg-black/20 backdrop-blur-xl border-r border-white/10 transform transition-transform duration-200 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'

@@ -6,7 +6,7 @@ export function JustimeGlassPanel({ className, ...props }: React.HTMLAttributes<
   return (
     <div
       className={cn(
-        'border border-white/20 bg-white/10 text-white shadow-2xl backdrop-blur-xl',
+        'bg-white shadow-md border',
         className
       )}
       {...props}

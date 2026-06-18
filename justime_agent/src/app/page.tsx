@@ -6,7 +6,6 @@ import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef } from 'react'
 import { Loader2, User, LogOut, Shield, ArrowRight } from 'lucide-react'
-import { JustimeBackground } from '@/components/ui/JustimeBackground'
 import { gsap } from 'gsap'
 import { useGSAP } from '@gsap/react'
 
@@ -43,8 +42,7 @@ export default function HomePage() {
   // 如果正在加载，显示加载状态
   if (isLoading) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center relative overflow-hidden">
-        <JustimeBackground blur="xl" />
+      <div className="flex min-h-screen flex-col items-center justify-center relative overflow-hidden bg-background">
         <div className="relative z-10 w-full max-w-md space-y-8 text-center p-4">
           <div className="space-y-4">
             <h1 className="text-4xl font-bold text-white tracking-tight">
@@ -63,8 +61,7 @@ export default function HomePage() {
   }
 
   return (
-    <div ref={containerRef} className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden font-sans">
-      <JustimeBackground blur="sm" opacity={0.3} />
+    <div ref={containerRef} className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden font-sans bg-background">
 
       <div className="relative z-10 w-full max-w-lg">
         <div className="bg-white/10 backdrop-blur-2xl border border-white/20 shadow-2xl rounded-3xl p-8 space-y-8 text-center ring-1 ring-white/10">

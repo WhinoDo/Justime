@@ -165,11 +165,7 @@ export default function ProfilePage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen relative flex items-center justify-center overflow-hidden">
-                <div className="absolute inset-0 z-0">
-                    <img src="/images/justime_login_bg.png" alt="Background" className="w-full h-full object-cover opacity-50" />
-                    <div className="absolute inset-0 bg-black/40 backdrop-blur-3xl" />
-                </div>
+            <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-background">
                 <div className="relative z-10 flex flex-col items-center gap-3">
                     <div className="h-10 w-10 border-2 border-white/20 border-t-white rounded-full animate-spin" />
                     <p className="text-white/60 text-sm font-light tracking-widest uppercase">Loading Profile</p>
@@ -180,11 +176,7 @@ export default function ProfilePage() {
 
     if (!isAuthenticated || !user) {
         return (
-            <div className="min-h-screen relative flex items-center justify-center p-6 overflow-hidden">
-                <div className="absolute inset-0 z-0">
-                    <img src="/images/justime_login_bg.png" alt="Background" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
-                </div>
+            <div className="min-h-screen relative flex items-center justify-center p-6 overflow-hidden bg-background">
                 <div className="relative z-10 w-full max-w-md bg-white/10 backdrop-blur-xl border border-white/20 p-8 rounded-3xl text-center space-y-6 shadow-2xl">
                     <div className="h-20 w-20 bg-white/10 rounded-full mx-auto flex items-center justify-center">
                         <User className="h-10 w-10 text-white/70" />
@@ -208,18 +200,7 @@ export default function ProfilePage() {
     const isAdmin = user.role === 'admin'
 
     return (
-        <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden font-sans">
-            {/* Full Screen Background */}
-            <div className="absolute inset-0 z-0">
-                <img
-                    src="/images/justime_login_bg.png"
-                    alt="Justime Background"
-                    className="w-full h-full object-cover scale-105"
-                />
-                {/* Overlay for better text contrast */}
-                <div className="absolute inset-0 bg-black/40 backdrop-blur-[8px]" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
-            </div>
+        <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden font-sans bg-background">
 
             {/* Main Glass Container - Identity Hub */}
             <div className="relative z-10 w-full max-w-2xl animate-in fade-in zoom-in-95 duration-700">

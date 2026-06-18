@@ -9,7 +9,6 @@ import { useLLMConfigs } from '@/hooks/useLLMConfig'
 import { BarChart3, Bot, ChevronLeft, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { JustimeBackground } from '@/components/ui/JustimeBackground'
 import { API_ENDPOINTS } from '@/lib/api/endpoints'
 
 // Usage Types
@@ -292,8 +291,7 @@ function ModelConfigContent() {
 
   if (authLoading || (configsLoading && configs.length === 0)) {
     return (
-      <div className="min-h-screen relative flex items-center justify-center overflow-hidden">
-        <JustimeBackground blur="xl" />
+      <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-background">
         <div className="relative z-10 flex flex-col items-center gap-3 animate-pulse">
           <Bot className="h-10 w-10 text-white/50" />
           <p className="text-white/60 text-sm font-light tracking-widest uppercase">加载配置中...</p>
@@ -305,8 +303,7 @@ function ModelConfigContent() {
   if (!isAuthenticated) return null
 
   return (
-    <div className="min-h-screen relative py-8 px-4 font-sans">
-      <JustimeBackground blur="lg" opacity={0.6} />
+    <div className="min-h-screen relative py-8 px-4 font-sans bg-background">
 
       <div className="relative z-10 w-full max-w-6xl mx-auto animate-in fade-in duration-700">
         <div className="flex items-center justify-between mb-6">
@@ -588,8 +585,7 @@ function ModelConfigContent() {
 export default function ModelConfigPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen relative flex items-center justify-center overflow-hidden">
-        <JustimeBackground blur="xl" />
+      <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-background">
         <div className="relative z-10 flex flex-col items-center gap-3 animate-pulse">
           <Bot className="h-10 w-10 text-white/50" />
           <p className="text-white/60 text-sm font-light tracking-widest uppercase">加载中...</p>

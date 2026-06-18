@@ -12,7 +12,6 @@ import {
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
-import { JustimeBackground } from '@/components/ui/JustimeBackground'
 import dynamic from 'next/dynamic'
 import type { ChatSessionSummary } from '@/hooks/useChatSessions'
 
@@ -53,8 +52,7 @@ export default function ChatHistoryPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen relative flex items-center justify-center overflow-hidden">
-        <JustimeBackground blur="xl" />
+      <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-background">
         <div className="relative z-10 flex flex-col items-center gap-3">
           <Loader2 className="h-10 w-10 animate-spin text-white/50" />
           <p className="text-white/60 text-sm font-light tracking-widest uppercase">Loading History</p>
@@ -66,8 +64,7 @@ export default function ChatHistoryPage() {
   if (!isAuthenticated) return null
 
   return (
-    <div className="min-h-screen relative overflow-hidden font-sans">
-      <JustimeBackground blur="lg" opacity={0.6} />
+    <div className="min-h-screen relative overflow-hidden font-sans bg-background">
 
       <div className="relative z-10 container mx-auto px-4 py-8 max-w-6xl animate-in fade-in zoom-in-95 duration-700">
 

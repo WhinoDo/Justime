@@ -17,7 +17,6 @@ import {
   GraduationCap
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { JustimeBackground } from '@/components/ui/JustimeBackground'
 import { gsap } from 'gsap'
 import { useGSAP } from '@gsap/react'
 
@@ -62,8 +61,7 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
-        <JustimeBackground blur="xl" />
+      <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-background">
         <div className="relative z-10 flex flex-col items-center gap-3">
           <Loader2 className="h-10 w-10 animate-spin text-white/50" />
           <p className="text-white/60 text-sm font-light tracking-widest uppercase">Loading Workbench</p>
@@ -155,10 +153,8 @@ export default function DashboardPage() {
   ]
 
   return (
-    <div ref={containerRef} className="min-h-screen relative overflow-hidden font-sans">
-      <JustimeBackground blur="lg" opacity={0.5} />
-
-      <div className="relative z-10 container mx-auto px-6 py-12 max-w-6xl">
+    <div ref={containerRef} className="min-h-screen relative overflow-hidden font-sans bg-background">
+      <div className="relative z-10 container mx-auto px-6 py-12 max-w-6xl animate-in fade-in zoom-in-95 duration-700">
 
         {/* Header Section */}
         <div className="animate-header mb-12 space-y-2 opacity-0">

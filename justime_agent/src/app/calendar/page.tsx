@@ -8,7 +8,6 @@ import { Plus, ArrowLeft, RefreshCw, MessageCircle, Calendar as CalendarIcon, Lo
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { SlotInfo, View } from 'react-big-calendar'
-import { JustimeBackground } from '@/components/ui/JustimeBackground'
 import { API_ENDPOINTS } from '@/lib/api/endpoints'
 
 const BigCalendar = dynamic(
@@ -199,8 +198,7 @@ export default function CalendarPage() {
   // 认证加载中
   if (authLoading) {
     return (
-      <div className="min-h-screen relative flex items-center justify-center overflow-hidden">
-        <JustimeBackground blur="xl" />
+      <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-background">
         <div className="relative z-10 flex flex-col items-center gap-3">
           <RefreshCw className="h-8 w-8 animate-spin text-white/50" />
           <p className="text-white/60 text-sm font-light tracking-widest uppercase">Syncing Calendar</p>
@@ -212,8 +210,7 @@ export default function CalendarPage() {
   // 未登录提示
   if (!isAuthenticated || !user) {
     return (
-      <div className="min-h-screen relative flex items-center justify-center overflow-hidden">
-        <JustimeBackground blur="lg" opacity={0.6} />
+      <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-background">
         <div className="relative z-10 w-full max-w-md mx-auto text-center space-y-6 p-8 bg-white/10 backdrop-blur-2xl border border-white/20 rounded-3xl shadow-2xl">
           <div className="space-y-4">
             <div className="h-20 w-20 mx-auto rounded-full bg-blue-500/20 flex items-center justify-center ring-1 ring-blue-500/40">
@@ -238,8 +235,7 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden font-sans">
-      <JustimeBackground blur="md" opacity={0.4} />
+    <div className="min-h-screen relative overflow-hidden font-sans bg-background">
 
       <div className="relative z-10 container mx-auto p-4 md:p-6 max-w-7xl h-screen flex flex-col">
         {/* 页面头部 */}

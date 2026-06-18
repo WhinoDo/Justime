@@ -1,7 +1,6 @@
 import * as React from 'react'
 
 import { cn } from '@/lib/utils'
-import { JustimeBackground } from '@/components/ui/JustimeBackground'
 
 interface JustimePageShellProps {
   children: React.ReactNode
@@ -16,19 +15,16 @@ export function JustimePageShell({
   children,
   className,
   contentClassName,
-  blur = 'lg',
-  opacity = 0.45,
   fullHeight = false,
 }: JustimePageShellProps) {
   return (
     <div
       className={cn(
-        'relative overflow-hidden',
+        'relative bg-background',
         fullHeight ? 'h-screen' : 'min-h-screen',
         className
       )}
     >
-      <JustimeBackground blur={blur} opacity={opacity} />
       <div className={cn('relative z-10', fullHeight ? 'h-full' : 'min-h-screen', contentClassName)}>
         {children}
       </div>
