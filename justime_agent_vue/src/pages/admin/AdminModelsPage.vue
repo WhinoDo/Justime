@@ -224,55 +224,55 @@ const handleTestConnection = async () => {
     v-if="dialogOpen"
     class="fixed inset-0 z-50 flex items-center justify-center"
   >
-    <div class="absolute inset-0 bg-black/50" @click="dialogOpen = false"></div>
-    <div class="relative bg-gray-900/90 backdrop-blur-xl border border-white/20 rounded-xl max-w-[620px] w-full mx-4 max-h-[90vh] overflow-y-auto text-white">
-      <div class="p-6 border-b border-white/10">
-        <h3 class="text-lg font-semibold">{{ editingModel ? '编辑系统模型' : '新增系统模型' }}</h3>
+    <div class="absolute inset-0 bg-black/30" @click="dialogOpen = false"></div>
+    <div class="relative bg-white border border-gray-200 shadow-xl rounded-xl max-w-[620px] w-full mx-4 max-h-[90vh] overflow-y-auto">
+      <div class="p-6 border-b border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-900">{{ editingModel ? '编辑系统模型' : '新增系统模型' }}</h3>
       </div>
 
       <div class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div class="space-y-1">
-          <p class="text-sm text-white/70">配置ID（可选）</p>
+          <p class="text-sm text-gray-600">配置ID（可选）</p>
           <input
             v-model="form.id"
             type="text"
-            class="w-full bg-black/20 border border-white/20 text-white placeholder:text-white/50 focus:ring-1 focus:ring-white/30 focus:border-white/40 rounded-md px-3 py-2"
+            class="w-full bg-white border border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-1 focus:ring-purple-500 focus:border-purple-500 rounded-md px-3 py-2"
             autocomplete="off"
           />
         </div>
         <div class="space-y-1">
-          <p class="text-sm text-white/70">显示名称</p>
+          <p class="text-sm text-gray-600">显示名称</p>
           <input
             v-model="form.name"
             type="text"
-            class="w-full bg-black/20 border border-white/20 text-white placeholder:text-white/50 focus:ring-1 focus:ring-white/30 focus:border-white/40 rounded-md px-3 py-2"
+            class="w-full bg-white border border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-1 focus:ring-purple-500 focus:border-purple-500 rounded-md px-3 py-2"
             autocomplete="off"
           />
         </div>
         <div class="space-y-1">
-          <p class="text-sm text-white/70">模型ID</p>
+          <p class="text-sm text-gray-600">模型ID</p>
           <input
             v-model="form.model_id"
             type="text"
-            class="w-full bg-black/20 border border-white/20 text-white placeholder:text-white/50 focus:ring-1 focus:ring-white/30 focus:border-white/40 rounded-md px-3 py-2"
+            class="w-full bg-white border border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-1 focus:ring-purple-500 focus:border-purple-500 rounded-md px-3 py-2"
             autocomplete="off"
           />
         </div>
         <div class="space-y-1">
-          <p class="text-sm text-white/70">服务地址</p>
+          <p class="text-sm text-gray-600">服务地址</p>
           <input
             v-model="form.base_url"
             type="text"
-            class="w-full bg-black/20 border border-white/20 text-white placeholder:text-white/50 focus:ring-1 focus:ring-white/30 focus:border-white/40 rounded-md px-3 py-2"
+            class="w-full bg-white border border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-1 focus:ring-purple-500 focus:border-purple-500 rounded-md px-3 py-2"
             autocomplete="off"
           />
         </div>
 
         <div class="space-y-1 sm:col-span-2">
-          <p class="text-sm text-white/70">API Key 来源</p>
+          <p class="text-sm text-gray-600">API Key 来源</p>
           <select
             v-model="form.api_key_mode"
-            class="w-full bg-black/20 border border-white/20 text-white focus:ring-1 focus:ring-white/30 focus:border-white/40 rounded-md px-3 py-2"
+            class="w-full bg-white border border-gray-200 text-gray-900 focus:ring-1 focus:ring-purple-500 focus:border-purple-500 rounded-md px-3 py-2"
           >
             <option value="reference">引用系统 API Key</option>
             <option value="manual">手动输入独立 API Key</option>
@@ -280,10 +280,10 @@ const handleTestConnection = async () => {
         </div>
 
         <div v-if="form.api_key_mode === 'reference'" class="space-y-1 sm:col-span-2">
-          <p class="text-sm text-white/70">选择系统 API Key</p>
+          <p class="text-sm text-gray-600">选择系统 API Key</p>
           <select
             v-model="form.api_key_id"
-            class="w-full bg-black/20 border border-white/20 text-white focus:ring-1 focus:ring-white/30 focus:border-white/40 rounded-md px-3 py-2"
+            class="w-full bg-white border border-gray-200 text-gray-900 focus:ring-1 focus:ring-purple-500 focus:border-purple-500 rounded-md px-3 py-2"
           >
             <option v-if="availableApiKeys.length === 0" value="">暂无可用 API Key，请先在 API Key 管理中创建</option>
             <option v-for="key in availableApiKeys" :key="key.id" :value="key.id">
@@ -293,11 +293,11 @@ const handleTestConnection = async () => {
         </div>
 
         <div v-else class="space-y-1 sm:col-span-2">
-          <p class="text-sm text-white/70">API Key {{ editingModel ? '(留空表示不修改)' : '' }}</p>
+          <p class="text-sm text-gray-600">API Key {{ editingModel ? '(留空表示不修改)' : '' }}</p>
           <input
             v-model="form.api_key"
             type="password"
-            class="w-full bg-black/20 border border-white/20 text-white placeholder:text-white/50 focus:ring-1 focus:ring-white/30 focus:border-white/40 rounded-md px-3 py-2"
+            class="w-full bg-white border border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-1 focus:ring-purple-500 focus:border-purple-500 rounded-md px-3 py-2"
             autocomplete="new-password"
           />
         </div>
@@ -307,10 +307,12 @@ const handleTestConnection = async () => {
             type="button"
             @click="handleTestConnection"
             :disabled="testing"
-            class="flex items-center gap-2 px-4 py-2 rounded-lg border border-blue-400/40 bg-blue-500/10 text-blue-200 hover:bg-blue-500/20 disabled:opacity-50"
+            class="flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 disabled:opacity-50"
           >
-            <div v-if="testing" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-            <span v-else>⚡</span>
+            <div v-if="testing" class="w-4 h-4 border-2 border-purple-300 border-t-purple-600 rounded-full animate-spin"></div>
+            <span v-else>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            </span>
             测试连接
           </button>
           <div
@@ -318,43 +320,43 @@ const handleTestConnection = async () => {
             :class="[
               'p-3 rounded-md text-sm',
               testResult.success
-                ? 'bg-green-500/20 border border-green-400/30 text-green-200'
-                : 'bg-red-500/20 border border-red-400/30 text-red-200'
+                ? 'bg-green-50 border border-green-200 text-green-700'
+                : 'bg-red-50 border border-red-200 text-red-600'
             ]"
           >
             <div class="flex items-center gap-2">
               <span>{{ testResult.success ? '✓' : '✗' }}</span>
               <span>{{ testResult.message }}</span>
-              <span v-if="testResult.latencyMs !== undefined" class="text-white/60">({{ testResult.latencyMs }}ms)</span>
+              <span v-if="testResult.latencyMs !== undefined" class="text-gray-500">({{ testResult.latencyMs }}ms)</span>
             </div>
           </div>
         </div>
 
         <div class="space-y-1">
-          <p class="text-sm text-white/70">Temperature</p>
+          <p class="text-sm text-gray-600">Temperature</p>
           <input
             v-model="form.temperature"
             type="number"
             min="0"
             max="2"
             step="0.1"
-            class="w-full bg-black/20 border border-white/20 text-white placeholder:text-white/50 focus:ring-1 focus:ring-white/30 focus:border-white/40 rounded-md px-3 py-2"
+            class="w-full bg-white border border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-1 focus:ring-purple-500 focus:border-purple-500 rounded-md px-3 py-2"
           />
         </div>
         <div class="space-y-1">
-          <p class="text-sm text-white/70">优先级</p>
+          <p class="text-sm text-gray-600">优先级</p>
           <input
             v-model="form.priority"
             type="number"
             min="1"
             max="999"
-            class="w-full bg-black/20 border border-white/20 text-white placeholder:text-white/50 focus:ring-1 focus:ring-white/30 focus:border-white/40 rounded-md px-3 py-2"
+            class="w-full bg-white border border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-1 focus:ring-purple-500 focus:border-purple-500 rounded-md px-3 py-2"
           />
         </div>
 
         <div class="space-y-2 sm:col-span-2">
-          <p class="text-sm text-white/70">能力标签</p>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-md border border-white/15 bg-black/20 p-3">
+          <p class="text-sm text-gray-600">能力标签</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-md border border-gray-200 bg-gray-50 p-3">
             <label
               v-for="option in capabilityOptions"
               :key="option.value"
@@ -364,11 +366,11 @@ const handleTestConnection = async () => {
                 type="checkbox"
                 :checked="form.capabilities.includes(option.value)"
                 @change="toggleCapability(option.value, ($event.target as HTMLInputElement).checked)"
-                class="w-4 h-4 rounded border-white/30 bg-black/20 text-blue-500 focus:ring-blue-500/30"
+                class="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
               />
-              <span class="text-sm text-white">
+              <span class="text-sm text-gray-900">
                 {{ option.label }}
-                <span class="ml-2 text-xs text-white/60">{{ option.description }}</span>
+                <span class="ml-2 text-xs text-gray-500">{{ option.description }}</span>
               </span>
             </label>
           </div>
@@ -381,24 +383,24 @@ const handleTestConnection = async () => {
               v-model="form.enabled"
               class="sr-only peer"
             />
-            <div class="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-500"></div>
+            <div class="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
           </label>
-          <p class="text-sm text-white/70">启用该模型</p>
+          <p class="text-sm text-gray-600">启用该模型</p>
         </div>
       </div>
 
-      <div class="p-6 border-t border-white/10 flex justify-end gap-3">
+      <div class="p-6 border-t border-gray-200 flex justify-end gap-3">
         <button
           @click="dialogOpen = false"
           :disabled="saving"
-          class="px-4 py-2 rounded-lg border border-white/30 bg-black/20 text-white hover:bg-white/10 disabled:opacity-50"
+          class="px-4 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50"
         >
           取消
         </button>
         <button
           @click="handleSubmit"
           :disabled="saving"
-          class="px-4 py-2 rounded-lg bg-white/20 border border-white/20 text-white hover:bg-white/30 disabled:opacity-50 flex items-center gap-2"
+          class="px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2 shadow-sm"
         >
           <div v-if="saving" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
           {{ editingModel ? '保存修改' : '创建模型' }}

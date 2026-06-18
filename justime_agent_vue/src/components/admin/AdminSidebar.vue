@@ -78,18 +78,18 @@ const userInitial = computed(() => {
 <template>
   <aside
     :class="[
-      'fixed inset-y-0 left-0 z-50 w-64 bg-black/20 backdrop-blur-xl border-r border-white/10 transform transition-transform duration-200 ease-in-out lg:relative lg:translate-x-0',
+      'fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-200 ease-in-out lg:relative lg:translate-x-0',
       isOpen ? 'translate-x-0' : '-translate-x-full'
     ]"
   >
     <div class="h-full flex flex-col">
       <!-- Logo -->
-      <div class="h-16 flex items-center px-6 border-b border-white/10">
-        <span class="text-xl font-bold text-white drop-shadow-md">
+      <div class="h-16 flex items-center px-6 border-b border-gray-200">
+        <span class="text-xl font-bold text-purple-700">
           矩时管理后台
         </span>
         <button
-          class="ml-auto lg:hidden text-white/70 hover:text-white transition-colors"
+          class="ml-auto lg:hidden text-gray-400 hover:text-gray-600 transition-colors"
           @click="emit('toggle')"
         >
           <X class="w-5 h-5" />
@@ -105,46 +105,46 @@ const userInitial = computed(() => {
           :class="[
             'flex items-center gap-3 px-4 py-3 rounded-lg transition-colors',
             isActive(item.href)
-              ? 'bg-white/20 text-white shadow-inner'
-              : 'text-white/70 hover:bg-white/10 hover:text-white'
+              ? 'bg-purple-50 text-purple-700 shadow-sm'
+              : 'text-gray-600 hover:bg-gray-50 hover:text-purple-600'
           ]"
         >
           <component
             :is="item.icon"
-            :class="['w-5 h-5', isActive(item.href) ? 'text-white' : 'text-white/50']"
+            :class="['w-5 h-5', isActive(item.href) ? 'text-purple-600' : 'text-gray-400']"
           />
           <span class="font-medium">{{ item.title }}</span>
         </RouterLink>
       </nav>
 
       <!-- 返回控制台 -->
-      <div class="px-4 py-2 border-t border-white/10">
+      <div class="px-4 py-2 border-t border-gray-200">
         <div
-          class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-white/70 hover:bg-white/10 hover:text-white cursor-pointer"
+          class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-gray-600 hover:bg-gray-50 hover:text-purple-600 cursor-pointer"
           @click="goToDashboard"
         >
-          <ArrowLeft class="w-5 h-5 text-white/50" />
+          <ArrowLeft class="w-5 h-5 text-gray-400" />
           <span class="font-medium text-sm">返回普通控制台</span>
         </div>
       </div>
 
       <!-- User Profile -->
-      <div class="p-4 border-t border-white/10">
+      <div class="p-4 border-t border-gray-200">
         <div class="flex items-center gap-3 px-4 py-3">
-          <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white font-bold">
+          <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 font-bold">
             {{ userInitial }}
           </div>
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium text-white truncate">
+            <p class="text-sm font-medium text-gray-900 truncate">
               {{ authStore.user?.displayName }}
             </p>
-            <p class="text-xs text-white/70 truncate">
+            <p class="text-xs text-gray-500 truncate">
               {{ authStore.user?.email }}
             </p>
           </div>
           <button
             @click="handleLogout"
-            class="p-2 text-white/60 hover:text-red-300 transition-colors"
+            class="p-2 text-gray-400 hover:text-red-500 transition-colors"
             title="退出登录"
           >
             <LogOut class="w-5 h-5" />

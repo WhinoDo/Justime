@@ -101,21 +101,21 @@ const saveModelAccess = async () => {
     v-if="modelDialogOpen"
     class="fixed inset-0 z-50 flex items-center justify-center"
   >
-    <div class="absolute inset-0 bg-black/50" @click="modelDialogOpen = false"></div>
-    <div class="relative bg-gray-900/90 backdrop-blur-xl border border-white/20 rounded-xl max-w-[640px] w-full mx-4 text-white">
-      <div class="p-6 border-b border-white/10">
-        <h3 class="text-lg font-semibold">配置模型权限：{{ selectedUser?.username || '-' }}</h3>
+    <div class="absolute inset-0 bg-black/30" @click="modelDialogOpen = false"></div>
+    <div class="relative bg-white border border-gray-200 shadow-xl rounded-xl max-w-[640px] w-full mx-4">
+      <div class="p-6 border-b border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-900">配置模型权限：{{ selectedUser?.username || '-' }}</h3>
       </div>
 
       <div v-if="modelDialogLoading" class="py-10 flex items-center justify-center">
-        <div class="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+        <div class="w-6 h-6 border-2 border-purple-300 border-t-purple-600 rounded-full animate-spin"></div>
       </div>
 
       <div v-else class="p-6 space-y-4">
-        <div class="rounded-md border border-white/15 bg-black/20 px-3 py-3 flex items-center justify-between">
+        <div class="rounded-md border border-gray-200 bg-gray-50 px-3 py-3 flex items-center justify-between">
           <div>
-            <p class="text-sm text-white">允许访问所有模型</p>
-            <p class="text-xs text-white/60 mt-1">关闭后仅允许访问下方勾选模型。</p>
+            <p class="text-sm text-gray-900">允许访问所有模型</p>
+            <p class="text-xs text-gray-500 mt-1">关闭后仅允许访问下方勾选模型。</p>
           </div>
           <label class="relative inline-flex items-center cursor-pointer">
             <input
@@ -123,12 +123,12 @@ const saveModelAccess = async () => {
               v-model="accessAllModels"
               class="sr-only peer"
             />
-            <div class="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-500"></div>
+            <div class="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
           </label>
         </div>
 
-        <div v-if="!accessAllModels" class="rounded-md border border-white/15 bg-black/20 p-3 max-h-72 overflow-y-auto space-y-2">
-          <p v-if="availableModels.length === 0" class="text-xs text-white/60">当前没有可分配模型。</p>
+        <div v-if="!accessAllModels" class="rounded-md border border-gray-200 bg-gray-50 p-3 max-h-72 overflow-y-auto space-y-2">
+          <p v-if="availableModels.length === 0" class="text-xs text-gray-500">当前没有可分配模型。</p>
           <label
             v-for="model in availableModels"
             :key="model.id"
@@ -138,28 +138,28 @@ const saveModelAccess = async () => {
               type="checkbox"
               :checked="allowedModelIds.includes(model.id)"
               @change="toggleAllowedModel(model.id, ($event.target as HTMLInputElement).checked)"
-              class="mt-1 w-4 h-4 rounded border-white/30 bg-black/20 text-blue-500 focus:ring-blue-500/30"
+              class="mt-1 w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
             />
-            <span class="text-sm text-white">
+            <span class="text-sm text-gray-900">
               {{ model.name }}
-              <span class="ml-2 text-xs text-white/60">{{ model.model_id }}</span>
+              <span class="ml-2 text-xs text-gray-500">{{ model.model_id }}</span>
             </span>
           </label>
         </div>
       </div>
 
-      <div class="p-6 border-t border-white/10 flex justify-end gap-3">
+      <div class="p-6 border-t border-gray-200 flex justify-end gap-3">
         <button
           @click="modelDialogOpen = false"
           :disabled="modelDialogSaving"
-          class="px-4 py-2 rounded-lg border border-white/30 bg-black/20 text-white hover:bg-white/10 disabled:opacity-50"
+          class="px-4 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50"
         >
           取消
         </button>
         <button
           @click="saveModelAccess"
           :disabled="modelDialogSaving || modelDialogLoading"
-          class="px-4 py-2 rounded-lg bg-white/20 border border-white/20 text-white hover:bg-white/30 disabled:opacity-50 flex items-center gap-2"
+          class="px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2 shadow-sm"
         >
           <div v-if="modelDialogSaving" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
           保存权限
