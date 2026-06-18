@@ -3,6 +3,7 @@ import "./globals.css";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/toaster";
 import { PWAInstallBanner } from "@/components/PWAInstallBanner";
+import { MacAppShell } from "@/components/layout/MacAppShell";
 
 export const metadata: Metadata = {
   title: "矩时 - 焦虑缓解与任务规划助手",
@@ -40,7 +41,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <MacAppShell>{children}</MacAppShell>
           <Toaster />
           <PWAInstallBanner />
         </ThemeProvider>
