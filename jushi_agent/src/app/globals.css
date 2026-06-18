@@ -203,6 +203,70 @@
   }
 }
 
+/* macOS 弹簧动效 */
+@keyframes spring-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* macOS 滑入动效 */
+@keyframes mac-slide-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* macOS 淡入 */
+@keyframes mac-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* macOS 侧边栏滑入 */
+@keyframes mac-sidebar-in {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.animate-spring-in {
+  animation: spring-in 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.animate-mac-slide-in {
+  animation: mac-slide-in 0.2s ease-out;
+}
+
+.animate-mac-fade-in {
+  animation: mac-fade-in 0.2s ease-out;
+}
+
+.animate-mac-sidebar-in {
+  animation: mac-sidebar-in 0.25s ease-out;
+}
+
+/* macOS 卡片悬浮效果 */
+.mac-card-hover {
+  @apply transition-all duration-200;
+  transition-timing-function: cubic-bezier(0.25, 0.1, 0.25, 1.0);
+}
+
+.mac-card-hover:hover {
+  @apply shadow-lg;
+  transform: translateY(-1px);
+}
+
+/* macOS 按钮点击缩放 */
+.mac-btn-press {
+  @apply transition-transform duration-100;
+}
+
+.mac-btn-press:active {
+  transform: scale(0.97);
+}
+
+.animate-blob {
+  animation: blob 7s infinite;
+}
+
 .animate-blob {
   animation: blob 7s infinite;
 }

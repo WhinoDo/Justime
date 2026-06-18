@@ -9,7 +9,10 @@ import {
     MessageSquare,
     Users,
     Zap,
-    Loader2
+    Loader2,
+    Server,
+    Database,
+    Cpu
 } from 'lucide-react'
 import { API_ENDPOINTS } from '@/lib/api/endpoints'
 
@@ -27,14 +30,14 @@ const AdminCharts = dynamic(
         ssr: false,
         loading: () => (
             <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
-                <div className="xl:col-span-3 rounded-2xl border border-white/20 bg-white/5 backdrop-blur-xl shadow-2xl p-4 lg:p-6">
+                <div className="xl:col-span-3 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4 lg:p-6">
                     <div className="h-[280px] flex items-center justify-center">
-                        <Loader2 className="h-8 w-8 animate-spin text-white/50" />
+                        <Loader2 className="h-8 w-8 animate-spin text-purple-500/50" />
                     </div>
                 </div>
-                <div className="xl:col-span-2 rounded-2xl border border-white/20 bg-white/5 backdrop-blur-xl shadow-2xl p-4 lg:p-6">
+                <div className="xl:col-span-2 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4 lg:p-6">
                     <div className="h-[280px] flex items-center justify-center">
-                        <Loader2 className="h-8 w-8 animate-spin text-white/50" />
+                        <Loader2 className="h-8 w-8 animate-spin text-purple-500/50" />
                     </div>
                 </div>
             </div>
@@ -53,22 +56,20 @@ interface StatCardProps {
 
 function StatCard({ title, value, icon: Icon, trend, trendValue, description }: StatCardProps) {
     return (
-        <div className="p-6 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-xl transition-all hover:bg-white/20 hover:border-white/30">
-            <div className="flex flex-row items-center justify-between pb-2">
-                <p className="text-sm font-medium text-white/70">{title}</p>
-                <Icon className="h-4 w-4 text-white/50" />
+        <div className="p-5 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-sm transition-all hover:shadow-md hover:border-gray-300 dark:hover:border-gray-700">
+            <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{title}</p>
+                <Icon className="h-4 w-4 text-gray-400" />
             </div>
-            <div>
-                <div className="text-2xl font-bold text-white">{value}</div>
-                <div className="flex items-center text-xs mt-1">
-                    {trend === 'up' ? (
-                        <ArrowUpRight className="h-4 w-4 text-green-400 mr-1" />
-                    ) : (
-                        <ArrowDownRight className="h-4 w-4 text-red-300 mr-1" />
-                    )}
-                    <span className={trend === 'up' ? 'text-green-400' : 'text-red-300'}>{trendValue}</span>
-                    <span className="text-white/60 ml-1">{description}</span>
-                </div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">{value}</div>
+            <div className="flex items-center text-xs mt-1.5">
+                {trend === 'up' ? (
+                    <ArrowUpRight className="h-3.5 w-3.5 text-green-500 mr-1" />
+                ) : (
+                    <ArrowDownRight className="h-3.5 w-3.5 text-red-400 mr-1" />
+                )}
+                <span className={trend === 'up' ? 'text-green-600 dark:text-green-400 font-medium' : 'text-red-500 dark:text-red-400 font-medium'}>{trendValue}</span>
+                <span className="text-gray-400 ml-1">{description}</span>
             </div>
         </div>
     )
@@ -84,94 +85,72 @@ export default function AdminDashboard() {
             try {
                 const response = await fetch(API_ENDPOINTS.ADMIN.STATS)
                 const result = await response.json()
-                if (!response.ok) {
-                    throw new Error(result.error || result.message || '获取统计失败')
-                }
-
-                if (result?.success) {
-                    setStats(result.data)
-                } else {
-                    setStats(result)
-                }
+                if (!response.ok) throw new Error(result.error || result.message || '获取统计失败')
+                if (result?.success) setStats(result.data)
+                else setStats(result)
             } catch (err) {
                 setError(err instanceof Error ? err.message : '获取统计失败')
-            } finally {
-                setLoading(false)
-            }
+            } finally { setLoading(false) }
         }
-
         fetchStats()
     }, [])
 
-    if (loading) {
-        return <div className="p-8 text-center text-white/70">加载中...</div>
-    }
+    if (loading) return <div className="flex items-center justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-purple-500/50" /></div>
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-8 animate-mac-slide-in">
+            {/* Header */}
             <div>
-                <h2 className="text-3xl font-bold tracking-tight text-white">概览仪表盘</h2>
-                <p className="text-white/70 mt-2">欢迎回来，这里是系统的实时运行状态与趋势分析。</p>
-                {error && <p className="text-red-300 text-sm mt-2">{error}</p>}
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">概览仪表盘</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">欢迎回来，这里是系统的实时运行状态与趋势分析。</p>
+                {error && <p className="text-red-500 dark:text-red-400 text-sm mt-2">{error}</p>}
             </div>
 
+            {/* Stats cards */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <StatCard
-                    title="总用户数"
-                    value={stats?.total_users || 0}
-                    icon={Users}
-                    trend="up"
-                    trendValue="+12.5%"
-                    description="较上月"
-                />
-                <StatCard
-                    title="活跃用户"
-                    value={stats?.active_users || 0}
-                    icon={Activity}
-                    trend="up"
-                    trendValue="+4.3%"
-                    description="较上周"
-                />
-                <StatCard
-                    title="总对话数"
-                    value={stats?.total_conversations?.toLocaleString() || 0}
-                    icon={MessageSquare}
-                    trend="up"
-                    trendValue="+28.4%"
-                    description="较昨日"
-                />
-                <StatCard
-                    title="Token 消耗"
-                    value={stats?.total_tokens ? `${(stats.total_tokens / 1_000_000).toFixed(1)}M` : '0'}
-                    icon={Zap}
-                    trend="down"
-                    trendValue="-2.1%"
-                    description="较上周"
-                />
+                <StatCard title="总用户数" value={stats?.total_users || 0} icon={Users} trend="up" trendValue="+12.5%" description="较上月" />
+                <StatCard title="活跃用户" value={stats?.active_users || 0} icon={Activity} trend="up" trendValue="+4.3%" description="较上周" />
+                <StatCard title="总对话数" value={stats?.total_conversations?.toLocaleString() || 0} icon={MessageSquare} trend="up" trendValue="+28.4%" description="较昨日" />
+                <StatCard title="Token 消耗" value={stats?.total_tokens ? `${(stats.total_tokens / 1_000_000).toFixed(1)}M` : '0'} icon={Zap} trend="down" trendValue="-2.1%" description="较上周" />
             </div>
 
+            {/* Charts */}
             <AdminCharts stats={stats} />
 
-            <div className="rounded-2xl border border-white/20 bg-white/5 backdrop-blur-xl shadow-2xl p-4 lg:p-6">
-                <h3 className="text-white text-lg font-semibold">系统状态概览</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                    <div className="flex flex-col space-y-2 p-4 bg-white/10 border border-white/15 rounded-lg">
-                        <span className="text-sm font-medium text-white/70">后端版本</span>
-                        <span className="text-lg font-bold text-white">{stats?.version || 'Unknown'}</span>
+            {/* System Status - macOS style table */}
+            <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6">
+                <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4">系统状态概览</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                        <div className="h-10 w-10 rounded-lg bg-purple-100 dark:bg-purple-500/20 flex items-center justify-center">
+                            <Cpu className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                        </div>
+                        <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">后端版本</p>
+                            <p className="text-sm font-semibold text-gray-900 dark:text-white">{stats?.version || 'Unknown'}</p>
+                        </div>
                     </div>
-                    <div className="flex flex-col space-y-2 p-4 bg-white/10 border border-white/15 rounded-lg">
-                        <span className="text-sm font-medium text-white/70">数据库连接</span>
-                        <span className="flex items-center text-lg text-green-400 font-semibold">
-                            <div className="w-2 h-2 rounded-full bg-green-400 mr-2" />
-                            正常
-                        </span>
+                    <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                        <div className="h-10 w-10 rounded-lg bg-green-100 dark:bg-green-500/20 flex items-center justify-center">
+                            <Database className="h-5 w-5 text-green-600 dark:text-green-400" />
+                        </div>
+                        <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">数据库连接</p>
+                            <p className="text-sm font-semibold text-green-600 dark:text-green-400 flex items-center gap-1.5">
+                                <span className="h-2 w-2 rounded-full bg-green-500" />正常
+                            </p>
+                        </div>
                     </div>
-                    <div className="flex flex-col space-y-2 p-4 bg-white/10 border border-white/15 rounded-lg">
-                        <span className="text-sm font-medium text-white/70">LLM 服务</span>
-                        <span className="flex items-center text-lg text-green-400 font-semibold">
-                            <div className="w-2 h-2 rounded-full bg-green-400 mr-2" />
-                            运行中
-                        </span>
+                    <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                        <div className="h-10 w-10 rounded-lg bg-green-100 dark:bg-green-500/20 flex items-center justify-center">
+                            <Server className="h-5 w-5 text-green-600 dark:text-green-400" />
+                        </div>
+                        <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">LLM 服务</p>
+                            <p className="text-sm font-semibold text-green-600 dark:text-green-400 flex items-center gap-1.5">
+                                <span className="h-2 w-2 rounded-full bg-green-500" />运行中
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>

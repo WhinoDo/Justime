@@ -3,8 +3,6 @@
 import Link from 'next/link'
 import { ArrowLeft, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { JushiGlassPanel } from '@/components/layout/JushiGlassPanel'
-import { JushiPageShell } from '@/components/layout/JushiPageShell'
 
 interface AuthPageShellProps {
   title: string
@@ -15,43 +13,43 @@ interface AuthPageShellProps {
 
 export function AuthStateShell({ children }: { children: React.ReactNode }) {
   return (
-    <JushiPageShell contentClassName="flex min-h-screen items-center justify-center p-4" blur="xl" opacity={0.3}>
-      <JushiGlassPanel className="w-full max-w-md rounded-3xl p-8 text-center text-white">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-purple-50 via-white to-indigo-50 dark:from-gray-950 dark:via-gray-900 dark:to-purple-950">
+      <div className="w-full max-w-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-8 text-center shadow-sm">
         {children}
-      </JushiGlassPanel>
-    </JushiPageShell>
+      </div>
+    </div>
   )
 }
 
 export function AuthPageShell({ title, subtitle, children, footer }: AuthPageShellProps) {
   return (
-    <JushiPageShell contentClassName="flex min-h-screen items-center justify-center overflow-hidden p-4" blur="xl" opacity={0.3}>
-      <JushiGlassPanel className="relative z-10 w-full max-w-md animate-slide-in space-y-6 rounded-3xl p-8 text-white transition-all duration-500 hover:scale-[1.01]">
-        <div className="flex justify-start">
-          <Link href="/">
-            <Button variant="ghost" size="sm" className="flex items-center gap-2 text-white hover:bg-white/20 hover:text-white">
-              <ArrowLeft className="h-4 w-4" />
-              返回首页
-            </Button>
-          </Link>
-        </div>
-
-        <div className="text-center">
-          <div className="mb-6 flex items-center justify-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-white/30 bg-gradient-to-br from-orange-400/90 to-yellow-600/90 shadow-xl backdrop-blur-md transition-all duration-300 hover:rotate-6">
-              <Sparkles className="h-10 w-10 animate-pulse text-white" />
-            </div>
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-purple-50 via-white to-indigo-50 dark:from-gray-950 dark:via-gray-900 dark:to-purple-950">
+      <div className="relative z-10 w-full max-w-md animate-mac-slide-in space-y-6">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-[0_8px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_40px_rgba(0,0,0,0.3)] rounded-2xl p-8 text-gray-900 dark:text-white">
+          <div className="mb-2">
+            <Link href="/">
+              <Button variant="ghost" size="sm" className="-ml-2 flex items-center gap-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
+                <ArrowLeft className="h-4 w-4" />
+                返回首页
+              </Button>
+            </Link>
           </div>
-          <h1 className="mb-2 text-3xl font-bold tracking-wide text-white drop-shadow-md">{title}</h1>
-          <p className="font-medium tracking-wide text-gray-100 opacity-90">{subtitle}</p>
-        </div>
 
-        <div className="rounded-2xl border border-white/15 bg-white/[0.03] p-1.5 text-gray-100 shadow-inner shadow-black/10 backdrop-blur-xl">
+          <div className="text-center mb-6">
+            <div className="mb-5 flex items-center justify-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 shadow-lg">
+                <Sparkles className="h-8 w-8 text-white" />
+              </div>
+            </div>
+            <h1 className="mb-1.5 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{title}</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{subtitle}</p>
+          </div>
+
           {children}
         </div>
 
-        {footer ? footer : null}
-      </JushiGlassPanel>
-    </JushiPageShell>
+        {footer}
+      </div>
+    </div>
   )
 }
