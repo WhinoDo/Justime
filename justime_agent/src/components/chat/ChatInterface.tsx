@@ -840,13 +840,13 @@ if (lastEventId) {
   }
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col text-white">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-white dark:bg-gray-950">
       <div className="flex min-w-0 min-h-0 flex-1 flex-col">
         <ChatHeader {...headerProps} />
         <MessageList {...messageListProps} />
         <ChatInputArea {...inputAreaProps}>
           {showTimeHelper && (
-            <div className="border-t border-white/10 bg-white/[0.03] p-4">
+            <div className="border-t border-border bg-muted/30 p-4">
               <TimeAwareTaskInput
                 onTaskCreate={handleTimeAwareTaskCreate}
               />

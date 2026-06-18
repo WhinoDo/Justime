@@ -174,74 +174,80 @@ export function BigCalendar({
         />
       </div>
 
-      {/* Advanced Glassmorphic CSS Overrides */}
+      {/* macOS Style Calendar CSS Overrides */}
       <style jsx global>{`
         /* Core Reset */
         .calendar-theme-glass .rbc-calendar {
           font-family: inherit;
-          color: rgba(255, 255, 255, 0.9);
+          color: hsl(var(--foreground));
         }
 
         /* Transparent Backgrounds */
-        .calendar-theme-glass .rbc-month-view, 
-        .calendar-theme-glass .rbc-time-view, 
+        .calendar-theme-glass .rbc-month-view,
+        .calendar-theme-glass .rbc-time-view,
         .calendar-theme-glass .rbc-agenda-view {
             background: transparent;
             border: none;
         }
 
-        /* Headers with subtle borders */
+        /* Headers */
         .calendar-theme-glass .rbc-header {
-            padding: 12px 0;
-            font-size: 0.85rem;
+            padding: 10px 0;
+            font-size: 0.8rem;
             font-weight: 500;
-            color: rgba(255, 255, 255, 0.6);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
+            color: hsl(var(--muted-foreground));
+            border-bottom: 1px solid hsl(var(--border));
         }
-        
-        /* Grid Lines - Ultra subtle */
+
+        /* Grid Lines */
         .calendar-theme-glass .rbc-month-row,
         .calendar-theme-glass .rbc-day-bg,
         .calendar-theme-glass .rbc-time-content,
         .calendar-theme-glass .rbc-time-header-content {
-             border-color: rgba(255, 255, 255, 0.05) !important;
-        }
-        
-        .calendar-theme-glass .rbc-day-bg + .rbc-day-bg {
-             border-left: 1px solid rgba(255, 255, 255, 0.05);
+             border-color: hsl(var(--border)) !important;
         }
 
-        /* Today Highlight - Soft glow */
+        .calendar-theme-glass .rbc-day-bg + .rbc-day-bg {
+             border-left: 1px solid hsl(var(--border));
+        }
+
+        .calendar-theme-glass .rbc-row-segment {
+            padding: 1px 2px;
+        }
+
+        /* Today Highlight */
         .calendar-theme-glass .rbc-today {
-            background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.05), transparent);
+            background: hsl(var(--accent));
+        }
+
+        .dark .calendar-theme-glass .rbc-today {
+            background: rgba(255, 255, 255, 0.03);
         }
 
         /* Off-range dates - Dimmed */
         .calendar-theme-glass .rbc-off-range-bg {
-            background: rgba(0, 0, 0, 0.2);
+            background: hsl(var(--muted) / 0.5);
         }
 
-        /* Time Gutter - Minimalist */
+        /* Time Gutter */
         .calendar-theme-glass .rbc-timeslot-group {
-            border-bottom: 1px solid rgba(255, 255, 255, 0.03) !important;
+            border-bottom: 1px solid hsl(var(--border)) !important;
         }
         .calendar-theme-glass .rbc-time-gutter .rbc-timeslot-group {
-            border-color: rgba(255, 255, 255, 0.05);
+            border-color: hsl(var(--border));
         }
         .calendar-theme-glass .rbc-label {
-            color: rgba(255, 255, 255, 0.4);
+            color: hsl(var(--muted-foreground));
             font-size: 0.75rem;
         }
 
         /* Current Time Indicator */
         .calendar-theme-glass .rbc-current-time-indicator {
-            background-color: #60a5fa; /* blue-400 */
+            background-color: #7c3aed;
             height: 2px;
         }
 
-        /* Events - Reset default properties to let CustomEvent take over */
+        /* Events */
         .calendar-theme-glass .rbc-event {
             background: transparent !important;
             border: none !important;
@@ -249,11 +255,15 @@ export function BigCalendar({
             box-shadow: none !important;
         }
 
+        .calendar-theme-glass .rbc-event.rbc-selected {
+            background: transparent !important;
+        }
+
         /* Selected Slot */
         .calendar-theme-glass .rbc-slot-selection {
-            background-color: rgba(96, 165, 250, 0.2);
-            border: 1px solid rgba(96, 165, 250, 0.4);
-            color: rgba(255, 255, 255, 0.9);
+            background-color: rgba(124, 58, 237, 0.15);
+            border: 1px solid rgba(124, 58, 237, 0.3);
+            color: hsl(var(--foreground));
         }
 
         /* Scrollbars */
@@ -265,40 +275,59 @@ export function BigCalendar({
           background: transparent;
         }
         .calendar-theme-glass ::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.1);
+          background: hsl(var(--border));
           border-radius: 99px;
         }
         .calendar-theme-glass ::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 255, 255, 0.2);
+          background: hsl(var(--muted-foreground));
         }
 
         /* Popup Override */
         .rbc-overlay {
-            background: rgba(20, 20, 24, 0.95) !important;
+            background: hsl(var(--card)) !important;
             backdrop-filter: blur(16px);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 12px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            border: 1px solid hsl(var(--border));
+            border-radius: 10px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.12);
             padding: 8px;
             z-index: 100;
         }
-        
+
         .rbc-overlay-header {
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            color: rgba(255,255,255,0.9);
+            border-bottom: 1px solid hsl(var(--border));
+            color: hsl(var(--foreground));
             font-weight: 600;
             padding: 8px;
             margin-bottom: 8px;
         }
 
-        /* Week/Day View Specifics */
+        .rbc-overlay-body {
+            color: hsl(var(--foreground));
+        }
+
+        /* Week/Day View */
         .calendar-theme-glass .rbc-time-header.rbc-overflowing {
-            border-right: 1px solid rgba(255,255,255,0.1);
+            border-right: 1px solid hsl(var(--border));
         }
         .calendar-theme-glass .rbc-header + .rbc-header {
-            border-left: 1px solid rgba(255,255,255,0.05);
+            border-left: 1px solid hsl(var(--border));
         }
-        
+
+        /* Row border */
+        .calendar-theme-glass .rbc-month-row + .rbc-month-row {
+            border-top: 1px solid hsl(var(--border));
+        }
+
+        /* Agenda view */
+        .calendar-theme-glass .rbc-agenda-view table tbody > tr > td {
+            border-color: hsl(var(--border));
+            color: hsl(var(--foreground));
+        }
+        .calendar-theme-glass .rbc-agenda-view table thead > tr > th {
+            border-color: hsl(var(--border));
+            color: hsl(var(--muted-foreground));
+        }
+
       `}</style>
     </div>
   )

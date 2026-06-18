@@ -103,27 +103,27 @@ export const ChatInputArea = memo(function ChatInputArea({
           </div>
         )}
 
-        {/* Input container with glassmorphism */}
-        <div className="relative mx-auto max-w-3xl overflow-hidden rounded-[28px] border border-white/15 bg-white/10 shadow-2xl shadow-black/15 backdrop-blur-2xl transition-all duration-300 focus-within:ring-2 focus-within:ring-white/20">
+        {/* Input container with rounded-xl macOS style */}
+        <div className="relative mx-auto max-w-3xl overflow-hidden rounded-xl border border-border bg-card/80 backdrop-blur shadow-sm transition-all duration-200 focus-within:ring-2 focus-within:ring-purple-500/20">
           <Textarea
             ref={textareaRef}
             value={input}
             onChange={(e) => onInputChange(e.target.value)}
             onKeyPress={onKeyPress}
             placeholder={`输入 "@" 唤起常用语，或粘贴代码快速提问`}
-            className="h-32 resize-none overflow-y-auto border-0 bg-transparent px-6 py-4 text-base text-white placeholder:text-white/45 focus-visible:ring-0 focus-visible:ring-offset-0"
+            className="h-32 resize-none overflow-y-auto border-0 bg-transparent px-5 py-4 text-base text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-0 focus-visible:ring-offset-0"
             disabled={isLoading}
           />
 
-          <div className="flex flex-col gap-3 border-t border-white/10 px-4 pb-4 pt-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-3 border-t border-border px-4 pb-4 pt-3 md:flex-row md:items-center md:justify-between">
             <div className="flex flex-wrap items-center gap-2">
               <Select
                 value={selectedModel}
                 onValueChange={onModelChange}
               >
-                <SelectTrigger className="h-9 min-w-[150px] rounded-xl border-white/10 bg-white/5 px-3 text-white shadow-none hover:bg-white/10 focus:ring-0">
-                  <div className="flex items-center gap-1.5 text-xs text-white/75">
-                    <Bot className={modelError ? 'h-4 w-4 text-red-300' : 'h-4 w-4 text-blue-200'} />
+                <SelectTrigger className="h-9 min-w-[150px] rounded-md border border-input bg-secondary px-3 text-foreground shadow-none hover:bg-accent focus:ring-0">
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <Bot className={modelError ? 'h-4 w-4 text-red-500' : 'h-4 w-4 text-purple-500'} />
                     <SelectValue placeholder={modelError ? '模型拉取失败' : '加载模型中...'} />
                   </div>
                 </SelectTrigger>
@@ -141,7 +141,7 @@ export const ChatInputArea = memo(function ChatInputArea({
                 variant="ghost"
                 size="sm"
                 onClick={onToggleWebSearch}
-                className={`rounded-xl border border-white/10 px-3 ${useWebSearch ? 'bg-white/15 text-sky-100 hover:bg-white/20' : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'}`}
+                className={`rounded-md border border-border px-3 ${useWebSearch ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' : 'text-muted-foreground hover:text-foreground'}`}
                 title="启用深度思考"
               >
                 <Brain className="mr-1.5 h-4 w-4" />
@@ -153,21 +153,23 @@ export const ChatInputArea = memo(function ChatInputArea({
               type="button"
               onClick={onSend}
               disabled={isLoading || !input.trim()}
-              className={`rounded-xl px-4 ${input.trim()
-                ? 'bg-white text-gray-900 hover:bg-white/90'
-                : 'bg-white/10 text-white/35 hover:bg-white/10'}`}
+              aria-label="发送消息"
+              className={`h-10 w-10 rounded-full p-0 flex items-center justify-center transition-all duration-200 hover:scale-105 ${
+                input.trim()
+                  ? 'bg-purple-600 text-white hover:bg-purple-700 shadow-sm'
+                  : 'bg-muted text-muted-foreground'
+              }`}
             >
               {isLoading ? (
-                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-gray-400/40 border-t-gray-900" />
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
               ) : (
-                <Send className="mr-2 h-4 w-4" />
+                <Send className="h-4 w-4" />
               )}
-              发送消息
             </Button>
           </div>
         </div>
         <div className="mt-2 text-center">
-          <p className="text-xs text-white/40">
+          <p className="text-xs text-muted-foreground/60">
             内容由 AI 生成，请仔细甄别
           </p>
         </div>

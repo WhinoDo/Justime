@@ -46,58 +46,71 @@ export function MessageBubble({ message, onTaskCreate, onReferenceClick }: Messa
 
   return (
     <div className={cn(
-      "group flex gap-3 max-w-[85%] animate-in slide-in-from-bottom-1 duration-300",
+      "flex gap-2 max-w-[70%] animate-in slide-in-from-bottom-2 duration-200",
       isUser ? "ml-auto flex-row-reverse" : "mr-auto"
     )}>
       {/* 头像 */}
       <div className={cn(
-        "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 shadow-md",
+        "flex h-7 w-7 shrink-0 items-center justify-center rounded-full mt-1",
         isUser
-          ? "bg-white/15 text-white"
-          : "bg-white/10 text-emerald-100"
+          ? "bg-purple-200 dark:bg-purple-800 text-purple-600 dark:text-purple-300"
+          : "bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-300"
       )}>
-        {isUser ? <User size={16} /> : <Bot size={16} />}
+        {isUser ? <User size={14} /> : <Bot size={14} />}
       </div>
 
       {/* 消息内容 */}
       <div className={cn(
-        "flex flex-col gap-2 min-w-0 flex-1",
+        "flex flex-col gap-1 min-w-0",
         isUser ? "items-end" : "items-start"
       )}>
         {/* 消息气泡 */}
         <div className={cn(
-          'relative max-w-full rounded-2xl border px-4 py-3 shadow-sm transition-all duration-200 hover:shadow-md',
+          'relative max-w-full px-4 py-2.5 text-sm leading-relaxed shadow-sm',
           isUser
-            ? 'rounded-br-md border-white/10 bg-white/15 text-white'
-            : 'rounded-bl-md border-white/10 bg-white/10 text-white/90'
+            ? 'bg-purple-600 text-white rounded-2xl rounded-br-sm'
+            : 'bg-gray-100 dark:bg-gray-700 text-foreground rounded-2xl rounded-bl-sm'
         )}>
-          {/* 任务分析元数据（仅对非通用对话展示） */}
+          {/* 任务分析元数据 */}
           {(message.timingStrategy || message.taskAnalysis) &&
             (message.taskAnalysis?.taskType !== 'general' && message.timingStrategy?.taskType !== 'general') && (
-              <div className="mb-3 flex flex-wrap items-center gap-1.5 border-b border-white/10 pb-2 text-[10px] md:text-xs">
-                <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/10 px-2 py-0.5 font-medium text-white/80">
+              <div className="mb-2 flex flex-wrap items-center gap-1.5 border-b border-white/20 dark:border-white/10 pb-2 text-[10px]">
+                <span className={cn(
+                  "inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium",
+                  isUser ? "bg-white/20 text-white/90" : "bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200"
+                )}>
                   <Brain className="w-3 h-3" />
                   {formatTaskType(message.taskAnalysis?.taskType || message.timingStrategy?.taskType)}
                 </span>
-                <span className="rounded-full border border-white/10 bg-white/10 px-2 py-0.5 font-medium text-white/75">
+                <span className={cn(
+                  "rounded-full px-2 py-0.5 font-medium",
+                  isUser ? "bg-white/20 text-white/90" : "bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200"
+                )}>
                   难度 {message.taskAnalysis?.difficultyLevel || message.timingStrategy?.difficultyLevel || 3}
                 </span>
-                <span className="rounded-full border border-white/10 bg-white/10 px-2 py-0.5 font-medium text-white/75">
+                <span className={cn(
+                  "rounded-full px-2 py-0.5 font-medium",
+                  isUser ? "bg-white/20 text-white/90" : "bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200"
+                )}>
                   {formatUrgency(message.taskAnalysis?.urgency || message.timingStrategy?.urgency)}
                 </span>
                 {typeof message.taskAnalysis?.confidence === 'number' && (
-                  <span className="rounded-full border border-white/10 bg-white/10 px-2 py-0.5 font-medium text-white/75">
+                  <span className={cn(
+                    "rounded-full px-2 py-0.5 font-medium",
+                    isUser ? "bg-white/20 text-white/90" : "bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200"
+                  )}>
                     {Math.round(message.taskAnalysis.confidence * 100)}%
                   </span>
                 )}
               </div>
             )}
+
           {/* Markdown 渲染 */}
           <div className={cn(
             'prose prose-sm max-w-none',
             isUser
-              ? 'prose-invert prose-headings:text-white prose-p:text-white prose-strong:text-white prose-em:text-white prose-code:text-white prose-code:bg-white/10'
-              : 'prose-invert prose-headings:text-white prose-p:text-white/85 prose-strong:text-white prose-em:text-white/85 prose-code:text-white prose-code:bg-white/10'
+              ? 'prose-invert prose-headings:text-white prose-p:text-white prose-strong:text-white prose-em:text-white prose-code:text-white prose-code:bg-white/20'
+              : 'prose-headings:text-foreground prose-p:text-foreground/85 prose-strong:text-foreground prose-a:text-purple-600 dark:prose-a:text-purple-400 prose-code:text-foreground prose-code:bg-gray-200 dark:prose-code:bg-gray-600'
           )}>
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
@@ -110,7 +123,7 @@ export function MessageBubble({ message, onTaskCreate, onReferenceClick }: Messa
 
                   if (!inline && language) {
                     return (
-                      <div className="relative group/code">
+                      <div className="relative group/code my-2">
                         <div className="flex items-center justify-between bg-gray-800 text-gray-200 px-4 py-2 text-xs rounded-t-lg">
                           <span className="font-medium">{language}</span>
                           <button
@@ -148,8 +161,8 @@ export function MessageBubble({ message, onTaskCreate, onReferenceClick }: Messa
                       className={cn(
                         "px-1.5 py-0.5 rounded text-sm font-mono",
                         isUser
-                          ? 'bg-white/10 text-white'
-                          : 'bg-white/10 text-white/90'
+                          ? 'bg-white/20 text-white'
+                          : 'bg-gray-200 dark:bg-gray-600 text-foreground'
                       )}
                       {...props}
                     >
@@ -162,7 +175,7 @@ export function MessageBubble({ message, onTaskCreate, onReferenceClick }: Messa
                     "border-l-4 pl-4 py-2 my-2 italic",
                     isUser
                       ? 'border-white/30 text-white/85'
-                      : 'border-white/20 text-white/70'
+                      : 'border-gray-300 dark:border-gray-500 text-muted-foreground'
                   )}>
                     {children}
                   </blockquote>
@@ -179,23 +192,21 @@ export function MessageBubble({ message, onTaskCreate, onReferenceClick }: Messa
                 ),
                 table: ({ children }: any) => (
                   <div className="overflow-x-auto my-4">
-                    <table className="min-w-full border-collapse border border-white/10">
+                    <table className="min-w-full border-collapse border border-border">
                       {children}
                     </table>
                   </div>
                 ),
                 th: ({ children }: any) => (
                   <th className={cn(
-                    'border border-white/10 px-3 py-2 text-left font-semibold',
-                    isUser
-                      ? 'bg-white/10 text-white'
-                      : 'bg-white/5 text-white/85'
+                    'border border-border px-3 py-2 text-left font-semibold',
+                    isUser ? 'bg-white/10 text-white' : 'bg-muted text-foreground'
                   )}>
                     {children}
                   </th>
                 ),
                 td: ({ children }: any) => (
-                  <td className="border border-white/10 px-3 py-2 text-white/80">
+                  <td className="border border-border px-3 py-2 text-foreground/80">
                     {children}
                   </td>
                 )
@@ -206,9 +217,10 @@ export function MessageBubble({ message, onTaskCreate, onReferenceClick }: Messa
           </div>
         </div>
 
+        {/* RAG 引用文档 */}
         {!isUser && message.ragReferences && message.ragReferences.length > 0 && (
-          <div className="w-fit max-w-[100%] rounded-xl border border-white/10 bg-white/10 p-3 backdrop-blur-sm">
-            <div className="mb-2 text-xs font-medium text-white/80">
+          <div className="max-w-full rounded-xl border border-border bg-background p-3 shadow-sm">
+            <div className="mb-2 text-xs font-medium text-foreground/80">
               引用文档
             </div>
             <div className="flex flex-wrap gap-2">
@@ -217,11 +229,11 @@ export function MessageBubble({ message, onTaskCreate, onReferenceClick }: Messa
                   key={reference.referenceId}
                   type="button"
                   onClick={() => onReferenceClick?.(reference)}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/10 px-2.5 py-1.5 text-xs text-white/80 transition-colors hover:bg-white/15"
+                  className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/50 px-2.5 py-1.5 text-xs text-foreground/80 transition-colors hover:bg-accent"
                 >
                   <FileText className="h-3.5 w-3.5" />
                   <span className="max-w-[180px] truncate">{reference.fileName || reference.docPath}</span>
-                  <span className="text-[10px] text-white/45">
+                  <span className="text-[10px] text-muted-foreground">
                     {reference.snippets?.length || 0} 段
                   </span>
                 </button>
@@ -230,20 +242,16 @@ export function MessageBubble({ message, onTaskCreate, onReferenceClick }: Messa
           </div>
         )}
 
-        {/* 元信息 */}
+        {/* 时间戳 */}
         <div className={cn(
-          "flex items-center gap-2 text-xs",
+          "flex items-center gap-2 px-1",
           isUser ? "flex-row-reverse" : "flex-row"
         )}>
-          {/* 时间戳 */}
-          <span className="text-white/40">
+          <span className="text-[11px] text-muted-foreground/60">
             {formatTime(message.created_at)}
           </span>
-
-          {/* 情绪评分 */}
-          {/* Emotion score display removed */}
         </div>
       </div>
     </div>
   )
-} 
+}

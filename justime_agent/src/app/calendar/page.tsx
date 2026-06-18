@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import type { CalendarEventData } from '@/components/calendar/BigCalendar'
 import { Button } from '@/components/ui/button'
-import { Plus, ArrowLeft, RefreshCw, MessageCircle, Calendar as CalendarIcon, Loader2 } from 'lucide-react'
+import { Plus, RefreshCw, MessageCircle, Calendar as CalendarIcon, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { SlotInfo, View } from 'react-big-calendar'
@@ -17,8 +17,8 @@ const BigCalendar = dynamic(
     loading: () => (
       <div className="flex h-full items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
-          <p className="text-sm text-white/60">Loading Calendar...</p>
+          <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+          <p className="text-sm text-muted-foreground">Loading Calendar...</p>
         </div>
       </div>
     ),
@@ -198,10 +198,10 @@ export default function CalendarPage() {
   // 认证加载中
   if (authLoading) {
     return (
-      <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-background">
-        <div className="relative z-10 flex flex-col items-center gap-3">
-          <RefreshCw className="h-8 w-8 animate-spin text-white/50" />
-          <p className="text-white/60 text-sm font-light tracking-widest uppercase">Syncing Calendar</p>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+          <p className="text-muted-foreground text-sm font-light tracking-widest uppercase">Syncing Calendar</p>
         </div>
       </div>
     )
@@ -210,23 +210,23 @@ export default function CalendarPage() {
   // 未登录提示
   if (!isAuthenticated || !user) {
     return (
-      <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-background">
-        <div className="relative z-10 w-full max-w-md mx-auto text-center space-y-6 p-8 bg-white/10 backdrop-blur-2xl border border-white/20 rounded-3xl shadow-2xl">
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-full max-w-md mx-auto text-center space-y-6 p-8 bg-card border border-border rounded-xl shadow-mac-lg">
           <div className="space-y-4">
-            <div className="h-20 w-20 mx-auto rounded-full bg-blue-500/20 flex items-center justify-center ring-1 ring-blue-500/40">
-              <CalendarIcon className="h-10 w-10 text-blue-300" />
+            <div className="h-20 w-20 mx-auto rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+              <CalendarIcon className="h-10 w-10 text-purple-500" />
             </div>
-            <h2 className="text-xl font-bold text-white">Login Required</h2>
-            <p className="text-white/70">
+            <h2 className="text-xl font-bold text-foreground">Login Required</h2>
+            <p className="text-muted-foreground">
               Please login to view and manage your schedule.
             </p>
           </div>
           <div className="space-y-3">
             <Link href="/auth?mode=login&redirect=/calendar" className="block">
-              <Button className="w-full h-11 bg-white text-gray-900 border-0 hover:bg-white/90 font-medium rounded-xl">Login Now</Button>
+              <Button className="w-full h-11 bg-purple-600 text-white hover:bg-purple-700 font-medium rounded-lg">Login Now</Button>
             </Link>
             <Link href="/dashboard" className="block">
-              <Button variant="ghost" className="w-full text-white/50 hover:text-white hover:bg-white/5">Back to Dashboard</Button>
+              <Button variant="ghost" className="w-full text-muted-foreground hover:text-foreground">Back to Dashboard</Button>
             </Link>
           </div>
         </div>
@@ -235,20 +235,14 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden font-sans bg-background">
+    <div className="min-h-screen bg-background">
 
-      <div className="relative z-10 container mx-auto p-4 md:p-6 max-w-7xl h-screen flex flex-col">
-        {/* 页面头部 */}
-        <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between mb-4 flex-shrink-0 bg-white/10 backdrop-blur-xl p-4 rounded-2xl border border-white/10 shadow-lg">
-          <div className="flex items-center justify-between sm:justify-start gap-4">
-            <Link href="/dashboard">
-              <Button variant="ghost" size="sm" className="text-white/70 hover:bg-white/10 hover:text-white">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back
-              </Button>
-            </Link>
+      <div className="mx-auto p-4 md:p-6 max-w-7xl h-screen flex flex-col">
+        {/* macOS 风格顶部工具栏 */}
+        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between mb-4 flex-shrink-0 bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur border-b border-border rounded-t-xl px-4 py-3">
+          <div className="flex items-center justify-between sm:justify-start gap-3">
             <div>
-              <h1 className="text-2xl font-bold text-white tracking-tight">
+              <h1 className="text-lg font-semibold text-foreground tracking-tight">
                 My Calendar
               </h1>
             </div>
@@ -260,13 +254,14 @@ export default function CalendarPage() {
               size="sm"
               onClick={loadEvents}
               disabled={loading}
-              className="bg-white/5 border-white/10 text-white hover:bg-white/10 flex-1 sm:flex-initial justify-center"
+              className="text-muted-foreground flex-1 sm:flex-initial justify-center"
             >
-              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
             <Button
-              className="bg-indigo-600 hover:bg-indigo-500 text-white border-0 shadow-lg shadow-indigo-500/20 flex-1 sm:flex-initial justify-center"
+              className="bg-purple-600 hover:bg-purple-700 text-white border-0 shadow-sm flex-1 sm:flex-initial justify-center"
+              size="sm"
               onClick={() => {
                 setSelectedEvent(null)
                 setSelectedSlot({
@@ -276,26 +271,26 @@ export default function CalendarPage() {
                 setDialogOpen(true)
               }}
             >
-              <Plus className="w-4 h-4 mr-2" />
+              <Plus className="w-4 h-4 mr-1.5" />
               New Event
             </Button>
 
             <Link href="/chat" className="flex-1 sm:flex-initial">
-              <Button variant="outline" title="Chat Assistant" className="w-full bg-white/5 border-white/10 text-white hover:bg-white/10 justify-center">
-                <MessageCircle className="w-4 h-4 mr-2" />
+              <Button variant="outline" size="sm" className="w-full text-muted-foreground justify-center">
+                <MessageCircle className="w-4 h-4 mr-1.5" />
                 Chat
               </Button>
             </Link>
           </div>
         </div>
 
-        {/* 日历主体 */}
-        <div className="flex-1 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl overflow-hidden p-1">
+        {/* 日历主体 - 白色背景容器 */}
+        <div className="flex-1 bg-white dark:bg-gray-950 rounded-b-xl border-x border-b border-border shadow-sm overflow-hidden">
           {loading && events.length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center p-8">
-                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-indigo-500" />
-                <p className="text-gray-500 font-medium">Loading Schedule...</p>
+                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-purple-500" />
+                <p className="text-muted-foreground font-medium">Loading Schedule...</p>
               </div>
             </div>
           ) : (

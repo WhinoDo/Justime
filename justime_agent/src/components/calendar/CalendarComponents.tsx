@@ -15,12 +15,11 @@ export function CustomEvent({ event }: { event: CalendarEventData }) {
         <div className={cn(
             "h-full w-full overflow-hidden px-2 py-1 transition-all duration-200 group",
             "border-l-2 hover:brightness-110",
-            // Remove default background to apply our own glass style
-            "bg-black/20 backdrop-blur-sm hover:bg-black/30",
-            "text-white"
+            "bg-purple-50 dark:bg-purple-900/20",
+            "text-foreground"
         )}
             style={{
-                borderColor: event.color || '#3b82f6',
+                borderColor: event.color || '#7c3aed',
                 borderRadius: '0 4px 4px 0'
             }}
         >
@@ -31,7 +30,7 @@ export function CustomEvent({ event }: { event: CalendarEventData }) {
                             {format(new Date(event.start), 'HH:mm')}
                         </span>
                     )}
-                    <span className="text-xs font-semibold truncate leading-tight shadow-sm">
+                    <span className="text-xs font-semibold truncate leading-tight">
                         {event.title}
                     </span>
                 </div>
@@ -39,7 +38,7 @@ export function CustomEvent({ event }: { event: CalendarEventData }) {
                 {/* Additional info for taller events */}
                 <div className="mt-1 hidden lg:block opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                     {event.location && (
-                        <div className="flex items-center gap-1 text-[10px] text-white/60">
+                        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                             <MapPin className="h-2.5 w-2.5" />
                             <span className="truncate">{event.location}</span>
                         </div>
@@ -59,8 +58,8 @@ export function CustomDateHeader({ label, date }: { label: string, date: Date })
             <span className={cn(
                 "inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-medium transition-all",
                 isToday
-                    ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30 ring-2 ring-blue-500/20"
-                    : "text-gray-300 hover:bg-white/10 hover:text-white"
+                    ? "bg-purple-600 text-white shadow-sm"
+                    : "text-muted-foreground hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-foreground"
             )}>
                 {label}
             </span>
@@ -78,15 +77,15 @@ interface CustomToolbarProps {
 
 export function CustomToolbar({ label, onNavigate, onView, view }: CustomToolbarProps) {
     return (
-        <div className="flex flex-col md:flex-row items-center justify-between mb-6 pb-6 border-b border-white/10 gap-4">
+        <div className="flex flex-col md:flex-row items-center justify-between px-4 py-3 gap-3">
 
             {/* Navigation Group */}
-            <div className="flex items-center gap-1 bg-black/20 rounded-xl p-1 border border-white/5 shadow-inner">
+            <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
                 <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => onNavigate('PREV')}
-                    className="h-8 w-8 p-0 hover:bg-white/10 text-white/70 hover:text-white rounded-lg"
+                    className="h-7 w-7 p-0 hover:bg-white dark:hover:bg-gray-700 text-muted-foreground hover:text-foreground rounded"
                 >
                     <ChevronLeft className="h-4 w-4" />
                 </Button>
@@ -94,7 +93,7 @@ export function CustomToolbar({ label, onNavigate, onView, view }: CustomToolbar
                     variant="ghost"
                     size="sm"
                     onClick={() => onNavigate('TODAY')}
-                    className="h-8 px-3 text-xs font-medium text-white/70 hover:text-white hover:bg-white/10 rounded-lg"
+                    className="h-7 px-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-white dark:hover:bg-gray-700 rounded"
                 >
                     Today
                 </Button>
@@ -102,32 +101,31 @@ export function CustomToolbar({ label, onNavigate, onView, view }: CustomToolbar
                     variant="ghost"
                     size="sm"
                     onClick={() => onNavigate('NEXT')}
-                    className="h-8 w-8 p-0 hover:bg-white/10 text-white/70 hover:text-white rounded-lg"
+                    className="h-7 w-7 p-0 hover:bg-white dark:hover:bg-gray-700 text-muted-foreground hover:text-foreground rounded"
                 >
                     <ChevronRight className="h-4 w-4" />
                 </Button>
             </div>
 
-            {/* Date Label with Glass Effect */}
-            <h3 className="text-xl md:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-white/60 tracking-tight drop-shadow-sm flex items-center gap-3">
-                <CalendarIcon className="h-6 w-6 text-blue-400" />
+            {/* Date Label */}
+            <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                <CalendarIcon className="h-5 w-5 text-purple-500" />
                 {label}
             </h3>
 
             {/* View Switcher (Segmented Control Style) */}
-            <div className="flex items-center bg-black/20 rounded-xl p-1 border border-white/5 shadow-inner">
+            <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
                 {['month', 'week', 'day', 'agenda'].map((v) => (
                     <button
                         key={v}
                         onClick={() => onView(v)}
                         className={cn(
-                            "px-4 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 capitalize",
+                            "px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 capitalize",
                             view === v
-                                ? "bg-white/20 text-white shadow-md backdrop-blur-sm"
-                                : "text-white/50 hover:text-white hover:bg-white/5"
+                                ? "bg-white dark:bg-gray-700 text-foreground shadow-sm"
+                                : "text-muted-foreground hover:text-foreground"
                         )}
                     >
-                        {/* Mapping internal view names to display names if needed, usually direct mapping works for basics */}
                         {v === 'agenda' ? 'List' : v}
                     </button>
                 ))}

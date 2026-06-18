@@ -3,8 +3,6 @@
 import { useAuth } from '@/hooks/useAuth'
 import { useState, Suspense } from 'react'
 import { Loader2 } from 'lucide-react'
-import { JustimeGlassPanel } from '@/components/layout/JustimeGlassPanel'
-import { JustimePageShell } from '@/components/layout/JustimePageShell'
 import { StudyQuickCommands } from '@/components/study/StudyQuickCommands'
 import { useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
@@ -16,8 +14,8 @@ const ChatInterface = dynamic(
     loading: () => (
       <div className="flex h-full items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-white" />
-          <p className="text-sm text-white/60">Loading Chat Interface...</p>
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Loading Chat Interface...</p>
         </div>
       </div>
     ),
@@ -30,7 +28,7 @@ const ChatSidebar = dynamic(
     ssr: false,
     loading: () => (
       <div className="flex h-full items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-white/50" />
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     ),
   }
@@ -46,14 +44,12 @@ function ChatPageInner() {
   // 如果正在加载，显示加载状态
   if (isLoading) {
     return (
-      <JustimePageShell fullHeight blur="xl" contentClassName="flex items-center justify-center px-4">
-        <JustimeGlassPanel className="rounded-3xl px-8 py-10 text-center">
-          <div className="space-y-4">
-            <Loader2 className="mx-auto h-8 w-8 animate-spin text-white" />
-            <p className="text-sm uppercase tracking-widest text-white/60">Loading Chat Interface</p>
-          </div>
-        </JustimeGlassPanel>
-      </JustimePageShell>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <p className="text-sm text-muted-foreground uppercase tracking-widest">Loading Chat Interface</p>
+        </div>
+      </div>
     )
   }
 
@@ -61,35 +57,37 @@ function ChatPageInner() {
     return null
   }
 
-  // 已登录用户，显示聊天界面 (带侧边栏)
+  // 已登录用户，显示 macOS Messages 风格界面
   return (
-    <JustimePageShell fullHeight blur="lg" opacity={0.35} contentClassName="h-full p-3 md:p-4">
-      <div className="flex h-full gap-3 md:gap-4">
-        <JustimeGlassPanel className="hidden w-72 flex-shrink-0 rounded-[28px] md:flex md:flex-col md:overflow-hidden">
+    <div className="min-h-screen bg-background">
+      <div className="h-[calc(100vh-var(--titlebar-height,0px))] flex gap-0 p-0">
+        {/* 左侧侧边栏 - macOS 风格 */}
+        <div className="hidden w-72 flex-shrink-0 border-r border-border md:flex md:flex-col bg-white dark:bg-gray-950">
           <ChatSidebar
             userId={user.id}
             currentSessionId={sessionId}
             onSelectSession={setSessionId}
             autoSelectLatest={true}
-            className="flex-1 border-0 bg-transparent"
+            className="flex-1 border-0"
           />
-        </JustimeGlassPanel>
+        </div>
 
-        <JustimeGlassPanel className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-[32px] bg-white/8">
+        {/* 右侧对话区域 */}
+        <div className="flex min-w-0 flex-1 flex-col bg-white dark:bg-gray-950">
           <ChatInterface
             sessionId={sessionId}
             onSessionChange={setSessionId}
           />
           {isStudyMode && showStudyCommands && (
-            <div className="border-t border-white/10 bg-white/[0.03] p-4">
+            <div className="border-t border-border bg-muted/30 p-4">
               <StudyQuickCommands
                 onCommand={() => setShowStudyCommands(false)}
               />
             </div>
           )}
-        </JustimeGlassPanel>
+        </div>
       </div>
-    </JustimePageShell>
+    </div>
   )
 }
 
