@@ -17,6 +17,7 @@ os.environ["CSRF_ENABLED"] = "false"
 os.environ["DEBUG"] = "true"
 os.environ["MONGODB_URI"] = "mongodb://localhost:27017/justime_test"
 os.environ["MONGODB_DB_NAME"] = "justime_test"
+os.environ["ALLOWED_ORIGINS"] = '["http://localhost:3000"]'
 # Test API keys for model router service tests (placeholder values, not real credentials)
 os.environ["TEST_API_KEY_FAST"] = "test-fast-key-placeholder"
 os.environ["TEST_API_KEY_REASONING"] = "test-reasoning-key-placeholder"
