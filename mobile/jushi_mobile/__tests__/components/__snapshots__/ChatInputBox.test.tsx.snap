@@ -1,0 +1,88 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`ChatInputBox renders correctly 1`] = `
+<View
+  style={
+    [
+      {
+        "alignItems": "flex-end",
+        "backgroundColor": "#FFFFFF",
+        "borderRadius": 32,
+        "elevation": 5,
+        "flexDirection": "row",
+        "marginHorizontal": 16,
+        "paddingHorizontal": 6,
+        "paddingVertical": 6,
+        "shadowColor": "#000",
+        "shadowOffset": {
+          "height": 2,
+          "width": 0,
+        },
+        "shadowOpacity": 0.15,
+        "shadowRadius": 6,
+      },
+      {
+        "marginBottom": 0,
+      },
+    ]
+  }
+/>
+`;
+
+exports[`ChatInputBox renders sending state 1`] = `
+<View
+  style={
+    [
+      {
+        "alignItems": "flex-end",
+        "backgroundColor": "#FFFFFF",
+        "borderRadius": 32,
+        "elevation": 5,
+        "flexDirection": "row",
+        "marginHorizontal": 16,
+        "paddingHorizontal": 6,
+        "paddingVertical": 6,
+        "shadowColor": "#000",
+        "shadowOffset": {
+          "height": 2,
+          "width": 0,
+        },
+        "shadowOpacity": 0.15,
+        "shadowRadius": 6,
+      },
+      {
+        "marginBottom": 0,
+      },
+    ]
+  }
+/>
+`;
+
+exports[`ChatInputBox renders with web search enabled 1`] = `
+<View
+  style={
+    [
+      {
+        "alignItems": "flex-end",
+        "backgroundColor": "#FFFFFF",
+        "borderRadius": 32,
+        "elevation": 5,
+        "flexDirection": "row",
+        "marginHorizontal": 16,
+        "paddingHorizontal": 6,
+        "paddingVertical": 6,
+        "shadowColor": "#000",
+        "shadowOffset": {
+          "height": 2,
+          "width": 0,
+        },
+        "shadowOpacity": 0.15,
+        "shadowRadius": 6,
+      },
+      {
+        "marginBottom": 0,
+      },
+    ]
+  }
+/>
+`;

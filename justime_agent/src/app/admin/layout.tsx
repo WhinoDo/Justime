@@ -13,7 +13,8 @@ import {
     Menu,
     X,
     ShieldAlert,
-    ArrowLeft
+    ArrowLeft,
+    Bot
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/useAuth'
@@ -57,6 +58,11 @@ export default function AdminLayout({
             title: '系统设置',
             icon: Settings,
             href: '/admin/settings'
+        },
+        {
+            title: 'Agent 管理',
+            icon: Bot,
+            href: '/agent'
         }
     ]
 

@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 
 from app.core.config import settings
 from app.api.v1.api import api_router
+from app.api.v1.api import knowledge_available as knowledge_routes_available
 from app.core.exceptions import setup_exception_handlers
 from app.core.middleware import setup_middlewares
 from app.database import connect_to_mongo, close_mongo_connection
@@ -59,6 +60,11 @@ def create_app() -> FastAPI:
             scheduler_service.start()
         except Exception as e:
             logger.warning(f'定时调度器启动失败: {e}')
+
+        if knowledge_routes_available:
+            logger.info("知识库路由已加载")
+        else:
+            logger.warning("知识库路由已禁用（可选依赖未安装或导入失败）")
 
     @app.on_event("shutdown")
     async def shutdown_event():

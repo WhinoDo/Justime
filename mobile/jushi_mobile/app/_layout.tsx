@@ -1,0 +1,59 @@
+import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect } from 'react';
+import 'react-native-reanimated';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { AuthProvider } from '@/context/AuthContext';
+import { validateProductionConfig } from '@/constants/app-config';
+
+// 在应用启动时验证生产环境配置
+// 确保生产构建必须显式配置 API URL，防止使用开发环境默认值
+validateProductionConfig();
+
+// Monkey patch global.fetch to bypass Localtunnel's warning page
+const originalFetch = global.fetch;
+global.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+  if (typeof input === 'string' && input.includes('loca.lt')) {
+    init = init || {};
+    init.headers = {
+      ...init.headers,
+      'Bypass-Tunnel-Reminder': 'true',
+    };
+  }
+  return originalFetch(input, init);
+};
+
+export const unstable_settings = {
+  anchor: '(tabs)',
+};
+
+export default function RootLayout() {
+  const colorScheme = useColorScheme();
+
+  useEffect(() => {
+    SplashScreen.hideAsync();
+  }, []);
+
+  return (
+    <SafeAreaProvider>
+      <AuthProvider>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="modal" options={{ presentation: 'modal', title: '详情' }} />
+            <Stack.Screen name="settings/model-config" options={{ headerShown: false }} />
+            <Stack.Screen name="settings/knowledge" options={{ headerShown: false }} />
+            <Stack.Screen name="settings/document" options={{ headerShown: false }} />
+            <Stack.Screen name="book-analysis/index" options={{ headerShown: false }} />
+            <Stack.Screen name="book-analysis/[id]" options={{ headerShown: false, title: '书籍分析详情' }} />
+          </Stack>
+          <StatusBar style="dark" translucent={false} />
+        </ThemeProvider>
+      </AuthProvider>
+    </SafeAreaProvider>
+  );
+}

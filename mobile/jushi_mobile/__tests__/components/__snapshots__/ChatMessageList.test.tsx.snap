@@ -1,0 +1,445 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`ChatMessageList renders assistant messages 1`] = `
+<RCTScrollView
+  ListFooterComponent={null}
+  contentContainerStyle={
+    {
+      "paddingBottom": 16,
+      "paddingHorizontal": 16,
+      "paddingTop": 12,
+    }
+  }
+  data={
+    [
+      {
+        "content": "Hi there!",
+        "id": "msg-assistant-4fzzzx",
+        "role": "assistant",
+        "timestamp": "2026-06-18T01:00:00.000Z",
+      },
+    ]
+  }
+  getItem={[Function]}
+  getItemCount={[Function]}
+  keyExtractor={[Function]}
+  keyboardShouldPersistTaps="handled"
+  onContentSizeChange={[Function]}
+  onLayout={[Function]}
+  onMomentumScrollBegin={[Function]}
+  onMomentumScrollEnd={[Function]}
+  onScroll={[Function]}
+  onScrollBeginDrag={[Function]}
+  onScrollEndDrag={[Function]}
+  removeClippedSubviews={false}
+  renderItem={[Function]}
+  scrollEventThrottle={0.0001}
+  stickyHeaderIndices={[]}
+  viewabilityConfigCallbackPairs={[]}
+>
+  <View>
+    <View
+      onFocusCapture={[Function]}
+      onLayout={[Function]}
+      style={null}
+    >
+      <View
+        style={
+          {
+            "marginBottom": 8,
+          }
+        }
+      >
+        <View
+          style={
+            [
+              {
+                "alignItems": "flex-end",
+                "flexDirection": "row",
+                "marginVertical": 4,
+              },
+              {
+                "justifyContent": "flex-start",
+              },
+            ]
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "backgroundColor": "#8B5CF6",
+                "borderRadius": 14,
+                "height": 28,
+                "justifyContent": "center",
+                "marginBottom": 4,
+                "marginRight": 4,
+                "width": 28,
+              }
+            }
+          />
+          <View
+            style={
+              [
+                {
+                  "maxWidth": "80%",
+                },
+                {
+                  "alignItems": "flex-start",
+                },
+              ]
+            }
+          >
+            <View
+              style={
+                [
+                  {
+                    "borderBottomLeftRadius": 4,
+                    "borderRadius": 16,
+                    "padding": 12,
+                  },
+                  {
+                    "backgroundColor": "#FFFFFF",
+                    "borderColor": "#E5E7EB",
+                    "borderWidth": 1,
+                  },
+                  {
+                    "backgroundColor": "#FFFFFF",
+                  },
+                ]
+              }
+            >
+              Hi there!
+            </View>
+            09:00
+          </View>
+        </View>
+      </View>
+    </View>
+  </View>
+</RCTScrollView>
+`;
+
+exports[`ChatMessageList renders empty list 1`] = `
+<RCTScrollView
+  ListFooterComponent={null}
+  contentContainerStyle={
+    {
+      "paddingBottom": 16,
+      "paddingHorizontal": 16,
+      "paddingTop": 12,
+    }
+  }
+  data={[]}
+  getItem={[Function]}
+  getItemCount={[Function]}
+  keyExtractor={[Function]}
+  keyboardShouldPersistTaps="handled"
+  onContentSizeChange={[Function]}
+  onLayout={[Function]}
+  onMomentumScrollBegin={[Function]}
+  onMomentumScrollEnd={[Function]}
+  onScroll={[Function]}
+  onScrollBeginDrag={[Function]}
+  onScrollEndDrag={[Function]}
+  removeClippedSubviews={false}
+  renderItem={[Function]}
+  scrollEventThrottle={0.0001}
+  stickyHeaderIndices={[]}
+  viewabilityConfigCallbackPairs={[]}
+>
+  <View />
+</RCTScrollView>
+`;
+
+exports[`ChatMessageList renders multiple messages 1`] = `
+<RCTScrollView
+  ListFooterComponent={null}
+  contentContainerStyle={
+    {
+      "paddingBottom": 16,
+      "paddingHorizontal": 16,
+      "paddingTop": 12,
+    }
+  }
+  data={
+    [
+      {
+        "content": "Hello",
+        "id": "msg-user-4fzzzx",
+        "role": "user",
+        "timestamp": "2026-06-18T01:00:00.000Z",
+      },
+      {
+        "content": "Hi!",
+        "id": "msg-assistant-4fzzzx",
+        "role": "assistant",
+        "timestamp": "2026-06-18T01:00:00.000Z",
+      },
+    ]
+  }
+  getItem={[Function]}
+  getItemCount={[Function]}
+  keyExtractor={[Function]}
+  keyboardShouldPersistTaps="handled"
+  onContentSizeChange={[Function]}
+  onLayout={[Function]}
+  onMomentumScrollBegin={[Function]}
+  onMomentumScrollEnd={[Function]}
+  onScroll={[Function]}
+  onScrollBeginDrag={[Function]}
+  onScrollEndDrag={[Function]}
+  removeClippedSubviews={false}
+  renderItem={[Function]}
+  scrollEventThrottle={0.0001}
+  stickyHeaderIndices={[]}
+  viewabilityConfigCallbackPairs={[]}
+>
+  <View>
+    <View
+      onFocusCapture={[Function]}
+      onLayout={[Function]}
+      style={null}
+    >
+      <View
+        style={
+          {
+            "marginBottom": 8,
+          }
+        }
+      >
+        <View
+          style={
+            [
+              {
+                "alignItems": "flex-end",
+                "flexDirection": "row",
+                "marginVertical": 4,
+              },
+              {
+                "justifyContent": "flex-end",
+              },
+            ]
+          }
+        >
+          <View
+            style={
+              [
+                {
+                  "maxWidth": "80%",
+                },
+                {
+                  "alignItems": "flex-end",
+                },
+              ]
+            }
+          >
+            <View
+              style={
+                [
+                  {
+                    "borderBottomLeftRadius": 4,
+                    "borderRadius": 16,
+                    "padding": 12,
+                  },
+                  {
+                    "backgroundColor": "#2563EB",
+                    "borderBottomLeftRadius": 16,
+                    "borderBottomRightRadius": 4,
+                  },
+                  null,
+                ]
+              }
+            >
+              Hello
+            </View>
+            09:00
+          </View>
+        </View>
+      </View>
+    </View>
+    <View
+      onFocusCapture={[Function]}
+      onLayout={[Function]}
+      style={null}
+    >
+      <View
+        style={
+          {
+            "marginBottom": 8,
+          }
+        }
+      >
+        <View
+          style={
+            [
+              {
+                "alignItems": "flex-end",
+                "flexDirection": "row",
+                "marginVertical": 4,
+              },
+              {
+                "justifyContent": "flex-start",
+              },
+            ]
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "backgroundColor": "#8B5CF6",
+                "borderRadius": 14,
+                "height": 28,
+                "justifyContent": "center",
+                "marginBottom": 4,
+                "marginRight": 4,
+                "width": 28,
+              }
+            }
+          />
+          <View
+            style={
+              [
+                {
+                  "maxWidth": "80%",
+                },
+                {
+                  "alignItems": "flex-start",
+                },
+              ]
+            }
+          >
+            <View
+              style={
+                [
+                  {
+                    "borderBottomLeftRadius": 4,
+                    "borderRadius": 16,
+                    "padding": 12,
+                  },
+                  {
+                    "backgroundColor": "#FFFFFF",
+                    "borderColor": "#E5E7EB",
+                    "borderWidth": 1,
+                  },
+                  {
+                    "backgroundColor": "#FFFFFF",
+                  },
+                ]
+              }
+            >
+              Hi!
+            </View>
+            09:00
+          </View>
+        </View>
+      </View>
+    </View>
+  </View>
+</RCTScrollView>
+`;
+
+exports[`ChatMessageList renders user messages 1`] = `
+<RCTScrollView
+  ListFooterComponent={null}
+  contentContainerStyle={
+    {
+      "paddingBottom": 16,
+      "paddingHorizontal": 16,
+      "paddingTop": 12,
+    }
+  }
+  data={
+    [
+      {
+        "content": "Hello",
+        "id": "msg-user-4fzzzx",
+        "role": "user",
+        "timestamp": "2026-06-18T01:00:00.000Z",
+      },
+    ]
+  }
+  getItem={[Function]}
+  getItemCount={[Function]}
+  keyExtractor={[Function]}
+  keyboardShouldPersistTaps="handled"
+  onContentSizeChange={[Function]}
+  onLayout={[Function]}
+  onMomentumScrollBegin={[Function]}
+  onMomentumScrollEnd={[Function]}
+  onScroll={[Function]}
+  onScrollBeginDrag={[Function]}
+  onScrollEndDrag={[Function]}
+  removeClippedSubviews={false}
+  renderItem={[Function]}
+  scrollEventThrottle={0.0001}
+  stickyHeaderIndices={[]}
+  viewabilityConfigCallbackPairs={[]}
+>
+  <View>
+    <View
+      onFocusCapture={[Function]}
+      onLayout={[Function]}
+      style={null}
+    >
+      <View
+        style={
+          {
+            "marginBottom": 8,
+          }
+        }
+      >
+        <View
+          style={
+            [
+              {
+                "alignItems": "flex-end",
+                "flexDirection": "row",
+                "marginVertical": 4,
+              },
+              {
+                "justifyContent": "flex-end",
+              },
+            ]
+          }
+        >
+          <View
+            style={
+              [
+                {
+                  "maxWidth": "80%",
+                },
+                {
+                  "alignItems": "flex-end",
+                },
+              ]
+            }
+          >
+            <View
+              style={
+                [
+                  {
+                    "borderBottomLeftRadius": 4,
+                    "borderRadius": 16,
+                    "padding": 12,
+                  },
+                  {
+                    "backgroundColor": "#2563EB",
+                    "borderBottomLeftRadius": 16,
+                    "borderBottomRightRadius": 4,
+                  },
+                  null,
+                ]
+              }
+            >
+              Hello
+            </View>
+            09:00
+          </View>
+        </View>
+      </View>
+    </View>
+  </View>
+</RCTScrollView>
+`;

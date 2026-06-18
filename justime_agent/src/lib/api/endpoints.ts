@@ -80,4 +80,11 @@ export const API_ENDPOINTS = {
     FEISHU_CLI: '/api/admin/feishu-cli',
     FEISHU_CLI_AUTH_STATUS: '/api/admin/feishu-cli?action=auth-status',
   },
+
+  AGENT: {
+    STATUS: '/api/agent/status',
+    PROVIDERS: '/api/agent/providers',
+    TOOLS: '/api/agent/tools',
+    RUN: '/api/agent/run',
+  },
 } as const
