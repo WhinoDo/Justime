@@ -71,4 +71,11 @@ export const API_ENDPOINTS = {
     API_KEY: (keyId: string) => `/api/admin/apikeys/${keyId}`,
     STATS: '/api/admin/stats',
   },
+
+  AGENT: {
+    STATUS: '/api/agent/status',
+    PROVIDERS: '/api/agent/providers',
+    TOOLS: '/api/agent/tools',
+    RUN: '/api/agent/run',
+  },
 } as const
