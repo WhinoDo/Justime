@@ -59,14 +59,14 @@ const SelectTrigger = React.forwardRef<HTMLButtonElement, SelectTriggerProps>(
         ref={ref}
         type="button"
         className={cn(
-          "flex h-10 w-full items-center justify-between rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 ring-offset-background placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+          "flex h-[34px] w-full items-center justify-between rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 ring-offset-background placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 disabled:cursor-not-allowed disabled:opacity-50 transition-mac",
           className
         )}
         onClick={() => setIsOpen(!isOpen)}
         {...props}
       >
         {children}
-        <ChevronDown className={cn("h-4 w-4 opacity-50 transition-transform", isOpen && "rotate-180")} />
+        <ChevronDown className={cn("h-4 w-4 opacity-50 transition-mac", isOpen && "rotate-180")} />
       </button>
     )
   }
@@ -80,8 +80,6 @@ const SelectValue: React.FC<SelectValueProps> = ({ placeholder, children }) => {
   // 从子组件中找到对应的显示文本
   React.useEffect(() => {
     if (value) {
-      // 这里我们需要从 SelectItem 中获取显示文本
-      // 由于架构限制，我们直接显示 value
       setDisplayValue(value)
     } else {
       setDisplayValue('')
@@ -126,7 +124,7 @@ const SelectContent: React.FC<SelectContentProps> = ({ children, className, ...p
     <div
       ref={contentRef}
       className={cn(
-        "absolute z-50 max-h-96 overflow-auto rounded-md border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-lg",
+        "absolute z-50 max-h-96 overflow-auto rounded-lg border bg-white dark:bg-gray-800 shadow-[0_4px_24px_rgba(0,0,0,0.12)] animate-in fade-in zoom-in-95 duration-100",
         className || "top-full left-0 right-0 mt-1"
       )}
       {...props}
@@ -146,8 +144,10 @@ const SelectItem: React.FC<SelectItemProps> = ({ value, children, className, ...
     <button
       type="button"
       className={cn(
-        "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-2 pr-2 text-sm text-gray-900 dark:text-gray-100 outline-none hover:bg-gray-100 dark:hover:bg-gray-700 focus:bg-gray-100 dark:focus:bg-gray-700",
-        isSelected && "bg-blue-50 dark:bg-blue-900/30 text-blue-900 dark:text-blue-300",
+        "relative flex w-full cursor-default select-none items-center rounded-md py-1.5 pl-2 pr-2 text-sm outline-none transition-mac",
+        isSelected
+          ? "bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400"
+          : "text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700",
         className
       )}
       onClick={() => {
@@ -166,7 +166,7 @@ const SelectGroup = ({ children }: { children: React.ReactNode }) => <>{children
 const SelectLabel = ({ children }: { children: React.ReactNode }) => (
   <div className="py-1.5 pl-2 pr-2 text-sm font-semibold text-gray-900 dark:text-gray-100">{children}</div>
 )
-const SelectSeparator = () => <div className="-mx-1 my-1 h-px bg-gray-200 dark:bg-gray-600" />
+const SelectSeparator = () => <div className="-mx-1 my-1 h-px bg-gray-200 dark:bg-gray-700/50" />
 
 export {
   Select,
