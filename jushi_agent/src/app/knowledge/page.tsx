@@ -6,7 +6,6 @@ import { useAuth } from '@/hooks/useAuth'
 import { Loader2, Upload, Trash2, RefreshCw, FileText, ArrowLeft, Database, Eye, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
 import { useToast } from '@/components/ui/use-toast'
-import { JushiBackground } from '@/components/ui/JushiBackground'
 import {
     Dialog,
     DialogContent,
@@ -308,8 +307,7 @@ export default function KnowledgeBasePage() {
 
     if (authLoading) {
         return (
-            <div className="min-h-screen relative flex items-center justify-center overflow-hidden">
-                <JushiBackground blur="xl" />
+            <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-background">
                 <div className="relative z-10 flex flex-col items-center gap-3">
                     <Database className="h-10 w-10 text-white/50 animate-pulse" />
                     <p className="text-white/60 text-sm font-light tracking-widest uppercase">Loading Knowledge Base</p>
@@ -320,8 +318,7 @@ export default function KnowledgeBasePage() {
 
     if (!isAuthenticated && !authLoading) {
         return (
-            <div className="min-h-screen relative flex items-center justify-center overflow-hidden">
-                <JushiBackground blur="lg" opacity={0.6} />
+            <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-background">
                 <div className="relative z-10 w-full max-w-md mx-auto text-center space-y-6 p-8 bg-white/10 backdrop-blur-2xl border border-white/20 rounded-3xl shadow-2xl">
                     <div className="space-y-4">
                         <div className="h-20 w-20 mx-auto rounded-full bg-indigo-500/20 flex items-center justify-center ring-1 ring-indigo-500/40">
@@ -344,8 +341,7 @@ export default function KnowledgeBasePage() {
     }
 
     return (
-        <div className="min-h-screen relative overflow-hidden font-sans">
-            <JushiBackground blur="lg" opacity={0.5} />
+        <div className="min-h-screen relative overflow-hidden font-sans bg-background">
 
             <div className="relative z-10 container mx-auto p-4 md:p-8 max-w-5xl animate-in fade-in zoom-in-95 duration-700">
                 <div className="space-y-6">

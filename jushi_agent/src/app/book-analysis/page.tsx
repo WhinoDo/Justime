@@ -14,7 +14,6 @@ import {
 } from 'lucide-react'
 
 import { useAuth } from '@/hooks/useAuth'
-import { JushiBackground } from '@/components/ui/JushiBackground'
 import { useToast } from '@/components/ui/use-toast'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -309,8 +308,7 @@ export default function BookAnalysisPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen relative flex items-center justify-center overflow-hidden">
-        <JushiBackground blur="xl" />
+      <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-background">
         <div className="relative z-10 flex flex-col items-center gap-3">
           <Loader2 className="h-10 w-10 animate-spin text-white/50" />
           <p className="text-sm uppercase tracking-[0.3em] text-white/60">Loading Book Analysis</p>
@@ -322,8 +320,7 @@ export default function BookAnalysisPage() {
   if (!isAuthenticated) return null
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      <JushiBackground blur="lg" opacity={0.45} />
+    <div className="min-h-screen relative overflow-hidden bg-background">
       <div className="relative z-10 mx-auto max-w-7xl px-6 py-10">
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div>

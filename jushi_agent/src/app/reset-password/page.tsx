@@ -8,17 +8,7 @@ import { Button } from '@/components/ui/button'
 
 function ResetPasswordContent() {
   return (
-    <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden">
-      {/* 全屏背景图 */}
-      <div className="absolute inset-0 z-0">
-        <img
-          src="/images/jushi_login_bg.png"
-          alt="Jushi Background"
-          className="w-full h-full object-cover"
-        />
-        {/* 黑色遮罩，确保文字可读性 */}
-        <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px]"></div>
-      </div>
+    <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden bg-background">
 
       {/* 磨砂玻璃容器 - 增强版 */}
       <div className="relative z-10 w-full max-w-md animate-slide-in">

@@ -117,20 +117,20 @@
 
 /* 情绪输入区域 */
 .emotion-input-container {
-  @apply p-4 border-t bg-gradient-to-r from-orange-50 to-pink-50;
+  @apply p-4 border-t bg-white;
 
   .dark & {
-    @apply from-orange-900/20 to-pink-900/20 border-gray-800;
+    @apply bg-gray-900 border-gray-800;
   }
 }
 
 /* 任务卡片 */
 .task-card {
-  @apply rounded-xl border bg-white/80 backdrop-blur-sm p-6 shadow-sm;
+  @apply rounded-xl border bg-card p-6 shadow-sm;
   @apply hover:shadow-md transition-all duration-200;
 
   .dark & {
-    @apply bg-gray-800/80 border-gray-700;
+    @apply bg-gray-800 border-gray-700;
   }
 }
 
@@ -155,11 +155,11 @@
 
 /* 番茄钟计时器 */
 .pomodoro-timer {
-  @apply flex flex-col items-center gap-6 rounded-xl border bg-white/80;
-  @apply backdrop-blur-sm p-8 shadow-sm;
+  @apply flex flex-col items-center gap-6 rounded-xl border bg-card;
+  @apply p-8 shadow-sm;
 
   .dark & {
-    @apply bg-gray-800/80 border-gray-700;
+    @apply bg-gray-800 border-gray-700;
   }
 }
 

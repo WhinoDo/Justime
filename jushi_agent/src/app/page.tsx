@@ -6,7 +6,6 @@ import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { Loader2, User, LogOut, Shield, ArrowRight } from 'lucide-react'
-import { JushiBackground } from '@/components/ui/JushiBackground'
 
 export default function HomePage() {
   const { user, isLoading, isAuthenticated, logout } = useAuth()
@@ -23,8 +22,7 @@ export default function HomePage() {
   // 如果正在加载，显示加载状态
   if (isLoading) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center relative overflow-hidden">
-        <JushiBackground blur="xl" />
+      <div className="flex min-h-screen flex-col items-center justify-center relative overflow-hidden bg-background">
         <div className="relative z-10 w-full max-w-md space-y-8 text-center p-4">
           <div className="space-y-4">
             <h1 className="text-4xl font-bold text-white tracking-tight">
@@ -43,8 +41,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden font-sans">
-      <JushiBackground blur="sm" opacity={0.3} />
+    <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden font-sans bg-background">
 
       <div className="relative z-10 w-full max-w-lg animate-in fade-in zoom-in-95 duration-700">
         <div className="bg-white/10 backdrop-blur-2xl border border-white/20 shadow-2xl rounded-3xl p-8 space-y-8 text-center ring-1 ring-white/10">
