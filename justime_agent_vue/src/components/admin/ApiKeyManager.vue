@@ -33,12 +33,12 @@ const props = defineProps<Props>()
     <!-- Header -->
     <div class="flex items-center justify-between">
       <div>
-        <h2 class="text-2xl font-bold tracking-tight text-white">API Key 管理</h2>
-        <p class="text-white/70">管理可复用的系统 API Key，供模型配置统一引用。</p>
+        <h2 class="text-2xl font-bold tracking-tight text-gray-900">API Key 管理</h2>
+        <p class="text-gray-500">管理可复用的系统 API Key，供模型配置统一引用。</p>
       </div>
       <button
         @click="emit('create')"
-        class="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/20 border border-white/20 text-white hover:bg-white/30 transition-colors"
+        class="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors shadow-sm"
       >
         <Plus class="w-4 h-4" />
         新增 API Key
@@ -51,12 +51,12 @@ const props = defineProps<Props>()
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="sortedKeys.length === 0" class="rounded-2xl border border-dashed border-white/25 bg-white/10 backdrop-blur-xl p-10 text-center">
-      <p class="text-white/80 text-sm">当前还没有通用 API Key</p>
-      <p class="text-white/60 text-xs mt-2">添加后可在模型管理中直接引用，避免重复填写。</p>
+    <div v-else-if="sortedKeys.length === 0" class="rounded-2xl border border-dashed border-gray-300 bg-white p-10 text-center">
+      <p class="text-gray-700 text-sm">当前还没有通用 API Key</p>
+      <p class="text-gray-400 text-xs mt-2">添加后可在模型管理中直接引用，避免重复填写。</p>
       <button
         @click="emit('create')"
-        class="flex items-center gap-2 mt-5 mx-auto px-4 py-2 rounded-lg bg-white/20 border border-white/20 text-white hover:bg-white/30 transition-colors"
+        class="flex items-center gap-2 mt-5 mx-auto px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors shadow-sm"
       >
         <Plus class="w-4 h-4" />
         添加首个 API Key
@@ -64,59 +64,59 @@ const props = defineProps<Props>()
     </div>
 
     <!-- Table -->
-    <div v-else class="rounded-2xl border border-white/20 bg-white/5 backdrop-blur-xl shadow-2xl overflow-hidden text-white w-full">
-      <table class="w-full text-white">
-        <thead class="bg-white/5">
-          <tr class="border-b border-white/10">
-            <th class="text-left p-4 text-white/80 font-medium">名称</th>
-            <th class="text-left p-4 text-white/80 font-medium">状态</th>
-            <th class="text-left p-4 text-white/80 font-medium">更新时间</th>
-            <th class="text-right p-4 text-white/80 font-medium">操作</th>
+    <div v-else class="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden w-full">
+      <table class="w-full">
+        <thead class="bg-gray-50">
+          <tr class="border-b border-gray-200">
+            <th class="text-left p-4 text-gray-600 font-medium text-sm">名称</th>
+            <th class="text-left p-4 text-gray-600 font-medium text-sm">状态</th>
+            <th class="text-left p-4 text-gray-600 font-medium text-sm">更新时间</th>
+            <th class="text-right p-4 text-gray-600 font-medium text-sm">操作</th>
           </tr>
         </thead>
         <tbody>
           <tr
             v-for="key in sortedKeys"
             :key="key.id"
-            class="border-b border-white/10 hover:bg-white/5"
+            class="border-b border-gray-100 hover:bg-purple-50/50"
           >
             <td class="p-4">
               <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-full bg-white/10 border border-white/15 flex items-center justify-center">
-                  <KeyRound class="w-4 h-4 text-white/70" />
+                <div class="w-8 h-8 rounded-full bg-purple-50 border border-purple-100 flex items-center justify-center">
+                  <KeyRound class="w-4 h-4 text-purple-500" />
                 </div>
                 <div class="flex flex-col">
-                  <span class="font-medium text-white">{{ key.name }}</span>
-                  <span class="text-xs text-white/50">{{ key.id }}</span>
+                  <span class="font-medium text-gray-900">{{ key.name }}</span>
+                  <span class="text-xs text-gray-400">{{ key.id }}</span>
                 </div>
               </div>
             </td>
             <td class="p-4">
               <span
                 :class="[
-                  'px-2 py-1 rounded-full text-xs',
+                  'px-2 py-1 rounded-full text-xs font-medium',
                   key.has_api_key
-                    ? 'bg-green-500/20 text-green-200'
-                    : 'bg-gray-500/20 text-gray-200'
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-gray-100 text-gray-600'
                 ]"
               >
                 {{ key.has_api_key ? '已配置' : '未配置' }}
               </span>
             </td>
-            <td class="p-4 text-white/70 text-sm">
+            <td class="p-4 text-gray-600 text-sm">
               {{ key.updated_at || '-' }}
             </td>
             <td class="p-4 text-right">
               <div class="flex items-center justify-end gap-2">
                 <button
                   @click="emit('edit', key)"
-                  class="p-1.5 rounded border border-white/30 bg-black/20 text-white hover:bg-white/10"
+                  class="p-1.5 rounded border border-gray-200 bg-white text-gray-600 hover:bg-purple-50 hover:border-purple-200 hover:text-purple-600"
                 >
                   <Edit2 class="w-4 h-4" />
                 </button>
                 <button
                   @click="emit('delete', key)"
-                  class="p-1.5 rounded border border-red-300/40 bg-red-500/10 text-red-200 hover:bg-red-500/20"
+                  class="p-1.5 rounded border border-red-200 bg-red-50 text-red-500 hover:bg-red-100"
                 >
                   <Trash2 class="w-4 h-4" />
                 </button>

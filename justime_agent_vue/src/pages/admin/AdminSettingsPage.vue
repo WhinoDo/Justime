@@ -14,27 +14,27 @@ const settingsGroups = [
     description: '管理系统全局 LLM 模型，配置服务地址、API Key 和能力标签。',
     icon: ServerCog,
     href: '/admin/models',
-    color: 'text-indigo-300',
-    bg: 'bg-indigo-500/20',
-    ring: 'ring-indigo-500/30',
+    color: 'text-purple-600',
+    bg: 'bg-purple-100',
+    ring: 'ring-purple-200',
   },
   {
     title: 'API Key 管理',
     description: '管理可复用的系统 API Key，供模型配置统一引用。',
     icon: KeyRound,
     href: '/admin/apikeys',
-    color: 'text-amber-300',
-    bg: 'bg-amber-500/20',
-    ring: 'ring-amber-500/30',
+    color: 'text-violet-600',
+    bg: 'bg-violet-100',
+    ring: 'ring-violet-200',
   },
   {
     title: '用户管理',
     description: '管理用户账户、角色、状态和模型访问权限。',
     icon: Shield,
     href: '/admin/users',
-    color: 'text-emerald-300',
-    bg: 'bg-emerald-500/20',
-    ring: 'ring-emerald-500/30',
+    color: 'text-fuchsia-600',
+    bg: 'bg-fuchsia-100',
+    ring: 'ring-fuchsia-200',
   },
 ]
 
@@ -46,8 +46,8 @@ const navigateTo = (href: string) => {
 <template>
   <div class="space-y-8">
     <div>
-      <h2 class="text-3xl font-bold tracking-tight text-white">系统设置</h2>
-      <p class="text-white/70 mt-2">管理平台的全局配置项。</p>
+      <h2 class="text-3xl font-bold tracking-tight text-gray-900">系统设置</h2>
+      <p class="text-gray-500 mt-2">管理平台的全局配置项。</p>
     </div>
 
     <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -55,15 +55,15 @@ const navigateTo = (href: string) => {
         v-for="group in settingsGroups"
         :key="group.href"
         @click="navigateTo(group.href)"
-        class="group p-6 rounded-2xl bg-white/5 backdrop-blur-md border border-white/15 shadow-xl transition-all hover:bg-white/10 hover:border-white/25 cursor-pointer"
+        class="group p-6 rounded-2xl bg-white border border-gray-200 shadow-sm transition-all hover:shadow-md hover:border-purple-200 cursor-pointer"
       >
         <div :class="['h-12 w-12 rounded-xl flex items-center justify-center mb-4', group.bg, group.ring, group.color]">
           <component :is="group.icon" class="h-6 w-6" />
         </div>
-        <h3 class="text-lg font-semibold text-white mb-2">{{ group.title }}</h3>
-        <p class="text-sm text-white/60">{{ group.description }}</p>
+        <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ group.title }}</h3>
+        <p class="text-sm text-gray-500">{{ group.description }}</p>
         <div class="mt-4">
-          <span class="text-xs text-white/40 group-hover:text-white/70 transition-colors">
+          <span class="text-xs text-gray-400 group-hover:text-purple-600 transition-colors">
             前往配置 →
           </span>
         </div>
