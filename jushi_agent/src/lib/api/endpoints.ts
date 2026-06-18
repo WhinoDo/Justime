@@ -69,4 +69,8 @@ export const API_ENDPOINTS = {
     PROJECT_CHAPTERS: (projectId: string) => `/api/book-analysis/projects/${projectId}/chapters`,
     PROJECT_RUN: (projectId: string) => `/api/book-analysis/projects/${projectId}/run`,
   },
+
+  SPEECH: {
+    TOKEN: '/api/speech/token',
+  },
 } as const
