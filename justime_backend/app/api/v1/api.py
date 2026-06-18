@@ -24,9 +24,21 @@ api_router.include_router(book_analysis.router, prefix="/book-analysis", tags=["
 api_router.include_router(study.router, prefix="/study", tags=["考研学习"])
 api_router.include_router(feishu_webhook.router, prefix="/feishu", tags=["飞书Webhook"])
 
+# 知识库路由 — 可选依赖，导入失败时不阻断启动
+knowledge_available = False
 try:
     from app.api.v1.endpoints import knowledge
+except ImportError as exc:
+    logger.warning(
+        "知识库模块依赖未安装，知识库路由已禁用。若要启用，请安装可选依赖。",
+        exc_info=True,
+    )
 except Exception as exc:
-    logger.warning(f"Knowledge routes disabled during startup: {exc}")
+    logger.error(
+        "导入知识库模块时发生意外错误，知识库路由已禁用: %s",
+        exc,
+        exc_info=True,
+    )
 else:
     api_router.include_router(knowledge.router, prefix="/knowledge", tags=["知识库管理"])
+    knowledge_available = True
