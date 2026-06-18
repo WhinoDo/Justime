@@ -22,6 +22,7 @@ os.environ["ALLOWED_ORIGINS"] = '["http://localhost:3000"]'
 os.environ["TEST_API_KEY_FAST"] = "test-fast-key-placeholder"
 os.environ["TEST_API_KEY_REASONING"] = "test-reasoning-key-placeholder"
 os.environ["TEST_API_KEY_DISABLED"] = "test-disabled-key-placeholder"
+os.environ["ALLOWED_ORIGINS"] = '["http://localhost:3000"]'
 
 
 @pytest.fixture(scope="session")
