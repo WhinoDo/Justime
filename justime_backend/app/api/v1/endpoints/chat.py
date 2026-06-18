@@ -155,7 +155,7 @@ async def get_sessions(
 async def create_session(
     request: CreateSessionRequest,
     current_user: CurrentUser
-) -> Dict[str, str]:
+) -> Dict[str, Any]:
     """创建新会话"""
     # 清理并验证标题
     title = request.title.strip() if request.title else "新会话"
