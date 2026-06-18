@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/useAuth'
-import { JushiBackground } from '@/components/ui/JushiBackground'
+import { JustimeBackground } from '@/components/ui/JustimeBackground'
 
 export default function AgentLayout({
   children,
@@ -22,7 +22,7 @@ export default function AgentLayout({
   if (!user || user.role !== 'admin') {
     return (
       <div className="min-h-screen relative overflow-hidden flex items-center justify-center text-white">
-        <JushiBackground blur="lg" opacity={0.6} />
+        <JustimeBackground blur="lg" opacity={0.6} />
         <div className="relative z-10 text-center space-y-4">
           <ShieldAlert className="w-16 h-16 text-red-500 mx-auto" />
           <h1 className="text-2xl font-bold text-white">访问被拒绝</h1>
@@ -37,7 +37,7 @@ export default function AgentLayout({
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      <JushiBackground blur="lg" opacity={0.6} />
+      <JustimeBackground blur="lg" opacity={0.6} />
 
       {/* 顶部导航 */}
       <div className="relative z-10 bg-black/20 backdrop-blur-xl border-b border-white/10">

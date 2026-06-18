@@ -4,80 +4,83 @@
 
 @layer base {
   :root {
-    /* 白紫主题 - 浅色模式 */
-    --background: 0 0% 100%;
-    /* 纯白背景 */
-    --foreground: 270 10% 10%;
-    /* 深紫灰文字 */
+    /* macOS 浅色主题 — Light Mode */
+    --background: 0 0% 98%;
+    /* macOS 浅灰背景 #fafafa */
+    --foreground: 240 10% 3.9%;
+    /* 主文字 - Primary Label */
 
-    --card: 270 20% 98%;
-    /* 极浅灰紫卡片 */
-    --card-foreground: 270 10% 10%;
+    --card: 0 0% 100%;
+    /* 纯白卡片 */
+    --card-foreground: 240 10% 3.9%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 270 10% 10%;
+    --popover-foreground: 240 10% 3.9%;
 
-    --primary: 270 70% 60%;
-    /* 紫色主色 */
+    --primary: 262 83% 58%;
+    /* 紫色主色 #7c3aed */
     --primary-foreground: 0 0% 100%;
+    /* 白色文字 */
 
-    --secondary: 270 30% 95%;
-    /* 浅紫灰次要色 */
-    --secondary-foreground: 270 30% 20%;
+    --secondary: 240 5% 96%;
+    /* 浅灰色次要 */
+    --secondary-foreground: 240 10% 3.9%;
 
-    --muted: 270 20% 95%;
-    --muted-foreground: 270 10% 50%;
+    --muted: 240 5% 96%;
+    /* 浅灰 */
+    --muted-foreground: 240 3.8% 46.1%;
+    /* Secondary Label */
 
-    --accent: 270 40% 92%;
-    /* 淡紫点缀色 */
-    --accent-foreground: 270 30% 20%;
+    --accent: 262 20% 92%;
+    /* 淡紫强调色 */
+    --accent-foreground: 262 60% 40%;
 
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 270 15% 88%;
-    /* 浅紫灰边框 */
-    --input: 270 15% 88%;
-    --ring: 270 70% 60%;
+    --border: 240 6% 90%;
+    /* 极细淡色边框 */
+    --input: 240 6% 90%;
+    --ring: 262 83% 58%;
     /* 紫色聚焦环 */
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
+    /* macOS 小圆角 8px */
   }
 
   .dark {
-    /* 白紫主题 - 深色模式 (深紫背景，浅紫文字) */
-    --background: 270 50% 6%;
-    /* 深紫黑背景 */
-    --foreground: 270 20% 95%;
-    /* 浅紫白文字 */
+    /* macOS 深色主题 — Dark Mode */
+    --background: 240 10% 3.9%;
+    /* 深色背景 */
+    --foreground: 0 0% 95%;
+    /* 浅色文字 */
 
-    --card: 270 40% 10%;
-    /* 深紫卡片 */
-    --card-foreground: 270 20% 95%;
+    --card: 240 6% 10%;
+    /* 深色卡片 */
+    --card-foreground: 0 0% 95%;
 
-    --popover: 270 40% 10%;
-    --popover-foreground: 270 20% 95%;
+    --popover: 240 6% 10%;
+    --popover-foreground: 0 0% 95%;
 
-    --primary: 270 70% 65%;
-    /* 亮紫色主色 */
+    --primary: 262 83% 68%;
+    /* 暗色下稍亮的紫色 */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 270 30% 15%;
-    --secondary-foreground: 270 20% 90%;
+    --secondary: 240 4% 16%;
+    --secondary-foreground: 0 0% 95%;
 
-    --muted: 270 25% 18%;
-    --muted-foreground: 270 10% 60%;
+    --muted: 240 4% 16%;
+    --muted-foreground: 240 5% 65%;
 
-    --accent: 270 30% 18%;
-    --accent-foreground: 270 20% 90%;
+    --accent: 262 30% 20%;
+    --accent-foreground: 262 70% 75%;
 
-    --destructive: 0 70% 35%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 270 25% 18%;
-    --input: 270 25% 18%;
-    --ring: 270 70% 65%;
-    /* 亮紫色聚焦环 */
+    --border: 240 4% 16%;
+    --input: 240 4% 16%;
+    --ring: 262 83% 58%;
   }
 }
 
@@ -129,7 +132,7 @@
 
 /* 任务卡片 */
 .task-card {
-  @apply rounded-xl border bg-card p-6 shadow-sm;
+  @apply rounded-[10px] border bg-card p-6 shadow-sm;
   @apply hover:shadow-md transition-all duration-200;
 
   .dark & {
@@ -158,7 +161,7 @@
 
 /* 番茄钟计时器 */
 .pomodoro-timer {
-  @apply flex flex-col items-center gap-6 rounded-xl border bg-card;
+  @apply flex flex-col items-center gap-6 rounded-[10px] border bg-card;
   @apply p-8 shadow-sm;
 
   .dark & {
@@ -168,10 +171,10 @@
 
 .time-display {
   @apply text-5xl font-bold tabular-nums text-transparent bg-clip-text;
-  @apply bg-gradient-to-r from-purple-600 to-violet-600;
+  @apply bg-gradient-to-r from-purple-600 to-blue-600;
 
   .dark & {
-    @apply from-purple-400 to-violet-400;
+    @apply from-purple-400 to-blue-400;
   }
 }
 
