@@ -16,7 +16,7 @@ const goToAdmin = () => {
 
 <template>
   <div class="min-h-screen relative overflow-hidden flex flex-col items-center justify-center">
-    <div class="absolute inset-0 bg-gradient-to-br from-purple-50 via-white to-purple-100"></div>
+    <div class="absolute inset-0 bg-gradient-to-br from-purple-50 via-white to-indigo-50 dark:from-[hsl(260_25%_6%)] dark:via-[hsl(260_20%_10%)] dark:to-[hsl(260_25%_8%)]"></div>
     <div class="relative z-10 text-center space-y-6">
       <h1 class="text-4xl font-bold text-gray-900">矩时 Agent</h1>
       <p class="text-gray-500">Vue 3 版本</p>

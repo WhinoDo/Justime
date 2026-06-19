@@ -12,7 +12,7 @@ const goToChat = () => {
 
 <template>
   <div class="min-h-screen relative overflow-hidden flex flex-col">
-    <div class="absolute inset-0 bg-gradient-to-br from-purple-50 via-white to-purple-100"></div>
+    <div class="absolute inset-0 bg-gradient-to-br from-purple-50 via-white to-indigo-50 dark:from-[hsl(260_25%_6%)] dark:via-[hsl(260_20%_10%)] dark:to-[hsl(260_25%_8%)]"></div>
     <div class="relative z-10 p-8">
       <div class="max-w-7xl mx-auto">
         <h1 class="text-3xl font-bold mb-4 text-gray-900">仪表盘</h1>
