@@ -33,7 +33,7 @@ const goHome = () => {
     v-if="isAccessDenied"
     class="min-h-screen relative overflow-hidden flex items-center justify-center"
   >
-    <div class="absolute inset-0 bg-gradient-to-br from-purple-50 via-white to-purple-100"></div>
+    <div class="absolute inset-0 bg-gradient-to-br from-purple-50 via-white to-indigo-50 dark:from-[hsl(260_25%_6%)] dark:via-[hsl(260_20%_10%)] dark:to-[hsl(260_25%_8%)]"></div>
     <div class="relative z-10 text-center space-y-4">
       <ShieldAlert class="w-16 h-16 text-red-500 mx-auto" />
       <h1 class="text-2xl font-bold text-gray-900">访问被拒绝</h1>
@@ -52,7 +52,7 @@ const goHome = () => {
     v-else
     class="min-h-screen relative overflow-hidden font-sans flex"
   >
-    <div class="absolute inset-0 bg-gradient-to-br from-purple-50 via-white to-purple-100"></div>
+    <div class="absolute inset-0 bg-gradient-to-br from-purple-50 via-white to-indigo-50 dark:from-[hsl(260_25%_6%)] dark:via-[hsl(260_20%_10%)] dark:to-[hsl(260_25%_8%)]"></div>
 
     <!-- Sidebar -->
     <AdminSidebar :is-open="isSidebarOpen" @toggle="toggleSidebar" />

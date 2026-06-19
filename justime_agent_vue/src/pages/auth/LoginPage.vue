@@ -35,7 +35,7 @@ const goToRegister = () => {
 
 <template>
   <div class="min-h-screen relative overflow-hidden flex items-center justify-center">
-    <div class="absolute inset-0 bg-gradient-to-br from-purple-50 via-white to-purple-100"></div>
+    <div class="absolute inset-0 bg-gradient-to-br from-purple-50 via-white to-indigo-50 dark:from-[hsl(260_25%_6%)] dark:via-[hsl(260_20%_10%)] dark:to-[hsl(260_25%_8%)]"></div>
     <div class="relative z-10 w-full max-w-md mx-4">
       <div class="bg-white backdrop-blur-xl border border-purple-100 shadow-lg rounded-2xl p-8">
         <h1 class="text-2xl font-bold text-center mb-6 text-gray-900">登录</h1>
