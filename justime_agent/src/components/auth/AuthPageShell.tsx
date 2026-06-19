@@ -80,7 +80,7 @@ export function AuthPageShell({ title, subtitle, children, footer }: AuthPageShe
 
           <div className="text-center">
             <div className="mb-6 flex items-center justify-center">
-              <div className="animate-brand-icon flex h-20 w-20 items-center justify-center rounded-2xl border border-white/30 bg-gradient-to-br from-orange-400/90 to-yellow-600/90 shadow-xl backdrop-blur-md transition-all duration-300 hover:rotate-6">
+              <div className="animate-brand-icon flex h-20 w-20 items-center justify-center rounded-2xl border border-white/30 bg-gradient-to-br from-purple-400/90 to-indigo-600/90 shadow-xl backdrop-blur-md transition-all duration-300 hover:rotate-6">
                 <Sparkles className="h-10 w-10 animate-pulse text-white" />
               </div>
             </div>

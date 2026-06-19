@@ -4,43 +4,42 @@
 
 @layer base {
   :root {
-    /* macOS 浅色主题 — Light Mode */
-    --background: 0 0% 98%;
-    /* macOS 浅灰背景 #fafafa */
-    --foreground: 240 10% 3.9%;
-    /* 主文字 - Primary Label */
+    /* 白紫主题 — Light Mode */
+    --background: 0 0% 100%;
+    /* 纯白底 */
+    --foreground: 260 25% 10%;
+    /* 深紫黑文字 */
 
     --card: 0 0% 100%;
     /* 纯白卡片 */
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 260 25% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
+    --popover-foreground: 260 25% 10%;
 
     --primary: 262 83% 58%;
-    /* 紫色主色 #7c3aed */
+    /* 靛紫主色 */
     --primary-foreground: 0 0% 100%;
     /* 白色文字 */
 
-    --secondary: 240 5% 96%;
-    /* 浅灰色次要 */
-    --secondary-foreground: 240 10% 3.9%;
+    --secondary: 260 30% 96%;
+    /* 淡紫灰次要 */
+    --secondary-foreground: 260 25% 10%;
 
-    --muted: 240 5% 96%;
-    /* 浅灰 */
-    --muted-foreground: 240 3.8% 46.1%;
-    /* Secondary Label */
+    --muted: 260 20% 96%;
+    /* 淡紫弱化色 */
+    --muted-foreground: 260 10% 46%;
 
-    --accent: 262 20% 92%;
+    --accent: 260 30% 93%;
     /* 淡紫强调色 */
-    --accent-foreground: 262 60% 40%;
+    --accent-foreground: 260 25% 10%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 240 6% 90%;
-    /* 极细淡色边框 */
-    --input: 240 6% 90%;
+    --border: 260 20% 90%;
+    /* 淡紫边框 */
+    --input: 260 20% 90%;
     --ring: 262 83% 58%;
     /* 紫色聚焦环 */
 
@@ -49,37 +48,37 @@
   }
 
   .dark {
-    /* macOS 深色主题 — Dark Mode */
-    --background: 240 10% 3.9%;
-    /* 深色背景 */
-    --foreground: 0 0% 95%;
-    /* 浅色文字 */
+    /* 深紫黑主题 — Dark Mode */
+    --background: 260 25% 6%;
+    /* 深紫黑底 */
+    --foreground: 260 20% 98%;
+    /* 近白文字 */
 
-    --card: 240 6% 10%;
-    /* 深色卡片 */
-    --card-foreground: 0 0% 95%;
+    --card: 260 20% 10%;
+    /* 深紫卡片 */
+    --card-foreground: 260 20% 98%;
 
-    --popover: 240 6% 10%;
-    --popover-foreground: 0 0% 95%;
+    --popover: 260 20% 10%;
+    --popover-foreground: 260 20% 98%;
 
-    --primary: 262 83% 68%;
-    /* 暗色下稍亮的紫色 */
+    --primary: 262 83% 58%;
+    /* 靛紫主色 */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 4% 16%;
-    --secondary-foreground: 0 0% 95%;
+    --secondary: 260 20% 14%;
+    --secondary-foreground: 260 20% 98%;
 
-    --muted: 240 4% 16%;
-    --muted-foreground: 240 5% 65%;
+    --muted: 260 15% 14%;
+    --muted-foreground: 260 10% 60%;
 
-    --accent: 262 30% 20%;
-    --accent-foreground: 262 70% 75%;
+    --accent: 260 25% 15%;
+    --accent-foreground: 260 20% 98%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 240 4% 16%;
-    --input: 240 4% 16%;
+    --border: 260 20% 15%;
+    --input: 260 20% 15%;
     --ring: 262 83% 58%;
   }
 }
@@ -171,10 +170,10 @@
 
 .time-display {
   @apply text-5xl font-bold tabular-nums text-transparent bg-clip-text;
-  @apply bg-gradient-to-r from-purple-600 to-blue-600;
+  @apply bg-gradient-to-r from-purple-600 to-indigo-600;
 
   .dark & {
-    @apply from-purple-400 to-blue-400;
+    @apply from-purple-400 to-indigo-400;
   }
 }
 

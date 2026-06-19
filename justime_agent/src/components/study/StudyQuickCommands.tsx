@@ -10,7 +10,7 @@ interface StudyQuickCommandsProps {
 const commands = [
   { icon: CalendarDays, label: '制定学习计划', prompt: '帮我制定一份考研学习计划', color: 'text-blue-300' },
   { icon: BookOpen, label: '查看今日任务', prompt: '今天有哪些学习任务？', color: 'text-emerald-300' },
-  { icon: RotateCcw, label: '复习提醒', prompt: '哪些知识点需要复习？', color: 'text-amber-300' },
+  { icon: RotateCcw, label: '复习提醒', prompt: '哪些知识点需要复习？', color: 'text-violet-300' },
   { icon: BarChart3, label: '进度分析', prompt: '分析一下我的学习进度', color: 'text-purple-300' },
 ]
 

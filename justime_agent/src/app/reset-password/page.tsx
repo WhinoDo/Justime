@@ -27,7 +27,7 @@ function ResetPasswordContent() {
           {/* 品牌标识 */}
           <div className="text-center">
             <div className="flex items-center justify-center mb-6">
-              <div className="w-20 h-20 bg-gradient-to-br from-orange-400/90 to-yellow-600/90 rounded-2xl shadow-xl flex items-center justify-center transform hover:rotate-6 transition-all duration-300 border border-white/30 backdrop-blur-md">
+              <div className="w-20 h-20 bg-gradient-to-br from-purple-400/90 to-indigo-600/90 rounded-2xl shadow-xl flex items-center justify-center transform hover:rotate-6 transition-all duration-300 border border-white/30 backdrop-blur-md">
                 <Sparkles className="h-10 w-10 text-white animate-pulse" />
               </div>
             </div>

@@ -133,7 +133,7 @@ export function RagReferencePreviewPanel({
               ) : (
                 <div className="space-y-2">
                   {fullContentState?.truncated && (
-                    <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+                    <div className="rounded-md border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-700 dark:border-violet-800 dark:bg-violet-900/20 dark:text-violet-300">
                       内容过长，当前仅显示前 {fullContentState.maxChars} 字符（原文 {fullContentState.charCount} 字符）。
                     </div>
                   )}

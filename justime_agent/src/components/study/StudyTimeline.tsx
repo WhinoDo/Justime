@@ -12,7 +12,7 @@ interface StudyTimelineProps {
 const subjectColors: Record<Subject, string> = {
   '数学': 'bg-blue-500/30 text-blue-200',
   '英语': 'bg-emerald-500/30 text-emerald-200',
-  '政治': 'bg-amber-500/30 text-amber-200',
+  '政治': 'bg-violet-500/30 text-violet-200',
   '专业课': 'bg-purple-500/30 text-purple-200',
 }
 

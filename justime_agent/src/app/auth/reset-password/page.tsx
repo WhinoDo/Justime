@@ -51,7 +51,7 @@ function ResetPasswordContent() {
           </Alert>
           <div className="text-center">
             <Link href="/auth/forgot-password">
-              <Button variant="link" className="text-orange-300 hover:text-orange-200">
+              <Button variant="link" className="text-violet-300 hover:text-violet-200">
                 重新申请重置链接
               </Button>
             </Link>

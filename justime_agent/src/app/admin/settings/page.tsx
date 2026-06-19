@@ -20,9 +20,9 @@ export default function AdminSettingsPage() {
             description: '管理可复用的系统 API Key，供模型配置统一引用。',
             icon: KeyRound,
             href: '/admin/apikeys',
-            color: 'text-amber-300',
-            bg: 'bg-amber-500/20',
-            ring: 'ring-amber-500/30',
+            color: 'text-violet-300',
+            bg: 'bg-violet-500/20',
+            ring: 'ring-violet-500/30',
         },
         {
             title: '用户管理',

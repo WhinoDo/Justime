@@ -111,9 +111,9 @@ export const ChatHeader = memo(function ChatHeader({
                 </Link>
               ) : (
                 <Link href="/model-config?from=/chat">
-                  <div className="flex cursor-pointer items-center gap-1 rounded-md border border-amber-200/50 bg-amber-50 px-2 py-1.5 transition-colors dark:bg-amber-900/20">
-                    <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
-                    <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                  <div className="flex cursor-pointer items-center gap-1 rounded-md border border-violet-200/50 bg-violet-50 px-2 py-1.5 transition-colors dark:bg-violet-900/20">
+                    <AlertTriangle className="h-3.5 w-3.5 text-violet-500" />
+                    <span className="text-xs font-medium text-violet-700 dark:text-violet-300">
                       未配置模型
                     </span>
                   </div>

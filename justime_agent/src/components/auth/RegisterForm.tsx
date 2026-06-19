@@ -185,7 +185,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
                 placeholder="请输入邮箱地址"
                 value={formData.email}
                 onChange={(e) => handleInputChange('email', e.target.value)}
-                className="pl-10 bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-orange-300 focus-visible:border-orange-300/70"
+                className="pl-10 bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-violet-300 focus-visible:border-violet-300/70"
                 disabled={isSubmitting}
               />
             </div>
@@ -202,7 +202,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
                 placeholder="请输入用户名"
                 value={formData.username}
                 onChange={(e) => handleInputChange('username', e.target.value)}
-                className="pl-10 bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-orange-300 focus-visible:border-orange-300/70"
+                className="pl-10 bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-violet-300 focus-visible:border-violet-300/70"
                 disabled={isSubmitting}
               />
             </div>
@@ -222,7 +222,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
                 placeholder="请输入显示名称"
                 value={formData.displayName}
                 onChange={(e) => handleInputChange('displayName', e.target.value)}
-                className="pl-10 bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-orange-300 focus-visible:border-orange-300/70"
+                className="pl-10 bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-violet-300 focus-visible:border-violet-300/70"
                 disabled={isSubmitting}
               />
             </div>
@@ -239,7 +239,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
                 placeholder="请输入手机号"
                 value={formData.phone}
                 onChange={(e) => handleInputChange('phone', e.target.value)}
-                className="pl-10 bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-orange-300 focus-visible:border-orange-300/70"
+                className="pl-10 bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-violet-300 focus-visible:border-violet-300/70"
                 disabled={isSubmitting}
               />
             </div>
@@ -256,7 +256,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
                 placeholder="请输入密码（至少6个字符）"
                 value={formData.password}
                 onChange={(e) => handleInputChange('password', e.target.value)}
-                className="pl-10 pr-10 bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-orange-300 focus-visible:border-orange-300/70"
+                className="pl-10 pr-10 bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-violet-300 focus-visible:border-violet-300/70"
                 disabled={isSubmitting}
               />
               <Button
@@ -283,7 +283,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
                 placeholder="请再次输入密码"
                 value={formData.confirmPassword}
                 onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                className="pl-10 pr-10 bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-orange-300 focus-visible:border-orange-300/70"
+                className="pl-10 pr-10 bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-violet-300 focus-visible:border-violet-300/70"
                 disabled={isSubmitting}
               />
               <Button
@@ -302,7 +302,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
           {/* 注册按钮 */}
           <Button
             type="submit"
-            className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white border-0"
+            className="w-full bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white border-0"
             disabled={isSubmitting || isLoading}
           >
             {isSubmitting ? (
@@ -333,7 +333,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
             已有账户？
             <Button
               variant="link"
-              className="p-0 h-auto ml-1 text-orange-300 hover:text-orange-200"
+              className="p-0 h-auto ml-1 text-violet-300 hover:text-violet-200"
               onClick={onSwitchToLogin}
             >
               立即登录
@@ -344,11 +344,11 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
         {/* 服务条款 */}
         <div className="text-xs text-white/65 text-center">
           注册即表示您同意我们的
-          <Button variant="link" className="p-0 h-auto text-xs text-orange-300 hover:text-orange-200 ml-1">
+          <Button variant="link" className="p-0 h-auto text-xs text-violet-300 hover:text-violet-200 ml-1">
             服务条款
           </Button>
           和
-          <Button variant="link" className="p-0 h-auto text-xs text-orange-300 hover:text-orange-200 ml-1">
+          <Button variant="link" className="p-0 h-auto text-xs text-violet-300 hover:text-violet-200 ml-1">
             隐私政策
           </Button>
         </div>

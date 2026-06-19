@@ -72,8 +72,8 @@ export function ProgressOverview({ stats, loading }: ProgressOverviewProps) {
       label: '连续学习天数',
       value: stats?.streakDays ?? 0,
       unit: '天',
-      color: 'text-orange-300',
-      bgColor: 'bg-orange-500/20',
+      color: 'text-violet-300',
+      bgColor: 'bg-violet-500/20',
     },
     {
       icon: BookOpen,

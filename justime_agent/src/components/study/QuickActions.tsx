@@ -31,8 +31,8 @@ const actions: QuickAction[] = [
     icon: BarChart3,
     label: '查看进度',
     href: '/progress',
-    color: 'text-amber-300',
-    bgColor: 'bg-amber-500/20',
+    color: 'text-violet-300',
+    bgColor: 'bg-violet-500/20',
   },
   {
     icon: MessageSquare,

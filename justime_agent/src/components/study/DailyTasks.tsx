@@ -12,7 +12,7 @@ interface DailyTasksProps {
 
 const taskTypeConfig: Record<string, { label: string; icon: typeof BookOpen; color: string }> = {
   study: { label: '学习', icon: BookOpen, color: 'text-blue-300' },
-  review: { label: '复习', icon: RotateCcw, color: 'text-amber-300' },
+  review: { label: '复习', icon: RotateCcw, color: 'text-violet-300' },
   practice: { label: '练习', icon: PenTool, color: 'text-emerald-300' },
   mock_exam: { label: '模拟考', icon: FileCheck, color: 'text-rose-300' },
 }
@@ -20,7 +20,7 @@ const taskTypeConfig: Record<string, { label: string; icon: typeof BookOpen; col
 const subjectColors: Record<Subject, string> = {
   '数学': 'bg-blue-500/20 text-blue-200 border-blue-400/30',
   '英语': 'bg-emerald-500/20 text-emerald-200 border-emerald-400/30',
-  '政治': 'bg-amber-500/20 text-amber-200 border-amber-400/30',
+  '政治': 'bg-violet-500/20 text-violet-200 border-violet-400/30',
   '专业课': 'bg-purple-500/20 text-purple-200 border-purple-400/30',
 }
 

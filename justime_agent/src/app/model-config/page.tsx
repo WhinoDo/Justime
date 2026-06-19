@@ -413,7 +413,7 @@ function ModelConfigContent() {
                     <Button
                       type="button" size="sm" variant="outline"
                       onClick={() => setUsageScope('all')}
-                      className={`h-8 px-3 border-white/15 text-xs ${usageScope === 'all' ? 'bg-amber-500/25 text-white border-amber-400/50' : 'bg-white/5 text-white/70 hover:bg-white/10'}`}
+                      className={`h-8 px-3 border-white/15 text-xs ${usageScope === 'all' ? 'bg-violet-500/25 text-white border-violet-400/50' : 'bg-white/5 text-white/70 hover:bg-white/10'}`}
                     >
                       包含Agent总计
                     </Button>

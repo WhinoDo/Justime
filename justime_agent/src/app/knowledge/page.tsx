@@ -525,7 +525,7 @@ export default function KnowledgeBasePage() {
                     </div>
 
                     {!previewState.isPdf && previewState.truncated && !previewState.loading && !previewState.error && (
-                        <p className="text-xs text-amber-300/90">
+                        <p className="text-xs text-violet-300/90">
                             文档较长，当前仅展示前 {previewState.maxChars.toLocaleString()} 字内容（原文 {previewState.charCount.toLocaleString()} 字）。
                         </p>
                     )}

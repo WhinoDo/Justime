@@ -36,7 +36,7 @@ export function AgentToolList({ tools, loading, error }: AgentToolListProps) {
               key={tool.name}
               className="flex items-start gap-3 p-3 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
             >
-              <Wrench className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+              <Wrench className="w-4 h-4 text-violet-400 mt-0.5 shrink-0" />
               <div>
                 <p className="text-white font-medium text-sm">{tool.name}</p>
                 <p className="text-white/50 text-xs mt-0.5">{tool.description}</p>

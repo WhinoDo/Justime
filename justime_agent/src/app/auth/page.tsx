@@ -67,7 +67,7 @@ function AuthContent() {
       <AuthStateShell>
         <div className="text-center">
           <div className="animate-pulse">
-            <Sparkles className="mx-auto mb-4 h-12 w-12 text-amber-200" />
+            <Sparkles className="mx-auto mb-4 h-12 w-12 text-violet-200" />
           </div>
           <p className="text-white/65">已登录，正在跳转...</p>
         </div>
@@ -84,7 +84,7 @@ function AuthContent() {
           <div className="mt-2 text-center">
             <Button
               variant="link"
-              className="text-white hover:text-orange-200"
+              className="text-white hover:text-violet-200"
               onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
             >
               {mode === 'login' ? '没有账户？点击注册' : '已有账户？点击登录'}

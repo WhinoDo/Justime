@@ -77,7 +77,7 @@ export default function ProgressPage() {
             </Link>
             <div>
               <h1 className="text-xl font-bold text-white flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-amber-300" />
+                <BarChart3 className="h-5 w-5 text-violet-300" />
                 进度统计
               </h1>
             </div>
@@ -85,7 +85,7 @@ export default function ProgressPage() {
 
           <div className="flex items-center justify-end gap-4 text-sm bg-white/5 sm:bg-transparent p-2 sm:p-0 rounded-xl border border-white/5 sm:border-0">
             {stats?.streakDays != null && (
-              <div className="flex items-center gap-1.5 text-orange-300">
+              <div className="flex items-center gap-1.5 text-violet-300">
                 <Flame className="h-4 w-4" />
                 <span>{stats.streakDays} 天</span>
               </div>
