@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { TimeUtils, dayjs } from '@/lib/utils/time'
+import { useChatSubmitKey } from '@/hooks/useChatSubmitKey'
 import { Clock, Calendar, Zap, ArrowRight } from 'lucide-react'
 
 interface TimeAwareTaskInputProps {
@@ -43,7 +44,7 @@ export function TimeAwareTaskInput({ onTaskCreate, className }: TimeAwareTaskInp
 
   const handleQuickTimeInsert = (timeSlot: { label: string; startTime: string; endTime: string }) => {
     const timeText = `${timeSlot.label}(${TimeUtils.formatForDisplay(timeSlot.startTime, 'MM月DD日 HH:mm')} - ${TimeUtils.formatForDisplay(timeSlot.endTime, 'HH:mm')})`
-    
+
     if (taskInput.trim()) {
       setTaskInput(prev => `${prev} ${timeText}`)
     } else {
@@ -58,12 +59,10 @@ export function TimeAwareTaskInput({ onTaskCreate, className }: TimeAwareTaskInp
     }
   }
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSubmit()
-    }
-  }
+  const { handleKeyDown } = useChatSubmitKey({
+    onSubmit: handleSubmit,
+    preference: 'enter',
+  })
 
   const getTimeOfDayColor = (timeOfDay: string) => {
     switch (timeOfDay) {
@@ -127,7 +126,7 @@ export function TimeAwareTaskInput({ onTaskCreate, className }: TimeAwareTaskInp
             <Input
               value={taskInput}
               onChange={(e) => setTaskInput(e.target.value)}
-              onKeyPress={handleKeyPress}
+              onKeyDown={handleKeyDown}
               placeholder="描述你的任务，例如：明天上午复习数学，或者2小时后开会..."
               className="flex-1"
             />

@@ -35,7 +35,7 @@ export interface ChatInputAreaProps {
   /** Callback when input value changes */
   onInputChange: (value: string) => void
   /** Callback for keyboard events */
-  onKeyPress: (e: React.KeyboardEvent) => void
+  onKeyDown: (e: React.KeyboardEvent) => void
   /** Callback when send button is clicked */
   onSend: () => void
   /** Callback when web search is toggled */
@@ -44,6 +44,8 @@ export interface ChatInputAreaProps {
   onModelChange: (modelId: string) => void
   /** Ref for the textarea element */
   textareaRef?: React.RefObject<HTMLTextAreaElement>
+  /** Human-readable shortcut hint for submit (e.g. "↵ / ⌘↵") */
+  shortcutHint?: string
   /** RAG preview panel state */
   previewOpen?: boolean
   selectedReference?: RagReference | null
@@ -64,11 +66,12 @@ export const ChatInputArea = memo(function ChatInputArea({
   availableModels,
   modelError,
   onInputChange,
-  onKeyPress,
+  onKeyDown,
   onSend,
   onToggleWebSearch,
   onModelChange,
   textareaRef,
+  shortcutHint,
   previewOpen = false,
   selectedReference,
   activeTab = 'snippets',
@@ -109,8 +112,9 @@ export const ChatInputArea = memo(function ChatInputArea({
             ref={textareaRef}
             value={input}
             onChange={(e) => onInputChange(e.target.value)}
-            onKeyPress={onKeyPress}
+            onKeyDown={onKeyDown}
             placeholder={`输入 "@" 唤起常用语，或粘贴代码快速提问`}
+            aria-keyshortcuts="Enter Control+Enter Meta+Enter"
             className="h-32 resize-none overflow-y-auto border-0 bg-transparent px-5 py-4 text-base text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-0 focus-visible:ring-offset-0"
             disabled={isLoading}
           />
@@ -170,7 +174,7 @@ export const ChatInputArea = memo(function ChatInputArea({
         </div>
         <div className="mt-2 text-center">
           <p className="text-xs text-muted-foreground/60">
-            内容由 AI 生成，请仔细甄别
+            内容由 AI 生成，请仔细甄别 · <kbd className="inline-flex items-center gap-0.5 rounded border border-border px-1 py-0.5 font-mono text-[10px] leading-none">{shortcutHint || '↵'}</kbd>
           </p>
         </div>
       </div>

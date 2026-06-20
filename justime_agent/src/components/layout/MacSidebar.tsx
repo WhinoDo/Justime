@@ -31,6 +31,12 @@ const navItems: NavItem[] = [
   { label: '设置', href: '/profile', icon: Settings },
 ]
 
+/** Keyboard shortcut hints for nav items that have global shortcuts */
+const navShortcuts: Record<string, string> = {
+  '/chat': 'Meta+n',
+  '/profile': 'Meta+,',
+}
+
 interface MacSidebarProps {
   collapsed: boolean
   onToggleCollapse: () => void
@@ -101,6 +107,7 @@ export function MacSidebar({ collapsed, onToggleCollapse, mobileOpen, onMobileCl
                   collapsed && 'justify-center px-0'
                 )}
                 title={collapsed ? item.label : undefined}
+                aria-keyshortcuts={navShortcuts[item.href] || undefined}
               >
                 <Icon className="h-4 w-4 shrink-0" strokeWidth={active ? 2.5 : 2} />
                 {!collapsed && (
