@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { MacTitleBar } from '@/components/layout/MacTitleBar'
 import { MacSidebar } from '@/components/layout/MacSidebar'
+import { useDefaultGlobalShortcuts } from '@/hooks/useGlobalShortcuts'
 import { Menu } from 'lucide-react'
 
 interface MacAppShellProps {
@@ -18,6 +19,9 @@ export function MacAppShell({ children }: MacAppShellProps) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  // Register global keyboard shortcuts (Cmd+K, Cmd+N, Cmd+,)
+  useDefaultGlobalShortcuts()
 
   // Close mobile sidebar on route change
   useEffect(() => {

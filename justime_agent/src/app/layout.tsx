@@ -4,6 +4,8 @@ import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/toaster";
 import { PWAInstallBanner } from "@/components/PWAInstallBanner";
 import { MacAppShell } from "@/components/layout/MacAppShell";
+import { MobileViewportGuard } from "@/components/MobileViewportGuard";
+import { KeyboardShortcutsHelp } from "@/components/KeyboardShortcutsHelp";
 
 export const metadata: Metadata = {
   title: "矩时 - 焦虑缓解与任务规划助手",
@@ -19,8 +21,6 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "white" },
     { media: "(prefers-color-scheme: dark)", color: "black" },
@@ -42,6 +42,8 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <MacAppShell>{children}</MacAppShell>
+          <MobileViewportGuard />
+          <KeyboardShortcutsHelp />
           <Toaster />
           <PWAInstallBanner />
         </ThemeProvider>
