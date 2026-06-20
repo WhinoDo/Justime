@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { JUSTIME_NEW_CHAT_EVENT } from '@/lib/constants/events'
 
 export interface GlobalShortcutActions {
   /** Cmd/Ctrl+K — open command palette / search */
@@ -22,7 +23,10 @@ export interface GlobalShortcutActions {
  * corresponding UI elements (see MacSidebar, chat page, etc).
  */
 export function useGlobalShortcuts(actions: GlobalShortcutActions = {}) {
-  const router = useRouter()
+  // Store actions in a ref so the keydown handler never needs to
+  // re-register when the parent re-renders with new action callbacks.
+  const actionsRef = useRef(actions)
+  actionsRef.current = actions
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -38,22 +42,22 @@ export function useGlobalShortcuts(actions: GlobalShortcutActions = {}) {
         case 'k':
         case 'K':
           e.preventDefault()
-          actions.onSearch?.()
+          actionsRef.current.onSearch?.()
           break
 
         case 'n':
         case 'N':
           e.preventDefault()
-          actions.onNewChat?.()
+          actionsRef.current.onNewChat?.()
           break
 
         case ',':
           e.preventDefault()
-          actions.onSettings?.()
+          actionsRef.current.onSettings?.()
           break
       }
     },
-    [actions]
+    [] // Stable — reads actions from ref
   )
 
   useEffect(() => {
@@ -79,7 +83,7 @@ export function useDefaultGlobalShortcuts() {
       // Navigate to a fresh chat session
       router.push('/chat')
       // Dispatch custom event so ChatInterface can reset its state
-      window.dispatchEvent(new CustomEvent('justime:new-chat'))
+      window.dispatchEvent(new CustomEvent(JUSTIME_NEW_CHAT_EVENT))
     },
     onSettings: () => {
       router.push('/profile')

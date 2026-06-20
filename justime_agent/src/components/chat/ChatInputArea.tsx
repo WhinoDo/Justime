@@ -114,7 +114,7 @@ export const ChatInputArea = memo(function ChatInputArea({
             onChange={(e) => onInputChange(e.target.value)}
             onKeyDown={onKeyDown}
             placeholder={`输入 "@" 唤起常用语，或粘贴代码快速提问`}
-            aria-keyshortcuts="Enter Meta+Enter"
+            aria-keyshortcuts="Enter Control+Enter Meta+Enter"
             className="h-32 resize-none overflow-y-auto border-0 bg-transparent px-5 py-4 text-base text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-0 focus-visible:ring-offset-0"
             disabled={isLoading}
           />

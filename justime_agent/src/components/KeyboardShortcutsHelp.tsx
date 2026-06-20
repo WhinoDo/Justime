@@ -1,24 +1,34 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-
-const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform)
-
-const mod = isMac ? '⌘' : 'Ctrl+'
-
-const shortcuts = [
-  { keys: `${mod}K`, description: '搜索 / 命令面板' },
-  { keys: `${mod}N`, description: '新建对话' },
-  { keys: `${mod},`, description: '打开设置' },
-  { keys: `${mod}Enter`, description: '发送消息', desktopOnly: true },
-  { keys: 'Enter', description: '发送消息' },
-  { keys: 'Shift+Enter', description: '换行' },
-  { keys: 'Esc', description: '关闭弹窗' },
-]
 
 export function KeyboardShortcutsHelp() {
   const [open, setOpen] = useState(false)
+
+  // Compute platform info inside the component (not at module level)
+  // to avoid SSR hydration mismatches — on the server navigator is
+  // unavailable so isMac defaults to false, while on a Mac client
+  // it would be true, causing a content mismatch.
+  const isMac = useMemo(
+    () => typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform),
+    []
+  )
+
+  const mod = isMac ? '⌘' : 'Ctrl+'
+
+  const shortcuts = useMemo(
+    () => [
+      { keys: `${mod}K`, description: '搜索 / 命令面板' },
+      { keys: `${mod}N`, description: '新建对话' },
+      { keys: `${mod},`, description: '打开设置' },
+      { keys: `${mod}Enter`, description: '发送消息', desktopOnly: true },
+      { keys: 'Enter', description: '发送消息' },
+      { keys: 'Shift+Enter', description: '换行' },
+      { keys: 'Esc', description: '关闭弹窗' },
+    ],
+    [mod]
+  )
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     // Toggle with "?" key (when not in an input field)
