@@ -74,17 +74,19 @@ function ChatPageInner() {
 
         {/* 右侧对话区域 */}
         <div className="flex min-w-0 flex-1 flex-col bg-white dark:bg-gray-950">
-          <ChatInterface
-            sessionId={sessionId}
-            onSessionChange={setSessionId}
-          />
-          {isStudyMode && showStudyCommands && (
-            <div className="border-t border-border bg-muted/30 p-4">
-              <StudyQuickCommands
-                onCommand={() => setShowStudyCommands(false)}
-              />
-            </div>
-          )}
+          <div className="mx-auto w-full max-w-5xl flex-1 flex flex-col">
+            <ChatInterface
+              sessionId={sessionId}
+              onSessionChange={setSessionId}
+            />
+            {isStudyMode && showStudyCommands && (
+              <div className="border-t border-border bg-muted/30 p-4">
+                <StudyQuickCommands
+                  onCommand={() => setShowStudyCommands(false)}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -340,7 +340,7 @@ function ModelConfigContent() {
                   <div
                     key={config.id}
                     onClick={() => handleSelectModel(config.id)}
-                    className={`relative p-4 rounded-2xl border cursor-pointer transition-all ${isSelected
+                    className={`relative p-4 rounded-2xl border cursor-pointer transition-all hover-lift ${isSelected
                       ? 'bg-sky-500/20 border-sky-300/50 ring-1 ring-sky-300/40 shadow-lg'
                       : config.isActive
                         ? 'bg-indigo-500/20 border-indigo-400/30 shadow-lg'

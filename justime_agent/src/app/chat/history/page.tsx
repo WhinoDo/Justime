@@ -164,7 +164,7 @@ export default function ChatHistoryPage() {
                   </div>
 
                   <Button
-                    className="w-full h-12 bg-white text-gray-900 hover:bg-white/90 border-0 font-bold rounded-xl shadow-lg mt-4"
+                    className="w-full sm:w-auto h-12 sm:h-10 bg-white text-gray-900 hover:bg-white/90 border-0 font-bold rounded-xl shadow-lg mt-4"
                     onClick={() => router.push(`/chat?sessionId=${selectedSession._id}`)}
                   >
                     <span className="mr-2">Open Chat</span>

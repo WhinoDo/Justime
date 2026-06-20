@@ -74,21 +74,21 @@ export default function HomePage() {
             )}
 
             <div className="space-y-4 pt-2">
-              <Link href="/dashboard" className="block transform transition-transform hover:scale-[1.02]">
-                <Button className="w-full h-12 text-lg bg-purple-600 text-white hover:bg-purple-700 border-0 shadow-lg shadow-purple-200 rounded-xl font-semibold">
+              <Link href="/dashboard" className="block">
+                <Button className="w-full sm:w-auto h-12 sm:h-10 text-lg sm:text-base bg-purple-600 text-white hover:bg-purple-700 border-0 shadow-lg shadow-purple-200 rounded-xl font-semibold">
                   进入工作台 <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
 
               <div className="grid grid-cols-2 gap-3">
                 <Link href="/profile" className="block">
-                  <Button variant="outline" className="w-full h-11 border-purple-200 text-purple-700 hover:bg-purple-50 hover:border-purple-300 rounded-xl">
+                  <Button variant="outline" className="w-full h-11 sm:h-9 border-purple-200 text-purple-700 hover:bg-purple-50 hover:border-purple-300 rounded-xl">
                     个人信息
                   </Button>
                 </Link>
                 <Button
                   variant="destructive"
-                  className="w-full h-11 bg-rose-100 text-rose-700 border border-rose-200 hover:bg-rose-200 rounded-xl"
+                  className="w-full h-11 sm:h-9 bg-rose-100 text-rose-700 border border-rose-200 hover:bg-rose-200 rounded-xl"
                   onClick={handleLogout}
                 >
                   <LogOut className="h-4 w-4 mr-2" />

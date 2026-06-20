@@ -266,22 +266,6 @@ export function BigCalendar({
             color: hsl(var(--foreground));
         }
 
-        /* Scrollbars */
-        .calendar-theme-glass ::-webkit-scrollbar {
-          width: 6px;
-          height: 6px;
-        }
-        .calendar-theme-glass ::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .calendar-theme-glass ::-webkit-scrollbar-thumb {
-          background: hsl(var(--border));
-          border-radius: 99px;
-        }
-        .calendar-theme-glass ::-webkit-scrollbar-thumb:hover {
-          background: hsl(var(--muted-foreground));
-        }
-
         /* Popup Override */
         .rbc-overlay {
             background: hsl(var(--card)) !important;

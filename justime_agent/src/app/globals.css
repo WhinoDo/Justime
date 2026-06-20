@@ -132,7 +132,7 @@
 /* 任务卡片 */
 .task-card {
   @apply rounded-[10px] border bg-card p-6 shadow-sm;
-  @apply hover:shadow-md transition-all duration-200;
+  @apply transition-all duration-200;
 
   .dark & {
     @apply bg-gray-800 border-gray-700;
@@ -145,8 +145,18 @@
   }
 }
 
-.task-card:hover {
-  @apply shadow-lg transform scale-[1.02];
+@media (hover: hover) {
+  .task-card:hover {
+    @apply shadow-md;
+  }
+  .task-card:hover {
+    @apply shadow-lg transform scale-[1.02];
+  }
+}
+
+/* Focus-visible fallback for touch/keyboard */
+.task-card:focus-visible {
+  @apply shadow-lg outline-2 outline-offset-2 outline-purple-500/40;
 }
 
 .subtask-item {
@@ -254,9 +264,15 @@
   transition-timing-function: cubic-bezier(0.25, 0.1, 0.25, 1.0);
 }
 
-.mac-card-hover:hover {
-  @apply shadow-lg;
-  transform: translateY(-1px);
+@media (hover: hover) {
+  .mac-card-hover:hover {
+    @apply shadow-lg;
+    transform: translateY(-1px);
+  }
+}
+
+.mac-card-hover:focus-visible {
+  @apply shadow-lg outline-2 outline-offset-2 outline-purple-500/40;
 }
 
 /* macOS 按钮点击缩放 */
@@ -286,6 +302,65 @@
 
 .animate-slide-in {
   animation: slideInFromBottom 0.3s ease-out;
+}
+
+/* 全局滚动条主题 — 统一 macOS 风格 */
+@layer base {
+  /* Webkit 浏览器 (Chrome, Safari, Edge) */
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 99px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground));
+  }
+
+  /* Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+}
+
+/* .custom-scrollbar — 可覆盖滚动条颜色 */
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground));
+}
+
+.custom-scrollbar {
+  scrollbar-color: hsl(var(--muted-foreground)) transparent;
+}
+
+/* Hover 兜底：仅在支持 hover 的环境应用 hover 效果 */
+/* 非 hover 环境（触控）下 fallback 为 focus-visible 或 active */
+@media (hover: none) {
+  .hover-lift:hover {
+    transform: none;
+    box-shadow: none;
+  }
+  .hover-lift:active {
+    transform: scale(0.98);
+  }
+}
+
+@media (hover: hover) {
+  .hover-lift:hover {
+    transform: translateY(-1px);
+  }
+  .hover-lift:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
 }
 
 /* 代码块样式优化 */

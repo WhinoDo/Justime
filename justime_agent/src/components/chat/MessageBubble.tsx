@@ -46,7 +46,7 @@ export function MessageBubble({ message, onTaskCreate, onReferenceClick }: Messa
 
   return (
     <div className={cn(
-      "flex gap-2 max-w-[70%] animate-in slide-in-from-bottom-2 duration-200",
+      "flex gap-2 max-w-[85%] animate-in slide-in-from-bottom-2 duration-200",
       isUser ? "ml-auto flex-row-reverse" : "mr-auto"
     )}>
       {/* 头像 */}

@@ -115,7 +115,7 @@ export function SuggestedEventCard({ event, onConfirm, onDismiss }: SuggestedEve
     const hasConflicts = event.conflicts && event.conflicts.length > 0
 
     return (
-        <div className="group relative w-full overflow-hidden rounded-3xl border border-white/40 dark:border-white/10 bg-white/40 dark:bg-gray-900/40 shadow-xl backdrop-blur-xl transition-all duration-300 hover:shadow-2xl hover:bg-white/50 dark:hover:bg-gray-900/50">
+        <div className="group relative w-full overflow-hidden rounded-3xl border border-white/40 dark:border-white/10 bg-white/40 dark:bg-gray-900/40 shadow-xl backdrop-blur-xl transition-all duration-300 hover:shadow-2xl hover:bg-white/50 dark:hover:bg-gray-900/50 hover-lift">
             {/* Top Gradient Accent */}
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 opacity-70" />
 

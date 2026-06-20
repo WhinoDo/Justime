@@ -87,7 +87,7 @@ export const ChatInputArea = memo(function ChatInputArea({
       <div className="relative shrink-0 p-4 transition-all duration-300 md:px-6 md:pb-6">
         {/* Floating RAG preview panel */}
         {previewOpen && selectedReference && (
-          <div className="absolute bottom-[calc(100%-1rem)] left-1/2 -translate-x-1/2 w-full max-w-3xl px-4 z-50 animate-in slide-in-from-bottom-4 fade-in duration-200">
+          <div className="absolute bottom-[calc(100%-1rem)] left-1/2 -translate-x-1/2 w-full max-w-5xl px-4 z-50 animate-in slide-in-from-bottom-4 fade-in duration-200">
             <div className="h-[400px] overflow-hidden rounded-2xl border border-white/15 bg-black/40 shadow-2xl backdrop-blur-2xl">
               <RagReferencePreviewPanel
                 open={previewOpen}
@@ -104,7 +104,7 @@ export const ChatInputArea = memo(function ChatInputArea({
         )}
 
         {/* Input container with rounded-xl macOS style */}
-        <div className="relative mx-auto max-w-3xl overflow-hidden rounded-xl border border-border bg-card/80 backdrop-blur shadow-sm transition-all duration-200 focus-within:ring-2 focus-within:ring-purple-500/20">
+        <div className="relative mx-auto max-w-5xl overflow-hidden rounded-xl border border-border bg-card/80 backdrop-blur shadow-sm transition-all duration-200 focus-within:ring-2 focus-within:ring-purple-500/20">
           <Textarea
             ref={textareaRef}
             value={input}
