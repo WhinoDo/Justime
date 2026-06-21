@@ -57,7 +57,7 @@ export default function ProgressPage() {
   if (authLoading) {
     return (
       <JustimePageShell blur="xl" contentClassName="flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-white/50" />
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </JustimePageShell>
     )
   }
@@ -67,31 +67,31 @@ export default function ProgressPage() {
   return (
     <JustimePageShell fullHeight blur="lg" opacity={0.4} contentClassName="h-full overflow-y-auto">
       <div className="container mx-auto p-4 md:p-6 max-w-5xl space-y-4 pb-8">
-        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between bg-white/10 backdrop-blur-xl p-4 rounded-2xl border border-white/10 shadow-lg">
+        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between bg-muted/50 backdrop-blur-xl p-4 rounded-2xl border border-border shadow-lg">
           <div className="flex items-center justify-between sm:justify-start gap-3">
             <Link href="/study">
-              <Button variant="ghost" size="sm" className="text-white/70 hover:bg-white/10 hover:text-white">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:bg-accent/50 hover:text-foreground">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back
               </Button>
             </Link>
             <div>
-              <h1 className="text-xl font-bold text-white flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-violet-300" />
+              <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-violet-500 dark:text-violet-300" />
                 进度统计
               </h1>
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-4 text-sm bg-white/5 sm:bg-transparent p-2 sm:p-0 rounded-xl border border-white/5 sm:border-0">
+          <div className="flex items-center justify-end gap-4 text-sm bg-muted/30 sm:bg-transparent p-2 sm:p-0 rounded-xl border border-border sm:border-0">
             {stats?.streakDays != null && (
-              <div className="flex items-center gap-1.5 text-violet-300">
+              <div className="flex items-center gap-1.5 text-violet-500 dark:text-violet-300">
                 <Flame className="h-4 w-4" />
                 <span>{stats.streakDays} 天</span>
               </div>
             )}
             {stats?.completionRate != null && (
-              <div className="flex items-center gap-1.5 text-emerald-300">
+              <div className="flex items-center gap-1.5 text-emerald-500 dark:text-emerald-300">
                 <TrendingUp className="h-4 w-4" />
                 <span>{Math.round(stats.completionRate * 100)}%</span>
               </div>
@@ -101,10 +101,10 @@ export default function ProgressPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <JustimeGlassPanel className="lg:col-span-2 rounded-2xl p-4">
-            <h2 className="text-sm font-semibold text-white/80 mb-4">每日学习时长（近30天）</h2>
+            <h2 className="text-sm font-semibold text-foreground/80 mb-4">每日学习时长（近30天）</h2>
             {progressLoading ? (
               <div className="flex justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-white/30" />
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/50" />
               </div>
             ) : (
               <div className="h-64">
@@ -142,13 +142,13 @@ export default function ProgressPage() {
           </JustimeGlassPanel>
 
           <JustimeGlassPanel className="rounded-2xl p-4">
-            <h2 className="text-sm font-semibold text-white/80 mb-4">科目分布</h2>
+            <h2 className="text-sm font-semibold text-foreground/80 mb-4">科目分布</h2>
             {statsLoading ? (
               <div className="flex justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-white/30" />
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/50" />
               </div>
             ) : subjectPieData.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-64 text-white/30 text-sm">
+              <div className="flex flex-col items-center justify-center h-64 text-muted-foreground/50 text-sm">
                 暂无数据
               </div>
             ) : (
@@ -189,27 +189,27 @@ export default function ProgressPage() {
         </div>
 
         <JustimeGlassPanel className="rounded-2xl p-4">
-          <h2 className="text-sm font-semibold text-white/80 mb-3">学习记录</h2>
+          <h2 className="text-sm font-semibold text-foreground/80 mb-3">学习记录</h2>
           {progressLoading ? (
             <div className="flex justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-white/30" />
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/50" />
             </div>
           ) : progress.length === 0 ? (
-            <div className="text-center py-8 text-white/40 text-sm">
+            <div className="text-center py-8 text-muted-foreground/70 text-sm">
               暂无学习记录
             </div>
           ) : (
             <div className="space-y-2 max-h-64 overflow-y-auto">
               {progress.slice().reverse().map(p => (
-                <div key={p.id} className="flex items-center gap-3 p-2 rounded-xl bg-white/5 border border-white/5">
-                  <span className="text-xs text-white/30 w-16">{p.date}</span>
+                <div key={p.id} className="flex items-center gap-3 p-2 rounded-xl bg-muted/30 border border-border">
+                  <span className="text-xs text-muted-foreground/50 w-16">{p.date}</span>
                   <span className="text-xs px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-200 border border-blue-400/30">
                     {p.subject}
                   </span>
-                  <span className="text-xs text-white/50">
+                  <span className="text-xs text-muted-foreground">
                     计划 {p.plannedHours}h / 实际 {p.actualHours}h
                   </span>
-                  <span className="text-xs text-emerald-300 ml-auto">
+                  <span className="text-xs text-emerald-500 dark:text-emerald-300 ml-auto">
                     {Math.round(p.completionRate * 100)}%
                   </span>
                 </div>

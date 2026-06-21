@@ -100,12 +100,7 @@
 
 /* 打字动画 */
 .typing-indicator {
-  @apply flex items-center gap-2 px-4 py-3 bg-white rounded-2xl shadow-sm;
-
-  .dark & {
-    @apply bg-gray-800;
-  }
-
+  @apply flex items-center gap-2 px-4 py-3 bg-card rounded-2xl shadow-sm;
   @apply animate-pulse;
 }
 
@@ -123,10 +118,10 @@
 
 /* 情绪输入区域 */
 .emotion-input-container {
-  @apply p-4 border-t bg-gradient-to-r from-purple-50 to-violet-50;
+  @apply p-4 border-t bg-gradient-to-r from-purple-50 to-violet-50 border-border;
 
   .dark & {
-    @apply from-purple-900/20 to-violet-900/20 border-gray-800;
+    @apply from-purple-900/20 to-violet-900/20;
   }
 }
 
@@ -134,10 +129,6 @@
 .task-card {
   @apply rounded-[10px] border bg-card p-6 shadow-sm;
   @apply transition-all duration-200;
-
-  .dark & {
-    @apply bg-gray-800 border-gray-700;
-  }
 }
 
 @media (max-width: 768px) {
@@ -161,31 +152,19 @@
 }
 
 .subtask-item {
-  @apply flex items-center gap-3 rounded-lg p-3 hover:bg-gray-50;
+  @apply flex items-center gap-3 rounded-lg p-3 hover:bg-accent/50;
   @apply transition-colors duration-150;
-
-  .dark & {
-    @apply hover:bg-gray-700/50;
-  }
 }
 
 /* 番茄钟计时器 */
 .pomodoro-timer {
   @apply flex flex-col items-center gap-6 rounded-[10px] border bg-card;
   @apply p-8 shadow-sm;
-
-  .dark & {
-    @apply bg-gray-800 border-gray-700;
-  }
 }
 
 .time-display {
   @apply text-5xl font-bold tabular-nums text-transparent bg-clip-text;
-  @apply bg-gradient-to-r from-purple-600 to-indigo-600;
-
-  .dark & {
-    @apply from-purple-400 to-indigo-400;
-  }
+  @apply bg-gradient-to-r from-purple-600 to-indigo-600 dark:from-purple-400 dark:to-indigo-400;
 }
 
 /* 动画效果 */
@@ -366,7 +345,7 @@
 
 /* 代码块样式优化 */
 .prose pre {
-  @apply !bg-gray-900 !text-gray-100 rounded-lg overflow-hidden shadow-lg;
+  @apply !bg-muted !text-foreground rounded-lg overflow-hidden shadow-lg;
 }
 
 .prose code {
@@ -374,12 +353,8 @@
 }
 
 .prose blockquote {
-  @apply !border-l-4 !border-blue-500 !bg-blue-50;
+  @apply !border-l-4 !border-blue-500 !bg-blue-50 dark:!bg-blue-900/20;
   @apply !pl-6 !py-4 !rounded-r-lg !shadow-sm;
-
-  .dark & {
-    @apply !bg-blue-900/20;
-  }
 }
 
 /* 表格样式 */
@@ -388,18 +363,10 @@
 }
 
 .prose th {
-  @apply !bg-gray-100 !font-semibold;
-
-  .dark & {
-    @apply !bg-gray-800;
-  }
+  @apply !bg-muted !font-semibold;
 }
 
 .prose td {
-  @apply !border-gray-200;
-
-  .dark & {
-    @apply !border-gray-700;
-  }
+  @apply !border-border;
 }
 

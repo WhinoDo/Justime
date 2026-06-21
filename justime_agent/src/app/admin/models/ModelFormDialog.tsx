@@ -273,51 +273,51 @@ export function ModelFormDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[620px] bg-gray-900/90 backdrop-blur-xl border-white/20 text-white">
+            <DialogContent className="sm:max-w-[620px] bg-card backdrop-blur-xl border-border text-foreground">
                 <DialogHeader>
                     <DialogTitle>{editingModel ? '编辑系统模型' : '新增系统模型'}</DialogTitle>
                 </DialogHeader>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-2">
                     <div className="space-y-1">
-                        <p className="text-sm text-white/70">配置ID（可选）</p>
-                        <Input 
-                            className="bg-black/20 border-white/20 text-white placeholder:text-white/50 focus-visible:ring-white/30 focus-visible:border-white/40 focus-visible:ring-offset-0" 
-                            value={form.id} 
-                            onChange={(e) => setForm((s) => ({ ...s, id: e.target.value }))} 
-                            autoComplete="off" 
+                        <p className="text-sm text-muted-foreground">配置ID（可选）</p>
+                        <Input
+                            className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-ring focus-visible:border-ring focus-visible:ring-offset-0"
+                            value={form.id}
+                            onChange={(e) => setForm((s) => ({ ...s, id: e.target.value }))}
+                            autoComplete="off"
                         />
                     </div>
                     <div className="space-y-1">
-                        <p className="text-sm text-white/70">显示名称</p>
-                        <Input 
-                            className="bg-black/20 border-white/20 text-white placeholder:text-white/50 focus-visible:ring-white/30 focus-visible:border-white/40 focus-visible:ring-offset-0" 
-                            value={form.name} 
-                            onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))} 
-                            autoComplete="off" 
+                        <p className="text-sm text-muted-foreground">显示名称</p>
+                        <Input
+                            className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-ring focus-visible:border-ring focus-visible:ring-offset-0"
+                            value={form.name}
+                            onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))}
+                            autoComplete="off"
                         />
                     </div>
                     <div className="space-y-1">
-                        <p className="text-sm text-white/70">模型ID</p>
-                        <Input 
-                            className="bg-black/20 border-white/20 text-white placeholder:text-white/50 focus-visible:ring-white/30 focus-visible:border-white/40 focus-visible:ring-offset-0" 
-                            value={form.model_id} 
-                            onChange={(e) => setForm((s) => ({ ...s, model_id: e.target.value }))} 
-                            autoComplete="off" 
+                        <p className="text-sm text-muted-foreground">模型ID</p>
+                        <Input
+                            className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-ring focus-visible:border-ring focus-visible:ring-offset-0"
+                            value={form.model_id}
+                            onChange={(e) => setForm((s) => ({ ...s, model_id: e.target.value }))}
+                            autoComplete="off"
                         />
                     </div>
                     <div className="space-y-1">
-                        <p className="text-sm text-white/70">服务地址</p>
-                        <Input 
-                            className="bg-black/20 border-white/20 text-white placeholder:text-white/50 focus-visible:ring-white/30 focus-visible:border-white/40 focus-visible:ring-offset-0" 
-                            value={form.base_url} 
-                            onChange={(e) => setForm((s) => ({ ...s, base_url: e.target.value }))} 
-                            autoComplete="off" 
+                        <p className="text-sm text-muted-foreground">服务地址</p>
+                        <Input
+                            className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-ring focus-visible:border-ring focus-visible:ring-offset-0"
+                            value={form.base_url}
+                            onChange={(e) => setForm((s) => ({ ...s, base_url: e.target.value }))}
+                            autoComplete="off"
                         />
                     </div>
 
                     <div className="space-y-1 sm:col-span-2">
-                        <p className="text-sm text-white/70">API Key 来源</p>
+                        <p className="text-sm text-muted-foreground">API Key 来源</p>
                         <Select
                             value={form.api_key_mode}
                             onValueChange={(value) => {
@@ -331,12 +331,12 @@ export function ModelFormDialog({
                                 }))
                             }}
                         >
-                            <SelectTrigger className="bg-black/20 border-white/20 text-white placeholder:text-white/50">
+                            <SelectTrigger className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground">
                                 <SelectValue>
                                     {form.api_key_mode === 'reference' ? '引用系统 API Key' : '手动输入独立 API Key'}
                                 </SelectValue>
                             </SelectTrigger>
-                            <SelectContent className="bg-gray-900 border-white/20">
+                            <SelectContent className="bg-card border-border">
                                 <SelectItem value="reference">引用系统 API Key</SelectItem>
                                 <SelectItem value="manual">手动输入独立 API Key</SelectItem>
                             </SelectContent>
@@ -345,17 +345,17 @@ export function ModelFormDialog({
 
                     {form.api_key_mode === 'reference' ? (
                         <div className="space-y-1 sm:col-span-2">
-                            <p className="text-sm text-white/70">选择系统 API Key</p>
+                            <p className="text-sm text-muted-foreground">选择系统 API Key</p>
                             <Select
                                 value={form.api_key_id}
                                 onValueChange={(value) => setForm((s) => ({ ...s, api_key_id: value }))}
                             >
-                                <SelectTrigger className="bg-black/20 border-white/20 text-white placeholder:text-white/50">
+                                <SelectTrigger className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground">
                                     <SelectValue>
                                         {selectedApiKeyName || '请选择一个系统 API Key'}
                                     </SelectValue>
                                 </SelectTrigger>
-                                <SelectContent className="bg-gray-900 border-white/20">
+                                <SelectContent className="bg-card border-border">
                                     {apiKeys.length === 0 ? (
                                         <SelectItem value="">暂无可用 API Key，请先在 API Key 管理中创建</SelectItem>
                                     ) : (
@@ -370,13 +370,13 @@ export function ModelFormDialog({
                         </div>
                     ) : (
                         <div className="space-y-1 sm:col-span-2">
-                            <p className="text-sm text-white/70">API Key {editingModel ? '(留空表示不修改)' : ''}</p>
-                            <Input 
-                                className="bg-black/20 border-white/20 text-white placeholder:text-white/50 focus-visible:ring-white/30 focus-visible:border-white/40 focus-visible:ring-offset-0" 
-                                value={form.api_key} 
-                                type="password" 
-                                onChange={(e) => setForm((s) => ({ ...s, api_key: e.target.value }))} 
-                                autoComplete="new-password" 
+                            <p className="text-sm text-muted-foreground">API Key {editingModel ? '(留空表示不修改)' : ''}</p>
+                            <Input
+                                className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-ring focus-visible:border-ring focus-visible:ring-offset-0"
+                                value={form.api_key}
+                                type="password"
+                                onChange={(e) => setForm((s) => ({ ...s, api_key: e.target.value }))}
+                                autoComplete="new-password"
                             />
                         </div>
                     )}
@@ -402,7 +402,7 @@ export function ModelFormDialog({
                                     <span>{testResult.success ? '✓' : '✗'}</span>
                                     <span>{testResult.message}</span>
                                     {testResult.latencyMs !== undefined && (
-                                        <span className="text-white/60">({testResult.latencyMs}ms)</span>
+                                        <span className="text-muted-foreground">({testResult.latencyMs}ms)</span>
                                     )}
                                 </div>
                             </div>
@@ -410,40 +410,40 @@ export function ModelFormDialog({
                     </div>
 
                     <div className="space-y-1">
-                        <p className="text-sm text-white/70">Temperature</p>
-                        <Input 
-                            className="bg-black/20 border-white/20 text-white placeholder:text-white/50 focus-visible:ring-white/30 focus-visible:border-white/40 focus-visible:ring-offset-0" 
-                            value={form.temperature} 
-                            type="number" 
-                            min={0} 
-                            max={2} 
-                            step={0.1} 
-                            onChange={(e) => setForm((s) => ({ ...s, temperature: e.target.value }))} 
+                        <p className="text-sm text-muted-foreground">Temperature</p>
+                        <Input
+                            className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-ring focus-visible:border-ring focus-visible:ring-offset-0"
+                            value={form.temperature}
+                            type="number"
+                            min={0}
+                            max={2}
+                            step={0.1}
+                            onChange={(e) => setForm((s) => ({ ...s, temperature: e.target.value }))}
                         />
                     </div>
                     <div className="space-y-1">
-                        <p className="text-sm text-white/70">优先级</p>
-                        <Input 
-                            className="bg-black/20 border-white/20 text-white placeholder:text-white/50 focus-visible:ring-white/30 focus-visible:border-white/40 focus-visible:ring-offset-0" 
-                            value={form.priority} 
-                            type="number" 
-                            min={1} 
-                            max={999} 
-                            onChange={(e) => setForm((s) => ({ ...s, priority: e.target.value }))} 
+                        <p className="text-sm text-muted-foreground">优先级</p>
+                        <Input
+                            className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-ring focus-visible:border-ring focus-visible:ring-offset-0"
+                            value={form.priority}
+                            type="number"
+                            min={1}
+                            max={999}
+                            onChange={(e) => setForm((s) => ({ ...s, priority: e.target.value }))}
                         />
                     </div>
                     <div className="space-y-2 sm:col-span-2">
-                        <p className="text-sm text-white/70">能力标签</p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-md border border-white/15 bg-black/20 p-3">
+                        <p className="text-sm text-muted-foreground">能力标签</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-md border border-border bg-muted/50 p-3">
                             {capabilityOptions.map((option) => (
                                 <label key={option.value} className="flex items-center gap-3">
                                     <Checkbox
                                         checked={form.capabilities.includes(option.value)}
                                         onCheckedChange={(checked) => toggleCapability(option.value, checked === true)}
                                     />
-                                    <span className="text-sm text-white">
+                                    <span className="text-sm text-foreground">
                                         {option.label}
-                                        <span className="ml-2 text-xs text-white/60">{option.description}</span>
+                                        <span className="ml-2 text-xs text-muted-foreground">{option.description}</span>
                                     </span>
                                 </label>
                             ))}
@@ -451,13 +451,13 @@ export function ModelFormDialog({
                     </div>
                     <div className="sm:col-span-2 flex items-center gap-3">
                         <Switch checked={form.enabled} onCheckedChange={(checked) => setForm((s) => ({ ...s, enabled: checked }))} />
-                        <p className="text-sm text-white/70">启用该模型</p>
+                        <p className="text-sm text-muted-foreground">启用该模型</p>
                     </div>
                 </div>
 
                 <DialogFooter>
-                    <Button variant="outline" className="border-white/30 bg-black/20 text-white hover:bg-white/10 hover:text-white" onClick={() => onOpenChange(false)} disabled={saving}>取消</Button>
-                    <Button className="bg-white/20 border border-white/20 text-white hover:bg-white/30" onClick={handleSubmit} disabled={saving}>
+                    <Button variant="outline" className="border-border bg-muted/50 text-foreground hover:bg-accent/50 hover:text-foreground" onClick={() => onOpenChange(false)} disabled={saving}>取消</Button>
+                    <Button className="bg-accent/50 border border-border text-foreground hover:bg-accent" onClick={handleSubmit} disabled={saving}>
                         {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         {editingModel ? '保存修改' : '创建模型'}
                     </Button>

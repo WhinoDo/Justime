@@ -30,12 +30,12 @@ const AdminCharts = dynamic(
         ssr: false,
         loading: () => (
             <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
-                <div className="xl:col-span-3 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4 lg:p-6">
+                <div className="xl:col-span-3 rounded-lg border border-border bg-card shadow-sm p-4 lg:p-6">
                     <div className="h-[280px] flex items-center justify-center">
                         <Loader2 className="h-8 w-8 animate-spin text-purple-500/50" />
                     </div>
                 </div>
-                <div className="xl:col-span-2 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4 lg:p-6">
+                <div className="xl:col-span-2 rounded-lg border border-border bg-card shadow-sm p-4 lg:p-6">
                     <div className="h-[280px] flex items-center justify-center">
                         <Loader2 className="h-8 w-8 animate-spin text-purple-500/50" />
                     </div>
@@ -56,12 +56,12 @@ interface StatCardProps {
 
 function StatCard({ title, value, icon: Icon, trend, trendValue, description }: StatCardProps) {
     return (
-        <div className="p-5 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-sm transition-all hover:shadow-md hover:border-gray-300 dark:hover:border-gray-700">
+        <div className="p-5 rounded-lg bg-card border border-border shadow-sm transition-all hover:shadow-md hover:border-ring">
             <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{title}</p>
-                <Icon className="h-4 w-4 text-gray-400" />
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{title}</p>
+                <Icon className="h-4 w-4 text-muted-foreground" />
             </div>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">{value}</div>
+            <div className="text-2xl font-bold text-foreground">{value}</div>
             <div className="flex items-center text-xs mt-1.5">
                 {trend === 'up' ? (
                     <ArrowUpRight className="h-3.5 w-3.5 text-green-500 mr-1" />
@@ -69,7 +69,7 @@ function StatCard({ title, value, icon: Icon, trend, trendValue, description }: 
                     <ArrowDownRight className="h-3.5 w-3.5 text-red-400 mr-1" />
                 )}
                 <span className={trend === 'up' ? 'text-green-600 dark:text-green-400 font-medium' : 'text-red-500 dark:text-red-400 font-medium'}>{trendValue}</span>
-                <span className="text-gray-400 ml-1">{description}</span>
+                <span className="text-muted-foreground ml-1">{description}</span>
             </div>
         </div>
     )
@@ -101,8 +101,8 @@ export default function AdminDashboard() {
         <div className="space-y-8 animate-mac-slide-in">
             {/* Header */}
             <div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">概览仪表盘</h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">欢迎回来，这里是系统的实时运行状态与趋势分析。</p>
+                <h2 className="text-2xl font-bold text-foreground tracking-tight">概览仪表盘</h2>
+                <p className="text-sm text-muted-foreground mt-1">欢迎回来，这里是系统的实时运行状态与趋势分析。</p>
                 {error && <p className="text-red-500 dark:text-red-400 text-sm mt-2">{error}</p>}
             </div>
 
@@ -118,35 +118,35 @@ export default function AdminDashboard() {
             <AdminCharts stats={stats} />
 
             {/* System Status - macOS style table */}
-            <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6">
-                <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4">系统状态概览</h3>
+            <div className="rounded-lg border border-border bg-card shadow-sm p-6">
+                <h3 className="text-base font-semibold text-foreground mb-4">系统状态概览</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                    <div className="flex items-center gap-3 p-4 bg-muted/50 border border-border rounded-lg hover:bg-accent/50 transition-colors">
                         <div className="h-10 w-10 rounded-lg bg-purple-100 dark:bg-purple-500/20 flex items-center justify-center">
                             <Cpu className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                         </div>
                         <div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">后端版本</p>
-                            <p className="text-sm font-semibold text-gray-900 dark:text-white">{stats?.version || 'Unknown'}</p>
+                            <p className="text-xs text-muted-foreground">后端版本</p>
+                            <p className="text-sm font-semibold text-foreground">{stats?.version || 'Unknown'}</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                    <div className="flex items-center gap-3 p-4 bg-muted/50 border border-border rounded-lg hover:bg-accent/50 transition-colors">
                         <div className="h-10 w-10 rounded-lg bg-green-100 dark:bg-green-500/20 flex items-center justify-center">
                             <Database className="h-5 w-5 text-green-600 dark:text-green-400" />
                         </div>
                         <div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">数据库连接</p>
+                            <p className="text-xs text-muted-foreground">数据库连接</p>
                             <p className="text-sm font-semibold text-green-600 dark:text-green-400 flex items-center gap-1.5">
                                 <span className="h-2 w-2 rounded-full bg-green-500" />正常
                             </p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                    <div className="flex items-center gap-3 p-4 bg-muted/50 border border-border rounded-lg hover:bg-accent/50 transition-colors">
                         <div className="h-10 w-10 rounded-lg bg-green-100 dark:bg-green-500/20 flex items-center justify-center">
                             <Server className="h-5 w-5 text-green-600 dark:text-green-400" />
                         </div>
                         <div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">LLM 服务</p>
+                            <p className="text-xs text-muted-foreground">LLM 服务</p>
                             <p className="text-sm font-semibold text-green-600 dark:text-green-400 flex items-center gap-1.5">
                                 <span className="h-2 w-2 rounded-full bg-green-500" />运行中
                             </p>

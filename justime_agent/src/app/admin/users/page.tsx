@@ -221,7 +221,7 @@ export default function UserManagementPage() {
         if (!accessAllModels && allowedModelIds.length === 0) {
             toast({
                 title: "请选择至少一个模型",
-                description: "关闭“允许访问所有模型”后，必须至少勾选一个模型。",
+                description: '关闭"允许访问所有模型"后，必须至少勾选一个模型。',
                 variant: "destructive"
             })
             return
@@ -273,7 +273,7 @@ export default function UserManagementPage() {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-96">
-                <Loader2 className="w-8 h-8 animate-spin text-white/80" />
+                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
             </div>
         )
     }
@@ -282,49 +282,49 @@ export default function UserManagementPage() {
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold tracking-tight text-white">用户管理</h2>
-                    <p className="text-white/70">
+                    <h2 className="text-2xl font-bold tracking-tight text-foreground">用户管理</h2>
+                    <p className="text-muted-foreground">
                         查看并管理系统中的所有注册用户
                     </p>
                 </div>
                 <div className="relative">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-white/50" />
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                         placeholder="搜索用户..."
-                        className="pl-9 w-full sm:w-[300px] bg-black/20 border-white/20 text-white placeholder:text-white/50 focus-visible:ring-white/30 focus-visible:border-white/40 focus-visible:ring-offset-0"
+                        className="pl-9 w-full sm:w-[300px] bg-muted/50 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-ring focus-visible:border-ring focus-visible:ring-offset-0"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
             </div>
 
-            <div className="rounded-2xl border border-white/20 bg-white/5 backdrop-blur-xl shadow-2xl overflow-hidden text-white w-full">
-                <Table className="text-white">
-                    <TableHeader className="[&_tr]:border-white/10 bg-white/5">
-                        <TableRow className="border-white/10 hover:bg-transparent">
-                            <TableHead className="text-white/80">用户</TableHead>
-                            <TableHead className="text-white/80">角色</TableHead>
-                            <TableHead className="text-white/80">状态</TableHead>
-                            <TableHead className="text-white/80">模型权限</TableHead>
-                            <TableHead className="text-white/80">注册时间</TableHead>
-                            <TableHead className="text-white/80">最后登录</TableHead>
-                            <TableHead className="text-right text-white/80">操作</TableHead>
+            <div className="rounded-2xl border border-border bg-muted/30 backdrop-blur-xl shadow-2xl overflow-hidden text-foreground w-full">
+                <Table className="text-foreground">
+                    <TableHeader className="[&_tr]:border-border bg-muted/50">
+                        <TableRow className="border-border hover:bg-transparent">
+                            <TableHead className="text-muted-foreground">用户</TableHead>
+                            <TableHead className="text-muted-foreground">角色</TableHead>
+                            <TableHead className="text-muted-foreground">状态</TableHead>
+                            <TableHead className="text-muted-foreground">模型权限</TableHead>
+                            <TableHead className="text-muted-foreground">注册时间</TableHead>
+                            <TableHead className="text-muted-foreground">最后登录</TableHead>
+                            <TableHead className="text-right text-muted-foreground">操作</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {filteredUsers.length === 0 ? (
-                            <TableRow className="border-white/10 hover:bg-transparent">
-                                <TableCell colSpan={7} className="h-24 text-center text-white/60">
+                            <TableRow className="border-border hover:bg-transparent">
+                                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                                     没有找到匹配的用户
                                 </TableCell>
                             </TableRow>
                         ) : (
                             filteredUsers.map((user) => (
-                                <TableRow key={user.id} className="border-white/10 hover:bg-white/5">
+                                <TableRow key={user.id} className="border-border hover:bg-accent/50">
                                     <TableCell>
                                         <div className="flex flex-col">
-                                            <span className="font-medium text-white">{user.username}</span>
-                                            <span className="text-xs text-white/60">{user.email}</span>
+                                            <span className="font-medium text-foreground">{user.username}</span>
+                                            <span className="text-xs text-muted-foreground">{user.email}</span>
                                         </div>
                                     </TableCell>
                                     <TableCell>
@@ -332,9 +332,9 @@ export default function UserManagementPage() {
                                             {user.role === 'admin' ? (
                                                 <Shield className="w-3 h-3 text-blue-300" />
                                             ) : (
-                                                <User className="w-3 h-3 text-white/50" />
+                                                <User className="w-3 h-3 text-muted-foreground" />
                                             )}
-                                            <span className={`text-sm ${user.role === 'admin' ? 'text-blue-200 font-medium' : 'text-white/70'}`}>
+                                            <span className={`text-sm ${user.role === 'admin' ? 'text-blue-200 font-medium' : 'text-muted-foreground'}`}>
                                                 {user.role === 'admin' ? '管理员' : '普通用户'}
                                             </span>
                                         </div>
@@ -348,39 +348,39 @@ export default function UserManagementPage() {
                                         {user.access_all_models ? (
                                             <Badge className="bg-blue-500/20 text-blue-200 hover:bg-blue-500/20">全部模型</Badge>
                                         ) : (
-                                            <Badge variant="secondary" className="bg-white/10 text-white/80 hover:bg-white/10">
+                                            <Badge variant="secondary" className="bg-muted/50 text-muted-foreground hover:bg-muted/50">
                                                 已限制（{Array.isArray(user.allowed_model_ids) ? user.allowed_model_ids.length : 0}）
                                             </Badge>
                                         )}
                                     </TableCell>
-                                    <TableCell className="text-white/60 text-sm">
+                                    <TableCell className="text-muted-foreground text-sm">
                                         {formatDate(user.created_at)}
                                     </TableCell>
-                                    <TableCell className="text-white/60 text-sm">
+                                    <TableCell className="text-muted-foreground text-sm">
                                         {formatDate(user.last_login)}
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" className="h-8 w-8 p-0 text-white/70 hover:text-white hover:bg-white/10">
+                                                <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-accent/50">
                                                     <span className="sr-only">打开菜单</span>
                                                     <MoreHorizontal className="h-4 w-4" />
                                                 </Button>
                                             </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className="bg-gray-900/90 backdrop-blur-xl border-white/20 text-white">
-                                                <DropdownMenuLabel className="text-white">操作</DropdownMenuLabel>
-                                                <DropdownMenuItem className="focus:bg-white/10 focus:text-white" onClick={() => navigator.clipboard.writeText(user.id)}>
+                                            <DropdownMenuContent align="end" className="bg-popover/90 backdrop-blur-xl border-border text-foreground">
+                                                <DropdownMenuLabel className="text-foreground">操作</DropdownMenuLabel>
+                                                <DropdownMenuItem className="focus:bg-accent/50 focus:text-foreground" onClick={() => navigator.clipboard.writeText(user.id)}>
                                                     复制用户ID
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem
-                                                    className="focus:bg-white/10 focus:text-white"
+                                                    className="focus:bg-accent/50 focus:text-foreground"
                                                     onClick={() => openModelAccessDialog(user)}
                                                 >
                                                     <ShieldCheck className="mr-2 h-4 w-4" />
                                                     配置模型权限
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem
-                                                    className="focus:bg-white/10 focus:text-white"
+                                                    className="focus:bg-accent/50 focus:text-foreground"
                                                     onClick={() => handleUpdateRole(user.id, user.role === 'admin' ? 'user' : 'admin')}
                                                     disabled={currentUser?.id === user.id}
                                                 >
@@ -397,7 +397,7 @@ export default function UserManagementPage() {
                                                     )}
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem
-                                                    className="focus:bg-white/10 focus:text-white"
+                                                    className="focus:bg-accent/50 focus:text-foreground"
                                                     onClick={() => handleUpdateStatus(user.id, user.status === 'active' ? 'banned' : 'active')}
                                                     disabled={currentUser?.id === user.id}
                                                 >
@@ -413,7 +413,7 @@ export default function UserManagementPage() {
                                                         </>
                                                     )}
                                                 </DropdownMenuItem>
-                                                <DropdownMenuSeparator className="bg-white/10" />
+                                                <DropdownMenuSeparator className="bg-border" />
                                                 <DropdownMenuItem
                                                     className="text-red-300 focus:bg-red-500/20 focus:text-red-200"
                                                     onClick={() => handleDeleteUser(user.id)}
@@ -433,29 +433,29 @@ export default function UserManagementPage() {
             </div>
 
             <Dialog open={modelDialogOpen} onOpenChange={setModelDialogOpen}>
-                <DialogContent className="sm:max-w-[640px] bg-gray-900/90 backdrop-blur-xl border-white/20 text-white">
+                <DialogContent className="sm:max-w-[640px] bg-popover/90 backdrop-blur-xl border-border text-foreground">
                     <DialogHeader>
                         <DialogTitle>配置模型权限：{selectedUser?.username || '-'}</DialogTitle>
                     </DialogHeader>
 
                     {modelDialogLoading ? (
                         <div className="py-10 flex items-center justify-center">
-                            <Loader2 className="w-6 h-6 animate-spin text-white/80" />
+                            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
                         </div>
                     ) : (
                         <div className="space-y-4 py-2">
-                            <div className="rounded-md border border-white/15 bg-black/20 px-3 py-3 flex items-center justify-between">
+                            <div className="rounded-md border border-border bg-muted/50 px-3 py-3 flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm text-white">允许访问所有模型</p>
-                                    <p className="text-xs text-white/60 mt-1">关闭后仅允许访问下方勾选模型。</p>
+                                    <p className="text-sm text-foreground">允许访问所有模型</p>
+                                    <p className="text-xs text-muted-foreground mt-1">关闭后仅允许访问下方勾选模型。</p>
                                 </div>
                                 <Switch checked={accessAllModels} onCheckedChange={setAccessAllModels} />
                             </div>
 
                             {!accessAllModels && (
-                                <div className="rounded-md border border-white/15 bg-black/20 p-3 max-h-72 overflow-y-auto space-y-2">
+                                <div className="rounded-md border border-border bg-muted/50 p-3 max-h-72 overflow-y-auto space-y-2">
                                     {models.length === 0 ? (
-                                        <p className="text-xs text-white/60">当前没有可分配模型。</p>
+                                        <p className="text-xs text-muted-foreground">当前没有可分配模型。</p>
                                     ) : (
                                         models.map((model) => (
                                             <label key={model.id} className="flex items-start gap-3 py-1">
@@ -463,9 +463,9 @@ export default function UserManagementPage() {
                                                     checked={selectedModelSet.has(model.id)}
                                                     onCheckedChange={(checked) => toggleAllowedModel(model.id, checked === true)}
                                                 />
-                                                <span className="text-sm text-white">
+                                                <span className="text-sm text-foreground">
                                                     {model.name}
-                                                    <span className="ml-2 text-xs text-white/60">{model.model_id}</span>
+                                                    <span className="ml-2 text-xs text-muted-foreground">{model.model_id}</span>
                                                 </span>
                                             </label>
                                         ))
@@ -478,14 +478,14 @@ export default function UserManagementPage() {
                     <DialogFooter>
                         <Button
                             variant="outline"
-                            className="border-white/30 bg-black/20 text-white hover:bg-white/10 hover:text-white"
+                            className="border-border bg-muted/50 text-foreground hover:bg-accent/50 hover:text-foreground"
                             onClick={() => setModelDialogOpen(false)}
                             disabled={modelDialogSaving}
                         >
                             取消
                         </Button>
                         <Button
-                            className="bg-white/20 border border-white/20 text-white hover:bg-white/30"
+                            className="bg-accent/50 border border-border text-foreground hover:bg-accent/70"
                             onClick={saveModelAccess}
                             disabled={modelDialogSaving || modelDialogLoading}
                         >

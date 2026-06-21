@@ -23,7 +23,7 @@ const MarkdownPreview = dynamic(
         ssr: false,
         loading: () => (
             <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-white/50" />
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
         )
     }
@@ -314,8 +314,8 @@ export default function KnowledgeBasePage() {
         return (
             <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-background">
                 <div className="relative z-10 flex flex-col items-center gap-3">
-                    <Database className="h-10 w-10 text-white/50 animate-pulse" />
-                    <p className="text-white/60 text-sm font-light tracking-widest uppercase">Loading Knowledge Base</p>
+                    <Database className="h-10 w-10 text-muted-foreground animate-pulse" />
+                    <p className="text-muted-foreground text-sm font-light tracking-widest uppercase">Loading Knowledge Base</p>
                 </div>
             </div>
         )
@@ -324,20 +324,20 @@ export default function KnowledgeBasePage() {
     if (!isAuthenticated && !authLoading) {
         return (
             <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-background">
-                <div className="relative z-10 w-full max-w-md mx-auto text-center space-y-6 p-8 bg-white/10 backdrop-blur-2xl border border-white/20 rounded-3xl shadow-2xl">
+                <div className="relative z-10 w-full max-w-md mx-auto text-center space-y-6 p-8 bg-card/80 backdrop-blur-2xl border border-border rounded-3xl shadow-2xl">
                     <div className="space-y-4">
-                        <div className="h-20 w-20 mx-auto rounded-full bg-indigo-500/20 flex items-center justify-center ring-1 ring-indigo-500/40">
-                            <Database className="h-10 w-10 text-indigo-300" />
+                        <div className="h-20 w-20 mx-auto rounded-full bg-indigo-500/10 flex items-center justify-center ring-1 ring-indigo-500/40">
+                            <Database className="h-10 w-10 text-indigo-500 dark:text-indigo-300" />
                         </div>
-                        <h2 className="text-xl font-bold text-white">Login Required</h2>
-                        <p className="text-white/70">Please login to manage your knowledge base.</p>
+                        <h2 className="text-xl font-bold text-foreground">Login Required</h2>
+                        <p className="text-muted-foreground">Please login to manage your knowledge base.</p>
                     </div>
                     <div className="space-y-3">
                         <Link href="/auth?mode=login&redirect=/knowledge" className="block">
-                            <Button className="w-full h-11 bg-white text-gray-900 border-0 hover:bg-white/90 font-medium rounded-xl">Login Now</Button>
+                            <Button className="w-full h-11 bg-foreground text-background border-0 hover:bg-foreground/90 font-medium rounded-xl">Login Now</Button>
                         </Link>
                         <Link href="/dashboard" className="block">
-                            <Button variant="ghost" className="w-full text-white/50 hover:text-white hover:bg-white/5">Back to Dashboard</Button>
+                            <Button variant="ghost" className="w-full text-muted-foreground hover:text-foreground hover:bg-accent/50">Back to Dashboard</Button>
                         </Link>
                     </div>
                 </div>
@@ -354,16 +354,16 @@ export default function KnowledgeBasePage() {
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                             <Link href="/dashboard">
-                                <Button variant="ghost" size="icon" className="text-white/70 hover:bg-white/10 hover:text-white rounded-full">
+                                <Button variant="ghost" size="icon" className="text-muted-foreground hover:bg-accent hover:text-foreground rounded-full">
                                     <ArrowLeft className="h-5 w-5" />
                                 </Button>
                             </Link>
                             <div>
-                                <h1 className="text-3xl font-bold text-white flex items-center gap-3 drop-shadow-md">
-                                    <Database className="h-8 w-8 text-indigo-300" />
+                                <h1 className="text-3xl font-bold text-foreground flex items-center gap-3 drop-shadow-md">
+                                    <Database className="h-8 w-8 text-indigo-500" />
                                     Knowledge Base
                                 </h1>
-                                <p className="text-sm text-white/60 mt-1 font-light tracking-wide">
+                                <p className="text-sm text-muted-foreground mt-1 font-light tracking-wide">
                                     管理云端知识库文档，RAG 实时同步
                                 </p>
                             </div>
@@ -373,7 +373,7 @@ export default function KnowledgeBasePage() {
                                 variant="outline"
                                 onClick={handleSync}
                                 disabled={syncing}
-                                className="gap-2 bg-white/5 border-white/10 text-white hover:bg-white/10 backdrop-blur-sm"
+                                className="gap-2 bg-muted/50 border-border text-foreground hover:bg-accent/50 backdrop-blur-sm"
                             >
                                 <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
                                 {syncing ? '同步中...' : '同步到云端知识库'}
@@ -384,12 +384,12 @@ export default function KnowledgeBasePage() {
                     <div className="grid gap-6 md:grid-cols-3">
                         {/* Upload Area */}
                         <div className="md:col-span-1">
-                            <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-6 shadow-xl h-full flex flex-col">
-                                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                                    <Upload className="h-5 w-5 text-blue-300" />
+                            <div className="bg-card/80 backdrop-blur-xl border border-border rounded-3xl p-6 shadow-xl h-full flex flex-col">
+                                <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                                    <Upload className="h-5 w-5 text-blue-500" />
                                     Upload
                                 </h3>
-                                <div className="flex-1 border-2 border-dashed border-white/20 rounded-2xl p-6 text-center hover:bg-white/5 transition-all cursor-pointer relative flex flex-col items-center justify-center group">
+                                <div className="flex-1 border-2 border-dashed border-border rounded-2xl p-6 text-center hover:bg-accent/30 transition-all cursor-pointer relative flex flex-col items-center justify-center group">
                                     <input
                                         type="file"
                                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
@@ -397,18 +397,18 @@ export default function KnowledgeBasePage() {
                                         disabled={uploading}
                                         accept=".pdf,.txt,.md,.markdown,.json,.csv,.yaml,.yml,.xml,.html,.htm,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.rtf,.odt,.ods,.odp,.py,.js,.ts,.tsx,.jsx,.java,.c,.cpp,.go,.rs,.log,.ini"
                                     />
-                                    <div className="h-14 w-14 rounded-full bg-blue-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                    <div className="h-14 w-14 rounded-full bg-blue-500/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                                         {uploading ? (
-                                            <Loader2 className="h-7 w-7 text-blue-300 animate-spin" />
+                                            <Loader2 className="h-7 w-7 text-blue-500 animate-spin" />
                                         ) : (
-                                            <Upload className="h-7 w-7 text-blue-300" />
+                                            <Upload className="h-7 w-7 text-blue-500" />
                                         )}
                                     </div>
                                     <div className="space-y-1">
-                                        <p className="font-medium text-sm text-white/90">
+                                        <p className="font-medium text-sm text-foreground/90">
                                             {uploading ? 'Uploading...' : 'Click or Drag files'}
                                         </p>
-                                        <p className="text-xs text-white/50">
+                                        <p className="text-xs text-muted-foreground">
                                             PDF, TXT, MD, DOCX, XLSX, CSV, JSON, YAML, PPTX...
                                         </p>
                                     </div>
@@ -418,10 +418,10 @@ export default function KnowledgeBasePage() {
 
                         {/* File List */}
                         <div className="md:col-span-2">
-                            <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-6 shadow-xl min-h-[400px]">
-                                <h3 className="text-lg font-semibold text-white mb-4 flex items-center justify-between">
+                            <div className="bg-card/80 backdrop-blur-xl border border-border rounded-3xl p-6 shadow-xl min-h-[400px]">
+                                <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center justify-between">
                                     <div className="flex items-center gap-2">
-                                        <FileText className="h-5 w-5 text-emerald-300" />
+                                        <FileText className="h-5 w-5 text-emerald-500" />
                                         Documents ({files.length})
                                     </div>
                                     {/* Search placeholder could go here */}
@@ -429,11 +429,11 @@ export default function KnowledgeBasePage() {
 
                                 {loading ? (
                                     <div className="flex justify-center py-20">
-                                        <Loader2 className="h-8 w-8 animate-spin text-white/30" />
+                                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                                     </div>
                                 ) : files.length === 0 ? (
-                                    <div className="text-center py-20 text-white/30 flex flex-col items-center">
-                                        <div className="h-16 w-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
+                                    <div className="text-center py-20 text-muted-foreground flex flex-col items-center">
+                                        <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center mb-4">
                                             <FileText className="h-8 w-8 opacity-50" />
                                         </div>
                                         <p>No documents found.</p>
@@ -444,17 +444,17 @@ export default function KnowledgeBasePage() {
                                         {files.map((file) => (
                                             <div
                                                 key={file.name}
-                                                className="group flex items-center justify-between p-3 bg-black/20 hover:bg-white/10 border border-white/5 hover:border-white/10 rounded-xl transition-all"
+                                                className="group flex items-center justify-between p-3 bg-muted/30 hover:bg-accent/50 border border-border hover:border-border transition-all rounded-xl"
                                             >
                                                 <div className="flex items-center gap-3 min-w-0">
-                                                    <div className="h-10 w-10 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0 text-white/70">
+                                                    <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 text-muted-foreground">
                                                         <FileText className="h-5 w-5" />
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <p className="font-medium text-sm text-white/90 truncate mr-2" title={file.name}>
+                                                        <p className="font-medium text-sm text-foreground truncate mr-2" title={file.name}>
                                                             {file.name}
                                                         </p>
-                                                        <p className="text-xs text-white/40 font-mono">
+                                                        <p className="text-xs text-muted-foreground font-mono">
                                                             {formatSize(file.size)} · {formatDate(file.modified)}
                                                         </p>
                                                     </div>
@@ -463,7 +463,7 @@ export default function KnowledgeBasePage() {
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        className="text-white/30 hover:text-sky-300 hover:bg-sky-500/20 rounded-lg"
+                                                        className="text-muted-foreground hover:text-sky-500 hover:bg-sky-500/10 rounded-lg"
                                                         onClick={() => openPreview(file.name)}
                                                         title="预览文档"
                                                     >
@@ -472,7 +472,7 @@ export default function KnowledgeBasePage() {
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        className="text-white/30 hover:text-rose-300 hover:bg-rose-500/20 rounded-lg"
+                                                        className="text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 rounded-lg"
                                                         onClick={() => handleDelete(file.name)}
                                                         title="删除文档"
                                                     >
@@ -490,38 +490,38 @@ export default function KnowledgeBasePage() {
             </div>
 
             <Dialog open={previewState.open} onOpenChange={(open) => !open && closePreview()}>
-                <DialogContent className="max-w-4xl max-h-[85vh] bg-slate-950/95 border-white/20 text-white backdrop-blur-xl">
+                <DialogContent className="max-w-4xl max-h-[85vh] bg-card border-border text-foreground backdrop-blur-xl">
                     <DialogHeader>
                         <DialogTitle className="truncate pr-10">文档预览: {previewState.fileName}</DialogTitle>
-                        <DialogDescription className="text-white/60">
+                        <DialogDescription className="text-muted-foreground">
                             {previewState.isPdf ? '原生 PDF 预览（保留图片与排版）' : '在线查看文档解析内容（来自知识库预览接口）'}
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="h-[62vh] rounded-xl border border-white/10 bg-black/20">
+                    <div className="h-[62vh] rounded-xl border border-border bg-muted/30">
                         {previewState.isPdf ? (
                             <iframe
                                 key={previewState.rawUrl}
                                 src={previewState.rawUrl}
-                                className="h-full w-full rounded-xl border-0 bg-white"
+                                className="h-full w-full rounded-xl border-0 bg-card"
                                 title={`PDF Preview: ${previewState.fileName}`}
                             />
                         ) : (
                             <ScrollArea className="h-full w-full p-4">
                                 {previewState.loading ? (
-                                    <div className="h-full min-h-[240px] flex items-center justify-center text-white/70 text-sm">
+                                    <div className="h-full min-h-[240px] flex items-center justify-center text-muted-foreground text-sm">
                                         <Loader2 className="h-4 w-4 animate-spin mr-2" />
                                         正在加载文档内容...
                                     </div>
                                 ) : previewState.error ? (
-                                    <div className="rounded-lg border border-red-500/30 bg-red-500/10 text-red-200 p-4 text-sm flex gap-2">
+                                    <div className="rounded-lg border border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-200 p-4 text-sm flex gap-2">
                                         <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
                                         <span>{previewState.error}</span>
                                     </div>
                                 ) : isMarkdownFile(previewState.fileName) ? (
                                     <MarkdownPreview content={previewState.content || '暂无内容'} />
                                 ) : (
-                                    <pre className="whitespace-pre-wrap break-words text-sm leading-6 text-white/90 font-mono">
+                                    <pre className="whitespace-pre-wrap break-words text-sm leading-6 text-foreground font-mono">
                                         {previewState.content || '暂无内容'}
                                     </pre>
                                 )}
@@ -530,7 +530,7 @@ export default function KnowledgeBasePage() {
                     </div>
 
                     {!previewState.isPdf && previewState.truncated && !previewState.loading && !previewState.error && (
-                        <p className="text-xs text-violet-300/90">
+                        <p className="text-xs text-violet-600 dark:text-violet-300">
                             文档较长，当前仅展示前 {previewState.maxChars.toLocaleString()} 字内容（原文 {previewState.charCount.toLocaleString()} 字）。
                         </p>
                     )}
@@ -538,10 +538,10 @@ export default function KnowledgeBasePage() {
             </Dialog>
 
             <Dialog open={showSyncStatus} onOpenChange={setShowSyncStatus}>
-                <DialogContent className="max-w-md bg-slate-950/95 border-white/20 text-white backdrop-blur-xl">
+                <DialogContent className="max-w-md bg-card border-border text-foreground backdrop-blur-xl">
                     <DialogHeader>
                         <DialogTitle>云端同步状态</DialogTitle>
-                        <DialogDescription className="text-white/60">
+                        <DialogDescription className="text-muted-foreground">
                             查看云端知识库同步任务的实时进度
                         </DialogDescription>
                     </DialogHeader>
@@ -551,35 +551,35 @@ export default function KnowledgeBasePage() {
                                 <div className="flex items-center gap-3">
                                     {syncStatus.status === 'completed' ? (
                                         <div className="h-8 w-8 rounded-full bg-green-500/20 flex items-center justify-center">
-                                            <svg className="h-5 w-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                            <svg className="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                                         </div>
                                     ) : syncStatus.status === 'failed' ? (
                                         <div className="h-8 w-8 rounded-full bg-red-500/20 flex items-center justify-center">
-                                            <AlertTriangle className="h-5 w-5 text-red-400" />
+                                            <AlertTriangle className="h-5 w-5 text-red-500" />
                                         </div>
                                     ) : syncStatus.status === 'unavailable' ? (
                                         <div className="h-8 w-8 rounded-full bg-amber-500/20 flex items-center justify-center">
                                             <AlertTriangle className="h-5 w-5 text-amber-400" />
                                         </div>
                                     ) : (
-                                        <Loader2 className="h-8 w-8 animate-spin text-blue-300" />
+                                        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
                                     )}
                                     <div>
-                                        <p className="font-medium text-white">
+                                        <p className="font-medium text-foreground">
                                             {syncStatus.status === 'completed' ? '已完成' : syncStatus.status === 'failed' ? '失败' : syncStatus.status === 'unavailable' ? '云服务不可用' : syncStatus.status === 'running' ? '同步中' : '等待中'}
                                         </p>
                                         {syncStatus.message && (
-                                            <p className="text-sm text-white/60">{syncStatus.message}</p>
+                                            <p className="text-sm text-muted-foreground">{syncStatus.message}</p>
                                         )}
                                     </div>
                                 </div>
                                 {syncStatus.error && (
-                                    <div className="rounded-lg border border-red-500/30 bg-red-500/10 text-red-200 p-3 text-sm">
+                                    <div className="rounded-lg border border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-200 p-3 text-sm">
                                         {syncStatus.error}
                                     </div>
                                 )}
                                 {syncStatus.status === 'unavailable' && (
-                                    <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-200 p-3 text-sm flex gap-2">
+                                    <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-200 p-3 text-sm flex gap-2">
                                         <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
                                         <span>知识库云服务未配置或暂不可用，请联系管理员配置云端 RAG 服务后重试。</span>
                                     </div>
@@ -587,7 +587,7 @@ export default function KnowledgeBasePage() {
                             </div>
                         ) : (
                             <div className="flex items-center justify-center py-4">
-                                <Loader2 className="h-6 w-6 animate-spin text-white/50" />
+                                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                             </div>
                         )}
                     </div>

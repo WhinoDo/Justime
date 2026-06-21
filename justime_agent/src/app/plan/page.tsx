@@ -42,7 +42,7 @@ export default function PlanPage() {
   if (authLoading) {
     return (
       <JustimePageShell blur="xl" contentClassName="flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-white/50" />
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </JustimePageShell>
     )
   }
@@ -52,21 +52,21 @@ export default function PlanPage() {
   return (
     <JustimePageShell fullHeight blur="lg" opacity={0.4} contentClassName="h-full overflow-y-auto">
       <div className="container mx-auto p-4 md:p-6 max-w-4xl space-y-4 pb-8">
-        <div className="flex items-center justify-between bg-white/10 backdrop-blur-xl p-4 rounded-2xl border border-white/10 shadow-lg">
+        <div className="flex items-center justify-between bg-muted/50 backdrop-blur-xl p-4 rounded-2xl border border-border shadow-lg">
           <div className="flex items-center gap-3">
             <Link href="/study">
-              <Button variant="ghost" size="sm" className="text-white/70 hover:bg-white/10 hover:text-white">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:bg-accent/50 hover:text-foreground">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back
               </Button>
             </Link>
             <div>
-              <h1 className="text-xl font-bold text-white flex items-center gap-2">
-                <CalendarDays className="h-5 w-5 text-blue-300" />
+              <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
+                <CalendarDays className="h-5 w-5 text-blue-500 dark:text-blue-300" />
                 学习计划
               </h1>
               {plan && (
-                <p className="text-xs text-white/50 mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   {plan.planName} · {plan.startDate} ~ {plan.endDate}
                 </p>
               )}
@@ -84,18 +84,18 @@ export default function PlanPage() {
         </div>
 
         <JustimeGlassPanel className="rounded-2xl p-4">
-          <h2 className="text-sm font-semibold text-white/80 mb-4">计划时间线</h2>
+          <h2 className="text-sm font-semibold text-foreground/80 mb-4">计划时间线</h2>
           {loading ? (
             <div className="flex justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-white/30" />
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/50" />
             </div>
           ) : plan?.phases ? (
             <StudyTimeline phases={plan.phases} currentPhaseIndex={currentPhaseIndex} />
           ) : (
             <div className="text-center py-12">
-              <GraduationCap className="h-16 w-16 text-white/10 mx-auto mb-4" />
-              <p className="text-white/50 text-sm mb-1">暂无学习计划</p>
-              <p className="text-white/30 text-xs mb-4">点击「创建计划」，AI 将为你生成个性化考研学习计划</p>
+              <GraduationCap className="h-16 w-16 text-muted-foreground/20 mx-auto mb-4" />
+              <p className="text-muted-foreground text-sm mb-1">暂无学习计划</p>
+              <p className="text-muted-foreground/50 text-xs mb-4">点击「创建计划」，AI 将为你生成个性化考研学习计划</p>
               <Button
                 onClick={handleCreatePlan}
                 disabled={creating}

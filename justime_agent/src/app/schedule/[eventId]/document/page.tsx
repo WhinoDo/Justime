@@ -81,10 +81,10 @@ export default function DocumentPage() {
     if (authLoading || loading) {
         return (
             <JustimePageShell fullHeight blur="xl" contentClassName="flex h-full items-center justify-center p-4" opacity={0.35}>
-                <JustimeGlassPanel className="rounded-3xl px-8 py-10 text-center text-white">
+                <JustimeGlassPanel className="rounded-3xl px-8 py-10 text-center text-foreground">
                     <div className="flex flex-col items-center gap-4">
-                        <Loader2 className="h-8 w-8 animate-spin text-white" />
-                        <p className="text-white/65">加载文档中...</p>
+                        <Loader2 className="h-8 w-8 animate-spin text-foreground" />
+                        <p className="text-foreground/65">加载文档中...</p>
                     </div>
                 </JustimeGlassPanel>
             </JustimePageShell>
@@ -94,15 +94,15 @@ export default function DocumentPage() {
     if (error || !user) {
         return (
             <JustimePageShell fullHeight blur="xl" contentClassName="flex h-full items-center justify-center p-4" opacity={0.35}>
-                <JustimeGlassPanel className="max-w-md rounded-3xl px-8 py-10 text-center text-white">
-                    <h2 className="mb-2 text-xl font-semibold text-white">
+                <JustimeGlassPanel className="max-w-md rounded-3xl px-8 py-10 text-center text-foreground">
+                    <h2 className="mb-2 text-xl font-semibold text-foreground">
                         无法加载文档
                     </h2>
-                    <p className="mb-4 text-white/60">{error || '请先登录'}</p>
+                    <p className="mb-4 text-muted-foreground">{error || '请先登录'}</p>
                     <Button
                         variant="ghost"
                         onClick={() => router.back()}
-                        className="rounded-2xl border border-white/10 bg-white/5 text-white hover:bg-white/10"
+                        className="rounded-2xl border border-border bg-muted/30 text-foreground hover:bg-accent/50"
                     >
                         <ArrowLeft className="mr-2 h-4 w-4" />
                         返回上一页
@@ -114,7 +114,7 @@ export default function DocumentPage() {
 
     return (
         <JustimePageShell fullHeight blur="lg" opacity={0.35} contentClassName="h-full p-3 md:p-4">
-            <JustimeGlassPanel className="flex h-full flex-col overflow-hidden rounded-[32px] bg-white/8">
+            <JustimeGlassPanel className="flex h-full flex-col overflow-hidden rounded-[32px] bg-muted/40">
                 <DocumentEditor
                     eventId={eventId as string}
                     initialContent={content}
