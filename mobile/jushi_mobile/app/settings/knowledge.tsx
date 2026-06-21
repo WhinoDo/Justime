@@ -274,7 +274,7 @@ export default function KnowledgeScreen() {
     );
   };
 
-  const handleRebuildIndex = async () => {
+  const handleSyncToCloud = async () => {
     if (!token) return;
     setRebuildLoading(true);
     try {
@@ -284,13 +284,21 @@ export default function KnowledgeScreen() {
       });
       const result = await response.json();
       if (!response.ok || !result.success) {
-        throw new Error(result.detail || result.message || '重建索引失败');
+        throw new Error(result.detail || result.message || '同步到云端知识库失败');
       }
       setRebuildTaskId(result.task_id);
-      setRebuildStatus({ status: 'pending', message: '任务已创建' });
+      setRebuildStatus({ status: 'pending', message: '同步任务已创建' });
       setStatusModalVisible(true);
     } catch (error) {
-      Alert.alert('重建索引失败', error instanceof Error ? error.message : '请稍后重试');
+      const msg = error instanceof Error ? error.message : '请稍后重试';
+      if (msg.includes('不可用') || msg.includes('未配置')) {
+        Alert.alert(
+          '云知识库不可用',
+          '云知识库服务未配置或不可用，请联系管理员配置后使用。'
+        );
+      } else {
+        Alert.alert('同步到云端知识库失败', msg);
+      }
     } finally {
       setRebuildLoading(false);
     }
@@ -385,7 +393,7 @@ export default function KnowledgeScreen() {
       <View style={styles.modalOverlay}>
         <View style={[styles.modalContent, { backgroundColor: surfaceColor, borderColor }]}>
           <View style={styles.modalHeader}>
-            <ThemedText type="subtitle">索引重建状态</ThemedText>
+            <ThemedText type="subtitle">云同步状态</ThemedText>
             <TouchableOpacity onPress={() => setStatusModalVisible(false)}>
               <MaterialIcons name="close" size={24} color={Colors.light.textSecondary} />
             </TouchableOpacity>
@@ -415,12 +423,12 @@ export default function KnowledgeScreen() {
                 />
                 <ThemedText type="defaultSemiBold" style={styles.statusText}>
                   {rebuildStatus.status === 'completed'
-                    ? '已完成'
+                    ? '同步完成'
                     : rebuildStatus.status === 'failed'
-                    ? '失败'
+                    ? '同步失败'
                     : rebuildStatus.status === 'running'
-                    ? '进行中'
-                    : '等待中'}
+                    ? '同步中'
+                    : '等待同步'}
                 </ThemedText>
               </View>
 
@@ -555,10 +563,10 @@ export default function KnowledgeScreen() {
           style={styles.actionButton}
         />
         <Button
-          title="重建索引"
+          title="同步到云端知识库"
           variant="secondary"
-          icon={<MaterialIcons name="refresh" size={18} color={Colors.light.primary} />}
-          onPress={handleRebuildIndex}
+          icon={<MaterialIcons name="cloud-upload" size={18} color={Colors.light.primary} />}
+          onPress={handleSyncToCloud}
           disabled={rebuildLoading}
           loading={rebuildLoading}
           style={styles.actionButton}
@@ -568,7 +576,7 @@ export default function KnowledgeScreen() {
       <View style={styles.infoCard}>
         <MaterialIcons name="info-outline" size={20} color={Colors.light.textSecondary} />
         <ThemedText type="caption" style={styles.infoText}>
-          上传文档后，点击「重建索引」让 AI 能够检索知识库内容。支持 PDF、TXT、MD、JSON 等格式。
+          上传文档后，点击「同步到云端知识库」将文件同步到云端 RAG，AI 即可检索知识库内容。支持 PDF、TXT、MD 等格式。
         </ThemedText>
       </View>
 
