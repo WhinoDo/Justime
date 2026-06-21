@@ -1,9 +1,10 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Plus, MessageSquare } from 'lucide-react'
+import { Plus, MessageSquare, Search } from 'lucide-react'
 import { useChatSessions } from '@/hooks/useChatSessions'
 import { cn } from '@/lib/utils'
+import { useState } from 'react'
 
 interface ChatSidebarProps {
     userId: string
@@ -28,92 +29,90 @@ export function ChatSidebar({
         currentSessionId,
         onAutoSelect: onSelectSession,
     })
+    const [searchQuery, setSearchQuery] = useState('')
+
+    const filteredSessions = sessions.filter(s =>
+        !searchQuery || s.title.toLowerCase().includes(searchQuery.toLowerCase())
+    )
 
     const isDesktop = variant === 'desktop'
 
     return (
-        <div className={cn(
-            "flex h-full flex-col",
-            isDesktop ? "bg-white/50 text-[#171421] backdrop-blur-2xl" : "text-white",
-            className
-        )}>
-            <div className={cn("p-4", isDesktop ? "border-b border-violet-200/40" : "border-b border-white/10")}>
+        <div className={cn("flex h-full flex-col bg-white dark:bg-gray-900", className)}>
+            {/* macOS 风格搜索框 */}
+            <div className="px-3 pt-3 pb-2">
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="搜索会话..."
+                        className="w-full h-9 rounded-lg border border-input bg-secondary pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition-all"
+                    />
+                </div>
+            </div>
+
+            {/* macOS 风格新建会话按钮 */}
+            <div className="px-3 pb-2">
                 <Button
-                    className={cn(
-                        "w-full justify-start gap-2 text-left",
-                        isDesktop
-                            ? "rounded-xl border border-violet-200/60 bg-white/[0.72] text-[#5a4c73] hover:bg-white/[0.82] hover:text-[#171421] shadow-sm"
-                            : "rounded-2xl border border-white/[0.15] bg-white/10 text-white shadow-lg shadow-black/10 hover:bg-white/[0.15]"
-                    )}
+                    className="w-full justify-center gap-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 shadow-sm text-sm font-medium"
                     onClick={() => onSelectSession(null)}
-                    variant="ghost"
                 >
                     <Plus className="h-4 w-4" />
                     新会话
                 </Button>
             </div>
 
-            <div className={cn("flex-1 space-y-2 overflow-y-auto px-3 py-4", isDesktop && "desktop-scrollbar")}>
-                {sessions.map((session) => {
-                    const active = currentSessionId === session._id
-                    return (
-                        <button
-                            key={session._id}
-                            type="button"
-                            className={cn(
-                                "group flex w-full items-center gap-3 border border-transparent px-3 py-3 text-left text-sm transition-all duration-200",
-                                isDesktop
-                                    ? "rounded-xl hover:border-violet-200/60 hover:bg-white/[0.72]"
-                                    : "rounded-2xl hover:border-white/10 hover:bg-white/10",
-                                active
-                                    ? isDesktop
-                                        ? "border-violet-300/60 bg-[linear-gradient(135deg,rgba(255,255,255,0.84),rgba(238,231,255,0.76))] shadow-[0_16px_44px_rgba(112,77,171,0.12)]"
-                                        : "border-white/20 bg-white/[0.15] shadow-lg shadow-black/10"
-                                    : isDesktop
-                                        ? "bg-transparent"
-                                        : "bg-white/5"
-                            )}
-                            onClick={() => onSelectSession(session._id)}
-                        >
-                            <div className={cn(
-                                "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border",
-                                isDesktop
-                                    ? "border-violet-200/50 bg-white/70 text-violet-600"
-                                    : "border-white/10 bg-white/10 text-white/70",
-                                active && !isDesktop && "bg-white/20"
-                            )}>
-                                <MessageSquare className="h-4 w-4" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                                <div className={cn(
-                                    "truncate text-sm font-medium",
-                                    isDesktop ? "text-[#171421]" : "text-white/90"
-                                )}>{session.title}</div>
-                                <div className={cn(
-                                    "mt-1 text-xs",
-                                    isDesktop ? "text-[#8b7aa8]" : "text-white/[0.45]"
-                                )}>继续之前的对话</div>
-                            </div>
-                        </button>
-                    )
-                })}
+            {/* macOS 风格会话列表 */}
+            <div className="flex-1 space-y-0.5 overflow-y-auto px-2 pb-3">
+                {filteredSessions.map((session) => (
+                    <button
+                        key={session._id}
+                        type="button"
+                        className={cn(
+                            "group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-all duration-150",
+                            "hover:bg-gray-100 dark:hover:bg-gray-700/50",
+                            currentSessionId === session._id
+                                ? "bg-purple-500/10 text-purple-600 dark:text-purple-400"
+                                : "text-foreground"
+                        )}
+                        onClick={() => onSelectSession(session._id)}
+                    >
+                        <div className={cn(
+                            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+                            currentSessionId === session._id
+                                ? "bg-purple-500/15 text-purple-600 dark:text-purple-400"
+                                : "bg-gray-100 dark:bg-gray-800 text-muted-foreground"
+                        )}>
+                            <MessageSquare className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <div className="truncate text-sm font-medium">{session.title}</div>
+                            <div className="mt-0.5 text-xs text-muted-foreground/70">继续之前的对话</div>
+                        </div>
+                    </button>
+                ))}
 
                 {loading && sessions.length === 0 && (
-                    <div className={cn("py-8 text-center text-xs", isDesktop ? "text-[#8b7aa8]" : "text-white/[0.45]")}>
+                    <div className="py-8 text-center text-xs text-muted-foreground">
                         正在加载会话...
                     </div>
                 )}
 
-                {sessions.length === 0 && !loading && (
-                    <div className={cn(
-                        "px-4 py-8 text-center text-xs",
-                        isDesktop
-                            ? "rounded-xl border border-dashed border-violet-200/60 bg-white/[0.48] text-[#8b7aa8]"
-                            : "rounded-2xl border border-dashed border-white/10 bg-white/[0.03] text-white/[0.45]"
-                    )}>
-                        暂无历史会话
+                {filteredSessions.length === 0 && !loading && (
+                    <div className="rounded-lg border border-dashed border-border bg-muted/30 px-4 py-8 text-center text-xs text-muted-foreground">
+                        {searchQuery ? '未找到匹配的会话' : '暂无历史会话'}
                     </div>
                 )}
+            </div>
+
+            {/* 底部模型信息和 token 用量 */}
+            <div className="border-t border-border px-3 py-3">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Token 用量</span>
+                    <span className="font-mono">—</span>
+                </div>
             </div>
         </div>
     )

@@ -95,7 +95,7 @@ describe('ChatInterface', () => {
     const deepThinkButton = screen.getByRole('button', { name: /深度思考/i })
     await user.click(deepThinkButton)
 
-    expect(deepThinkButton).toHaveClass('bg-white/[0.15]')
+    expect(deepThinkButton).toHaveClass('bg-purple-100')
   })
 
   it('应该显示日历链接', async () => {

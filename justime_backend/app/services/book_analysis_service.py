@@ -33,10 +33,7 @@ from fastapi.concurrency import run_in_threadpool
 from app.core.config import settings
 from app.database import db
 
-try:
-    from app.services.document_storage_service import DOCS_DIR as DOCUMENTS_DIR
-except ImportError:
-    DOCUMENTS_DIR = Path("app/data/documents")
+from app.services.knowledge_paths import DOCS_DIR as RAG_DOCS_DIR
 
 DOCS_DIR = Path(DOCUMENTS_DIR)
 if not DOCS_DIR.is_absolute():

@@ -26,7 +26,7 @@ import { API_ENDPOINTS } from '@/lib/api/endpoints'
 const EVENT_TYPE_STYLES: Record<string, { label: string; className: string; icon?: any }> = {
     task: { label: '任务', className: 'bg-blue-500/10 text-blue-600 dark:text-blue-300 border-blue-500/20' },
     meeting: { label: '会议', className: 'bg-purple-500/10 text-purple-600 dark:text-purple-300 border-purple-500/20' },
-    reminder: { label: '提醒', className: 'bg-amber-500/10 text-amber-600 dark:text-amber-300 border-amber-500/20' },
+    reminder: { label: '提醒', className: 'bg-violet-500/10 text-violet-600 dark:text-violet-300 border-violet-500/20' },
     deadline: { label: '截止', className: 'bg-rose-500/10 text-rose-600 dark:text-rose-300 border-rose-500/20' },
     other: { label: '事项', className: 'bg-slate-500/10 text-slate-600 dark:text-slate-300 border-slate-500/20' }
 }
@@ -115,7 +115,7 @@ export function SuggestedEventCard({ event, onConfirm, onDismiss }: SuggestedEve
     const hasConflicts = event.conflicts && event.conflicts.length > 0
 
     return (
-        <div className="group relative w-full overflow-hidden rounded-3xl border border-white/40 dark:border-white/10 bg-white/40 dark:bg-gray-900/40 shadow-xl backdrop-blur-xl transition-all duration-300 hover:shadow-2xl hover:bg-white/50 dark:hover:bg-gray-900/50">
+        <div className="group relative w-full overflow-hidden rounded-3xl border border-white/40 dark:border-white/10 bg-white/40 dark:bg-gray-900/40 shadow-xl backdrop-blur-xl transition-all duration-300 hover:shadow-2xl hover:bg-white/50 dark:hover:bg-gray-900/50 hover-lift">
             {/* Top Gradient Accent */}
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 opacity-70" />
 
@@ -191,18 +191,18 @@ export function SuggestedEventCard({ event, onConfirm, onDismiss }: SuggestedEve
 
                 {/* Timeline Divergence (Conflicts) */}
                 {hasConflicts && (
-                    <div className="relative overflow-hidden rounded-xl border border-amber-200/50 dark:border-amber-800/30 bg-amber-50/40 dark:bg-amber-900/10 p-4">
+                    <div className="relative overflow-hidden rounded-xl border border-violet-200/50 dark:border-violet-800/30 bg-violet-50/40 dark:bg-violet-900/10 p-4">
                         <div className="flex items-start gap-3">
-                            <div className="p-1.5 rounded-full bg-amber-100/80 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 mt-0.5">
+                            <div className="p-1.5 rounded-full bg-violet-100/80 dark:bg-violet-900/50 text-violet-600 dark:text-violet-400 mt-0.5">
                                 <ArrowRightLeft className="h-4 w-4" />
                             </div>
                             <div className="flex-1 space-y-2">
-                                <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                                <p className="text-sm font-medium text-violet-900 dark:text-violet-200">
                                     时间冲突 (Timeline Divergence)
                                 </p>
-                                <div className="space-y-1.5 text-xs text-amber-800/80 dark:text-amber-300/80">
+                                <div className="space-y-1.5 text-xs text-violet-800/80 dark:text-violet-300/80">
                                     {event.conflicts!.map((c: any) => (
-                                        <div key={c._id} className="flex items-center justify-between pl-2 border-l-2 border-amber-300/50">
+                                        <div key={c._id} className="flex items-center justify-between pl-2 border-l-2 border-violet-300/50">
                                             <span className="truncate max-w-[120px]">{c.title}</span>
                                             <span className="font-mono text-[10px] opacity-80">
                                                 {formatTimeOnly(c.start)}-{formatTimeOnly(c.end)}
@@ -218,7 +218,7 @@ export function SuggestedEventCard({ event, onConfirm, onDismiss }: SuggestedEve
                             <Button
                                 size="sm"
                                 variant="outline"
-                                className="h-8 text-xs border-amber-200/50 hover:bg-amber-100/50 hover:text-amber-700 dark:border-amber-800/30 dark:hover:bg-amber-900/30 text-amber-600"
+                                className="h-8 text-xs border-violet-200/50 hover:bg-violet-100/50 hover:text-violet-700 dark:border-violet-800/30 dark:hover:bg-violet-900/30 text-violet-600"
                                 onClick={async () => {
                                     if (!confirm('确定要覆盖原有日程吗？')) return;
                                     setIsLoading(true);
@@ -238,7 +238,7 @@ export function SuggestedEventCard({ event, onConfirm, onDismiss }: SuggestedEve
                             </Button>
                             <Button
                                 size="sm"
-                                className="h-8 text-xs bg-amber-500 hover:bg-amber-600 text-white border-0 shadow-lg shadow-amber-500/20"
+                                className="h-8 text-xs bg-violet-500 hover:bg-violet-600 text-white border-0 shadow-lg shadow-violet-500/20"
                                 onClick={handleConfirm}
                                 disabled={isLoading}
                             >

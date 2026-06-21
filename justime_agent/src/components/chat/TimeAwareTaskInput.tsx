@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { TimeUtils } from '@/lib/utils/time'
+import { TimeUtils, dayjs } from '@/lib/utils/time'
+import { useChatSubmitKey } from '@/hooks/useChatSubmitKey'
 import { Clock, Calendar, Zap, ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -42,7 +43,7 @@ export function TimeAwareTaskInput({ onTaskCreate, className }: TimeAwareTaskInp
 
   const handleQuickTimeInsert = (timeSlot: { label: string; startTime: string; endTime: string }) => {
     const timeText = `${timeSlot.label}(${TimeUtils.formatForDisplay(timeSlot.startTime, 'MM月DD日 HH:mm')} - ${TimeUtils.formatForDisplay(timeSlot.endTime, 'HH:mm')})`
-    
+
     if (taskInput.trim()) {
       setTaskInput(prev => `${prev} ${timeText}`)
     } else {
@@ -57,12 +58,10 @@ export function TimeAwareTaskInput({ onTaskCreate, className }: TimeAwareTaskInp
     }
   }
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSubmit()
-    }
-  }
+  const { handleKeyDown } = useChatSubmitKey({
+    onSubmit: handleSubmit,
+    preference: 'enter',
+  })
 
   return (
     <Card className={cn("border-0 bg-transparent text-white shadow-none", className)}>
@@ -114,7 +113,7 @@ export function TimeAwareTaskInput({ onTaskCreate, className }: TimeAwareTaskInp
             <Input
               value={taskInput}
               onChange={(e) => setTaskInput(e.target.value)}
-              onKeyPress={handleKeyPress}
+              onKeyDown={handleKeyDown}
               placeholder="描述你的任务，例如：明天上午复习数学，或者2小时后开会..."
               className="flex-1 bg-white/5 dark:bg-white/5 border-white/10 dark:border-white/10 text-white placeholder:text-white/40 rounded-xl focus-visible:ring-1 focus-visible:ring-white/20 focus-visible:ring-offset-0"
             />

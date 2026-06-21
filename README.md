@@ -46,41 +46,22 @@ Justime 采用现代前后端分离架构，面向 macOS 桌面端优化：
 
 Justime 以「任务进程」为一等公民，所有能力围绕任务的完整生命周期构建：
 
-*   🎯 **任务进程管理 (Task Process Management)**
-    *   **三阶段生命周期**：每个任务经历 Before（目标拆解、资料准备、计划生成）→ During（执行记录、Evidence 采集、进度监测、阻塞识别）→ After（复盘总结、Markdown 输出、知识归档）。
-    *   **Evidence 驱动进度**：进度不靠手动拖拽，而是基于笔记、文件、对话、代码提交、学习时长等多维证据自动评估。
-    *   **Process Cockpit**：首页任务驾驶舱，展示活跃任务状态、进度、阻塞点和 AI 建议。
-
-*   🤖 **AI Agent 协作 (AI Agent Orchestration)**
-    *   **Planner Agent**：将模糊目标拆解为阶段、里程碑和资料清单。
-    *   **Research Agent**：自动搜集参考资料，生成摘要与链接。
-    *   **Monitor Agent**：根据 Evidence 判断进度与阻塞点。
-    *   **Coach Agent**：给出下一步行动建议。
-    *   **Summarizer Agent**：阶段总结与任务复盘。
-    *   **Knowledge Agent**：生成结构化 Markdown 并归档到知识库。
-
-*   📚 **Markdown 知识沉淀 (Knowledge Vault)**
-    *   **自动生成**：任务完成后 AI 自动生成 Summary、Tutorial、FAQ、Cheatsheet 等多种格式的 Markdown 文档。
-    *   **Obsidian 兼容**：输出目录结构与 Obsidian Vault 完全兼容，支持双链、标签和 Wikilink。
-    *   **本地优先**：所有知识文档存储在本地 `JustimeVault/` 目录，数据完全归用户所有。
-
-*   💬 **智能对话 (AI Chat)**
-    *   **任务绑定**：对话不再是孤立聊天，而是绑定到具体 Task Process，自动携带任务上下文。
-    *   **智能路由**：自动分析请求复杂度，在快速模型与深度推理模型之间智能切换。
-    *   **流式输出**：基于 SSE + Redis 的打字机效果，支持断点续传。
-
-*   📅 **日程管理 (Calendar)**
-    *   **任务关联**：日程事件可直接关联 Task Process，自动追踪任务时间投入。
-    *   **多维视图**：支持日程创建、编辑、归档与智能提示。
-
-*   🔍 **RAG 知识检索 (Knowledge Search)**
-    *   **向量检索**：集成高性能 Embedding，支持对任务产出知识和上传文档的语义化检索。
-    *   **多格式解析**：支持 PDF（包括扫描版）、Markdown、TXT 等文档的解析与索引。
-
-*   🖥️ **macOS 桌面端 (Desktop App)** `Coming Soon`
-    *   Tauri / Electron 封装，生成可安装的 `Justime.dmg`。
-    *   本地文件目录选择、菜单栏入口、系统通知。
-    *   支持离线任务管理与知识库浏览。
+*   💬 **智能 AI 对话工具 (AI Chat Studio)**
+    *   **智能路由**：自动分析请求复杂度，在快速模型（如 DeepSeek-Chat）与深度推理模型（如 DeepSeek-Reasoner）之间智能切换。
+    *   **打字机流式输出**：基于 `SSEStreamService` 与 Redis 的 SSE 技术，支持 `Last-Event-ID` 移动端断点续传。
+*   📅 **日程与时间规划器 (Calendar & Timing Suite)**
+    *   **多维日程视图**：支持日程的创建、编辑、归档与智能提示。
+    *   **日程视频解析**：独创日程关联的流媒体视频分析链路。
+    *   **任务计时分析**：追踪各项生产力任务的起止与时间分布。
+*   📚 **高精度 RAG 知识库 (通过云服务厂商 API)**
+    *   **多格式解析**：支持 PDF（包括扫描版）、Markdown、TXT 等文档上传与云端解析。
+    *   **云端向量检索**：通过云服务厂商 API 实现 Embedding 与检索，支持精细化的相关性文档片段高亮引用与居中悬浮预览。
+*   📝 **工作文档协作空间 (Work Documents Workspace)**
+    *   支持结构化个人工作文档创建、管理和 AI 辅助编写，保证灵感即时落地。
+*   🔍 **NotebookLM 式书籍深度研讨 (Book Analysis Workspace)**
+    *   多维度分析大部头书籍，提取核心脉络并进行交互式智能问答。
+*   📊 **全动态管理控制台 (Admin Control Panel)**
+    *   全玻璃质感 UI 仪表盘，可视化 Token 日用量，动态配置 LLM 模型、限流策略及用户权限。
 
 ---
 

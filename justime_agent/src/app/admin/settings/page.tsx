@@ -20,9 +20,9 @@ export default function AdminSettingsPage() {
             description: '管理可复用的系统 API Key，供模型配置统一引用。',
             icon: KeyRound,
             href: '/admin/apikeys',
-            color: 'text-amber-300',
-            bg: 'bg-amber-500/20',
-            ring: 'ring-amber-500/30',
+            color: 'text-violet-300',
+            bg: 'bg-violet-500/20',
+            ring: 'ring-violet-500/30',
         },
         {
             title: '用户管理',
@@ -47,21 +47,21 @@ export default function AdminSettingsPage() {
     return (
         <div className="space-y-8">
             <div>
-                <h2 className="text-3xl font-bold tracking-tight text-white">系统设置</h2>
-                <p className="text-white/70 mt-2">管理平台的全局配置项。</p>
+                <h2 className="text-3xl font-bold tracking-tight text-foreground">系统设置</h2>
+                <p className="text-muted-foreground mt-2">管理平台的全局配置项。</p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {settingsGroups.map((group) => (
                     <Link key={group.href} href={group.href}>
-                        <div className="group p-6 rounded-2xl bg-white/5 backdrop-blur-md border border-white/[0.15] shadow-xl transition-all hover:bg-white/10 hover:border-white/25 cursor-pointer">
+                        <div className="group p-6 rounded-2xl bg-muted/30 backdrop-blur-md border border-border shadow-xl transition-all hover:bg-accent/50 hover:border-ring cursor-pointer">
                             <div className={`h-12 w-12 rounded-xl ${group.bg} ring-1 ${group.ring} flex items-center justify-center ${group.color} mb-4`}>
                                 <group.icon className="h-6 w-6" />
                             </div>
-                            <h3 className="text-lg font-semibold text-white mb-2">{group.title}</h3>
-                            <p className="text-sm text-white/60">{group.description}</p>
+                            <h3 className="text-lg font-semibold text-foreground mb-2">{group.title}</h3>
+                            <p className="text-sm text-muted-foreground">{group.description}</p>
                             <div className="mt-4">
-                                <span className="text-xs text-white/40 group-hover:text-white/70 transition-colors">
+                                <span className="text-xs text-muted-foreground/60 group-hover:text-muted-foreground transition-colors">
                                     前往配置 →
                                 </span>
                             </div>

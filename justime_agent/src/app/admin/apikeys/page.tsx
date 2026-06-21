@@ -173,7 +173,7 @@ export default function AdminApiKeysPage() {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-96">
-                <Loader2 className="w-8 h-8 animate-spin text-white/80" />
+                <Loader2 className="w-8 h-8 animate-spin text-foreground/80" />
             </div>
         )
     }
@@ -182,46 +182,46 @@ export default function AdminApiKeysPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold tracking-tight text-white">API Key 管理</h2>
-                    <p className="text-white/70">管理可复用的系统 API Key，供模型配置统一引用。</p>
+                    <h2 className="text-2xl font-bold tracking-tight text-foreground">API Key 管理</h2>
+                    <p className="text-muted-foreground">管理可复用的系统 API Key，供模型配置统一引用。</p>
                 </div>
-                <Button onClick={openCreateDialog} className="gap-2 bg-white/20 border border-white/20 text-white hover:bg-white/30">
+                <Button onClick={openCreateDialog} className="gap-2 bg-accent/50 border border-border text-foreground hover:bg-accent">
                     <Plus className="w-4 h-4" />
                     新增 API Key
                 </Button>
             </div>
 
             {sortedKeys.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-white/25 bg-white/10 backdrop-blur-xl p-10 text-center">
-                    <p className="text-white/80 text-sm">当前还没有通用 API Key</p>
-                    <p className="text-white/60 text-xs mt-2">添加后可在模型管理中直接引用，避免重复填写。</p>
-                    <Button onClick={openCreateDialog} className="gap-2 mt-5 bg-white/20 border border-white/20 text-white hover:bg-white/30">
+                <div className="rounded-2xl border border-dashed border-border bg-muted/50 backdrop-blur-xl p-10 text-center">
+                    <p className="text-foreground/80 text-sm">当前还没有通用 API Key</p>
+                    <p className="text-muted-foreground text-xs mt-2">添加后可在模型管理中直接引用，避免重复填写。</p>
+                    <Button onClick={openCreateDialog} className="gap-2 mt-5 bg-accent/50 border border-border text-foreground hover:bg-accent">
                         <Plus className="w-4 h-4" />
                         添加首个 API Key
                     </Button>
                 </div>
             ) : (
-                <div className="rounded-2xl border border-white/20 bg-white/5 backdrop-blur-xl shadow-2xl overflow-hidden text-white w-full">
-                    <Table className="text-white">
-                        <TableHeader className="[&_tr]:border-white/10 bg-white/5">
-                            <TableRow className="border-white/10 hover:bg-transparent">
-                                <TableHead className="text-white/80">名称</TableHead>
-                                <TableHead className="text-white/80">状态</TableHead>
-                                <TableHead className="text-white/80">更新时间</TableHead>
-                                <TableHead className="text-right text-white/80">操作</TableHead>
+                <div className="rounded-2xl border border-border bg-muted/30 backdrop-blur-xl shadow-2xl overflow-hidden text-foreground w-full">
+                    <Table className="text-foreground">
+                        <TableHeader className="[&_tr]:border-border bg-muted/50">
+                            <TableRow className="border-border hover:bg-transparent">
+                                <TableHead className="text-foreground/80">名称</TableHead>
+                                <TableHead className="text-foreground/80">状态</TableHead>
+                                <TableHead className="text-foreground/80">更新时间</TableHead>
+                                <TableHead className="text-right text-foreground/80">操作</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {sortedKeys.map((key) => (
-                                <TableRow key={key.id} className="border-white/10 hover:bg-white/5">
+                                <TableRow key={key.id} className="border-border hover:bg-accent/50">
                                     <TableCell>
                                         <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-white/10 border border-white/[0.15] flex items-center justify-center">
-                                                <KeyRound className="w-4 h-4 text-white/70" />
+                                            <div className="w-8 h-8 rounded-full bg-muted/50 border border-border flex items-center justify-center">
+                                                <KeyRound className="w-4 h-4 text-muted-foreground" />
                                             </div>
                                             <div className="flex flex-col">
-                                                <span className="font-medium text-white">{key.name}</span>
-                                                <span className="text-xs text-white/50">{key.id}</span>
+                                                <span className="font-medium text-foreground">{key.name}</span>
+                                                <span className="text-xs text-muted-foreground">{key.id}</span>
                                             </div>
                                         </div>
                                     </TableCell>
@@ -230,10 +230,10 @@ export default function AdminApiKeysPage() {
                                             {key.has_api_key ? '已配置' : '未配置'}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell className="text-white/70 text-sm">{key.updated_at || '-'}</TableCell>
+                                    <TableCell className="text-muted-foreground text-sm">{key.updated_at || '-'}</TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex items-center justify-end gap-2">
-                                            <Button variant="outline" size="sm" className="border-white/30 bg-black/20 text-white hover:bg-white/10 hover:text-white" onClick={() => openEditDialog(key)}>
+                                            <Button variant="outline" size="sm" className="border-border bg-muted/50 text-foreground hover:bg-accent/50 hover:text-foreground" onClick={() => openEditDialog(key)}>
                                                 <Edit2 className="w-4 h-4" />
                                             </Button>
                                             <Button variant="outline" size="sm" className="border-red-300/40 bg-red-500/10 text-red-200 hover:bg-red-500/20 hover:text-red-100" onClick={() => handleDelete(key)}>
@@ -249,34 +249,34 @@ export default function AdminApiKeysPage() {
             )}
 
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                <DialogContent className="sm:max-w-[560px] bg-gray-900/90 backdrop-blur-xl border-white/20 text-white">
+                <DialogContent className="sm:max-w-[560px] bg-card backdrop-blur-xl border-border text-foreground">
                     <DialogHeader>
                         <DialogTitle>{editingKey ? '编辑 API Key' : '新增 API Key'}</DialogTitle>
                     </DialogHeader>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-2">
                         <div className="space-y-1">
-                            <p className="text-sm text-white/70">配置ID（可选）</p>
+                            <p className="text-sm text-muted-foreground">配置ID（可选）</p>
                             <Input
-                                className="bg-black/20 border-white/20 text-white placeholder:text-white/50 focus-visible:ring-white/30 focus-visible:border-white/40 focus-visible:ring-offset-0"
+                                className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-ring focus-visible:border-ring focus-visible:ring-offset-0"
                                 value={form.id}
                                 onChange={(e) => setForm((s) => ({ ...s, id: e.target.value }))}
                                 autoComplete="off"
                             />
                         </div>
                         <div className="space-y-1">
-                            <p className="text-sm text-white/70">显示名称</p>
+                            <p className="text-sm text-muted-foreground">显示名称</p>
                             <Input
-                                className="bg-black/20 border-white/20 text-white placeholder:text-white/50 focus-visible:ring-white/30 focus-visible:border-white/40 focus-visible:ring-offset-0"
+                                className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-ring focus-visible:border-ring focus-visible:ring-offset-0"
                                 value={form.name}
                                 onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))}
                                 autoComplete="off"
                             />
                         </div>
                         <div className="sm:col-span-2 space-y-1">
-                            <p className="text-sm text-white/70">API Key {editingKey ? '(留空表示不修改)' : ''}</p>
+                            <p className="text-sm text-muted-foreground">API Key {editingKey ? '(留空表示不修改)' : ''}</p>
                             <Input
-                                className="bg-black/20 border-white/20 text-white placeholder:text-white/50 focus-visible:ring-white/30 focus-visible:border-white/40 focus-visible:ring-offset-0"
+                                className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-ring focus-visible:border-ring focus-visible:ring-offset-0"
                                 value={form.api_key}
                                 type="password"
                                 onChange={(e) => setForm((s) => ({ ...s, api_key: e.target.value }))}
@@ -286,8 +286,8 @@ export default function AdminApiKeysPage() {
                     </div>
 
                     <DialogFooter>
-                        <Button variant="outline" className="border-white/30 bg-black/20 text-white hover:bg-white/10 hover:text-white" onClick={() => setDialogOpen(false)} disabled={saving}>取消</Button>
-                        <Button className="bg-white/20 border border-white/20 text-white hover:bg-white/30" onClick={handleSubmit} disabled={saving}>
+                        <Button variant="outline" className="border-border bg-muted/50 text-foreground hover:bg-accent/50 hover:text-foreground" onClick={() => setDialogOpen(false)} disabled={saving}>取消</Button>
+                        <Button className="bg-accent/50 border border-border text-foreground hover:bg-accent" onClick={handleSubmit} disabled={saving}>
                             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             {editingKey ? '保存修改' : '创建 API Key'}
                         </Button>

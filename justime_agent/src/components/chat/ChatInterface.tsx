@@ -6,6 +6,7 @@ import { generateId } from '@/lib/utils'
 import { TaskItem } from '@/lib/ai/task-planner'
 import { TimeAwareTaskInput } from './TimeAwareTaskInput'
 import { useAuth } from '@/hooks/useAuth'
+import { useChatSubmitKey } from '@/hooks/useChatSubmitKey'
 import { API_ENDPOINTS } from '@/lib/api/endpoints'
 import { ChatHeader, ChatHeaderProps } from './ChatHeader'
 import { ChatInputArea, ChatInputAreaProps } from './ChatInputArea'
@@ -631,12 +632,10 @@ if (lastEventId) {
     }
   }, [input, isLoading, authUser?.id, currentTaskId, sessionId, useWebSearch, selectedModel, onSessionChange, useStreaming, handleStreamingMessage, onTaskCreate])
 
-  const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSendMessage()
-    }
-  }, [handleSendMessage])
+  const { handleKeyDown: handleKeyPress, shortcutHint } = useChatSubmitKey({
+    onSubmit: handleSendMessage,
+    preference: 'enter',
+  })
 
   const handleTaskAdded = useCallback((task: TaskItem) => {
     setPendingTasks(prev => prev.filter(t => t.title !== task.title))
@@ -877,11 +876,12 @@ if (lastEventId) {
     availableModels,
     modelError,
     onInputChange: setInput,
-    onKeyPress: handleKeyPress,
+    onKeyDown: handleKeyPress,
     onSend: handleSendMessage,
     onToggleWebSearch: () => setUseWebSearch(!useWebSearch),
     onModelChange: setSelectedModel,
     textareaRef,
+    shortcutHint,
     previewOpen,
     selectedReference,
     activeTab,
@@ -929,8 +929,20 @@ if (lastEventId) {
   }
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col text-white">
-      {mainChat}
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-white dark:bg-gray-950">
+      <div className="flex min-w-0 min-h-0 flex-1 flex-col">
+        <ChatHeader {...headerProps} />
+        <MessageList {...messageListProps} />
+        <ChatInputArea {...inputAreaProps}>
+          {showTimeHelper && (
+            <div className="border-t border-border bg-muted/30 p-4">
+              <TimeAwareTaskInput
+                onTaskCreate={handleTimeAwareTaskCreate}
+              />
+            </div>
+          )}
+        </ChatInputArea>
+      </div>
     </div>
   )
 }

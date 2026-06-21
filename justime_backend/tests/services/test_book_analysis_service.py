@@ -55,6 +55,11 @@ def load_service_module():
     sys.modules["fastapi.concurrency"] = fake_fastapi_concurrency
 
     fake_bson = types.ModuleType("bson")
+    fake_bson.__path__ = []
+    fake_bson.errors = types.ModuleType("bson.errors")
+    fake_bson.errors.InvalidId = type("InvalidId", (Exception,), {})
+    sys.modules["bson"] = fake_bson
+    sys.modules["bson.errors"] = fake_bson.errors
 
     class ObjectId(str):
         _counter = 0
@@ -120,22 +125,21 @@ def load_service_module():
     fake_database.db = types.SimpleNamespace(db={})
     sys.modules["app.database"] = fake_database
 
-    fake_documents = types.ModuleType("app.services.document_storage_service")
-    fake_documents.DOCS_DIR = Path(tempfile.mkdtemp(prefix="book-analysis-docs-"))
-    sys.modules["app.services.document_storage_service"] = fake_documents
+    fake_knowledge_paths = types.ModuleType("app.services.knowledge_paths")
+    fake_knowledge_paths.DOCS_DIR = Path(tempfile.mkdtemp(prefix="book-analysis-docs-"))
+    sys.modules["app.services.knowledge_paths"] = fake_knowledge_paths
 
-    try:
-        spec = importlib.util.spec_from_file_location("book_analysis_service_under_test", SERVICE_PATH)
-        module = importlib.util.module_from_spec(spec)
-        assert spec and spec.loader
-        spec.loader.exec_module(module)
-        return module, HTTPException, fake_documents.DOCS_DIR
-    finally:
-        for name, original in original_modules.items():
-            if original is missing:
-                sys.modules.pop(name, None)
-            else:
-                sys.modules[name] = original
+    fake_pymongo = types.ModuleType("pymongo")
+    fake_pymongo.errors = types.ModuleType("pymongo.errors")
+    fake_pymongo.errors.PyMongoError = Exception
+    sys.modules["pymongo"] = fake_pymongo
+    sys.modules["pymongo.errors"] = fake_pymongo.errors
+
+    spec = importlib.util.spec_from_file_location("book_analysis_service_under_test", SERVICE_PATH)
+    module = importlib.util.module_from_spec(spec)
+    assert spec and spec.loader
+    spec.loader.exec_module(module)
+    return module, HTTPException, fake_knowledge_paths.DOCS_DIR
 
 
 class FakePage:

@@ -391,7 +391,7 @@ export default function AdminModelsPage() {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-96">
-                <Loader2 className="w-8 h-8 animate-spin text-white/80" />
+                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
             </div>
         )
     }
@@ -400,53 +400,53 @@ export default function AdminModelsPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold tracking-tight text-white">系统模型管理</h2>
-                    <p className="text-white/70">管理平台全局 LLM 模型配置（新增、编辑、启用、删除）</p>
+                    <h2 className="text-2xl font-bold tracking-tight text-foreground">系统模型管理</h2>
+                    <p className="text-muted-foreground">管理平台全局 LLM 模型配置（新增、编辑、启用、删除）</p>
                 </div>
-                <Button onClick={openCreateDialog} className="gap-2 bg-white/20 border border-white/20 text-white hover:bg-white/30">
+                <Button onClick={openCreateDialog} className="gap-2 bg-accent/50 border border-border text-foreground hover:bg-accent">
                     <Plus className="w-4 h-4" />
                     新增模型
                 </Button>
             </div>
 
             {sortedModels.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-white/25 bg-white/10 backdrop-blur-xl p-10 text-center">
-                    <p className="text-white/80 text-sm">当前还没有系统模型配置</p>
-                    <p className="text-white/60 text-xs mt-2">点击下方按钮添加首个模型后，普通用户即可在模型配置页看到它。</p>
-                    <Button onClick={openCreateDialog} className="gap-2 mt-5 bg-white/20 border border-white/20 text-white hover:bg-white/30">
+                <div className="rounded-2xl border border-dashed border-border bg-muted/50 backdrop-blur-xl p-10 text-center">
+                    <p className="text-muted-foreground text-sm">当前还没有系统模型配置</p>
+                    <p className="text-muted-foreground/60 text-xs mt-2">点击下方按钮添加首个模型后，普通用户即可在模型配置页看到它。</p>
+                    <Button onClick={openCreateDialog} className="gap-2 mt-5 bg-accent/50 border border-border text-foreground hover:bg-accent">
                         <Plus className="w-4 h-4" />
                         添加首个模型
                     </Button>
                 </div>
             ) : (
-                <div className="rounded-2xl border border-white/20 bg-white/5 backdrop-blur-xl shadow-2xl overflow-hidden text-white w-full">
-                    <Table className="text-white">
-                        <TableHeader className="[&_tr]:border-white/10 bg-white/5">
-                            <TableRow className="border-white/10 hover:bg-transparent">
-                                <TableHead className="text-white/80">名称</TableHead>
-                                <TableHead className="text-white/80">模型ID</TableHead>
-                                <TableHead className="text-white/80">优先级</TableHead>
-                                <TableHead className="text-white/80">能力标签</TableHead>
-                                <TableHead className="text-white/80">启用</TableHead>
-                                <TableHead className="text-white/80">API Key</TableHead>
-                                <TableHead className="text-right text-white/80">操作</TableHead>
+                <div className="rounded-2xl border border-border bg-muted/30 backdrop-blur-xl shadow-2xl overflow-hidden text-foreground w-full">
+                    <Table className="text-foreground">
+                        <TableHeader className="[&_tr]:border-border bg-muted/50">
+                            <TableRow className="border-border hover:bg-transparent">
+                                <TableHead className="text-muted-foreground">名称</TableHead>
+                                <TableHead className="text-muted-foreground">模型ID</TableHead>
+                                <TableHead className="text-muted-foreground">优先级</TableHead>
+                                <TableHead className="text-muted-foreground">能力标签</TableHead>
+                                <TableHead className="text-muted-foreground">启用</TableHead>
+                                <TableHead className="text-muted-foreground">API Key</TableHead>
+                                <TableHead className="text-right text-muted-foreground">操作</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {sortedModels.map((model) => (
-                                <TableRow key={model.id} className="border-white/10 hover:bg-white/5">
+                                <TableRow key={model.id} className="border-border hover:bg-accent/50">
                                     <TableCell>
                                         <div className="flex flex-col">
-                                            <span className="font-medium text-white">{model.name}</span>
-                                            <span className="text-xs text-white/60">{model.base_url}</span>
+                                            <span className="font-medium text-foreground">{model.name}</span>
+                                            <span className="text-xs text-muted-foreground">{model.base_url}</span>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="font-mono text-xs text-white/80">{model.model_id}</TableCell>
-                                    <TableCell className="text-white/80">{model.priority}</TableCell>
+                                    <TableCell className="font-mono text-xs text-muted-foreground">{model.model_id}</TableCell>
+                                    <TableCell className="text-muted-foreground">{model.priority}</TableCell>
                                     <TableCell>
                                         <div className="flex flex-wrap gap-1">
                                             {model.capabilities.length === 0 ? (
-                                                <span className="text-white/50 text-xs">-</span>
+                                                <span className="text-muted-foreground text-xs">-</span>
                                             ) : (
                                                 model.capabilities.map((cap) => (
                                                     <Badge key={`${model.id}-${cap}`} variant="secondary" className="text-xs bg-blue-500/20 text-blue-200 hover:bg-blue-500/20">
@@ -468,7 +468,7 @@ export default function AdminModelsPage() {
                                                 {model.has_api_key ? '已配置' : '未配置'}
                                             </Badge>
                                             {model.api_key_id ? (
-                                                <span className="text-xs text-white/60">
+                                                <span className="text-xs text-muted-foreground">
                                                     引用: {model.api_key_name || model.api_key_id}
                                                 </span>
                                             ) : null}
@@ -476,7 +476,7 @@ export default function AdminModelsPage() {
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex items-center justify-end gap-2">
-                                            <Button variant="outline" size="sm" className="border-white/30 bg-black/20 text-white hover:bg-white/10 hover:text-white" onClick={() => openEditDialog(model)}>
+                                            <Button variant="outline" size="sm" className="border-border bg-muted/50 text-foreground hover:bg-accent/50 hover:text-foreground" onClick={() => openEditDialog(model)}>
                                                 <Edit2 className="w-4 h-4" />
                                             </Button>
                                             <Button variant="outline" size="sm" className="border-red-300/40 bg-red-500/10 text-red-200 hover:bg-red-500/20 hover:text-red-100" onClick={() => handleDelete(model)}>
@@ -492,31 +492,31 @@ export default function AdminModelsPage() {
             )}
 
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                <DialogContent className="sm:max-w-[620px] bg-gray-900/90 backdrop-blur-xl border-white/20 text-white">
+                <DialogContent className="sm:max-w-[620px] bg-card backdrop-blur-xl border-border text-foreground">
                     <DialogHeader>
                         <DialogTitle>{editingModel ? '编辑系统模型' : '新增系统模型'}</DialogTitle>
                     </DialogHeader>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-2">
                         <div className="space-y-1">
-                            <p className="text-sm text-white/70">配置ID（可选）</p>
-                            <Input className="bg-black/20 border-white/20 text-white placeholder:text-white/50 focus-visible:ring-white/30 focus-visible:border-white/40 focus-visible:ring-offset-0" value={form.id} onChange={(e) => setForm((s) => ({ ...s, id: e.target.value }))} autoComplete="off" />
+                            <p className="text-sm text-muted-foreground">配置ID（可选）</p>
+                            <Input className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-ring focus-visible:border-ring focus-visible:ring-offset-0" value={form.id} onChange={(e) => setForm((s) => ({ ...s, id: e.target.value }))} autoComplete="off" />
                         </div>
                         <div className="space-y-1">
-                            <p className="text-sm text-white/70">显示名称</p>
-                            <Input className="bg-black/20 border-white/20 text-white placeholder:text-white/50 focus-visible:ring-white/30 focus-visible:border-white/40 focus-visible:ring-offset-0" value={form.name} onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))} autoComplete="off" />
+                            <p className="text-sm text-muted-foreground">显示名称</p>
+                            <Input className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-ring focus-visible:border-ring focus-visible:ring-offset-0" value={form.name} onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))} autoComplete="off" />
                         </div>
                         <div className="space-y-1">
-                            <p className="text-sm text-white/70">模型ID</p>
-                            <Input className="bg-black/20 border-white/20 text-white placeholder:text-white/50 focus-visible:ring-white/30 focus-visible:border-white/40 focus-visible:ring-offset-0" value={form.model_id} onChange={(e) => setForm((s) => ({ ...s, model_id: e.target.value }))} autoComplete="off" />
+                            <p className="text-sm text-muted-foreground">模型ID</p>
+                            <Input className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-ring focus-visible:border-ring focus-visible:ring-offset-0" value={form.model_id} onChange={(e) => setForm((s) => ({ ...s, model_id: e.target.value }))} autoComplete="off" />
                         </div>
                         <div className="space-y-1">
-                            <p className="text-sm text-white/70">服务地址</p>
-                            <Input className="bg-black/20 border-white/20 text-white placeholder:text-white/50 focus-visible:ring-white/30 focus-visible:border-white/40 focus-visible:ring-offset-0" value={form.base_url} onChange={(e) => setForm((s) => ({ ...s, base_url: e.target.value }))} autoComplete="off" />
+                            <p className="text-sm text-muted-foreground">服务地址</p>
+                            <Input className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-ring focus-visible:border-ring focus-visible:ring-offset-0" value={form.base_url} onChange={(e) => setForm((s) => ({ ...s, base_url: e.target.value }))} autoComplete="off" />
                         </div>
 
                         <div className="space-y-1 sm:col-span-2">
-                            <p className="text-sm text-white/70">API Key 来源</p>
+                            <p className="text-sm text-muted-foreground">API Key 来源</p>
                             <Select
                                 value={form.api_key_mode}
                                 onValueChange={(value) => {
@@ -530,12 +530,12 @@ export default function AdminModelsPage() {
                                     }))
                                 }}
                             >
-                                <SelectTrigger className="bg-black/20 border-white/20 text-white placeholder:text-white/50">
+                                <SelectTrigger className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground">
                                     <SelectValue>
                                         {form.api_key_mode === 'reference' ? '引用系统 API Key' : '手动输入独立 API Key'}
                                     </SelectValue>
                                 </SelectTrigger>
-                                <SelectContent className="bg-gray-900 border-white/20">
+                                <SelectContent className="bg-card border-border">
                                     <SelectItem value="reference">引用系统 API Key</SelectItem>
                                     <SelectItem value="manual">手动输入独立 API Key</SelectItem>
                                 </SelectContent>
@@ -544,17 +544,17 @@ export default function AdminModelsPage() {
 
                         {form.api_key_mode === 'reference' ? (
                             <div className="space-y-1 sm:col-span-2">
-                                <p className="text-sm text-white/70">选择系统 API Key</p>
+                                <p className="text-sm text-muted-foreground">选择系统 API Key</p>
                                 <Select
                                     value={form.api_key_id}
                                     onValueChange={(value) => setForm((s) => ({ ...s, api_key_id: value }))}
                                 >
-                                    <SelectTrigger className="bg-black/20 border-white/20 text-white placeholder:text-white/50">
+                                    <SelectTrigger className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground">
                                         <SelectValue>
                                             {selectedApiKeyName || '请选择一个系统 API Key'}
                                         </SelectValue>
                                     </SelectTrigger>
-                                    <SelectContent className="bg-gray-900 border-white/20">
+                                    <SelectContent className="bg-card border-border">
                                         {apiKeys.length === 0 ? (
                                             <SelectItem value="">暂无可用 API Key，请先在 API Key 管理中创建</SelectItem>
                                         ) : (
@@ -569,8 +569,8 @@ export default function AdminModelsPage() {
                             </div>
                         ) : (
                             <div className="space-y-1 sm:col-span-2">
-                                <p className="text-sm text-white/70">API Key {editingModel ? '(留空表示不修改)' : ''}</p>
-                                <Input className="bg-black/20 border-white/20 text-white placeholder:text-white/50 focus-visible:ring-white/30 focus-visible:border-white/40 focus-visible:ring-offset-0" value={form.api_key} type="password" onChange={(e) => setForm((s) => ({ ...s, api_key: e.target.value }))} autoComplete="new-password" />
+                                <p className="text-sm text-muted-foreground">API Key {editingModel ? '(留空表示不修改)' : ''}</p>
+                                <Input className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-ring focus-visible:border-ring focus-visible:ring-offset-0" value={form.api_key} type="password" onChange={(e) => setForm((s) => ({ ...s, api_key: e.target.value }))} autoComplete="new-password" />
                             </div>
                         )}
 
@@ -595,7 +595,7 @@ export default function AdminModelsPage() {
                                         <span>{testResult.success ? '✓' : '✗'}</span>
                                         <span>{testResult.message}</span>
                                         {testResult.latencyMs !== undefined && (
-                                            <span className="text-white/60">({testResult.latencyMs}ms)</span>
+                                            <span className="text-muted-foreground">({testResult.latencyMs}ms)</span>
                                         )}
                                     </div>
                                 </div>
@@ -603,25 +603,25 @@ export default function AdminModelsPage() {
                         </div>
 
                         <div className="space-y-1">
-                            <p className="text-sm text-white/70">Temperature</p>
-                            <Input className="bg-black/20 border-white/20 text-white placeholder:text-white/50 focus-visible:ring-white/30 focus-visible:border-white/40 focus-visible:ring-offset-0" value={form.temperature} type="number" min={0} max={2} step={0.1} onChange={(e) => setForm((s) => ({ ...s, temperature: e.target.value }))} />
+                            <p className="text-sm text-muted-foreground">Temperature</p>
+                            <Input className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-ring focus-visible:border-ring focus-visible:ring-offset-0" value={form.temperature} type="number" min={0} max={2} step={0.1} onChange={(e) => setForm((s) => ({ ...s, temperature: e.target.value }))} />
                         </div>
                         <div className="space-y-1">
-                            <p className="text-sm text-white/70">优先级</p>
-                            <Input className="bg-black/20 border-white/20 text-white placeholder:text-white/50 focus-visible:ring-white/30 focus-visible:border-white/40 focus-visible:ring-offset-0" value={form.priority} type="number" min={1} max={999} onChange={(e) => setForm((s) => ({ ...s, priority: e.target.value }))} />
+                            <p className="text-sm text-muted-foreground">优先级</p>
+                            <Input className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-ring focus-visible:border-ring focus-visible:ring-offset-0" value={form.priority} type="number" min={1} max={999} onChange={(e) => setForm((s) => ({ ...s, priority: e.target.value }))} />
                         </div>
                         <div className="space-y-2 sm:col-span-2">
-                            <p className="text-sm text-white/70">能力标签</p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-md border border-white/[0.15] bg-black/20 p-3">
+                            <p className="text-sm text-muted-foreground">能力标签</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-md border border-border bg-muted/50 p-3">
                                 {capabilityOptions.map((option) => (
                                     <label key={option.value} className="flex items-center gap-3">
                                         <Checkbox
                                             checked={form.capabilities.includes(option.value)}
                                             onCheckedChange={(checked) => toggleCapability(option.value, checked === true)}
                                         />
-                                        <span className="text-sm text-white">
+                                        <span className="text-sm text-foreground">
                                             {option.label}
-                                            <span className="ml-2 text-xs text-white/60">{option.description}</span>
+                                            <span className="ml-2 text-xs text-muted-foreground">{option.description}</span>
                                         </span>
                                     </label>
                                 ))}
@@ -629,13 +629,13 @@ export default function AdminModelsPage() {
                         </div>
                         <div className="sm:col-span-2 flex items-center gap-3">
                             <Switch checked={form.enabled} onCheckedChange={(checked) => setForm((s) => ({ ...s, enabled: checked }))} />
-                            <p className="text-sm text-white/70">启用该模型</p>
+                            <p className="text-sm text-muted-foreground">启用该模型</p>
                         </div>
                     </div>
 
                     <DialogFooter>
-                        <Button variant="outline" className="border-white/30 bg-black/20 text-white hover:bg-white/10 hover:text-white" onClick={() => setDialogOpen(false)} disabled={saving}>取消</Button>
-                        <Button className="bg-white/20 border border-white/20 text-white hover:bg-white/30" onClick={handleSubmit} disabled={saving}>
+                        <Button variant="outline" className="border-border bg-muted/50 text-foreground hover:bg-accent/50 hover:text-foreground" onClick={() => setDialogOpen(false)} disabled={saving}>取消</Button>
+                        <Button className="bg-accent/50 border border-border text-foreground hover:bg-accent" onClick={handleSubmit} disabled={saving}>
                             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             {editingModel ? '保存修改' : '创建模型'}
                         </Button>

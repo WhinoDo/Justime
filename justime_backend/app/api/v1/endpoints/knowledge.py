@@ -11,7 +11,7 @@ from typing import List, Dict, Any
 from fastapi import APIRouter, UploadFile, File, HTTPException, Query, status, Form
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
-from app.services.document_storage_service import (
+from app.services.knowledge_paths import (
     DOCS_DIR,
     get_user_docs_dir,
 )
@@ -55,22 +55,35 @@ def _extract_document_text(file_path: Path) -> str:
 
     if suffix == ".pdf":
         try:
-            from app.services.document_storage_service import OcrFallbackPDFReader
-        except Exception as exc:
-            raise ValueError(f"PDF 预览能力不可用: {exc}") from exc
-        reader = OcrFallbackPDFReader()
-        documents = reader.load_data(file_path=file_path)
-    else:
-        raise ValueError("当前仅支持文本类文件和 PDF 的内容预览")
-        
-    parts = []
-    for document in documents:
-        text = str(getattr(document, "text", "") or "").strip()
-        if text:
-            parts.append(text)
-    if not parts:
-        raise ValueError("文件不可预览或内容为空 (如果是扫描件，请确保 Tesseract OCR 已正确安装)")
-    return "\n\n".join(parts)
+            import fitz  # type: ignore
+        except ImportError:
+            raise ValueError("PDF 预览能力不可用：缺少 PyMuPDF (fitz)")
+        doc = fitz.open(str(file_path))
+        text_parts: List[str] = []
+        try:
+            for idx in range(len(doc)):
+                page_text = (doc[idx].get_text() or "").strip()
+                if page_text:
+                    text_parts.append(f"--- 第 {idx + 1} 页 ---\n{page_text}")
+        finally:
+            doc.close()
+        full_text = "\n\n".join(text_parts).strip()
+        if not full_text:
+            raise ValueError("PDF 无可提取的文本内容（如果是扫描件，需安装 Tesseract OCR）")
+        return full_text
+
+    if suffix == ".docx":
+        try:
+            from docx import Document as DocxDocument
+        except ImportError:
+            raise ValueError("docx 文档预览能力不可用：缺少 python-docx")
+        doc = DocxDocument(str(file_path))
+        paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
+        if not paragraphs:
+            raise ValueError("docx 文档内容为空")
+        return "\n\n".join(paragraphs)
+
+    raise ValueError(f"不支持的文件类型: {suffix}（仅支持文本文件、PDF 和 docx）")
 
 CHUNK_SIZE = 64 * 1024
 

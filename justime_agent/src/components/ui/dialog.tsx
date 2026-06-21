@@ -40,7 +40,7 @@ const Dialog: React.FC<DialogProps> = ({ open, onOpenChange, children, className
     <div className={cn("fixed inset-0 z-50 flex items-center justify-center", className)}>
       {/* Overlay */}
       <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
         onClick={() => onOpenChange?.(false)}
       />
       {/* Content */}
@@ -60,7 +60,7 @@ const DialogClose = ({ children }: { children: React.ReactNode }) => <>{children
 const DialogOverlay = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "fixed inset-0 z-50 bg-black/50 backdrop-blur-sm",
+      "fixed inset-0 z-50 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200",
       className
     )}
     {...props}
@@ -72,7 +72,7 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
     <div
       ref={ref}
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white dark:bg-gray-900 dark:border-gray-700 p-6 shadow-lg duration-200 sm:rounded-lg",
+        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white dark:bg-gray-900 dark:border-gray-700 p-6 shadow-[0_24px_80px_rgba(0,0,0,0.25)] duration-200 sm:rounded-xl animate-in fade-in zoom-in-95",
         className
       )}
       {...props}
@@ -116,7 +116,7 @@ const DialogTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HT
     <h2
       ref={ref}
       className={cn(
-        "text-lg font-semibold leading-none tracking-tight",
+        "text-[17px] font-semibold leading-none tracking-tight",
         className
       )}
       {...props}

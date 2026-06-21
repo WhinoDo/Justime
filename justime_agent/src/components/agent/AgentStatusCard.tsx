@@ -56,7 +56,7 @@ export function AgentStatusCard({ status, loading, error }: AgentStatusCardProps
 
           {/* 工具数量 */}
           <div className="flex items-center gap-3">
-            <Wrench className="w-5 h-5 text-amber-400 shrink-0" />
+            <Wrench className="w-5 h-5 text-violet-400 shrink-0" />
             <div>
               <p className="text-white/70 text-sm">可用工具</p>
               <p className="text-white font-medium">{status.tools_count} 个</p>

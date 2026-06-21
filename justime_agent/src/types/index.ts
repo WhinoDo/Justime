@@ -362,4 +362,22 @@ export interface TaskDecomposeResponse {
   task: Task
   subtasks: SubTask[]
   strategy: DecompositionStrategy
-} 
+}
+
+// 知识库 / 云端 RAG 类型
+export type CloudSyncStatus = 'pending' | 'running' | 'completed' | 'failed' | 'unavailable'
+
+export interface CloudSyncResponse {
+  success: boolean
+  task_id?: string
+  status?: CloudSyncStatus
+  message?: string
+  error?: string
+}
+
+export interface CloudSyncStatusResponse {
+  success: boolean
+  status: CloudSyncStatus
+  message?: string
+  error?: string
+}

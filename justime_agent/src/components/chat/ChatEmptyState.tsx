@@ -16,25 +16,25 @@ export const ChatEmptyState = memo(function ChatEmptyState({
 }: ChatEmptyStateProps) {
   return (
     <div className="flex h-full flex-col items-center justify-center space-y-6 text-center">
-      <div className="flex h-24 w-24 items-center justify-center rounded-[28px] border border-white/[0.15] bg-white/10 shadow-2xl shadow-black/10">
-        <MessageCircle className="h-12 w-12 text-white/80" />
+      <div className="flex h-24 w-24 items-center justify-center rounded-[28px] border border-border bg-muted/50 shadow-2xl shadow-black/10">
+        <MessageCircle className="h-12 w-12 text-foreground/80" />
       </div>
       <div className="space-y-2">
-        <h3 className="text-xl font-semibold text-white">
+        <h3 className="text-xl font-semibold text-foreground">
           {title}
         </h3>
-        <p className="max-w-md text-white/60">
+        <p className="max-w-md text-muted-foreground">
           {description}
         </p>
       </div>
       <div className="flex flex-wrap justify-center gap-2">
-        <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-sm text-white/75">
+        <span className="rounded-full border border-border bg-muted/50 px-3 py-1 text-sm text-foreground/75">
           情绪感知
         </span>
-        <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-sm text-white/75">
+        <span className="rounded-full border border-border bg-muted/50 px-3 py-1 text-sm text-foreground/75">
           任务拆解
         </span>
-        <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-sm text-white/75">
+        <span className="rounded-full border border-border bg-muted/50 px-3 py-1 text-sm text-foreground/75">
           智能陪伴
         </span>
       </div>

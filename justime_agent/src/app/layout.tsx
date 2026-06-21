@@ -4,9 +4,14 @@ import "./globals.css";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/toaster";
 import { PWAInstallBanner } from "@/components/PWAInstallBanner";
-import { DesktopRuntimeProvider } from "@/components/layout/DesktopRuntimeProvider";
+import { MacAppShell } from "@/components/layout/MacAppShell";
+import { MobileViewportGuard } from "@/components/MobileViewportGuard";
+import { KeyboardShortcutsHelp } from "@/components/KeyboardShortcutsHelp";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+});
 
 export const metadata: Metadata = {
   title: "矩时 - 焦虑缓解与任务规划助手",
@@ -22,8 +27,6 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "white" },
     { media: "(prefers-color-scheme: dark)", color: "black" },
@@ -36,19 +39,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN" suppressHydrationWarning>
-      <body className={inter.className}>
+    <html lang="zh-CN" className={inter.variable} suppressHydrationWarning>
+      <body className="font-sans antialiased">
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >
-          <DesktopRuntimeProvider>
-            {children}
-            <Toaster />
-            <PWAInstallBanner />
-          </DesktopRuntimeProvider>
+          <MacAppShell>{children}</MacAppShell>
+          <MobileViewportGuard />
+          <KeyboardShortcutsHelp />
+          <Toaster />
+          <PWAInstallBanner />
         </ThemeProvider>
       </body>
     </html>

@@ -4,67 +4,82 @@
 
 @layer base {
   :root {
-    /* 白紫主题 - 浅色模式 */
-    --background: 270 100% 99%;
-    --foreground: 257 24% 10%;
+    /* 白紫主题 — Light Mode */
+    --background: 0 0% 100%;
+    /* 纯白底 */
+    --foreground: 260 25% 10%;
+    /* 深紫黑文字 */
 
     --card: 0 0% 100%;
-    --card-foreground: 257 24% 10%;
+    /* 纯白卡片 */
+    --card-foreground: 260 25% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 257 24% 10%;
+    --popover-foreground: 260 25% 10%;
 
-    --primary: 263 74% 58%;
+    --primary: 262 83% 58%;
+    /* 靛紫主色 */
     --primary-foreground: 0 0% 100%;
+    /* 白色文字 */
 
-    --secondary: 262 100% 97%;
-    --secondary-foreground: 258 26% 20%;
+    --secondary: 260 30% 96%;
+    /* 淡紫灰次要 */
+    --secondary-foreground: 260 25% 10%;
 
-    --muted: 260 43% 95%;
-    --muted-foreground: 257 13% 45%;
+    --muted: 260 20% 96%;
+    /* 淡紫弱化色 */
+    --muted-foreground: 260 10% 46%;
 
-    --accent: 275 92% 94%;
-    --accent-foreground: 258 34% 24%;
+    --accent: 260 30% 93%;
+    /* 淡紫强调色 */
+    --accent-foreground: 260 25% 10%;
 
-    --destructive: 351 72% 56%;
+    --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 263 38% 82%;
-    --input: 263 38% 82%;
-    --ring: 263 74% 58%;
+    --border: 260 20% 90%;
+    /* 淡紫边框 */
+    --input: 260 20% 90%;
+    --ring: 262 83% 58%;
+    /* 紫色聚焦环 */
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
+    /* macOS 小圆角 8px */
   }
 
   .dark {
-    /* 白紫主题 - 深色模式 (深紫背景) */
-    --background: 257 24% 8%;
-    --foreground: 260 20% 96%;
+    /* 深紫黑主题 — Dark Mode */
+    --background: 260 25% 6%;
+    /* 深紫黑底 */
+    --foreground: 260 20% 98%;
+    /* 近白文字 */
 
-    --card: 257 22% 12%;
-    --card-foreground: 260 20% 96%;
+    --card: 260 20% 10%;
+    /* 深紫卡片 */
+    --card-foreground: 260 20% 98%;
 
-    --popover: 257 22% 12%;
-    --popover-foreground: 260 20% 96%;
+    --popover: 260 20% 10%;
+    --popover-foreground: 260 20% 98%;
 
-    --primary: 263 74% 62%;
+    --primary: 262 83% 58%;
+    /* 靛紫主色 */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 257 20% 16%;
-    --secondary-foreground: 260 20% 96%;
+    --secondary: 260 20% 14%;
+    --secondary-foreground: 260 20% 98%;
 
-    --muted: 257 16% 18%;
-    --muted-foreground: 257 10% 56%;
+    --muted: 260 15% 14%;
+    --muted-foreground: 260 10% 60%;
 
-    --accent: 263 30% 20%;
-    --accent-foreground: 260 20% 96%;
+    --accent: 260 25% 15%;
+    --accent-foreground: 260 20% 98%;
 
-    --destructive: 351 60% 44%;
+    --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 257 18% 22%;
-    --input: 257 18% 22%;
-    --ring: 263 74% 62%;
+    --border: 260 20% 15%;
+    --input: 260 20% 15%;
+    --ring: 262 83% 58%;
   }
 }
 
@@ -75,6 +90,7 @@
 
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-inter), "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
     padding-left: env(safe-area-inset-left);
@@ -84,12 +100,7 @@
 
 /* 打字动画 */
 .typing-indicator {
-  @apply flex items-center gap-2 px-4 py-3 bg-white rounded-2xl shadow-sm;
-
-  .dark & {
-    @apply bg-gray-800;
-  }
-
+  @apply flex items-center gap-2 px-4 py-3 bg-card rounded-2xl shadow-sm;
   @apply animate-pulse;
 }
 
@@ -107,21 +118,17 @@
 
 /* 情绪输入区域 */
 .emotion-input-container {
-  @apply p-4 border-t bg-gradient-to-r from-purple-50 to-pink-50;
+  @apply p-4 border-t bg-gradient-to-r from-purple-50 to-violet-50 border-border;
 
   .dark & {
-    @apply from-purple-900/20 to-pink-900/20 border-gray-800;
+    @apply from-purple-900/20 to-violet-900/20;
   }
 }
 
 /* 任务卡片 */
 .task-card {
-  @apply rounded-xl border bg-white/80 backdrop-blur-sm p-6 shadow-sm;
-  @apply hover:shadow-md transition-all duration-200;
-
-  .dark & {
-    @apply bg-gray-800/80 border-gray-700;
-  }
+  @apply rounded-[10px] border bg-card p-6 shadow-sm;
+  @apply transition-all duration-200;
 }
 
 @media (max-width: 768px) {
@@ -130,36 +137,34 @@
   }
 }
 
-.task-card:hover {
-  @apply shadow-lg transform scale-[1.02];
+@media (hover: hover) {
+  .task-card:hover {
+    @apply shadow-md;
+  }
+  .task-card:hover {
+    @apply shadow-lg transform scale-[1.02];
+  }
+}
+
+/* Focus-visible fallback for touch/keyboard */
+.task-card:focus-visible {
+  @apply shadow-lg outline-2 outline-offset-2 outline-purple-500/40;
 }
 
 .subtask-item {
-  @apply flex items-center gap-3 rounded-lg p-3 hover:bg-gray-50;
+  @apply flex items-center gap-3 rounded-lg p-3 hover:bg-accent/50;
   @apply transition-colors duration-150;
-
-  .dark & {
-    @apply hover:bg-gray-700/50;
-  }
 }
 
 /* 番茄钟计时器 */
 .pomodoro-timer {
-  @apply flex flex-col items-center gap-6 rounded-xl border bg-white/80;
-  @apply backdrop-blur-sm p-8 shadow-sm;
-
-  .dark & {
-    @apply bg-gray-800/80 border-gray-700;
-  }
+  @apply flex flex-col items-center gap-6 rounded-[10px] border bg-card;
+  @apply p-8 shadow-sm;
 }
 
 .time-display {
   @apply text-5xl font-bold tabular-nums text-transparent bg-clip-text;
-  @apply bg-gradient-to-r from-purple-600 to-indigo-600;
-
-  .dark & {
-    @apply from-purple-400 to-indigo-400;
-  }
+  @apply bg-gradient-to-r from-purple-600 to-indigo-600 dark:from-purple-400 dark:to-indigo-400;
 }
 
 /* 动画效果 */
@@ -193,6 +198,76 @@
   }
 }
 
+/* macOS 弹簧动效 */
+@keyframes spring-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* macOS 滑入动效 */
+@keyframes mac-slide-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* macOS 淡入 */
+@keyframes mac-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* macOS 侧边栏滑入 */
+@keyframes mac-sidebar-in {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.animate-spring-in {
+  animation: spring-in 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.animate-mac-slide-in {
+  animation: mac-slide-in 0.2s ease-out;
+}
+
+.animate-mac-fade-in {
+  animation: mac-fade-in 0.2s ease-out;
+}
+
+.animate-mac-sidebar-in {
+  animation: mac-sidebar-in 0.25s ease-out;
+}
+
+/* macOS 卡片悬浮效果 */
+.mac-card-hover {
+  @apply transition-all duration-200;
+  transition-timing-function: cubic-bezier(0.25, 0.1, 0.25, 1.0);
+}
+
+@media (hover: hover) {
+  .mac-card-hover:hover {
+    @apply shadow-lg;
+    transform: translateY(-1px);
+  }
+}
+
+.mac-card-hover:focus-visible {
+  @apply shadow-lg outline-2 outline-offset-2 outline-purple-500/40;
+}
+
+/* macOS 按钮点击缩放 */
+.mac-btn-press {
+  @apply transition-transform duration-100;
+}
+
+.mac-btn-press:active {
+  transform: scale(0.97);
+}
+
+.animate-blob {
+  animation: blob 7s infinite;
+}
+
 .animate-blob {
   animation: blob 7s infinite;
 }
@@ -209,9 +284,68 @@
   animation: slideInFromBottom 0.3s ease-out;
 }
 
+/* 全局滚动条主题 — 统一 macOS 风格 */
+@layer base {
+  /* Webkit 浏览器 (Chrome, Safari, Edge) */
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 99px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground));
+  }
+
+  /* Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+}
+
+/* .custom-scrollbar — 可覆盖滚动条颜色 */
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground));
+}
+
+.custom-scrollbar {
+  scrollbar-color: hsl(var(--muted-foreground)) transparent;
+}
+
+/* Hover 兜底：仅在支持 hover 的环境应用 hover 效果 */
+/* 非 hover 环境（触控）下 fallback 为 focus-visible 或 active */
+@media (hover: none) {
+  .hover-lift:hover {
+    transform: none;
+    box-shadow: none;
+  }
+  .hover-lift:active {
+    transform: scale(0.98);
+  }
+}
+
+@media (hover: hover) {
+  .hover-lift:hover {
+    transform: translateY(-1px);
+  }
+  .hover-lift:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+}
+
 /* 代码块样式优化 */
 .prose pre {
-  @apply !bg-gray-900 !text-gray-100 rounded-lg overflow-hidden shadow-lg;
+  @apply !bg-muted !text-foreground rounded-lg overflow-hidden shadow-lg;
 }
 
 .prose code {
@@ -219,12 +353,8 @@
 }
 
 .prose blockquote {
-  @apply !border-l-4 !border-violet-400 !bg-violet-50;
+  @apply !border-l-4 !border-blue-500 !bg-blue-50 dark:!bg-blue-900/20;
   @apply !pl-6 !py-4 !rounded-r-lg !shadow-sm;
-
-  .dark & {
-    @apply !bg-violet-900/20;
-  }
 }
 
 /* 表格样式 */
@@ -233,19 +363,11 @@
 }
 
 .prose th {
-  @apply !bg-gray-100 !font-semibold;
-
-  .dark & {
-    @apply !bg-gray-800;
-  }
+  @apply !bg-muted !font-semibold;
 }
 
 .prose td {
-  @apply !border-gray-200;
-
-  .dark & {
-    @apply !border-gray-700;
-  }
+  @apply !border-border;
 }
 
 @layer base {

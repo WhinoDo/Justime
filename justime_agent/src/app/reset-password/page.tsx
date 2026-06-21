@@ -59,17 +59,7 @@ function ResetPasswordContent() {
   }
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden">
-      {/* 全屏背景图 */}
-      <div className="absolute inset-0 z-0">
-        <img
-          src="/images/justime_login_bg.png"
-          alt="Justime Background"
-          className="w-full h-full object-cover"
-        />
-        {/* 黑色遮罩，确保文字可读性 */}
-        <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px]"></div>
-      </div>
+    <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden bg-background">
 
       {/* 磨砂玻璃容器 - 增强版 */}
       <div className="relative z-10 w-full max-w-md animate-slide-in">
@@ -88,7 +78,7 @@ function ResetPasswordContent() {
           {/* 品牌标识 */}
           <div className="text-center">
             <div className="flex items-center justify-center mb-6">
-              <div className="w-20 h-20 bg-gradient-to-br from-orange-400/90 to-yellow-600/90 rounded-2xl shadow-xl flex items-center justify-center transform hover:rotate-6 transition-all duration-300 border border-white/30 backdrop-blur-md">
+              <div className="w-20 h-20 bg-gradient-to-br from-purple-400/90 to-indigo-600/90 rounded-2xl shadow-xl flex items-center justify-center transform hover:rotate-6 transition-all duration-300 border border-white/30 backdrop-blur-md">
                 <Sparkles className="h-10 w-10 text-white animate-pulse" />
               </div>
             </div>

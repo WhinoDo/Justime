@@ -331,7 +331,7 @@ export function EventDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] rounded-xl shadow-[0_24px_80px_rgba(0,0,0,0.15)]">
         <DialogHeader>
           <DialogTitle>
             {event ? '编辑事件' : '创建新事件'}

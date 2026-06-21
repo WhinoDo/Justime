@@ -38,11 +38,14 @@ export function JustimeBackground({
 
     return (
         <div className={cn("absolute inset-0 z-0 overflow-hidden", className)}>
-            {/* Main Background Image */}
-            <img
-                src="/images/justime_login_bg.png"
-                alt="Justime Background"
-                className="w-full h-full object-cover scale-105"
+            {/* macOS 风格渐变背景 — Light */}
+            <div
+                className="absolute inset-0 bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:hidden"
+            />
+
+            {/* macOS 风格渐变背景 — Dark */}
+            <div
+                className="absolute inset-0 bg-gradient-to-br from-gray-950 via-purple-950/30 to-gray-900 hidden dark:block"
             />
 
             {/* Color Overlay / Tint */}

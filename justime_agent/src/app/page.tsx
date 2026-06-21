@@ -4,19 +4,11 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
-import { useEffect, useRef } from 'react'
-import { Loader2, User, LogOut, Shield, ArrowRight } from 'lucide-react'
-import { JustimeBackground } from '@/components/ui/JustimeBackground'
-import { gsap } from 'gsap'
-import { useGSAP } from '@gsap/react'
-
-// Register the useGSAP plugin
-gsap.registerPlugin(useGSAP)
+import { Loader2, User, LogOut, Shield, ArrowRight, LogIn } from 'lucide-react'
 
 export default function HomePage() {
   const { user, isLoading, isAuthenticated, logout } = useAuth()
   const router = useRouter()
-  const containerRef = useRef<HTMLDivElement>(null)
 
   // 处理登出
   const handleLogout = async () => {
@@ -26,135 +18,129 @@ export default function HomePage() {
     }
   }
 
-  useGSAP(() => {
-    if (isLoading) return
-
-    // Stagger reveal animation for hero elements
-    gsap.fromTo(".animate-reveal", 
-      { y: 24, autoAlpha: 0 },
-      { y: 0, autoAlpha: 1, duration: 0.8, stagger: 0.12, ease: "power3.out" }
-    )
-  }, { scope: containerRef, dependencies: [isLoading] })
-
   // 如果正在加载，显示加载状态
   if (isLoading) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center relative overflow-hidden">
-        <JustimeBackground blur="xl" />
-        <div className="relative z-10 w-full max-w-md space-y-8 text-center p-4">
-          <div className="space-y-4">
-            <h1 className="text-4xl font-bold text-white tracking-tight">
-              矩时
-            </h1>
-            <p className="text-lg text-white/80 font-light">
-              Loading...
-            </p>
-          </div>
-          <div className="flex flex-col items-center space-y-4">
-            <Loader2 className="h-8 w-8 animate-spin text-white" />
-          </div>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-white">
+        <div className="text-center animate-fade-in">
+          <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-600 via-purple-400 to-purple-600 bg-clip-text text-transparent">
+            Justime
+          </h1>
+          <Loader2 className="mx-auto mt-6 h-5 w-5 animate-spin text-purple-400" />
         </div>
       </div>
     )
   }
 
   return (
-    <div ref={containerRef} className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden font-sans">
-      <JustimeBackground blur="sm" opacity={0.3} />
+    <div className="min-h-screen bg-white flex items-center justify-center p-4 overflow-hidden">
+      {isAuthenticated ? (
+        /* 已登录状态 - 白紫主题面板 */
+        <div className="relative z-10 w-full max-w-lg animate-fade-in">
+          <div className="bg-white border border-purple-100 shadow-lg shadow-purple-100/50 rounded-3xl p-8 space-y-8 text-center">
 
-      <div className="relative z-10 w-full max-w-lg">
-        <div className="bg-white/10 backdrop-blur-2xl border border-white/20 shadow-2xl rounded-3xl p-8 space-y-8 text-center ring-1 ring-white/10">
-
-          {/* Header */}
-          <div className="space-y-4">
-            <h1 className="animate-reveal text-5xl font-bold text-white tracking-tight drop-shadow-lg opacity-0">
-              矩时
-            </h1>
-            <p className="animate-reveal text-xl text-white/90 font-medium tracking-wide opacity-0">
-              智能情绪评估与任务规划助手
-            </p>
-            <p className="animate-reveal text-sm text-white/70 leading-relaxed max-w-xs mx-auto opacity-0">
-              基于 AI 的情绪感知与自动化任务拆解，助你摆脱焦虑，高效行动。
-            </p>
-          </div>
-
-          {/* User Status */}
-          {isAuthenticated && user && (
-            <div className="animate-reveal bg-black/20 rounded-2xl p-4 border border-white/10 backdrop-blur-sm opacity-0">
-              <div className="flex items-center justify-center space-x-2 mb-2">
-                <div className="h-8 w-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                  <User className="h-4 w-4 text-emerald-400" />
-                </div>
-                <span className="text-sm font-medium text-white">已登录</span>
-              </div>
-              <p className="text-lg text-white font-semibold">
-                Hi, {user.displayName || user.email}
+            {/* Header */}
+            <div className="space-y-4">
+              <h1 className="text-5xl font-bold text-purple-900 tracking-tight">
+                聚时
+              </h1>
+              <p className="text-xl text-purple-700 font-medium tracking-wide">
+                智能情绪评估与任务规划助手
               </p>
-              {user.feishuBinding && (
-                <div className="flex items-center justify-center space-x-1 mt-2 text-white/60">
-                  <Shield className="h-3 w-3 text-blue-400" />
-                  <span className="text-xs">已绑定飞书账号</span>
-                </div>
-              )}
+              <p className="text-sm text-purple-400 leading-relaxed max-w-xs mx-auto">
+                基于 AI 的情绪感知与自动化任务拆解，助你摆脱焦虑，高效行动。
+              </p>
             </div>
-          )}
 
-          <div className="space-y-4 pt-2">
-            {/* Actions */}
-            {isAuthenticated ? (
-              <>
-                <Link href="/dashboard" className="animate-reveal block transform transition-transform hover:scale-[1.02] opacity-0">
-                  <Button className="w-full h-12 text-lg bg-white text-gray-900 hover:bg-white/90 border-0 shadow-lg shadow-white/10 rounded-xl font-semibold">
-                    进入工作台 <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
-
-                <div className="animate-reveal grid grid-cols-2 gap-3 opacity-0">
-                  <Link href="/profile" className="block">
-                    <Button variant="outline" className="w-full h-11 bg-white/5 border-white/20 text-white hover:bg-white/10 hover:border-white/40 hover:text-white rounded-xl">
-                      个人信息
-                    </Button>
-                  </Link>
-                  <Button
-                    variant="destructive"
-                    className="w-full h-11 bg-rose-500/20 text-rose-100 border border-rose-500/30 hover:bg-rose-500/30 rounded-xl"
-                    onClick={handleLogout}
-                  >
-                    <LogOut className="h-4 w-4 mr-2" />
-                    退出登录
-                  </Button>
+            {/* User Status */}
+            {user && (
+              <div className="bg-purple-50 rounded-2xl p-4 border border-purple-100">
+                <div className="flex items-center justify-center space-x-2 mb-2">
+                  <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <User className="h-4 w-4 text-emerald-500" />
+                  </div>
+                  <span className="text-sm font-medium text-purple-700">已登录</span>
                 </div>
-              </>
-            ) : (
-              <>
-                <Link href="/login" className="animate-reveal block transform transition-transform hover:scale-[1.02] opacity-0">
-                  <Button className="w-full h-12 text-lg bg-white text-gray-900 hover:bg-white/90 border-0 shadow-lg shadow-white/10 rounded-xl font-semibold">
-                    立即登录
-                  </Button>
-                </Link>
-
-                <Link href="/auth?mode=register" className="animate-reveal block transform transition-transform hover:scale-[1.02] opacity-0">
-                  <Button variant="outline" className="w-full h-12 text-lg bg-white/10 text-white border-white/20 hover:bg-white/20 hover:border-white/30 backdrop-blur-md rounded-xl">
-                    注册账户
-                  </Button>
-                </Link>
-              </>
+                <p className="text-lg text-purple-900 font-semibold">
+                  Hi, {user.displayName || user.email}
+                </p>
+                {user.feishuBinding && (
+                  <div className="flex items-center justify-center space-x-1 mt-2 text-purple-400">
+                    <Shield className="h-3 w-3 text-blue-400" />
+                    <span className="text-xs">已绑定飞书账号</span>
+                  </div>
+                )}
+              </div>
             )}
 
-            <div className="animate-reveal text-xs text-white/40 pt-4 font-mono tracking-widest uppercase opacity-0">
-              {isAuthenticated ? 'Justime Agent System v1.0' : 'Emotion-Driven Task Agent'}
+            <div className="space-y-4 pt-2">
+              <Link href="/dashboard" className="block">
+                <Button className="w-full sm:w-auto h-12 sm:h-10 text-lg sm:text-base bg-purple-600 text-white hover:bg-purple-700 border-0 shadow-lg shadow-purple-200 rounded-xl font-semibold">
+                  进入工作台 <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Link href="/profile" className="block">
+                  <Button variant="outline" className="w-full h-11 sm:h-9 border-purple-200 text-purple-700 hover:bg-purple-50 hover:border-purple-300 rounded-xl">
+                    个人信息
+                  </Button>
+                </Link>
+                <Button
+                  variant="destructive"
+                  className="w-full h-11 sm:h-9 bg-rose-100 text-rose-700 border border-rose-200 hover:bg-rose-200 rounded-xl"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  退出登录
+                </Button>
+              </div>
+
+              <div className="text-xs text-purple-300 pt-4 font-mono tracking-widest uppercase">
+                Justime Agent System v1.0
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-xs text-purple-400 pt-2 border-t border-purple-100">
+              <p className="flex items-center justify-center gap-1">✨ 情绪评估</p>
+              <p className="flex items-center justify-center gap-1">🎯 任务拆解</p>
+              <p className="flex items-center justify-center gap-1">⏰ 专注训练</p>
+              <p className="flex items-center justify-center gap-1">📊 数据分析</p>
             </div>
           </div>
+        </div>
+      ) : (
+        /* 未登录状态 - 极简 macOS 风格欢迎页 */
+        <div className="text-center animate-fade-in">
+          {/* 动态 Justime 标题 */}
+          <div className="relative">
+            <h1 className="text-7xl sm:text-8xl font-bold bg-gradient-to-r from-purple-600 via-purple-400 to-purple-600 bg-clip-text text-transparent animate-gradient-x tracking-tight">
+              Justime
+            </h1>
+            {/* 柔和发光效果 */}
+            <div className="absolute -inset-4 bg-gradient-to-r from-purple-200/30 via-purple-300/20 to-purple-200/30 rounded-full blur-3xl -z-10 animate-breathing" />
+          </div>
 
-          {/* Features Footer */}
-          <div className="animate-reveal grid grid-cols-2 gap-2 text-xs text-white/60 pt-2 border-t border-white/10 opacity-0">
-            <p className="flex items-center justify-center gap-1">✨ 情绪评估</p>
-            <p className="flex items-center justify-center gap-1">🎯 任务拆解</p>
-            <p className="flex items-center justify-center gap-1">⏰ 专注训练</p>
-            <p className="flex items-center justify-center gap-1">📊 数据分析</p>
+          {/* 副标题 */}
+          <p className="mt-4 text-sm text-gray-400 font-light tracking-[0.2em] uppercase">
+            智能情绪评估与任务规划助手
+          </p>
+
+          {/* 小图标登录入口 */}
+          <div
+            className="mt-12 animate-fade-in"
+            style={{ animationDelay: '0.6s', animationFillMode: 'both' }}
+          >
+            <Link
+              href="/auth?mode=login"
+              className="inline-flex items-center justify-center w-12 h-12 rounded-full border border-purple-200 text-purple-400 hover:text-purple-600 hover:border-purple-300 hover:bg-purple-50 transition-all duration-300 group"
+            >
+              <LogIn className="h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
+            </Link>
+            <p className="mt-2 text-xs text-gray-300">点击登录</p>
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

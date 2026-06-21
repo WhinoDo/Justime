@@ -151,6 +151,6 @@ describe('ChatSidebar', () => {
     )
 
     const sessionButton = screen.getByText('Session 1').closest('button')
-    expect(sessionButton).toHaveClass('border-white/20')
+    expect(sessionButton).toHaveClass('bg-purple-500/10')
   })
 })

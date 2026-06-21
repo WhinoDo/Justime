@@ -31,12 +31,12 @@ export function JustimePageShell({
         className
       )}
     >
-      <JustimeBackground
-        blur={blur}
-        opacity={opacity}
-        variant={variant === 'desktop' ? 'desktop' : 'immersive'}
-      />
-      <div className={cn('relative z-10', fullHeight ? 'h-full' : 'min-h-screen', contentClassName)}>
+      <JustimeBackground blur={blur} opacity={opacity} />
+      <div className={cn(
+        'relative z-10',
+        fullHeight ? 'h-full' : 'min-h-screen',
+        contentClassName
+      )}>
         {children}
       </div>
     </div>

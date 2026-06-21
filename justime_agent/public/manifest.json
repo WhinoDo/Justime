@@ -1,12 +1,15 @@
 {
+  "id": "/",
   "name": "矩时 - 焦虑缓解与任务规划助手",
   "short_name": "矩时",
   "description": "专为大学生设计的情绪-任务双驱动智能助手，基于情绪状态提供个性化任务拆解和心理支持",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
   "background_color": "#ffffff",
-  "theme_color": "#3b82f6",
-  "orientation": "portrait-primary",
+  "theme_color": "#6d28d9",
+  "orientation": "any",
   "icons": [
     {
       "src": "/icons/icon-72x72.png",
@@ -58,7 +61,22 @@
     }
   ],
   "categories": ["productivity", "lifestyle", "health"],
-  "screenshots": [],
+  "screenshots": [
+    {
+      "src": "/screenshots/desktop-wide.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "矩时桌面端"
+    },
+    {
+      "src": "/screenshots/mobile-narrow.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "矩时移动端"
+    }
+  ],
   "shortcuts": [
     {
       "name": "聊天助手",
