@@ -34,6 +34,8 @@ const evidence: Evidence[] = [{
   title: '桌面布局调研',
   content: '确认三栏工作台结构。',
   source: 'manual',
+  ai_extracted: false,
+  confidence: 0,
   createdAt: new Date().toISOString(),
 }]
 
@@ -42,9 +44,14 @@ const outputs: KnowledgeOutput[] = [{
   task_id: 'task-1',
   userId: 'user-1',
   title: '桌面端 UI 优化方案',
-  content: '# 方案',
+  markdown: '# 方案',
   format: 'summary',
+  vault_relative_path: '',
+  obsidian_tags: [],
+  obsidian_links: [],
   status: 'draft',
+  source_evidence_ids: [],
+  word_count: 0,
   version: 1,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
@@ -58,6 +65,8 @@ describe('TaskDetailWorkbench', () => {
         evidence={evidence}
         outputs={outputs}
         onEditTask={jest.fn()}
+        onEditOutput={jest.fn()}
+        onPublishOutput={jest.fn()}
         onCreateEvidence={jest.fn()}
         onCreateTimeLog={jest.fn()}
         onGenerateKnowledge={jest.fn()}

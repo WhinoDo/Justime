@@ -11,8 +11,10 @@ import { useDesktopRuntime } from '@/hooks/useDesktopRuntime'
 import { useDesktopCommands } from '@/hooks/useDesktopCommands'
 import { DesktopAppFrame } from '@/components/layout/DesktopAppFrame'
 import { DesktopCommandBar } from '@/components/layout/DesktopCommandBar'
+import { JustimePageShell } from '@/components/layout/JustimePageShell'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { MessageSquare, Search, CheckSquare } from 'lucide-react'
 
 const ChatInterface = dynamic(
   () => import('@/components/chat/ChatInterface').then((mod) => mod.ChatInterface),
@@ -78,6 +80,67 @@ function ChatPageInner() {
 
   if (!user) {
     return null
+  }
+
+  // 桌面端布局
+  if (isDesktop) {
+    return (
+      <JustimePageShell fullHeight variant="desktop" blur="none" opacity={0} contentClassName="h-full">
+        <DesktopAppFrame
+          title="Chat"
+          subtitle="AI 对话"
+          sidebar={
+            <ChatSidebar
+              userId={user.id}
+              currentSessionId={sessionId}
+              onSelectSession={setSessionId}
+              autoSelectLatest={true}
+            />
+          }
+          toolbar={
+            <DesktopCommandBar>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1.5 rounded-md px-2 text-[11px] font-medium text-[#6d6680] hover:bg-violet-100/60 hover:text-[#171421]"
+                onClick={() => setSessionId(null)}
+              >
+                <MessageSquare className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">新对话</span>
+                <kbd className="ml-1 rounded border border-violet-200/50 bg-white/60 px-1 font-mono text-[10px] text-[#8b7aa8]">⌘N</kbd>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1.5 rounded-md px-2 text-[11px] font-medium text-[#6d6680] hover:bg-violet-100/60 hover:text-[#171421]"
+                onClick={() => setFocusSignal((val) => val + 1)}
+              >
+                <Search className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">聚焦输入</span>
+                <kbd className="ml-1 rounded border border-violet-200/50 bg-white/60 px-1 font-mono text-[10px] text-[#8b7aa8]">⌘L</kbd>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1.5 rounded-md px-2 text-[11px] font-medium text-[#6d6680] hover:bg-violet-100/60 hover:text-[#171421]"
+                onClick={() => { window.location.href = '/tasks' }}
+              >
+                <CheckSquare className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">任务</span>
+                <kbd className="ml-1 rounded border border-violet-200/50 bg-white/60 px-1 font-mono text-[10px] text-[#8b7aa8]">⌘⇧T</kbd>
+              </Button>
+            </DesktopCommandBar>
+          }
+        >
+          <ChatInterface
+            sessionId={sessionId}
+            onSessionChange={setSessionId}
+            density="desktop"
+            focusSignal={focusSignal}
+          />
+        </DesktopAppFrame>
+      </JustimePageShell>
+    )
   }
 
   // 已登录用户，显示 macOS Messages 风格界面
