@@ -74,7 +74,7 @@ export default function MaterialsPage() {
   if (authLoading) {
     return (
       <JustimePageShell blur="xl" contentClassName="flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-white/50" />
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </JustimePageShell>
     )
   }
@@ -84,20 +84,20 @@ export default function MaterialsPage() {
   return (
     <JustimePageShell fullHeight blur="lg" opacity={0.4} contentClassName="h-full overflow-y-auto">
       <div className="container mx-auto p-4 md:p-6 max-w-4xl space-y-4 pb-8">
-        <div className="flex items-center justify-between bg-white/10 backdrop-blur-xl p-4 rounded-2xl border border-white/10 shadow-lg">
+        <div className="flex items-center justify-between bg-muted/50 backdrop-blur-xl p-4 rounded-2xl border border-border shadow-lg">
           <div className="flex items-center gap-3">
             <Link href="/study">
-              <Button variant="ghost" size="sm" className="text-white/70 hover:bg-white/10 hover:text-white">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:bg-accent/50 hover:text-foreground">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back
               </Button>
             </Link>
             <div>
-              <h1 className="text-xl font-bold text-white flex items-center gap-2">
+              <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
                 <FileText className="h-5 w-5 text-emerald-300" />
                 学习资料
               </h1>
-              <p className="text-xs text-white/50 mt-0.5">{materials.length} 份资料</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{materials.length} 份资料</p>
             </div>
           </div>
 
@@ -111,7 +111,7 @@ export default function MaterialsPage() {
             <Button
               asChild
               disabled={uploading}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white border-0 shadow-lg shadow-emerald-500/20 cursor-pointer"
+              className="bg-emerald-600 hover:bg-emerald-500 text-foreground border-0 shadow-lg shadow-emerald-500/20 cursor-pointer"
             >
               <span>
                 {uploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
@@ -129,8 +129,8 @@ export default function MaterialsPage() {
               className={cn(
                 'text-xs px-3 py-1.5 rounded-full border transition-all',
                 filter === s
-                  ? 'bg-white/15 border-white/30 text-white'
-                  : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'
+                  ? 'bg-accent/60 border-border text-foreground'
+                  : 'bg-muted/30 border-border text-muted-foreground hover:bg-accent/50'
               )}
             >
               {s === 'all' ? '全部' : s}
@@ -141,24 +141,24 @@ export default function MaterialsPage() {
         <JustimeGlassPanel className="rounded-2xl p-4">
           {loading ? (
             <div className="flex justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-white/30" />
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/50" />
             </div>
           ) : filtered.length === 0 ? (
             <div className="text-center py-12">
-              <FileText className="h-16 w-16 text-white/10 mx-auto mb-4" />
-              <p className="text-white/50 text-sm mb-1">暂无学习资料</p>
-              <p className="text-white/30 text-xs">上传文档，支持 PDF、Word、Markdown 格式</p>
+              <FileText className="h-16 w-16 text-foreground/10 mx-auto mb-4" />
+              <p className="text-foreground/50 text-sm mb-1">暂无学习资料</p>
+              <p className="text-muted-foreground/50 text-xs">上传文档，支持 PDF、Word、Markdown 格式</p>
             </div>
           ) : (
             <div className="space-y-2">
               {filtered.map(material => (
                 <div
                   key={material.id}
-                  className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all"
+                  className="flex items-center gap-3 p-3 rounded-xl bg-muted/30 border border-muted-foreground/20 hover:bg-accent/50 transition-all"
                 >
-                  <FileText className="h-5 w-5 text-white/40 flex-shrink-0" />
+                  <FileText className="h-5 w-5 text-muted-foreground/70 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-white truncate">{material.filename}</p>
+                    <p className="text-sm text-foreground truncate">{material.filename}</p>
                     <div className="flex items-center gap-2 mt-1">
                       <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full border', subjectColors[material.subject])}>
                         {material.subject}
@@ -171,7 +171,7 @@ export default function MaterialsPage() {
                       )}
                     </div>
                   </div>
-                  <span className="text-[10px] text-white/30 flex-shrink-0">
+                  <span className="text-[10px] text-muted-foreground/50 flex-shrink-0">
                     {new Date(material.uploadedAt).toLocaleDateString()}
                   </span>
                 </div>

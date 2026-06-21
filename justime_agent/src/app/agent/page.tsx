@@ -101,13 +101,13 @@ export default function AgentPage() {
       {/* 页面标题 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Agent 管理</h1>
-          <p className="text-white/60 text-sm mt-1">管理和监控 AI Agent 运行状态</p>
+          <h1 className="text-2xl font-bold text-foreground">Agent 管理</h1>
+          <p className="text-muted-foreground text-sm mt-1">管理和监控 AI Agent 运行状态</p>
         </div>
         <button
           onClick={handleRefresh}
           disabled={refreshing}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 disabled:bg-white/5 disabled:cursor-not-allowed text-white/80 hover:text-white border border-white/20 transition-colors text-sm"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-muted/50 hover:bg-accent/70 disabled:bg-muted/30 disabled:cursor-not-allowed text-foreground/80 hover:text-foreground border border-border transition-colors text-sm"
         >
           {refreshing ? (
             <Loader2 className="w-4 h-4 animate-spin" />

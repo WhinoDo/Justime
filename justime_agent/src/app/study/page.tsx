@@ -23,7 +23,7 @@ export default function StudyPage() {
   if (authLoading) {
     return (
       <JustimePageShell blur="xl" contentClassName="flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-white/50" />
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </JustimePageShell>
     )
   }
@@ -33,21 +33,21 @@ export default function StudyPage() {
   return (
     <JustimePageShell fullHeight blur="lg" opacity={0.4} contentClassName="h-full overflow-y-auto">
       <div className="container mx-auto p-4 md:p-6 max-w-6xl space-y-4 pb-8">
-        <div className="flex items-center justify-between bg-white/10 backdrop-blur-xl p-4 rounded-2xl border border-white/10 shadow-lg">
+        <div className="flex items-center justify-between bg-muted/50 backdrop-blur-xl p-4 rounded-2xl border border-border shadow-lg">
           <div className="flex items-center gap-3">
             <Link href="/dashboard">
-              <Button variant="ghost" size="sm" className="text-white/70 hover:bg-white/10 hover:text-white">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:bg-accent/50 hover:text-foreground">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back
               </Button>
             </Link>
             <div>
-              <h1 className="text-xl font-bold text-white flex items-center gap-2">
-                <GraduationCap className="h-5 w-5 text-blue-300" />
+              <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
+                <GraduationCap className="h-5 w-5 text-blue-500 dark:text-blue-300" />
                 考研学习
               </h1>
               {profile && (
-                <p className="text-xs text-white/50 mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   {profile.targetSchool} · {profile.targetMajor} · 每日 {profile.dailyStudyHours}h
                 </p>
               )}
@@ -60,7 +60,7 @@ export default function StudyPage() {
         <QuickActions />
 
         <JustimeGlassPanel className="rounded-2xl p-4">
-          <h2 className="text-sm font-semibold text-white/80 mb-3">今日任务</h2>
+          <h2 className="text-sm font-semibold text-foreground/80 mb-3">今日任务</h2>
           <DailyTasks tasks={tasks} loading={tasksLoading} onUpdateStatus={updateTaskStatus} />
         </JustimeGlassPanel>
       </div>
