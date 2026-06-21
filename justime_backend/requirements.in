@@ -46,3 +46,6 @@ redis>=5.0.0
 # Security
 cryptography>=42.0.0
 python-json-logger>=2.0.0
+
+# PDF Processing (used by book_analysis_service & knowledge endpoints)
+PyMuPDF>=1.23.0
