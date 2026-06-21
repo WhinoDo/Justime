@@ -434,7 +434,7 @@ export function ModelFormDialog({
                     </div>
                     <div className="space-y-2 sm:col-span-2">
                         <p className="text-sm text-white/70">能力标签</p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-md border border-white/15 bg-black/20 p-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-md border border-white/[0.15] bg-black/20 p-3">
                             {capabilityOptions.map((option) => (
                                 <label key={option.value} className="flex items-center gap-3">
                                     <Checkbox

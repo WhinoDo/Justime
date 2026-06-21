@@ -1,51 +1,46 @@
 import { NextRequest } from 'next/server'
 import { proxyToBackend } from '@/lib/api/proxy'
 
-export async function GET(request: NextRequest) {
+function backendPath(request: NextRequest) {
   const path = request.nextUrl.pathname.replace('/api/study/', '')
-  const backendPath = `/study/${path}`
-  return proxyToBackend(request, backendPath)
+  return `/study/${path}`
+}
+
+export async function GET(request: NextRequest) {
+  return proxyToBackend(request, backendPath(request))
 }
 
 export async function POST(request: NextRequest) {
-  const path = request.nextUrl.pathname.replace('/api/study/', '')
-  const backendPath = `/study/${path}`
   try {
     const contentType = request.headers.get('content-type') || ''
     if (contentType.includes('multipart/form-data')) {
-      return proxyToBackend(request, backendPath, { method: 'POST' })
+      return proxyToBackend(request, backendPath(request), { method: 'POST' })
     }
     const body = await request.json()
-    return proxyToBackend(request, backendPath, { method: 'POST', body })
+    return proxyToBackend(request, backendPath(request), { method: 'POST', body })
   } catch {
-    return proxyToBackend(request, backendPath, { method: 'POST' })
+    return proxyToBackend(request, backendPath(request), { method: 'POST' })
   }
 }
 
 export async function PUT(request: NextRequest) {
-  const path = request.nextUrl.pathname.replace('/api/study/', '')
-  const backendPath = `/study/${path}`
   try {
     const body = await request.json()
-    return proxyToBackend(request, backendPath, { method: 'PUT', body })
+    return proxyToBackend(request, backendPath(request), { method: 'PUT', body })
   } catch {
-    return proxyToBackend(request, backendPath, { method: 'PUT' })
+    return proxyToBackend(request, backendPath(request), { method: 'PUT' })
   }
 }
 
 export async function PATCH(request: NextRequest) {
-  const path = request.nextUrl.pathname.replace('/api/study/', '')
-  const backendPath = `/study/${path}`
   try {
     const body = await request.json()
-    return proxyToBackend(request, backendPath, { method: 'PATCH', body })
+    return proxyToBackend(request, backendPath(request), { method: 'PATCH', body })
   } catch {
-    return proxyToBackend(request, backendPath, { method: 'PATCH' })
+    return proxyToBackend(request, backendPath(request), { method: 'PATCH' })
   }
 }
 
 export async function DELETE(request: NextRequest) {
-  const path = request.nextUrl.pathname.replace('/api/study/', '')
-  const backendPath = `/study/${path}`
-  return proxyToBackend(request, backendPath, { method: 'DELETE' })
+  return proxyToBackend(request, backendPath(request), { method: 'DELETE' })
 }

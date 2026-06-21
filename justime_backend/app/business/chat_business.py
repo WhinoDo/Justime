@@ -42,6 +42,42 @@ class ChatBusiness:
     async def save_message(self, session_id: str, role: str, content: str, **kwargs) -> str:
         return await chat_persistence.save_message(session_id, role, content, **kwargs)
 
+    async def _sync_task_evidence_from_chat(
+        self,
+        *,
+        user_id: str,
+        task_id: Optional[str],
+        session_id: str,
+        role: str,
+        content: str,
+    ) -> None:
+        if not task_id or not content.strip():
+            return
+        try:
+            from app.business.task_process_business import _task_process_business
+            from app.models.evidence import EvidenceCreate
+
+            title_prefix = "用户对话" if role == "user" else "AI 回复"
+            payload = EvidenceCreate(
+                task_id=task_id,
+                type="chat",
+                title=f"{title_prefix} / {datetime.now(timezone.utc).strftime('%m-%d %H:%M')}",
+                content=content[:50000],
+                source=session_id,
+                metadata={"role": role},
+            )
+            await _task_process_business.create_evidence(
+                user_id,
+                payload,
+                ai_extracted=(role == "ai"),
+            )
+            await db.db.task_processes.update_one(
+                {"_id": _task_process_business._ensure_object_id(task_id, "任务ID"), "userId": user_id},
+                {"$addToSet": {"related_chat_session_ids": session_id}, "$set": {"updatedAt": datetime.now(timezone.utc)}},
+            )
+        except Exception as exc:
+            logger.warning(f"Failed to mirror chat into task evidence: {exc}")
+
     async def update_message_interactive_state(self, message_id: str, updates: Dict[str, Any]):
         return await chat_persistence.update_message_interactive_state(message_id, updates)
 
@@ -107,7 +143,6 @@ class ChatBusiness:
                     "source": "openclaw",
                     "taskType": request.taskType or "general",
                 },
-                "ragReferences": [],
                 "routingMeta": routing_meta if settings.ENABLE_ROUTING_META else None,
             },
         )
@@ -167,7 +202,14 @@ class ChatBusiness:
             session_id = await self.create_session(user_id, title)
 
         try:
-            await self.save_message(session_id, "user", request.message)
+            await self.save_message(session_id, "user", request.message, taskId=request.taskId)
+            await self._sync_task_evidence_from_chat(
+                user_id=user_id,
+                task_id=request.taskId,
+                session_id=session_id,
+                role="user",
+                content=request.message,
+            )
         except Exception as e:
             logger.error(f"Failed to save user message: {e}")
 
@@ -318,11 +360,7 @@ class ChatBusiness:
             fallback_timeout = float(min(base_timeout, max(1, int(settings.ROUTER_FALLBACK_TIMEOUT_SECONDS))))
             intent_info = chat_router.detect_schedule_component_intent(request.message)
             require_real_decomposition_call = bool(intent_info.get("prefer_decomposition"))
-            require_knowledge_retrieval_call = (
-                chat_router.detect_knowledge_intent(request.message)
-                and not require_real_decomposition_call
-                and not bool(intent_info.get("prefer_calendar_event"))
-            )
+            require_knowledge_retrieval_call = False
 
             if request.runtimeModelId:
                 requested_model = str(request.runtimeModelId).strip()
@@ -464,35 +502,6 @@ class ChatBusiness:
                 if not chat_assembler.has_real_task_decomposition_output(task_result):
                     raise Exception("任务分解请求未成功调用 suggest_task_decomposition 工具，请重试。")
 
-            if require_knowledge_retrieval_call and not chat_assembler.has_retrieve_knowledge_output(task_result):
-                logger.warning("⚠️ 首轮未检测到 retrieve_knowledge 调用，开始自动重试。")
-                retry_result = await chat_executor.execute_knowledge_retry(
-                    timed_task=timed_task,
-                    session_id=session_id,
-                    user_id=user_id,
-                    used_runtime=used_runtime,
-                    fallback_runtime=fallback_runtime,
-                    main_timeout=main_timeout,
-                    fallback_timeout=fallback_timeout,
-                    agent_max_steps=agent_max_steps,
-                    runtime_to_llm_config_fn=chat_router.runtime_to_llm_config,
-                    has_knowledge_output_fn=chat_assembler.has_retrieve_knowledge_output
-                )
-                
-                if retry_result["task_result"]:
-                    await self._record_usage_event(
-                        user_id=user_id,
-                        session_id=session_id,
-                        config_id=used_runtime.get("config_id") or "legacy-default",
-                        model_id=used_runtime.get("model_id") or "",
-                        config_name=used_runtime.get("config_name") or "默认配置",
-                        path_type="main",
-                        is_primary=True,
-                        usage=retry_result["task_result"].get("usage") if isinstance(retry_result["task_result"], dict) else None,
-                    )
-                    routing_meta["retryCount"] = max(int(routing_meta.get("retryCount") or 0), retry_result["retry_count"])
-                    task_result = retry_result["task_result"]
-
             agent_result = task_result["result"]
             steps = task_result.get("steps", [])
             tool_outputs = task_result.get("tool_outputs", [])
@@ -503,8 +512,6 @@ class ChatBusiness:
             task_decomposition = parsed["task_decomposition"]
             batch_events = parsed["batch_events"]
             
-            rag_references = chat_assembler.extract_rag_references(tool_outputs)
-
             if suggested_events:
                 try:
                     for event in suggested_events:
@@ -566,10 +573,15 @@ class ChatBusiness:
                     save_kwargs["timingStrategy"] = timing_strategy
                 if timing_strategy.get("analysisMeta"):
                     save_kwargs["taskAnalysis"] = timing_strategy.get("analysisMeta")
-                if rag_references:
-                    save_kwargs["ragReferences"] = rag_references
-
+                save_kwargs["taskId"] = request.taskId
                 ai_message_id = await self.save_message(session_id, "ai", ai_content, **save_kwargs)
+                await self._sync_task_evidence_from_chat(
+                    user_id=user_id,
+                    task_id=request.taskId,
+                    session_id=session_id,
+                    role="ai",
+                    content=ai_content,
+                )
             except Exception as e:
                 logger.error(f"Failed to save AI message: {e}")
 
@@ -593,7 +605,6 @@ class ChatBusiness:
                 "multiTaskDecompositions": multi_task_decompositions if multi_task_decompositions else None,
                 "timingStrategy": timing_strategy,
                 "taskAnalysis": timing_strategy.get("analysisMeta") if timing_strategy else None,
-                "ragReferences": rag_references,
                 "routingMeta": routing_meta if settings.ENABLE_ROUTING_META else None
             }
 
@@ -696,7 +707,14 @@ class ChatBusiness:
             # 保存用户消息（仅在非断点续传时）
             if not resume_context:
                 try:
-                    await self.save_message(session_id, "user", request.message)
+                    await self.save_message(session_id, "user", request.message, taskId=request.taskId)
+                    await self._sync_task_evidence_from_chat(
+                        user_id=user_id,
+                        task_id=request.taskId,
+                        session_id=session_id,
+                        role="user",
+                        content=request.message,
+                    )
                 except Exception as e:
                     logger.error(f"Failed to save user message: {e}")
                     # 继续处理，不中断流
@@ -833,7 +851,14 @@ class ChatBusiness:
             # 7. 保存AI消息
             ai_message_id = None
             try:
-                ai_message_id = await self.save_message(session_id, "ai", accumulated_content)
+                ai_message_id = await self.save_message(session_id, "ai", accumulated_content, taskId=request.taskId)
+                await self._sync_task_evidence_from_chat(
+                    user_id=user_id,
+                    task_id=request.taskId,
+                    session_id=session_id,
+                    role="ai",
+                    content=accumulated_content,
+                )
             except Exception as e:
                 logger.error(f"Failed to save AI message: {e}")
 

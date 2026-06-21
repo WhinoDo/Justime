@@ -203,12 +203,13 @@ async def update_event(
     if not update_data:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="没有可更新的字段")
 
+    existing = await db.db["calendar_events"].find_one({"_id": oid, "userId": user_id})
+    if not existing:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="事件不存在")
+    old_status = existing.get("status")
+
     # 若更新了时间，进行校验
     if "start" in update_data or "end" in update_data:
-        existing = await db.db["calendar_events"].find_one({"_id": oid, "userId": user_id})
-        if not existing:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="事件不存在")
-
         new_start = update_data.get("start", existing.get("start"))
         new_end = update_data.get("end", existing.get("end"))
         if new_start >= new_end:
@@ -224,6 +225,11 @@ async def update_event(
 
     if not result:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="事件不存在")
+
+    new_status = result.get("status")
+    if new_status == "completed" and old_status != "completed" and result.get("taskId"):
+        from app.business.task_process_business import _task_process_business
+        await _task_process_business.handle_calendar_event_status_change(user_id, old_status, new_status, result)
 
     return {
         "success": True,
@@ -375,13 +381,13 @@ async def get_feishu_config_status(current_user: CurrentUser):
                 "status": "disabled",
                 "appId": "",
                 "calendarId": "",
-                "message": "飞书集成已在后端关闭"
+                "message": "飞书集成已在后端关闭",
             }
         }
-        
+
     try:
         from app.services.feishu_service import FeishuService
-        token = await FeishuService.get_tenant_access_token()
+        await FeishuService.get_tenant_access_token()
         return {
             "success": True,
             "data": {
@@ -389,7 +395,7 @@ async def get_feishu_config_status(current_user: CurrentUser):
                 "status": "connected",
                 "appId": settings.FEISHU_APP_ID,
                 "calendarId": settings.FEISHU_CALENDAR_ID or "默认主日历",
-                "message": "已成功连通飞书开放平台"
+                "message": "已成功连通飞书开放平台",
             }
         }
     except Exception as e:
@@ -400,7 +406,6 @@ async def get_feishu_config_status(current_user: CurrentUser):
                 "status": "error",
                 "appId": settings.FEISHU_APP_ID,
                 "calendarId": settings.FEISHU_CALENDAR_ID or "默认主日历",
-                "message": f"连通失败: {e}"
+                "message": f"连通失败: {e}",
             }
         }
-

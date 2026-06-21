@@ -45,7 +45,7 @@ export interface ChatInputAreaProps {
   onModelChange: (modelId: string) => void
   /** Ref for the textarea element */
   textareaRef?: React.RefObject<HTMLTextAreaElement>
-  /** RAG preview panel state */
+  /** Document preview panel state */
   previewOpen?: boolean
   selectedReference?: RagReference | null
   activeTab?: RagPreviewTab
@@ -57,7 +57,7 @@ export interface ChatInputAreaProps {
   children?: ReactNode
   /** UI density variant */
   density?: 'comfortable' | 'desktop'
-  /** Placement configuration of RAG previews */
+  /** Placement configuration of document previews */
   previewPlacement?: 'floating' | 'inspector'
 }
 
@@ -94,7 +94,7 @@ export const ChatInputArea = memo(function ChatInputArea({
 
       {/* Main input area container */}
       <div className="relative shrink-0 p-4 transition-all duration-300 md:px-6 md:pb-6">
-        {/* Floating RAG preview panel */}
+        {/* Floating document preview panel */}
         {previewPlacement === 'floating' && previewOpen && selectedReference && (
           <div className="absolute bottom-[calc(100%-1rem)] left-1/2 -translate-x-1/2 w-full max-w-3xl px-4 z-50 animate-in slide-in-from-bottom-4 fade-in duration-200">
             <div className="h-[400px] overflow-hidden rounded-2xl border border-white/[0.15] bg-black/40 shadow-2xl backdrop-blur-2xl">

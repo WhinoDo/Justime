@@ -197,40 +197,37 @@ class SchedulerService:
                 logger.error("send_review_reminder error for user %s: %s", user_id[:8], e)
 
     async def send_daily_summary(self):
-        """每日 22:00 发送当日学习统计"""
+        """每日 22:00 发送当日任务总结"""
         logger.info("send_daily_summary triggered")
-        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        cursor = db.db.study_profiles.find({"feishuOpenId": {"$exists": True, "$ne": ""}})
-        async for profile in cursor:
-            open_id = profile.get("feishuOpenId", "")
-            user_id = profile.get("userId", "")
+        start_of_today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        cursor = db.db.users.find({"feishuOpenId": {"$exists": True, "$ne": ""}})
+        async for user in cursor:
+            open_id = user.get("feishuOpenId", "")
+            user_id = str(user.get("_id", ""))
             if not open_id or not user_id:
                 continue
 
             try:
-                progress_cursor = db.db.study_progress.find({
+                # 统计今日投入时长
+                time_logs_cursor = db.db.evidence.find({
                     "userId": user_id,
-                    "date": {"$gte": f"{today}T00:00:00"},
+                    "type": "time_log",
+                    "createdAt": {"$gte": start_of_today}
                 })
-                records = await progress_cursor.to_list(length=100)
-                total_hours = sum(r.get("actualHours", 0) for r in records)
+                total_hours = 0.0
+                async for r in time_logs_cursor:
+                    total_hours += float((r.get("metadata") or {}).get("hours") or 0.0)
 
-                tasks_done = await db.db.study_tasks.count_documents({
+                # 统计今日完成的里程碑数量
+                milestones_done = await db.db.evidence.count_documents({
                     "userId": user_id,
-                    "status": "completed",
-                    "completedAt": {"$gte": f"{today}T00:00:00"},
-                })
-                tasks_total = await db.db.study_tasks.count_documents({
-                    "userId": user_id,
-                    "scheduledDate": {
-                        "$gte": f"{today}T00:00:00",
-                        "$lt": f"{today}T23:59:59",
-                    },
+                    "type": "milestone_complete",
+                    "createdAt": {"$gte": start_of_today}
                 })
 
                 card = {
                     "header": {
-                        "title": {"tag": "plain_text", "content": "🌙 今日学习总结"},
+                        "title": {"tag": "plain_text", "content": "🌙 今日任务进程总结"},
                     },
                     "elements": [
                         {
@@ -238,8 +235,8 @@ class SchedulerService:
                             "text": {
                                 "tag": "lark_md",
                                 "content": (
-                                    f"**学习时长**: {total_hours:.1f}小时\n"
-                                    f"**任务完成**: {tasks_done}/{tasks_total}"
+                                    f"**时间投入**: {total_hours:.1f} 小时\n"
+                                    f"**完成里程碑**: {milestones_done} 个"
                                 ),
                             },
                         },
@@ -250,20 +247,60 @@ class SchedulerService:
                 logger.error("send_daily_summary error for user %s: %s", user_id[:8], e)
 
     async def send_weekly_report(self):
-        """每周日 20:00 发送周度学习报告"""
+        """每周日 20:00 发送周度任务报告"""
         logger.info("send_weekly_report triggered")
-        from app.business.study_agent_business import study_agent_business
+        from datetime import timedelta
+        start_of_week = datetime.utcnow() - timedelta(days=7)
 
-        cursor = db.db.study_profiles.find({"feishuOpenId": {"$exists": True, "$ne": ""}})
-        async for profile in cursor:
-            open_id = profile.get("feishuOpenId", "")
-            user_id = profile.get("userId", "")
+        cursor = db.db.users.find({"feishuOpenId": {"$exists": True, "$ne": ""}})
+        async for user in cursor:
+            open_id = user.get("feishuOpenId", "")
+            user_id = str(user.get("_id", ""))
             if not open_id or not user_id:
                 continue
 
             try:
-                progress = await study_agent_business.get_progress(user_id)
-                card = feishu_service.build_study_summary_card(progress.get("data", {}))
+                # 统计过去 7 天投入时长
+                time_logs_cursor = db.db.evidence.find({
+                    "userId": user_id,
+                    "type": "time_log",
+                    "createdAt": {"$gte": start_of_week}
+                })
+                total_hours = 0.0
+                async for r in time_logs_cursor:
+                    total_hours += float((r.get("metadata") or {}).get("hours") or 0.0)
+
+                # 统计过去 7 天完成的里程碑数量
+                milestones_done = await db.db.evidence.count_documents({
+                    "userId": user_id,
+                    "type": "milestone_complete",
+                    "createdAt": {"$gte": start_of_week}
+                })
+
+                # 统计新生成的知识产出数量
+                knowledge_done = await db.db.knowledge_outputs.count_documents({
+                    "userId": user_id,
+                    "createdAt": {"$gte": start_of_week}
+                })
+
+                card = {
+                    "header": {
+                        "title": {"tag": "plain_text", "content": "📊 本周任务进程周报"},
+                    },
+                    "elements": [
+                        {
+                            "tag": "div",
+                            "text": {
+                                "tag": "lark_md",
+                                "content": (
+                                    f"**过去 7 天总投入时间**: {total_hours:.1f} 小时\n"
+                                    f"**完成里程碑**: {milestones_done} 个\n"
+                                    f"**沉淀知识库产出**: {knowledge_done} 篇"
+                                ),
+                            },
+                        },
+                    ],
+                }
                 await feishu_service.send_card_message(open_id, card)
             except Exception as e:
                 logger.error("send_weekly_report error for user %s: %s", user_id[:8], e)

@@ -7,7 +7,6 @@ from app.services.user_service import UserService
 
 # Retry limits
 DECOMPOSITION_TOOL_RETRY_LIMIT = 2
-KNOWLEDGE_TOOL_RETRY_LIMIT = 1
 
 
 class ChatRetryService:
@@ -191,61 +190,6 @@ class ChatRetryService:
             print(f"⚠️ 任务分解工具调用重试第 {retry_idx + 1} 次失败。")
 
         raise Exception("任务分解请求未成功调用 suggest_task_decomposition 工具，请重试。")
-
-    async def retry_knowledge_call(
-        self,
-        timed_task: str,
-        task_result: Dict[str, Any],
-        used_runtime: Dict[str, Any],
-        fallback_runtime: Optional[Dict[str, Any]],
-        agent_max_steps: int,
-        main_timeout: float,
-        fallback_timeout: float,
-        session_id: str,
-        user_id: str,
-        routing_meta: Dict[str, Any],
-        has_retrieve_knowledge_output_func
-    ) -> Dict[str, Any]:
-        """Retry knowledge retrieval tool call.
-
-        Args:
-            timed_task: Original task
-            task_result: Previous task result
-            used_runtime: Runtime that was used
-            fallback_runtime: Fallback runtime config
-            agent_max_steps: Max agent steps
-            main_timeout: Main timeout
-            fallback_timeout: Fallback timeout
-            session_id: Session ID
-            user_id: User ID
-            routing_meta: Routing metadata
-            has_retrieve_knowledge_output_func: Function to check for knowledge retrieval output
-
-        Returns:
-            Task result (successful retry or original)
-        """
-        print("⚠️ 首轮未检测到 retrieve_knowledge 调用，开始自动重试。")
-        retry_task = (
-            f"{timed_task}\n\n"
-            "【硬性约束（必须遵守）】\n"
-            "你上一次没有调用 retrieve_knowledge。\n"
-            "本次必须先调用 retrieve_knowledge 工具，再给出 final_answer。\n"
-            "若知识库无结果，请明确说明；不要跳过工具直接回答。"
-        )
-        for retry_idx in range(KNOWLEDGE_TOOL_RETRY_LIMIT):
-            retry_runtime, retry_timeout = self._pick_retry_runtime(
-                retry_idx, used_runtime, fallback_runtime, main_timeout, fallback_timeout
-            )
-            retry_result = await self._execute_retry(
-                retry_task, retry_runtime, retry_timeout, agent_max_steps,
-                session_id, user_id, routing_meta, retry_idx, "knowledge"
-            )
-            if retry_result and retry_result.get("success"):
-                if has_retrieve_knowledge_output_func(retry_result):
-                    print(f"✅ 知识检索工具在第 {retry_idx + 1} 次重试成功调用。")
-                    return retry_result
-
-        return task_result
 
     def _pick_retry_runtime(
         self,

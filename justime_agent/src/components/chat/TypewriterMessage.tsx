@@ -247,7 +247,7 @@ const TypewriterMessageInner = ({
           </div>
         </div>
 
-        {/* RAG 引用 */}
+        {/* 文档引用 */}
         {ragReferences && ragReferences.length > 0 && (
           <div className="w-fit max-w-[100%] rounded-xl border border-white/10 bg-white/10 p-3 backdrop-blur-sm">
             <div className="mb-2 text-xs font-medium text-white/80">

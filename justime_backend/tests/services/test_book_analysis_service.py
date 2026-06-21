@@ -16,6 +16,25 @@ SERVICE_PATH = (
 
 
 def load_service_module():
+    injected_modules = [
+        "fastapi",
+        "fastapi.concurrency",
+        "bson",
+        "app",
+        "app.core",
+        "app.services",
+        "app.business",
+        "app.models",
+        "app.business.task_process_business",
+        "app.models.task_process",
+        "app.models.evidence",
+        "app.core.config",
+        "app.database",
+        "app.services.document_storage_service",
+    ]
+    missing = object()
+    original_modules = {name: sys.modules.get(name, missing) for name in injected_modules}
+
     fake_fastapi = types.ModuleType("fastapi")
 
     class HTTPException(Exception):
@@ -54,6 +73,40 @@ def load_service_module():
     sys.modules.setdefault("app", types.ModuleType("app"))
     sys.modules.setdefault("app.core", types.ModuleType("app.core"))
     sys.modules.setdefault("app.services", types.ModuleType("app.services"))
+    sys.modules.setdefault("app.business", types.ModuleType("app.business"))
+    sys.modules.setdefault("app.models", types.ModuleType("app.models"))
+    
+    fake_business = types.ModuleType("app.business.task_process_business")
+    class FakeTaskProcessOut:
+        def __init__(self):
+            self.id = "123456789012345678901234"
+    class FakeTaskProcessBusiness:
+        async def create_task_process(self, user_id, payload):
+            return FakeTaskProcessOut()
+        async def update_task_process(self, user_id, task_id, payload):
+            pass
+        async def create_evidence(self, user_id, payload):
+            pass
+    fake_business._task_process_business = FakeTaskProcessBusiness()
+    sys.modules["app.business.task_process_business"] = fake_business
+
+    fake_models = types.ModuleType("app.models.task_process")
+    class FakeTaskProcessCreate:
+        def __init__(self, **kwargs):
+            pass
+    class FakeTaskProcessUpdate:
+        def __init__(self, **kwargs):
+            pass
+    fake_models.TaskProcessCreate = FakeTaskProcessCreate
+    fake_models.TaskProcessUpdate = FakeTaskProcessUpdate
+    sys.modules["app.models.task_process"] = fake_models
+
+    fake_evidence_models = types.ModuleType("app.models.evidence")
+    class FakeEvidenceCreate:
+        def __init__(self, **kwargs):
+            pass
+    fake_evidence_models.EvidenceCreate = FakeEvidenceCreate
+    sys.modules["app.models.evidence"] = fake_evidence_models
 
     fake_config = types.ModuleType("app.core.config")
     fake_config.settings = types.SimpleNamespace(
@@ -67,15 +120,22 @@ def load_service_module():
     fake_database.db = types.SimpleNamespace(db={})
     sys.modules["app.database"] = fake_database
 
-    fake_rag = types.ModuleType("app.services.rag_service")
-    fake_rag.DOCS_DIR = Path(tempfile.mkdtemp(prefix="book-analysis-docs-"))
-    sys.modules["app.services.rag_service"] = fake_rag
+    fake_documents = types.ModuleType("app.services.document_storage_service")
+    fake_documents.DOCS_DIR = Path(tempfile.mkdtemp(prefix="book-analysis-docs-"))
+    sys.modules["app.services.document_storage_service"] = fake_documents
 
-    spec = importlib.util.spec_from_file_location("book_analysis_service_under_test", SERVICE_PATH)
-    module = importlib.util.module_from_spec(spec)
-    assert spec and spec.loader
-    spec.loader.exec_module(module)
-    return module, HTTPException, fake_rag.DOCS_DIR
+    try:
+        spec = importlib.util.spec_from_file_location("book_analysis_service_under_test", SERVICE_PATH)
+        module = importlib.util.module_from_spec(spec)
+        assert spec and spec.loader
+        spec.loader.exec_module(module)
+        return module, HTTPException, fake_documents.DOCS_DIR
+    finally:
+        for name, original in original_modules.items():
+            if original is missing:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = original
 
 
 class FakePage:

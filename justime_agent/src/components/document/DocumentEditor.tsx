@@ -109,7 +109,7 @@ export default function DocumentEditor({
                         <h1 className="text-xl font-semibold text-white">
                             {eventName}
                         </h1>
-                        <p className="flex items-center gap-2 text-xs text-white/55">
+                        <p className="flex items-center gap-2 text-xs text-white/[0.55]">
                             {saving ? (
                                 <span className="flex items-center text-sky-200">
                                     <span className="mr-1.5 h-2 w-2 animate-pulse rounded-full bg-sky-200" />
@@ -144,7 +144,7 @@ export default function DocumentEditor({
             </div>
 
             <div className="flex-1 overflow-auto p-4 md:p-6" data-color-mode={theme === 'dark' ? 'dark' : 'light'}>
-                <div className="mx-auto h-full max-w-5xl overflow-hidden rounded-[28px] border border-white/15 bg-white/10 shadow-2xl shadow-black/10 backdrop-blur-xl">
+                <div className="mx-auto h-full max-w-5xl overflow-hidden rounded-[28px] border border-white/[0.15] bg-white/10 shadow-2xl shadow-black/10 backdrop-blur-xl">
                     <MDEditor
                         value={content}
                         onChange={(val) => setContent(val || '')}

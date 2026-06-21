@@ -149,6 +149,7 @@ class ChatRequest(BaseModel):
 class ChatStreamRequest(BaseModel):
     """流式聊天请求 - 用于 SSE 打字机效果"""
     message: str = Field(..., min_length=1, max_length=50000, description="用户消息")
+    taskId: Optional[str] = Field(None, max_length=100, description="任务 ID")
     sessionId: Optional[str] = Field(None, max_length=100, description="会话 ID")
     runtimeModelId: Optional[str] = Field(
         None,
@@ -184,10 +185,10 @@ class ChatStreamRequest(BaseModel):
             raise ValueError('会话ID格式无效')
         return v
 
-    @field_validator('runtimeModelId')
+    @field_validator('taskId', 'runtimeModelId')
     @classmethod
-    def validate_runtime_model_id(cls, v: Optional[str]) -> Optional[str]:
-        """验证运行时模型ID"""
+    def validate_runtime_ids(cls, v: Optional[str]) -> Optional[str]:
+        """验证运行时相关 ID"""
         if v is None:
             return v
         v = v.strip()
@@ -224,7 +225,7 @@ class ChatResponseData(BaseModel):
     multiTaskDecompositions: Optional[List[Dict[str, Any]]] = Field(None, description="多模型任务分解结果")
     timingStrategy: Optional[Dict[str, Any]] = Field(None, description="任务时间调度策略")
     taskAnalysis: Optional[Dict[str, Any]] = Field(None, description="任务分析结果")
-    ragReferences: Optional[List[Dict[str, Any]]] = Field(None, description="RAG 引用文档")
+    ragReferences: Optional[List[Dict[str, Any]]] = Field(None, description="历史文档引用")
     routingMeta: Optional[Dict[str, Any]] = Field(None, description="模型路由元信息")
 
 

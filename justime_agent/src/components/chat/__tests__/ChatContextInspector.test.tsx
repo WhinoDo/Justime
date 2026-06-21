@@ -14,6 +14,6 @@ describe('ChatContextInspector', () => {
     expect(screen.getByText('上下文检查器')).toBeInTheDocument()
     expect(screen.getByText('macOS 桌面端优化')).toBeInTheDocument()
     expect(screen.getByText('deepseek-chat')).toBeInTheDocument()
-    expect(screen.getByText(/点击回答中的 RAG 引用/)).toBeInTheDocument()
+    expect(screen.getByText(/点击回答中的文档引用/)).toBeInTheDocument()
   })
 })

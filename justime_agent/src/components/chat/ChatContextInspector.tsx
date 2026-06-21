@@ -84,7 +84,7 @@ export function ChatContextInspector({
                 <FileText className="h-3.5 w-3.5 text-amber-500" />
                 引用预览
               </div>
-              点击回答中的 RAG 引用后，会在这里检查来源片段和全文。
+              点击回答中的文档引用后，会在这里检查来源片段和全文。
             </section>
           )}
         </div>

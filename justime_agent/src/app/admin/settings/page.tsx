@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ServerCog, KeyRound, Shield, Sparkles, Terminal } from 'lucide-react'
+import { ServerCog, KeyRound, Shield, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export default function AdminSettingsPage() {
@@ -41,15 +41,6 @@ export default function AdminSettingsPage() {
             color: 'text-sky-300',
             bg: 'bg-sky-500/20',
             ring: 'ring-sky-500/30',
-        },
-        {
-            title: '飞书 CLI 安装',
-            description: '安装和配置飞书官方 CLI 工具，启用 MCP Agent 能力。',
-            icon: Terminal,
-            href: '/admin/feishu-cli',
-            color: 'text-orange-300',
-            bg: 'bg-orange-500/20',
-            ring: 'ring-orange-500/30',
         },
     ]
 

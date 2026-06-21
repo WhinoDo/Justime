@@ -229,7 +229,8 @@ class AuthBusiness:
         except httpx.TimeoutException:
             raise HTTPException(status_code=504, detail="连接超时，无法获取供应商模型")
         except Exception as e:
-            raise HTTPException(status_code=502, detail=f"获取供应商模型失败: {str(e)}")
+            logger.error(f"获取供应商模型失败: {e}")
+            raise HTTPException(status_code=502, detail="获取供应商模型失败，请稍后重试")
 
         if response.status_code != 200:
             raise HTTPException(status_code=response.status_code, detail=f"获取失败，供应商返回 {response.status_code}")
@@ -643,20 +644,10 @@ class AuthBusiness:
                 {"_id": ObjectId(user_id)},
                 {"$set": {"feishuOpenId": feishu_open_id, "updated_at": datetime.utcnow()}}
             )
-            # 兼容：在 study_profiles 中也写入
-            await db.db.study_profiles.update_one(
-                {"userId": user_id},
-                {"$set": {"feishuOpenId": feishu_open_id, "updated_at": datetime.utcnow()}},
-                upsert=True
-            )
         else:
             # 解绑
             await db.db.users.update_one(
                 {"_id": ObjectId(user_id)},
-                {"$unset": {"feishuOpenId": ""}, "$set": {"updated_at": datetime.utcnow()}}
-            )
-            await db.db.study_profiles.update_one(
-                {"userId": user_id},
                 {"$unset": {"feishuOpenId": ""}, "$set": {"updated_at": datetime.utcnow()}}
             )
 

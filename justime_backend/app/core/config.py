@@ -74,6 +74,8 @@ class Settings(BaseSettings):
     # NotebookLM 书籍分析配置
     NOTEBOOKLM_ENABLED: bool = False
     NOTEBOOKLM_CLI_PATH: str = "notebooklm"
+    NOTEBOOKLM_STORAGE_PATH: str = ""
+    NOTEBOOKLM_PROFILE: str = ""
     BOOK_ANALYSIS_SOURCE_WAIT_TIMEOUT_SECONDS: int = 180
     BOOK_ANALYSIS_COMMAND_TIMEOUT_SECONDS: int = 300
     BOOK_ANALYSIS_SOURCE_ADD_TIMEOUT_SECONDS: int = 900

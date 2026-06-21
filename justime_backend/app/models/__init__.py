@@ -43,22 +43,36 @@ from app.models.agent import (
     AgentProvidersResponse
 )
 
-from app.models.study import (
-    StudyProfileCreate,
-    StudyProfileUpdate,
-    StudyProfileOut,
-    StudyPlanCreate,
-    StudyPlanUpdate,
-    StudyPlanOut,
-    StudyTaskCreate,
-    StudyTaskUpdate,
-    StudyTaskOut,
-    StudyProgressCreate,
-    StudyProgressOut,
-    ReviewScheduleCreate,
-    ReviewScheduleOut,
-    StudyMaterialCreate,
-    StudyMaterialOut,
+from app.models.task_process import (
+    TaskProcessCreate,
+    TaskProcessUpdate,
+    TaskProcessOut,
+    TaskProcessListQuery,
+    MilestoneCreate,
+    MilestoneUpdate,
+    BlockerCreate,
+    BlockerResolve,
+    TaskAgentRequest,
+    TaskAgentResponse,
+)
+
+from app.models.evidence import (
+    EvidenceCreate,
+    EvidenceUpdate,
+    EvidenceOut,
+    EvidenceListQuery,
+    EvidenceBatchCreate,
+    TimeLogCreate,
+)
+
+from app.models.knowledge_output import (
+    KnowledgeOutputCreate,
+    KnowledgeOutputUpdate,
+    KnowledgeOutputOut,
+    KnowledgeOutputListQuery,
+    GenerateKnowledgeRequest,
+    VaultConfig,
+    VaultConfigUpdate,
 )
 
 __all__ = [
@@ -93,20 +107,30 @@ __all__ = [
     "AgentToolsResponse",
     "LLMProviderInfo",
     "AgentProvidersResponse",
-    # Study
-    "StudyProfileCreate",
-    "StudyProfileUpdate",
-    "StudyProfileOut",
-    "StudyPlanCreate",
-    "StudyPlanUpdate",
-    "StudyPlanOut",
-    "StudyTaskCreate",
-    "StudyTaskUpdate",
-    "StudyTaskOut",
-    "StudyProgressCreate",
-    "StudyProgressOut",
-    "ReviewScheduleCreate",
-    "ReviewScheduleOut",
-    "StudyMaterialCreate",
-    "StudyMaterialOut",
+    # Task Process
+    "TaskProcessCreate",
+    "TaskProcessUpdate",
+    "TaskProcessOut",
+    "TaskProcessListQuery",
+    "MilestoneCreate",
+    "MilestoneUpdate",
+    "BlockerCreate",
+    "BlockerResolve",
+    "TaskAgentRequest",
+    "TaskAgentResponse",
+    # Evidence
+    "EvidenceCreate",
+    "EvidenceUpdate",
+    "EvidenceOut",
+    "EvidenceListQuery",
+    "EvidenceBatchCreate",
+    "TimeLogCreate",
+    # Knowledge Output
+    "KnowledgeOutputCreate",
+    "KnowledgeOutputUpdate",
+    "KnowledgeOutputOut",
+    "KnowledgeOutputListQuery",
+    "GenerateKnowledgeRequest",
+    "VaultConfig",
+    "VaultConfigUpdate",
 ]

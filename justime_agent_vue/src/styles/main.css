@@ -4,26 +4,35 @@
 
 /* Custom styles */
 :root {
-  --background: 0 0% 3.9%;
-  --foreground: 0 0% 98%;
-  --card: 0 0% 3.9%;
-  --card-foreground: 0 0% 98%;
-  --popover: 0 0% 3.9%;
-  --popover-foreground: 0 0% 98%;
-  --primary: 0 0% 98%;
-  --primary-foreground: 0 0% 9%;
-  --secondary: 0 0% 14.9%;
-  --secondary-foreground: 0 0% 98%;
-  --muted: 0 0% 14.9%;
-  --muted-foreground: 0 0% 63.9%;
-  --accent: 0 0% 14.9%;
-  --accent-foreground: 0 0% 98%;
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 0 0% 98%;
-  --border: 0 0% 14.9%;
-  --input: 0 0% 14.9%;
-  --ring: 0 0% 83.1%;
-  --radius: 0.5rem;
+  --background: 270 100% 99%;
+  --foreground: 257 24% 10%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 257 24% 10%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 257 24% 10%;
+
+  --primary: 263 74% 58%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 262 100% 97%;
+  --secondary-foreground: 258 26% 20%;
+
+  --muted: 260 43% 95%;
+  --muted-foreground: 257 13% 45%;
+
+  --accent: 275 92% 94%;
+  --accent-foreground: 258 34% 24%;
+
+  --destructive: 351 72% 56%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 263 38% 82%;
+  --input: 263 38% 82%;
+  --ring: 263 74% 58%;
+
+  --radius: 0.75rem;
 }
 
 body {
@@ -34,9 +43,9 @@ body {
 
 /* Custom utility classes */
 .glass-effect {
-  @apply bg-white/5 backdrop-blur-xl border border-white/20;
+  @apply bg-white/80 backdrop-blur-xl border border-purple-100 shadow-sm;
 }
 
 .card-shadow {
-  @apply shadow-xl shadow-black/20;
+  @apply shadow-lg shadow-purple-500/5;
 }

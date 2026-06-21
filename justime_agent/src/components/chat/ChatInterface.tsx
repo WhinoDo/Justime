@@ -70,7 +70,7 @@ export function ChatInterface({
   const [_timingStrategy, setTimingStrategy] = useState<TimingStrategy | null>(null)
   const [_taskAnalysis, setTaskAnalysis] = useState<TaskAnalysis | null>(null)
 
-  // RAG reference preview state
+  // Document reference preview state
   const [selectedReference, setSelectedReference] = useState<RagReference | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<RagPreviewTab>('snippets')
@@ -273,7 +273,7 @@ export function ChatInterface({
     initializeApp()
   }, [loadProviderModels])
 
-  // Load full content when RAG preview tab changes
+  // Load full content when document preview tab changes
   useEffect(() => {
     if (!previewOpen || activeTab !== 'full' || !selectedReference) {
       return

@@ -26,6 +26,8 @@ class ChatPersistence:
             "content": content,
             "timestamp": datetime.now(timezone.utc)
         }
+        if kwargs.get("taskId"):
+            message_doc["taskId"] = kwargs["taskId"]
         
         if kwargs.get("taskDecomposition"):
             message_doc["taskDecomposition"] = kwargs["taskDecomposition"]

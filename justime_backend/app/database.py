@@ -85,25 +85,30 @@ async def _create_indexes() -> None:
         await db.db.token_usage.create_index([("sessionId", 1)])
         logger.info("✅ Token使用记录索引创建完成")
 
-        # 学习科目 Notebook 映射索引
-        await db.db.study_notebooks.create_index([("user_id", 1), ("subject", 1)], unique=True)
-        logger.info("✅ 学习科目Notebook映射索引创建完成")
 
-        # 考研学习相关索引
-        await db.db.study_profiles.create_index([("userId", 1)], unique=True)
-        await db.db.study_plans.create_index([("userId", 1), ("createdAt", -1)])
-        await db.db.study_tasks.create_index([("userId", 1), ("scheduledDate", 1)])
-        await db.db.study_tasks.create_index([("userId", 1), ("status", 1)])
-        await db.db.study_progress.create_index([("userId", 1), ("date", -1)])
-        await db.db.review_schedules.create_index([("userId", 1), ("nextReview", 1)])
-        await db.db.review_schedules.create_index([("userId", 1), "subject"])
-        logger.info("✅ 考研学习相关索引创建完成")
 
-        await db.db.exam_papers.create_index([("userId", 1), ("subject", 1), ("year", -1)])
-        await db.db.exam_trends.create_index([("userId", 1), ("subject", 1)])
-        await db.db.practice_questions.create_index([("userId", 1), ("subject", 1)])
-        await db.db.study_reports.create_index([("userId", 1), ("reportType", 1), ("generatedAt", -1)])
-        logger.info("✅ 真题解析与报告相关索引创建完成")
+        # 任务进程 (Task Process) 索引
+        await db.db.task_processes.create_index([("userId", 1), ("status", 1), ("updatedAt", -1)])
+        await db.db.task_processes.create_index([("userId", 1), ("phase", 1)])
+        await db.db.task_processes.create_index([("userId", 1), ("category", 1)])
+        await db.db.task_processes.create_index([("userId", 1), ("priority", 1), ("status", 1)])
+        await db.db.task_processes.create_index([("userId", 1), ("deadline", 1)])
+        await db.db.task_processes.create_index([("parent_task_id", 1)])
+        logger.info("✅ 任务进程索引创建完成")
+
+        # Evidence (证据) 索引
+        await db.db.evidence.create_index([("task_id", 1), ("createdAt", -1)])
+        await db.db.evidence.create_index([("task_id", 1), ("type", 1)])
+        await db.db.evidence.create_index([("userId", 1), ("createdAt", -1)])
+        await db.db.evidence.create_index([("task_id", 1), ("milestone_id", 1)])
+        logger.info("✅ Evidence 索引创建完成")
+
+        # Knowledge Output (知识输出) 索引
+        await db.db.knowledge_outputs.create_index([("task_id", 1), ("status", 1)])
+        await db.db.knowledge_outputs.create_index([("userId", 1), ("updatedAt", -1)])
+        await db.db.knowledge_outputs.create_index([("userId", 1), ("format", 1)])
+        await db.db.knowledge_outputs.create_index([("vault_relative_path", 1), ("userId", 1)], unique=True, sparse=True)
+        logger.info("✅ Knowledge Output 索引创建完成")
 
     except Exception as e:
         logger.warning(f"⚠️ 创建索引时出现警告: {e}")

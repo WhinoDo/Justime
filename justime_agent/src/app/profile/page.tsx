@@ -2,7 +2,6 @@
 
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { FeishuCLIStatusBadge } from '@/components/feishu/FeishuCLIStatusBadge'
 import { useEffect, useState } from 'react'
 import {
     User,
@@ -422,15 +421,6 @@ export default function ProfilePage() {
                                 )}
                             </div>
 
-                            {/* Feishu CLI Status */}
-                            <div className="bg-white/60 rounded-2xl p-4 border border-violet-200/40 space-y-3">
-                                <h3 className="text-[#171421] font-bold flex items-center gap-2">
-                                    <Shield className="h-5 w-5 text-orange-500" />
-                                    飞书 CLI 状态
-                                </h3>
-                                <FeishuCLIStatusBadge />
-                            </div>
-
                             {/* Profile Info */}
                             <div className="bg-white/60 rounded-2xl p-4 border border-violet-200/40 space-y-4">
                                 <div className="flex items-center justify-between">
@@ -813,15 +803,6 @@ export default function ProfilePage() {
                                     )}
                                 </div>
                             )}
-                        </div>
-
-                        {/* Feishu CLI Status */}
-                        <div className="bg-black/20 rounded-2xl p-4 border border-white/10 space-y-3">
-                            <h3 className="text-white font-semibold flex items-center gap-2">
-                                <Shield className="h-5 w-5 text-orange-300" />
-                                飞书 CLI 状态
-                            </h3>
-                            <FeishuCLIStatusBadge />
                         </div>
 
                         {/* Profile Info */}

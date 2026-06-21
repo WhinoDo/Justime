@@ -4,7 +4,7 @@
 
 ## 项目概述
 
-**Justime** 是一个 AI 智能助手平台，集对话、日程管理、知识库、书籍分析等功能于一体。项目采用前后端分离的双端架构。
+**Justime** 是一个 AI 个人任务进程操作系统，以任务进程管理为核心，持续追踪任务 Before/During/After 状态，辅助任务推进，并将成果沉淀为 Markdown 知识库。项目同时保留对话、日程管理、知识库等基础能力，采用前后端分离的双端架构。
 
 | 端 | 目录 | 技术栈 | 端口 |
 |----|------|--------|------|
@@ -28,11 +28,13 @@ justime/
 │   │   │   ├── admin/        # 管理后台页面
 │   │   │   ├── auth/         # 认证页面 (登录/注册/重置密码)
 │   │   │   ├── chat/         # AI 对话页面
+│   │   │   ├── tasks/        # ⭐ 任务进程页面 (TaskProcess CRUD + 阶段视图)
 │   │   │   ├── calendar/     # 日程管理页面
 │   │   │   ├── knowledge/    # 知识库页面
 │   │   │   └── dashboard/    # 仪表盘
 │   │   ├── components/       # UI 组件
 │   │   │   ├── chat/         # 对话相关组件 (ChatInterface, MessageBubble, TypewriterMessage 等)
+│   │   │   ├── tasks/        # ⭐ 任务进程组件 (TaskCard, PhaseTimeline, EvidencePanel 等)
 │   │   │   ├── calendar/     # 日历组件
 │   │   │   ├── auth/         # 认证组件
 │   │   │   └── admin/        # 管理组件
@@ -52,6 +54,9 @@ justime/
 │   │   ├── api/v1/endpoints/ # API 端点
 │   │   │   ├── auth.py       # 认证 (登录/注册/Token 刷新)
 │   │   │   ├── chat.py       # AI 对话 (普通 + SSE 流式)
+│   │   │   ├── task_process.py # ⭐ 任务进程 CRUD + 阶段流转
+│   │   │   ├── evidence.py   # ⭐ Evidence 记录 (学习笔记/工作产出)
+│   │   │   ├── knowledge_outputs.py # ⭐ KnowledgeOutput 管理 + Markdown 导出
 │   │   │   ├── admin.py      # 后台管理 (用户/模型配置)
 │   │   │   ├── calendar.py   # 日历 CRUD
 │   │   │   ├── knowledge.py  # 知识库管理
@@ -60,6 +65,7 @@ justime/
 │   │   │   ├── agent.py      # AI Agent 端点
 │   │   │   └── health.py     # 健康检查
 │   │   ├── business/         # 业务逻辑层
+│   │   │   ├── task_process_business.py  # ⭐ 任务进程编排 (阶段流转/Agent 调度)
 │   │   │   ├── chat_business.py    # 对话业务编排
 │   │   │   ├── chat_executor.py    # LLM 调用执行器
 │   │   │   ├── chat_router.py      # 模型智能路由
@@ -70,6 +76,9 @@ justime/
 │   │   │   ├── chat_retry_service.py    # 重试服务
 │   │   │   └── chat_routing_service.py  # 路由服务
 │   │   ├── services/         # 基础服务层
+│   │   │   ├── task_agent_service.py      # ⭐ TaskAgent (plan/monitor/summarize 三模式)
+│   │   │   ├── knowledge_writer_service.py # ⭐ KnowledgeOutput 生成 (AI 总结)
+│   │   │   ├── markdown_export_service.py  # ⭐ Markdown Vault 导出
 │   │   │   ├── llm_service.py       # LLM API 调用 (支持流式)
 │   │   │   ├── sse_stream_service.py # SSE 流式上下文 (断点续传)
 │   │   │   ├── rag_service.py       # RAG 检索增强 (LlamaIndex)
@@ -78,6 +87,10 @@ justime/
 │   │   │   ├── encryption_service.py # 加密服务
 │   │   │   └── ...
 │   │   ├── models/           # Pydantic 数据模型
+│   │   │   ├── task_process.py      # ⭐ TaskProcess 模型 (Before/During/After)
+│   │   │   ├── evidence.py          # ⭐ Evidence 模型 (笔记/截图/代码片段)
+│   │   │   ├── knowledge_output.py  # ⭐ KnowledgeOutput 模型 (Markdown 成果)
+│   │   │   └── ...
 │   │   ├── core/             # 核心模块 (config, middleware, redis, rate_limiter)
 │   │   ├── database.py       # MongoDB 连接管理
 │   │   └── main.py           # FastAPI 应用入口
@@ -94,12 +107,51 @@ justime/
 ├── infrastructure/           # 基础设施
 │   └── mongodb/              # MongoDB 部署配置
 │
+├── apps/                     # ⭐ 应用壳
+│   └── desktop/              # ⭐ macOS 桌面端 (Electron/Tauri, 未来)
+│
 ├── docs/                     # 设计文档与方案
 ├── .github/workflows/        # CI/CD (ci.yml, deploy.yml)
 └── AGENTS.md                 # 本文档
 ```
 
 ## 核心架构
+
+### 核心概念: TaskProcess 任务进程
+
+TaskProcess 是 Justime 的核心数据实体，代表一个用户正在进行的任务/项目。每个 TaskProcess 经历三个阶段:
+
+| 阶段 | 含义 | 关键动作 |
+|------|------|----------|
+| **Before** | 任务规划 | AI 拆解子任务、搜集资料、生成学习计划 |
+| **During** | 任务执行 | 用户记录 Evidence (笔记/截图/代码)，AI 监控进度/识别阻塞 |
+| **After** | 任务沉淀 | AI 生成 KnowledgeOutput，导出到 Markdown Vault |
+
+关联实体:
+- **Evidence**: 任务执行过程中的证据记录 (笔记、截图、代码片段、链接等)
+- **KnowledgeOutput**: 任务完成后的知识产出 (总结文档、方法论、复盘笔记)
+- **Markdown Vault**: 本地文件系统中的知识库目录，以 Markdown 文件组织
+
+### 数据流: 任务进程
+
+```
+用户创建任务 → TaskProcess API
+             → TaskProcessBusiness (编排层)
+               → TaskAgentService (plan mode) → 拆解任务/搜集资料
+             → Before 阶段 UI 展示
+
+用户记录学习/工作 → Evidence API
+                  → TaskProcessBusiness
+                    → TaskAgentService (monitor mode) → 评估进度/识别阻塞
+                  → During 阶段 UI 展示
+
+用户完成任务 → TaskProcess 阶段流转 API
+             → TaskProcessBusiness
+               → TaskAgentService (summarize mode) → 生成总结
+               → KnowledgeWriterService → 生成 KnowledgeOutput
+               → MarkdownExportService → 写入 Markdown Vault
+             → After 阶段 UI 展示
+```
 
 ### 数据流: AI 对话
 
@@ -190,6 +242,9 @@ docker compose up -d
 | 路由前缀 | 模块 | 说明 |
 |----------|------|------|
 | `/auth/*` | 认证 | 登录/注册/Token 刷新/密码重置 |
+| `/task-processes/*` | ⭐ 任务进程 | TaskProcess CRUD / 阶段流转 / AI 规划 |
+| `/task-processes/:id/evidence/*` | ⭐ Evidence | 任务关联的 Evidence CRUD |
+| `/task-processes/:id/knowledge-outputs/*` | ⭐ 知识产出 | KnowledgeOutput 生成 / Markdown 导出 |
 | `/chat/send` | 对话 | 普通对话 (JSON 一次性返回) |
 | `/chat/stream` | 对话 | SSE 流式对话 (打字机效果) |
 | `/chat/sessions` | 对话 | 会话管理 |
@@ -219,6 +274,9 @@ docker compose up -d
 | 集合 | 说明 |
 |------|------|
 | `users` | 用户信息 |
+| `task_processes` | ⭐ 任务进程 (含 phase/status/子任务/AI 规划) |
+| `evidence` | ⭐ Evidence 记录 (关联 task_process_id) |
+| `knowledge_outputs` | ⭐ 知识产出 (Markdown 内容 + 元数据) |
 | `chat_sessions` | 对话会话 |
 | `chat_messages` | 对话消息 |
 | `conversations` | 会话 (旧) |
@@ -304,6 +362,22 @@ pytest tests/ -v --tb=short
 3. 前端 Web: 在 `useSSEChat.ts` 添加事件回调
 4. 前端 Web: 在 `ChatInterface.tsx` 或 `TypewriterMessage.tsx` 处理新事件展示
 
+### 新增任务进程功能
+
+任务进程是 Justime 的核心管线，涉及多个层次的协作。新增功能时按以下步骤:
+
+1. **数据模型**: 在 `justime_backend/app/models/task_process.py`、`evidence.py` 或 `knowledge_output.py` 中添加/修改 Pydantic 模型
+2. **Agent 能力**: 在 `justime_backend/app/services/task_agent_service.py` 中添加新的 Agent 模式或扩展现有模式 (plan/monitor/summarize)
+3. **业务编排**: 在 `justime_backend/app/business/task_process_business.py` 中编排阶段流转逻辑和 Agent 调度
+4. **API 端点**: 在 `justime_backend/app/api/v1/endpoints/task_process.py` (或 `evidence.py`、`knowledge_outputs.py`) 中暴露新接口
+5. **前端页面**: 在 `justime_agent/src/app/tasks/` 中添加页面路由
+6. **前端组件**: 在 `justime_agent/src/components/tasks/` 中实现 UI 组件 (注意三阶段视图的统一设计)
+7. **Markdown 导出**: 如涉及知识产出，确保 `markdown_export_service.py` 能正确生成文件
+8. 在 `src/types/` 添加对应 TypeScript 类型
+9. 编写前后端测试
+
+**阶段流转规则**: Before → During → After 是单向的，不可回退。每次阶段流转都应通过 `TaskProcessBusiness` 统一处理，不要在 endpoint 中直接修改 phase 字段。
+
 ### 修改数据模型 (MongoDB)
 
 - 此项目无 ORM Migration，MongoDB 是 Schema-less
@@ -318,6 +392,18 @@ pytest tests/ -v --tb=short
 | 后端入口 | `justime_backend/app/main.py` |
 | 后端配置 | `justime_backend/app/core/config.py` |
 | 路由注册 | `justime_backend/app/api/v1/api.py` |
+| ⭐ 任务进程编排 | `justime_backend/app/business/task_process_business.py` |
+| ⭐ TaskAgent 服务 | `justime_backend/app/services/task_agent_service.py` |
+| ⭐ 知识产出生成 | `justime_backend/app/services/knowledge_writer_service.py` |
+| ⭐ Markdown 导出 | `justime_backend/app/services/markdown_export_service.py` |
+| ⭐ 任务进程模型 | `justime_backend/app/models/task_process.py` |
+| ⭐ Evidence 模型 | `justime_backend/app/models/evidence.py` |
+| ⭐ KnowledgeOutput 模型 | `justime_backend/app/models/knowledge_output.py` |
+| ⭐ 任务进程端点 | `justime_backend/app/api/v1/endpoints/task_process.py` |
+| ⭐ Evidence 端点 | `justime_backend/app/api/v1/endpoints/evidence.py` |
+| ⭐ KnowledgeOutput 端点 | `justime_backend/app/api/v1/endpoints/knowledge_outputs.py` |
+| ⭐ 任务页面 | `justime_agent/src/app/tasks/page.tsx` |
+| ⭐ 任务组件 | `justime_agent/src/components/tasks/` |
 | 对话核心 | `justime_backend/app/business/chat_business.py` |
 | SSE 流服务 | `justime_backend/app/services/sse_stream_service.py` |
 | LLM 调用 | `justime_backend/app/services/llm_service.py` |
@@ -361,3 +447,8 @@ pytest tests/ -v --tb=short
 1. `knowledge` 模块 (LlamaIndex) 启动时可能因依赖缺失而跳过，这是预期行为
 2. 前端 `src/app/api/` 是代理层，业务逻辑应放在组件或 `lib/` 中
 3. 后端无数据库 Migration 工具，新增集合/索引需手动在 `database/indexes.py` 中添加
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->

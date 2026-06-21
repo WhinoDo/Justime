@@ -444,7 +444,7 @@ export default function UserManagementPage() {
                         </div>
                     ) : (
                         <div className="space-y-4 py-2">
-                            <div className="rounded-md border border-white/15 bg-black/20 px-3 py-3 flex items-center justify-between">
+                            <div className="rounded-md border border-white/[0.15] bg-black/20 px-3 py-3 flex items-center justify-between">
                                 <div>
                                     <p className="text-sm text-white">允许访问所有模型</p>
                                     <p className="text-xs text-white/60 mt-1">关闭后仅允许访问下方勾选模型。</p>
@@ -453,7 +453,7 @@ export default function UserManagementPage() {
                             </div>
 
                             {!accessAllModels && (
-                                <div className="rounded-md border border-white/15 bg-black/20 p-3 max-h-72 overflow-y-auto space-y-2">
+                                <div className="rounded-md border border-white/[0.15] bg-black/20 p-3 max-h-72 overflow-y-auto space-y-2">
                                     {models.length === 0 ? (
                                         <p className="text-xs text-white/60">当前没有可分配模型。</p>
                                     ) : (

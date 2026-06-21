@@ -90,25 +90,95 @@ class FakeChatBusiness:
 
 
 def load_endpoint_module(session_result, message_result=None):
+    injected_modules = [
+        "fastapi",
+        "fastapi.responses",
+        "bson",
+        "app",
+        "app.api",
+        "app.api.deps",
+        "app.models",
+        "app.models.chat",
+        "app.models.history",
+        "app.business",
+        "app.business.chat_business",
+        "app.services",
+        "app.services.security_service",
+        "app.core",
+        "app.core.config",
+        "app.core.validators",
+        "app.database",
+    ]
+    missing = object()
+    original_modules = {name: sys.modules.get(name, missing) for name in injected_modules}
+
     fake_fastapi = types.ModuleType("fastapi")
     fake_fastapi.APIRouter = APIRouter
     fake_fastapi.Depends = lambda dep: dep
     fake_fastapi.HTTPException = HTTPException
+    fake_fastapi.status = types.SimpleNamespace(
+        HTTP_400_BAD_REQUEST=400,
+        HTTP_401_UNAUTHORIZED=401,
+        HTTP_403_FORBIDDEN=403,
+        HTTP_404_NOT_FOUND=404,
+    )
+    class FakeRequest:
+        pass
+    fake_fastapi.Request = FakeRequest
+    
+    fake_fastapi_responses = types.ModuleType("fastapi.responses")
+    class FakeStreamingResponse:
+        pass
+    fake_fastapi_responses.StreamingResponse = FakeStreamingResponse
+    fake_fastapi.responses = fake_fastapi_responses
+    
     sys.modules["fastapi"] = fake_fastapi
+    sys.modules["fastapi.responses"] = fake_fastapi_responses
 
     fake_bson = types.ModuleType("bson")
     fake_bson.ObjectId = FakeObjectId
     sys.modules["bson"] = fake_bson
 
     sys.modules.setdefault("app", types.ModuleType("app"))
+    sys.modules.setdefault("app.api", types.ModuleType("app.api"))
+    fake_deps = types.ModuleType("app.api.deps")
+    class FakeCurrentUser:
+        pass
+    fake_deps.CurrentUser = FakeCurrentUser
+    sys.modules["app.api.deps"] = fake_deps
+    
     sys.modules.setdefault("app.models", types.ModuleType("app.models"))
     sys.modules.setdefault("app.business", types.ModuleType("app.business"))
     sys.modules.setdefault("app.services", types.ModuleType("app.services"))
+    
+    sys.modules.setdefault("app.core", types.ModuleType("app.core"))
+    
+    fake_config = types.ModuleType("app.core.config")
+    fake_config.settings = SimpleNamespace()
+    sys.modules["app.core.config"] = fake_config
+    
+    fake_validators = types.ModuleType("app.core.validators")
+    class FakeInputValidator:
+        @staticmethod
+        def validate_dict_depth(d, max_depth=5, current_depth=0):
+            if current_depth > max_depth:
+                raise HTTPException(
+                    status_code=400,
+                    detail="数据嵌套层级过深"
+                )
+            if isinstance(d, dict):
+                for value in d.values():
+                    if isinstance(value, dict):
+                        FakeInputValidator.validate_dict_depth(value, max_depth, current_depth + 1)
+            return d
+    fake_validators.InputValidator = FakeInputValidator
+    sys.modules["app.core.validators"] = fake_validators
 
     fake_chat_models = types.ModuleType("app.models.chat")
     fake_chat_models.ChatRequest = dict
     fake_chat_models.ChatResponse = dict
     fake_chat_models.LLMTestRequest = dict
+    fake_chat_models.ChatStreamRequest = dict
     sys.modules["app.models.chat"] = fake_chat_models
 
     fake_history_models = types.ModuleType("app.models.history")
@@ -131,11 +201,18 @@ def load_endpoint_module(session_result, message_result=None):
     fake_db_module.db = fake_db
     sys.modules["app.database"] = fake_db_module
 
-    spec = importlib.util.spec_from_file_location("chat_endpoint_under_test", CHAT_ENDPOINT_PATH)
-    module = importlib.util.module_from_spec(spec)
-    assert spec and spec.loader
-    spec.loader.exec_module(module)
-    return module, fake_chat_business, fake_db
+    try:
+        spec = importlib.util.spec_from_file_location("chat_endpoint_under_test", CHAT_ENDPOINT_PATH)
+        module = importlib.util.module_from_spec(spec)
+        assert spec and spec.loader
+        spec.loader.exec_module(module)
+        return module, fake_chat_business, fake_db
+    finally:
+        for name, original in original_modules.items():
+            if original is missing:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = original
 
 
 class ChatEndpointSessionAuthTest(unittest.IsolatedAsyncioTestCase):

@@ -108,7 +108,7 @@ export default function AdminNotebookLMPage() {
                     onClick={fetchStatus}
                     disabled={isLoading}
                     variant="outline"
-                    className="h-9 px-4 border-white/15 bg-white/5 text-white/90 hover:bg-white/10 rounded-xl text-xs"
+                    className="h-9 px-4 border-white/[0.15] bg-white/5 text-white/90 hover:bg-white/10 rounded-xl text-xs"
                 >
                     {isLoading ? (
                         <>
@@ -122,14 +122,14 @@ export default function AdminNotebookLMPage() {
             {/* Status Panel */}
             <div className="grid gap-6 md:grid-cols-3">
                 <div className="md:col-span-2 space-y-6">
-                    <div className="bg-white/5 backdrop-blur-md border border-white/15 rounded-3xl p-6 shadow-xl space-y-6">
+                    <div className="bg-white/5 backdrop-blur-md border border-white/[0.15] rounded-3xl p-6 shadow-xl space-y-6">
                         <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                             <Chrome className="w-5 h-5 text-indigo-300" />
                             当前登录与配置状态
                         </h3>
 
                         {isLoading && !statusData ? (
-                            <div className="flex items-center justify-center py-12 text-white/55 gap-2">
+                            <div className="flex items-center justify-center py-12 text-white/[0.55] gap-2">
                                 <Loader2 className="w-5 h-5 animate-spin text-indigo-400" />
                                 正在查询谷歌账号登录状态...
                             </div>
@@ -170,7 +170,7 @@ export default function AdminNotebookLMPage() {
                                         </div>
                                     </div>
                                     <div className="border-t border-white/5 pt-3">
-                                        <p className="text-xs text-white/45 mb-1">系统消息说明</p>
+                                        <p className="text-xs text-white/[0.45] mb-1">系统消息说明</p>
                                         <p className={`text-xs font-medium ${statusData?.status === 'active' ? 'text-emerald-300/80' : 'text-white/70'}`}>
                                             ℹ️ {statusData?.message || '无消息。'}
                                         </p>
@@ -181,7 +181,7 @@ export default function AdminNotebookLMPage() {
                     </div>
 
                     {/* Form to submit credentials */}
-                    <div className="bg-white/5 backdrop-blur-md border border-white/15 rounded-3xl p-6 shadow-xl">
+                    <div className="bg-white/5 backdrop-blur-md border border-white/[0.15] rounded-3xl p-6 shadow-xl">
                         <h3 className="text-lg font-semibold text-white mb-4">更新谷歌登录态</h3>
                         <form onSubmit={handleSaveAuth} className="space-y-4">
                             <div className="space-y-2">
@@ -190,7 +190,7 @@ export default function AdminNotebookLMPage() {
                                     value={authJson}
                                     onChange={(e) => setAuthJson(e.target.value)}
                                     placeholder='{ "cookies": [ ... ], "origins": [ ... ] }'
-                                    className="w-full h-44 rounded-2xl bg-black/30 border border-white/15 px-4 py-3 text-xs font-mono text-white placeholder:text-white/20 resize-none focus:outline-none focus:border-indigo-400/40"
+                                    className="w-full h-44 rounded-2xl bg-black/30 border border-white/[0.15] px-4 py-3 text-xs font-mono text-white placeholder:text-white/20 resize-none focus:outline-none focus:border-indigo-400/40"
                                     disabled={isSubmitting}
                                     required
                                 />
@@ -233,7 +233,7 @@ export default function AdminNotebookLMPage() {
 
                 {/* Right Guide Panel */}
                 <div className="space-y-6">
-                    <div className="bg-white/5 backdrop-blur-md border border-white/15 rounded-3xl p-6 shadow-xl space-y-4">
+                    <div className="bg-white/5 backdrop-blur-md border border-white/[0.15] rounded-3xl p-6 shadow-xl space-y-4">
                         <h3 className="text-md font-semibold text-white flex items-center gap-2">
                             <HelpCircle className="w-4 h-4 text-sky-400" />
                             如何获取存储状态 JSON？

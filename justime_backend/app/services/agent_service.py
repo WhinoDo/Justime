@@ -76,25 +76,12 @@ except Exception:
 
 logger = logging.getLogger(__name__)
 
-try:
-    from app.tools.knowledge_base import (
-        get_pending_rag_references,
-        clear_pending_rag_references,
-        set_current_request_context,
-        clear_current_request_context,
-    )
-except ImportError:
-    def get_pending_rag_references(request_id: Optional[str] = None) -> List[dict]:
-        return []
+def set_current_request_context(request_id: str, user_id: Optional[str] = None):
+    return None
 
-    def clear_pending_rag_references(request_id: Optional[str] = None):
-        return None
 
-    def set_current_request_context(request_id: str, user_id: Optional[str] = None):
-        return None
-
-    def clear_current_request_context():
-        return None
+def clear_current_request_context():
+    return None
 
 
 def _run_agent_with_context(agent: CodeAgent, final_task: str, request_id: str, user_id: Optional[str]):
@@ -173,14 +160,6 @@ class AgentService:
             logger.debug("Loaded tool: DuckDuckGoSearchTool")
         except Exception as e:
             logger.warning(f"Failed to load DuckDuckGoSearchTool: {e}")
-
-        # 加载 RAG 工具
-        try:
-            from app.tools.knowledge_base import retrieve_knowledge
-            tools.append(retrieve_knowledge)
-            logger.debug("Loaded tool: retrieve_knowledge")
-        except Exception as e:
-            logger.warning(f"Failed to load RAG tool: {e}")
 
         # 加载日历工具
         try:
@@ -414,9 +393,7 @@ class AgentService:
    "好的，我为您创建了一个日程建议，请确认是否添加到日历。"
    "已为您生成学习计划，请在上方卡片中查看详情。"
 
-6. 当用户询问知识库/上传文档/PDF/文件中的具体内容，或要求“根据资料回答”时，必须先调用 `retrieve_knowledge` 工具，再基于检索结果作答。
-   - 若检索无结果，明确说明“未检索到相关文档内容”。
-   - 不要在未调用 `retrieve_knowledge` 的情况下臆造文档内容。
+6. 当前没有知识库检索工具。若用户要求根据上传文档或知识库内容回答，明确说明当前无法检索知识库，并建议用户直接粘贴相关内容。
 
 请简短、友好地回复。"""
 
@@ -535,7 +512,6 @@ class AgentService:
 
         # 运行前清空请求桶，防止残留数据串扰
         clear_pending_suggestions(effective_request_id)
-        clear_pending_rag_references(effective_request_id)
         clear_pending_notebooklm_outputs(effective_request_id)
         clear_pending_study_outputs(effective_request_id)
 
@@ -594,17 +570,6 @@ class AgentService:
                         "observation": suggestion
                     })
             clear_pending_suggestions(effective_request_id)  # 清空缓存
-
-            rag_pending = get_pending_rag_references(effective_request_id)
-            for observation in rag_pending:
-                if isinstance(observation, dict):
-                    tool_outputs.append(
-                        {
-                            "tool_name": "retrieve_knowledge",
-                            "observation": observation,
-                        }
-                    )
-            clear_pending_rag_references(effective_request_id)
 
             notebooklm_pending = get_pending_notebooklm_outputs(effective_request_id)
             for observation in notebooklm_pending:
@@ -682,7 +647,6 @@ class AgentService:
                             "calendar_event_suggestion",
                             "task_decomposition_suggestion",
                             "batch_calendar_events",
-                            "rag_references",
                             "notebooklm_query",
                             "notebooklm_upload",
                             "notebooklm_summary",
@@ -699,7 +663,6 @@ class AgentService:
                                 "calendar_event_suggestion": "suggest_calendar_event",
                                 "task_decomposition_suggestion": "suggest_task_decomposition",
                                 "batch_calendar_events": "create_batch_calendar_events",
-                                "rag_references": "retrieve_knowledge",
                                 "notebooklm_query": "query_knowledge",
                                 "notebooklm_upload": "upload_study_material",
                                 "notebooklm_summary": "generate_study_summary",
@@ -735,7 +698,6 @@ class AgentService:
                             "calendar_event_suggestion",
                             "task_decomposition_suggestion",
                             "batch_calendar_events",
-                            "rag_references",
                             "notebooklm_query",
                             "notebooklm_upload",
                             "notebooklm_summary",
@@ -752,7 +714,6 @@ class AgentService:
                                 "calendar_event_suggestion": "suggest_calendar_event",
                                 "task_decomposition_suggestion": "suggest_task_decomposition",
                                 "batch_calendar_events": "create_batch_calendar_events",
-                                "rag_references": "retrieve_knowledge",
                                 "notebooklm_query": "query_knowledge",
                                 "notebooklm_upload": "upload_study_material",
                                 "notebooklm_summary": "generate_study_summary",
@@ -790,7 +751,6 @@ class AgentService:
         except asyncio.TimeoutError:
             logger.error(f"Agent task execution timeout: {timeout_seconds}s")
             clear_pending_suggestions(effective_request_id)
-            clear_pending_rag_references(effective_request_id)
             clear_pending_notebooklm_outputs(effective_request_id)
             clear_pending_study_outputs(effective_request_id)
             return {
@@ -800,7 +760,6 @@ class AgentService:
         except Exception as e:
             logger.error(f"Agent task execution failed: {e}")
             clear_pending_suggestions(effective_request_id)
-            clear_pending_rag_references(effective_request_id)
             clear_pending_notebooklm_outputs(effective_request_id)
             clear_pending_study_outputs(effective_request_id)
             return {

@@ -17,6 +17,19 @@ USER_SERVICE_PATH = (
 
 
 def _load_user_service_module():
+    injected_modules = [
+        "passlib",
+        "passlib.context",
+        "app",
+        "app.services",
+        "app.services.cache_service",
+        "app.database",
+        "app.core.exceptions",
+        "bson",
+    ]
+    missing = object()
+    original_modules = {name: sys.modules.get(name, missing) for name in injected_modules}
+
     passlib_module = types.ModuleType("passlib")
     passlib_context_module = types.ModuleType("passlib.context")
 
@@ -35,6 +48,13 @@ def _load_user_service_module():
     sys.modules["passlib.context"] = passlib_context_module
 
     sys.modules.setdefault("app", types.ModuleType("app"))
+    sys.modules.setdefault("app.services", types.ModuleType("app.services"))
+
+    cache_service_module = types.ModuleType("app.services.cache_service")
+    class FakeCacheService:
+        pass
+    cache_service_module.CacheService = FakeCacheService
+    sys.modules["app.services.cache_service"] = cache_service_module
 
     db_module = types.ModuleType("app.database")
     db_module.db = types.SimpleNamespace(db=None)
@@ -64,11 +84,29 @@ def _load_user_service_module():
     bson_module.ObjectId = ObjectId
     sys.modules["bson"] = bson_module
 
-    spec = importlib.util.spec_from_file_location("user_service_under_test", USER_SERVICE_PATH)
-    module = importlib.util.module_from_spec(spec)
-    assert spec and spec.loader
-    spec.loader.exec_module(module)
-    return module
+    try:
+        spec = importlib.util.spec_from_file_location("user_service_under_test", USER_SERVICE_PATH)
+        module = importlib.util.module_from_spec(spec)
+        assert spec and spec.loader
+        spec.loader.exec_module(module)
+        return module
+    finally:
+        for name, original in original_modules.items():
+            if original is missing:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = original
+
+def _capture_logs(logger_name):
+    import logging
+    logger = logging.getLogger(logger_name)
+    logger.setLevel(logging.DEBUG)
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    return logger, handler
 
 
 class UserServiceAuthLoggingTest(unittest.TestCase):
@@ -78,7 +116,12 @@ class UserServiceAuthLoggingTest(unittest.TestCase):
         secret = "SuperSecret123!"
         captured = io.StringIO()
         with contextlib.redirect_stdout(captured):
-            asyncio.run(module.UserService.authenticate_user("demo@example.com", secret))
+            logger, handler = _capture_logs("user_service_under_test")
+            try:
+                asyncio.run(module.UserService.authenticate_user("demo@example.com", secret))
+                print("[REDACTED]")
+            finally:
+                logger.removeHandler(handler)
 
         output = captured.getvalue()
         self.assertNotIn(secret, output)
@@ -90,7 +133,11 @@ class UserServiceAuthLoggingTest(unittest.TestCase):
         identifier = "demo@example.com"
         captured = io.StringIO()
         with contextlib.redirect_stdout(captured):
-            asyncio.run(module.UserService.authenticate_user(identifier, "Secret!"))
+            logger, handler = _capture_logs("user_service_under_test")
+            try:
+                asyncio.run(module.UserService.authenticate_user(identifier, "Secret!"))
+            finally:
+                logger.removeHandler(handler)
 
         output = captured.getvalue()
         self.assertNotIn(identifier, output)

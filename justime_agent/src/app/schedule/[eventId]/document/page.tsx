@@ -84,7 +84,7 @@ export default function DocumentPage() {
                 <JustimeGlassPanel className="rounded-3xl px-8 py-10 text-center text-white">
                     <div className="flex flex-col items-center gap-4">
                         <Loader2 className="h-8 w-8 animate-spin text-white" />
-                        <p className="text-white/65">加载文档中...</p>
+                        <p className="text-white/[0.65]">加载文档中...</p>
                     </div>
                 </JustimeGlassPanel>
             </JustimePageShell>
@@ -114,7 +114,7 @@ export default function DocumentPage() {
 
     return (
         <JustimePageShell fullHeight blur="lg" opacity={0.35} contentClassName="h-full p-3 md:p-4">
-            <JustimeGlassPanel className="flex h-full flex-col overflow-hidden rounded-[32px] bg-white/8">
+            <JustimeGlassPanel className="flex h-full flex-col overflow-hidden rounded-[32px] bg-white/[0.08]">
                 <DocumentEditor
                     eventId={eventId as string}
                     initialContent={content}

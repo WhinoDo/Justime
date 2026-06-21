@@ -77,8 +77,6 @@ export const API_ENDPOINTS = {
     API_KEY: (keyId: string) => `/api/admin/apikeys/${keyId}`,
     STATS: '/api/admin/stats',
     NOTEBOOKLM: '/api/admin/notebooklm',
-    FEISHU_CLI: '/api/admin/feishu-cli',
-    FEISHU_CLI_AUTH_STATUS: '/api/admin/feishu-cli?action=auth-status',
   },
 
   AGENT: {

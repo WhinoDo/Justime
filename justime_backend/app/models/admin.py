@@ -100,4 +100,3 @@ class NotebookLMStatus(BaseModel):
 class NotebookLMAuthRequest(BaseModel):
     """NotebookLM 登录凭证更新请求"""
     auth_json: str = Field(..., min_length=1, description="Google storage_state.json 的 JSON 文本")
-

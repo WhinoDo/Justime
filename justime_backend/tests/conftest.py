@@ -15,7 +15,7 @@ os.environ["ENCRYPTION_SECRET"] = "test-encryption-secret-key-at-least-32-charac
 os.environ["CSRF_SECRET"] = "test-csrf-secret-key-at-least-32-characters-long!"
 os.environ["CSRF_ENABLED"] = "false"
 os.environ["DEBUG"] = "true"
-os.environ["MONGODB_URI"] = "mongodb://localhost:27017/justime_test"
+os.environ["MONGODB_URI"] = "mongodb://localhost:27018/justime_test"
 os.environ["MONGODB_DB_NAME"] = "justime_test"
 os.environ["ALLOWED_ORIGINS"] = '["http://localhost:3000"]'
 # Test API keys for model router service tests (placeholder values, not real credentials)

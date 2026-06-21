@@ -158,8 +158,16 @@ def load_knowledge_module():
     sys.modules["pydantic"] = fake_pydantic
 
     sys.modules.setdefault("app", types.ModuleType("app"))
+    sys.modules.setdefault("app.api", types.ModuleType("app.api"))
     sys.modules.setdefault("app.services", types.ModuleType("app.services"))
     sys.modules.setdefault("app.core", types.ModuleType("app.core"))
+
+    fake_deps = types.ModuleType("app.api.deps")
+    fake_deps.parse_object_id = lambda oid, field_name="ID": FakeObjectId(oid)
+    class FakeCurrentUser:
+        pass
+    fake_deps.CurrentUser = FakeCurrentUser
+    sys.modules["app.api.deps"] = fake_deps
 
     fake_config = types.ModuleType("app.core.config")
     fake_config.settings = SimpleNamespace(
@@ -179,21 +187,16 @@ def load_knowledge_module():
 
     temp_docs_dir = Path(tempfile.mkdtemp(prefix="knowledge-test-docs-"))
 
-    fake_rag = types.ModuleType("app.services.rag_service")
-    fake_rag.DOCS_DIR = temp_docs_dir
-    fake_rag.rag_service = SimpleNamespace()
+    fake_documents = types.ModuleType("app.services.document_storage_service")
+    fake_documents.DOCS_DIR = temp_docs_dir
 
     def get_user_docs_dir(user_id):
         user_dir = temp_docs_dir / user_id
         user_dir.mkdir(parents=True, exist_ok=True)
         return user_dir
 
-    fake_rag.get_user_docs_dir = get_user_docs_dir
-    sys.modules["app.services.rag_service"] = fake_rag
-
-    fake_task_service = types.ModuleType("app.services.knowledge_task_service")
-    fake_task_service.knowledge_task_service = FakeKnowledgeTaskService()
-    sys.modules["app.services.knowledge_task_service"] = fake_task_service
+    fake_documents.get_user_docs_dir = get_user_docs_dir
+    sys.modules["app.services.document_storage_service"] = fake_documents
 
     fake_upload_service = types.ModuleType("app.services.upload_service")
     
@@ -263,7 +266,7 @@ def load_knowledge_module():
     assert spec and spec.loader
     spec.loader.exec_module(module)
 
-    return module, temp_docs_dir, fake_task_service.knowledge_task_service
+    return module, temp_docs_dir, None
 
 
 class KnowledgeAPITest(unittest.IsolatedAsyncioTestCase):
@@ -438,7 +441,7 @@ class KnowledgeAPITest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(ctx.exception.status_code, 400)
 
-    async def test_rebuild_index_creates_task_for_user(self):
+    async def test_rebuild_index_returns_removed_compat_response(self):
         user_id = "user-001"
 
         result = await self.module.rebuild_index(
@@ -446,34 +449,13 @@ class KnowledgeAPITest(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertTrue(result["success"])
-        self.assertIn("task_id", result)
-        task_status = await self.task_service.get_task_status(result["task_id"])
-        self.assertEqual(task_status["user_id"], user_id)
+        self.assertIsNone(result["task_id"])
+        self.assertEqual(result["status"], "removed")
+        self.assertIn("索引功能已移除", result["message"])
 
-    async def test_rebuild_status_validates_user_ownership(self):
-        user_a = "user-aaa"
-        user_b = "user-bbb"
-
-        task_id = await self.task_service.start_rebuild_task(
-            user_id=user_b,
-            docs_dir=self.docs_dir / user_b,
-        )
-
-        with self.assertRaises(HTTPException) as ctx:
-            await self.module.get_rebuild_status(
-                task_id=task_id,
-                current_user={"_id": user_a},
-            )
-
-        self.assertEqual(ctx.exception.status_code, 403)
-
-    async def test_rebuild_status_allows_owner(self):
+    async def test_rebuild_status_returns_removed_compat_response(self):
         user_id = "user-001"
-
-        task_id = await self.task_service.start_rebuild_task(
-            user_id=user_id,
-            docs_dir=self.docs_dir / user_id,
-        )
+        task_id = "legacy-task-id"
 
         result = await self.module.get_rebuild_status(
             task_id=task_id,
@@ -482,15 +464,7 @@ class KnowledgeAPITest(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(result["success"])
         self.assertEqual(result["task_id"], task_id)
-
-    async def test_rebuild_status_returns_404_for_nonexistent_task(self):
-        with self.assertRaises(HTTPException) as ctx:
-            await self.module.get_rebuild_status(
-                task_id="nonexistent-task-id",
-                current_user={"_id": "user-001"},
-            )
-
-        self.assertEqual(ctx.exception.status_code, 404)
+        self.assertEqual(result["status"], "removed")
 
     async def test_chunked_upload_init_creates_session(self):
         user_id = "user-001"

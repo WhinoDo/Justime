@@ -51,7 +51,7 @@ export function RagReferencePreviewPanel({
     >
       <div className="flex items-center justify-between border-b border-gray-200/80 dark:border-gray-700 px-4 py-3">
         <div className="min-w-0">
-          <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">RAG 引用预览</p>
+          <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">文档引用预览</p>
           <h3 className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
             {reference?.fileName || '未选择文档'}
           </h3>

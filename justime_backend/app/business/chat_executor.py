@@ -11,7 +11,6 @@ from app.services.user_service import UserService
 from app.business.chat_retry_service import (
     chat_retry_service,
     DECOMPOSITION_TOOL_RETRY_LIMIT,
-    KNOWLEDGE_TOOL_RETRY_LIMIT,
 )
 
 logger = logging.getLogger(__name__)
@@ -224,66 +223,6 @@ class ChatExecutor:
         return {
             "task_result": task_result,
             "used_runtime": used_runtime_result,
-            "retry_count": retry_count,
-            "success": success
-        }
-
-    async def execute_knowledge_retry(
-        self,
-        timed_task: str,
-        session_id: str,
-        user_id: str,
-        used_runtime: Dict[str, Any],
-        fallback_runtime: Optional[Dict[str, Any]],
-        main_timeout: float,
-        fallback_timeout: float,
-        agent_max_steps: int,
-        runtime_to_llm_config_fn,
-        has_knowledge_output_fn
-    ) -> Dict[str, Any]:
-        retry_task = (
-            f"{timed_task}\n\n"
-            "【硬性约束（必须遵守）】\n"
-            "你上一次没有调用 retrieve_knowledge。\n"
-            "本次必须先调用 retrieve_knowledge 工具，再给出 final_answer。\n"
-            "若知识库无结果，请明确说明；不要跳过工具直接回答。"
-        )
-        
-        task_result = None
-        retry_count = 0
-        success = False
-
-        for retry_idx in range(KNOWLEDGE_TOOL_RETRY_LIMIT):
-            retry_runtime = used_runtime
-            retry_timeout = (
-                fallback_timeout
-                if fallback_runtime and retry_runtime.get("config_id") == fallback_runtime.get("config_id")
-                else main_timeout
-            )
-            retry_result = await agent_service.run_task(
-                task=retry_task,
-                llm_config=runtime_to_llm_config_fn(retry_runtime, timeout_override=retry_timeout),
-                max_steps=agent_max_steps,
-                timeout_seconds=retry_timeout,
-                request_id=f"chat-{session_id}-knowledge-retry-{retry_idx + 1}",
-                user_id=user_id,
-            )
-            
-            retry_count = retry_idx + 1
-            
-            if not retry_result or not retry_result.get("success"):
-                logger.warning(f"⚠️ 知识检索工具调用重试第 {retry_idx + 1} 次失败。")
-                continue
-            
-            task_result = retry_result
-            
-            if has_knowledge_output_fn(task_result):
-                logger.info(f"✅ 知识检索工具在第 {retry_idx + 1} 次重试成功调用。")
-                success = True
-                break
-
-        return {
-            "task_result": task_result,
             "retry_count": retry_count,
             "success": success
         }

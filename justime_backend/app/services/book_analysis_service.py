@@ -8,12 +8,13 @@
 - 生成可离线阅读的 HTML
 """
 
-from __future__ import annotations
-
+import logging
 import asyncio
 import base64
 import html
 import json
+
+logger = logging.getLogger(__name__)
 import os
 import re
 import shutil
@@ -33,11 +34,11 @@ from app.core.config import settings
 from app.database import db
 
 try:
-    from app.services.rag_service import DOCS_DIR as RAG_DOCS_DIR
+    from app.services.document_storage_service import DOCS_DIR as DOCUMENTS_DIR
 except ImportError:
-    RAG_DOCS_DIR = Path("app/data/documents")
+    DOCUMENTS_DIR = Path("app/data/documents")
 
-DOCS_DIR = Path(RAG_DOCS_DIR)
+DOCS_DIR = Path(DOCUMENTS_DIR)
 if not DOCS_DIR.is_absolute():
     DOCS_DIR = (Path(__file__).resolve().parents[2] / DOCS_DIR).resolve()
 DOCS_DIR.mkdir(parents=True, exist_ok=True)
@@ -114,6 +115,37 @@ class BookAnalysisService:
             inferred_title,
         )
 
+        # 自动创建 category="reading" 的 TaskProcess
+        from app.business.task_process_business import _task_process_business
+        from app.models.task_process import TaskProcessCreate
+
+        task_payload = TaskProcessCreate(
+            title=f"阅读分析: {inferred_title}",
+            description=f"书籍分析项目: {filename}",
+            goal=f"精读并分析《{inferred_title}》的章节内容",
+            category="reading",
+            auto_plan=False
+        )
+        task_out = await _task_process_business.create_task_process(user_id, task_payload)
+
+        # 将检测到的章节映射为任务的 milestones
+        milestones = []
+        for index, ch in enumerate(chapters):
+            milestones.append({
+                "id": f"ch_{index + 1}",
+                "title": ch.get("title") or f"第 {index + 1} 部分",
+                "description": f"分析第 {ch.get('startPage')} 页至第 {ch.get('endPage')} 页的内容",
+                "order": index,
+                "status": "pending",
+                "target_date": None,
+                "completed_at": None
+            })
+            
+        await db.db.task_processes.update_one(
+            {"_id": ObjectId(task_out.id)},
+            {"$set": {"milestones": milestones, "status": "planned", "updatedAt": datetime.utcnow()}}
+        )
+
         now = datetime.now(timezone.utc)
         source_rel_path = original_path.resolve().relative_to(DOCS_DIR.resolve()).as_posix()
         project_doc = {
@@ -136,6 +168,7 @@ class BookAnalysisService:
             "updatedAt": now,
             "startedAt": None,
             "completedAt": None,
+            "taskId": task_out.id,
         }
         await db.db[BOOK_ANALYSIS_COLLECTION].insert_one(project_doc)
         return self.serialize_project(project_doc)
@@ -165,6 +198,25 @@ class BookAnalysisService:
         project["exportHtmlPath"] = None
         project["updatedAt"] = now
         project["completedAt"] = None
+
+        task_id_str = project.get("taskId")
+        if task_id_str:
+            milestones = []
+            for index, ch in enumerate(normalized):
+                milestones.append({
+                    "id": f"ch_{index + 1}",
+                    "title": ch.get("title") or f"第 {index + 1} 部分",
+                    "description": f"分析第 {ch.get('startPage')} 页至第 {ch.get('endPage')} 页的内容",
+                    "order": index,
+                    "status": "pending",
+                    "target_date": None,
+                    "completed_at": None
+                })
+            await db.db.task_processes.update_one(
+                {"_id": ObjectId(task_id_str)},
+                {"$set": {"milestones": milestones, "status": "planned", "updatedAt": datetime.utcnow()}}
+            )
+
         await self._persist_project(project)
         return self.serialize_project(project)
 
@@ -206,6 +258,21 @@ class BookAnalysisService:
 
         task = asyncio.create_task(self.process_project(project_id=project_id, user_id=user_id))
         self.register_task(project_id, task)
+
+        # 启动任务进程：更新其状态为 active 且阶段为 during
+        task_id_str = project.get("taskId")
+        if task_id_str:
+            try:
+                from app.business.task_process_business import _task_process_business
+                from app.models.task_process import TaskProcessUpdate
+                await _task_process_business.update_task_process(
+                    user_id,
+                    task_id_str,
+                    TaskProcessUpdate(status="active", phase="during")
+                )
+            except Exception as e:
+                logger.warning(f"Failed to update TaskProcess status to active: {e}")
+
         return self.serialize_project(project)
 
     async def get_status(self, *, project_id: str, user_id: str) -> Dict[str, Any]:
@@ -333,7 +400,6 @@ class BookAnalysisService:
                     if parsed is None:
                         chapter["status"] = "completed_with_errors"
                         chapter["error"] = "NotebookLM 返回内容不是有效 JSON，已保留原始回答"
-                        any_chapter_errors = True
                     else:
                         self._merge_chapter_analysis(chapter, parsed)
                         chapter["status"] = "completed"
@@ -357,6 +423,48 @@ class BookAnalysisService:
                             )
                     except (OSError, subprocess.SubprocessError):
                         pass
+
+                    # 更新关联的 TaskProcess 里程碑和生成 note Evidence
+                    task_id_str = project.get("taskId")
+                    if task_id_str:
+                        try:
+                            task_oid = ObjectId(task_id_str)
+                            task_doc = await db.db.task_processes.find_one({"_id": task_oid, "userId": user_id})
+                            if task_doc:
+                                milestones = task_doc.get("milestones", [])
+                                for ms in milestones:
+                                    if ms.get("id") == f"ch_{index + 1}":
+                                        ms["status"] = "completed"
+                                        ms["completed_at"] = datetime.utcnow()
+                                        break
+                                await db.db.task_processes.update_one(
+                                    {"_id": task_oid},
+                                    {"$set": {"milestones": milestones, "updatedAt": datetime.utcnow()}}
+                                )
+                                
+                            from app.models.evidence import EvidenceCreate
+                            from app.business.task_process_business import _task_process_business
+                            
+                            summary_val = chapter.get("summary") or chapter.get("error") or "章节分析完成，未提取到有效摘要。"
+                            key_points_val = "\n".join(f"- {pt}" for pt in chapter.get("keyPoints", [])) or "- 无关键观点"
+                            summary_text = (
+                                f"已完成第 {index + 1} 章节《{chapter.get('title')}》的分析。\n\n"
+                                f"【摘要】\n{summary_val}\n\n"
+                                f"【核心观点】\n{key_points_val}"
+                            )
+                            payload = EvidenceCreate(
+                                task_id=task_id_str,
+                                type="note",
+                                title=f"章节分析: {chapter.get('title')}",
+                                content=summary_text,
+                                source="book_analysis",
+                                milestone_id=f"ch_{index + 1}",
+                                metadata={"chapter_index": index}
+                            )
+                            await _task_process_business.create_evidence(user_id, payload)
+                        except Exception as e:
+                            logger.warning(f"Failed to record Chapter milestone/evidence: {e}")
+
                     project["updatedAt"] = datetime.now(timezone.utc)
                     await self._persist_project(project)
 
@@ -372,6 +480,21 @@ class BookAnalysisService:
             project["completedAt"] = datetime.now(timezone.utc)
             project["updatedAt"] = datetime.now(timezone.utc)
             await self._persist_project(project)
+
+            # 完成任务进程：更新其状态为 completed 且阶段为 after
+            task_id_str = project.get("taskId")
+            if task_id_str:
+                try:
+                    from app.business.task_process_business import _task_process_business
+                    from app.models.task_process import TaskProcessUpdate
+                    await _task_process_business.update_task_process(
+                        user_id,
+                        task_id_str,
+                        TaskProcessUpdate(status="completed", phase="after")
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to update TaskProcess to completed status: {e}")
+
         except Exception as exc:  # noqa: BLE001
             project["status"] = "failed"
             project["error"] = str(exc)
@@ -379,6 +502,20 @@ class BookAnalysisService:
             project["updatedAt"] = datetime.now(timezone.utc)
             project["completedAt"] = datetime.now(timezone.utc)
             await self._persist_project(project)
+
+            # 任务进程阻塞：更新其状态为 blocked
+            task_id_str = project.get("taskId")
+            if task_id_str:
+                try:
+                    from app.business.task_process_business import _task_process_business
+                    from app.models.task_process import TaskProcessUpdate
+                    await _task_process_business.update_task_process(
+                        user_id,
+                        task_id_str,
+                        TaskProcessUpdate(status="blocked")
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to update TaskProcess to blocked status: {e}")
 
     def serialize_project(self, project: Dict[str, Any]) -> Dict[str, Any]:
         data = dict(project)
@@ -410,6 +547,7 @@ class BookAnalysisService:
                     "updatedAt": project.get("updatedAt"),
                     "startedAt": project.get("startedAt"),
                     "completedAt": project.get("completedAt"),
+                    "taskId": project.get("taskId"),
                 }
             },
         )

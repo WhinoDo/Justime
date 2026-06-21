@@ -1,9 +1,33 @@
 import pytest
-from httpx import AsyncClient
-from typing import Dict, Any
+import pytest_asyncio
+from httpx import AsyncClient, ASGITransport
+from typing import Dict, Any, AsyncGenerator
 
 
 pytestmark = pytest.mark.asyncio
+
+
+@pytest.fixture
+def csrf_app():
+    from app.main import create_app
+    from app.core.config import settings
+    
+    orig_csrf = settings.CSRF_ENABLED
+    settings.CSRF_ENABLED = True
+    
+    test_app = create_app()
+    yield test_app
+    
+    settings.CSRF_ENABLED = orig_csrf
+
+
+@pytest_asyncio.fixture
+async def csrf_client(csrf_app) -> AsyncGenerator[AsyncClient, None]:
+    async with AsyncClient(
+        transport=ASGITransport(app=csrf_app),
+        base_url="http://test"
+    ) as ac:
+        yield ac
 
 
 class TestUserRegistration:
@@ -277,14 +301,17 @@ class TestForgotPassword:
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
-        assert data["message"] == "重置链接已生成"
+        assert data["message"] == "如果该邮箱已注册，您将收到密码重置邮件"
     
     async def test_forgot_password_nonexistent_email(self, client: AsyncClient, clean_db):
         payload = {"email": "nonexistent@example.com"}
         
         response = await client.post("/api/v1/auth/forgot-password", json=payload)
         
-        assert response.status_code == 404
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["message"] == "如果该邮箱已注册，您将收到密码重置邮件"
 
 
 class TestResetPassword:
@@ -337,8 +364,8 @@ class TestResetPassword:
 
 
 class TestCSRFToken:
-    async def test_get_csrf_token_success(self, client: AsyncClient):
-        response = await client.get("/api/v1/auth/csrf-token")
+    async def test_get_csrf_token_success(self, csrf_client: AsyncClient):
+        response = await csrf_client.get("/api/v1/auth/csrf-token")
         
         assert response.status_code == 200
         data = response.json()
@@ -346,16 +373,16 @@ class TestCSRFToken:
         assert "cookieName" in data["data"]
         assert "headerName" in data["data"]
     
-    async def test_csrf_middleware_blocks_post_without_token(self, client: AsyncClient):
-        response = await client.post("/api/v1/auth/logout", headers={"Authorization": "Bearer some-token"})
+    async def test_csrf_middleware_blocks_post_without_token(self, csrf_client: AsyncClient):
+        response = await csrf_client.post("/api/v1/auth/logout", headers={"Authorization": "Bearer some-token"})
         
         assert response.status_code == 403
         data = response.json()
         assert data["success"] is False
         assert "CSRF" in data["error"]
     
-    async def test_csrf_middleware_blocks_put_without_token(self, client: AsyncClient):
-        response = await client.put(
+    async def test_csrf_middleware_blocks_put_without_token(self, csrf_client: AsyncClient):
+        response = await csrf_client.put(
             "/api/v1/auth/profile",
             json={"profile": {"displayName": "Test"}},
             headers={"Authorization": "Bearer some-token"}
@@ -366,19 +393,19 @@ class TestCSRFToken:
         assert data["success"] is False
         assert "CSRF" in data["error"]
     
-    async def test_csrf_middleware_allows_exempt_paths(self, client: AsyncClient, clean_db):
+    async def test_csrf_middleware_allows_exempt_paths(self, csrf_client: AsyncClient, clean_db):
         payload = {
             "email": "csrf_exempt@example.com",
             "password": "TestPassword123!",
             "username": "csrfexempt"
         }
         
-        response = await client.post("/api/v1/auth/register", json=payload)
+        response = await csrf_client.post("/api/v1/auth/register", json=payload)
         
         assert response.status_code == 200
     
-    async def test_csrf_middleware_allows_get_requests(self, client: AsyncClient, auth_headers):
-        response = await client.get("/api/v1/auth/me", headers=auth_headers)
+    async def test_csrf_middleware_allows_get_requests(self, csrf_client: AsyncClient, auth_headers):
+        response = await csrf_client.get("/api/v1/auth/me", headers=auth_headers)
         
         assert response.status_code == 200
 

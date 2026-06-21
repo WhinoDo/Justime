@@ -44,20 +44,25 @@ INDEX_CONFIG = {
         {"keys": [("userId", 1), ("status", 1)], "name": "idx_user_status"},
         {"keys": [("_id", 1)], "name": "idx_doc_id"},
     ],
-    "study_tasks": [
-        {"keys": [("userId", 1), ("scheduledDate", 1)], "name": "idx_user_scheduled"},
-        {"keys": [("userId", 1), ("status", 1)], "name": "idx_user_status"},
-        {"keys": [("planId", 1)], "name": "idx_plan"},
+    "task_processes": [
+        {"keys": [("userId", 1), ("status", 1), ("updatedAt", -1)], "name": "idx_task_user_status_updated"},
+        {"keys": [("userId", 1), ("phase", 1)], "name": "idx_task_user_phase"},
+        {"keys": [("userId", 1), ("category", 1)], "name": "idx_task_user_category"},
+        {"keys": [("userId", 1), ("priority", 1), ("status", 1)], "name": "idx_task_user_priority_status"},
+        {"keys": [("userId", 1), ("deadline", 1)], "name": "idx_task_user_deadline"},
+        {"keys": [("parent_task_id", 1)], "name": "idx_task_parent_id"},
     ],
-    "study_progress": [
-        {"keys": [("userId", 1), ("date", 1)], "name": "idx_user_date"},
-        {"keys": [("userId", 1), ("subject", 1)], "name": "idx_user_subject"},
+    "evidence": [
+        {"keys": [("task_id", 1), ("createdAt", -1)], "name": "idx_evidence_task_created"},
+        {"keys": [("task_id", 1), ("type", 1)], "name": "idx_evidence_task_type"},
+        {"keys": [("userId", 1), ("createdAt", -1)], "name": "idx_evidence_user_created"},
+        {"keys": [("task_id", 1), ("milestone_id", 1)], "name": "idx_evidence_task_milestone"},
     ],
-    "review_schedule": [
-        {"keys": [("userId", 1), ("nextReview", 1)], "name": "idx_user_next_review"},
-    ],
-    "study_materials": [
-        {"keys": [("userId", 1), ("subject", 1)], "name": "idx_user_subject"},
+    "knowledge_outputs": [
+        {"keys": [("task_id", 1), ("status", 1)], "name": "idx_knowledge_task_status"},
+        {"keys": [("userId", 1), ("updatedAt", -1)], "name": "idx_knowledge_user_updated"},
+        {"keys": [("userId", 1), ("format", 1)], "name": "idx_knowledge_user_format"},
+        {"keys": [("vault_relative_path", 1), ("userId", 1)], "name": "idx_knowledge_vault_path_user", "unique": True, "sparse": True},
     ],
 }
 

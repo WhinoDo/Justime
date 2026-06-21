@@ -180,10 +180,10 @@ export default function KnowledgeBasePage() {
 
     const handleRebuild = async () => {
         setRebuildTaskId(null)
-        setRebuildStatus({ status: 'disabled', message: 'RAG 索引已停用，无需重建索引。' })
+        setRebuildStatus({ status: 'removed', message: '知识库索引功能已移除，无需重建索引。' })
         setShowRebuildStatus(true)
         toast({
-            title: 'RAG 已停用',
+            title: '索引功能已移除',
             description: '文档上传和预览仍可使用，索引重建已关闭。',
         })
     }
@@ -353,7 +353,7 @@ export default function KnowledgeBasePage() {
                                         Knowledge Base
                                     </h1>
                                     <p className="text-sm text-[#6d6680] mt-1 font-light tracking-wide">
-                                        Manage uploaded documents. RAG indexing and retrieval are disabled.
+                                        Manage uploaded documents. Indexing and retrieval have been removed.
                                     </p>
                                 </div>
                             </div>
@@ -365,7 +365,7 @@ export default function KnowledgeBasePage() {
                                     className="gap-2 bg-white/60 border-violet-200/50 text-[#5a4c73] hover:bg-white/80"
                                 >
                                     <RefreshCw className={`h-4 w-4 ${rebuilding ? 'animate-spin' : ''}`} />
-                                    RAG Disabled
+                                    Index Removed
                                 </Button>
                             </div>
                         </div>
@@ -532,14 +532,14 @@ export default function KnowledgeBasePage() {
                         <DialogHeader>
                             <DialogTitle className="text-[#171421]">索引重建状态</DialogTitle>
                             <DialogDescription className="text-[#6d6680]">
-                                RAG 索引与检索已经停用
+                                知识库索引与检索功能已移除
                             </DialogDescription>
                         </DialogHeader>
                         <div className="py-4">
                             {rebuildStatus ? (
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-3">
-                                        {rebuildStatus.status === 'disabled' ? (
+                                        {rebuildStatus.status === 'removed' ? (
                                             <div className="h-8 w-8 rounded-full bg-amber-100 flex items-center justify-center">
                                                 <AlertTriangle className="h-5 w-5 text-amber-600" />
                                             </div>
@@ -601,7 +601,7 @@ export default function KnowledgeBasePage() {
                                     Knowledge Base
                                 </h1>
                                 <p className="text-sm text-white/60 mt-1 font-light tracking-wide">
-                                    Manage uploaded documents. RAG indexing and retrieval are disabled.
+                                    Manage uploaded documents. Indexing and retrieval have been removed.
                                 </p>
                             </div>
                         </div>
@@ -613,7 +613,7 @@ export default function KnowledgeBasePage() {
                                 className="gap-2 bg-white/5 border-white/10 text-white hover:bg-white/10 backdrop-blur-sm"
                             >
                                 <RefreshCw className={`h-4 w-4 ${rebuilding ? 'animate-spin' : ''}`} />
-                                RAG Disabled
+                                Index Removed
                             </Button>
                         </div>
                     </div>
@@ -778,7 +778,7 @@ export default function KnowledgeBasePage() {
                     <DialogHeader>
                         <DialogTitle>索引重建状态</DialogTitle>
                         <DialogDescription className="text-white/60">
-                            RAG 索引与检索已经停用
+                            知识库索引与检索功能已移除
                         </DialogDescription>
                     </DialogHeader>
                     <div className="py-4">

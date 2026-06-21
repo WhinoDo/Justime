@@ -247,6 +247,9 @@ class FeishuCalendarBusiness:
             fe_event = feishu_event
             
         # 3. 同步更新本地 MongoDB 的附加信息
+        existing = await db.db["calendar_events"].find_one({"_id": event_id, "userId": user_id})
+        old_status = existing.get("status") if existing else None
+
         mongo_update = {}
         for key in ["type", "priority", "status", "color", "resources", "reminders", "emotionScore", "aiGenerated", "taskId"]:
             if key in update_dict:
@@ -266,6 +269,12 @@ class FeishuCalendarBusiness:
             "userId": user_id
         })
         
+        new_status = local_extra.get("status") if local_extra else None
+        task_id = local_extra.get("taskId") if local_extra else None
+        if new_status == "completed" and old_status != "completed" and task_id:
+            from app.business.task_process_business import _task_process_business
+            await _task_process_business.handle_calendar_event_status_change(user_id, old_status, new_status, local_extra)
+
         return cls.feishu_to_justime_event(fe_event, local_extra)
 
     @classmethod

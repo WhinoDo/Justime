@@ -16,7 +16,7 @@ class MessageService:
     """消息服务：管理聊天消息的存储和检索"""
 
     # 允许更新的字段（防止滥用）
-    ALLOWED_UPDATE_FIELDS = ["taskDecomposition", "multiTaskDecompositions", "suggestedEvents", "timingStrategy", "taskAnalysis", "ragReferences"]
+    ALLOWED_UPDATE_FIELDS = ["taskDecomposition", "multiTaskDecompositions", "suggestedEvents", "timingStrategy", "taskAnalysis"]
 
     def __init__(self, database=None):
         """

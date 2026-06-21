@@ -277,22 +277,42 @@ class FeishuService:
             )
             return
 
-        from app.business.study_agent_business import study_agent_business
-        result = await study_agent_business.process_study_request(user_id, text)
+        try:
+            from app.business.chat_business import chat_business
+            from app.models.chat import ChatRequest
 
-        if result.get("success"):
-            response_text = result["data"].get("response", "")
-            await self.send_message(
-                receive_id=open_id,
-                msg_type="text",
-                content=json.dumps({"text": response_text}, ensure_ascii=False),
+            sessions = await chat_business.get_user_sessions(user_id)
+            if sessions:
+                session_id = sessions[0]["id"]
+            else:
+                session_id = await chat_business.create_session(user_id, "飞书助手对话")
+
+            chat_req = ChatRequest(
+                message=text,
+                sessionId=session_id
             )
-        else:
-            error_msg = result.get("error", "处理失败，请稍后重试")
+            chat_res = await chat_business.process_chat(chat_req, user_id)
+
+            if chat_res.success:
+                response_text = chat_res.data.get("response", "")
+                await self.send_message(
+                    receive_id=open_id,
+                    msg_type="text",
+                    content=json.dumps({"text": response_text}, ensure_ascii=False),
+                )
+            else:
+                error_msg = (chat_res.error or {}).get("message", "处理失败，请稍后重试")
+                await self.send_message(
+                    receive_id=open_id,
+                    msg_type="text",
+                    content=json.dumps({"text": f"⚠️ {error_msg}"}, ensure_ascii=False),
+                )
+        except Exception as e:
+            logger.error(f"Failed to process Feishu message via chat_business: {e}", exc_info=True)
             await self.send_message(
                 receive_id=open_id,
                 msg_type="text",
-                content=json.dumps({"text": f"⚠️ {error_msg}"}, ensure_ascii=False),
+                content=json.dumps({"text": "⚠️ 处理消息时发生系统错误，请稍后重试"}, ensure_ascii=False),
             )
 
     async def handle_calendar_event(self, event: dict) -> None:
@@ -309,22 +329,35 @@ class FeishuService:
             return
 
         now = datetime.now(timezone.utc)
-        update_data = {"feishuSyncedAt": now, "feishuAction": action_type}
+        
+        # 获取原有日程文档以对比状态
+        existing = await db.db["calendar_events"].find_one({"_id": feishu_event_id})
+        old_status = existing.get("status") if existing else None
+
+        update_data = {"updatedAt": now}
 
         if action_type == "delete":
             update_data["status"] = "cancelled"
         else:
-            summary = event.get("event", {}).get("summary", "")
-            if summary:
-                update_data["feishuSummary"] = summary
-            start_time = event.get("event", {}).get("start_time", {})
-            if start_time:
-                update_data["feishuStartTime"] = start_time
+            status = event.get("event", {}).get("status")
+            if status:
+                update_data["status"] = status
 
-        await db.db.study_tasks.update_many(
-            {"feishuEventId": feishu_event_id},
+        await db.db["calendar_events"].update_one(
+            {"_id": feishu_event_id},
             {"$set": update_data},
+            upsert=True
         )
+
+        new_status = update_data.get("status")
+        if new_status == "completed" and old_status != "completed" and existing:
+            user_id = existing.get("userId")
+            task_id = existing.get("taskId")
+            if user_id and task_id:
+                from app.business.task_process_business import _task_process_business
+                updated_doc = await db.db["calendar_events"].find_one({"_id": feishu_event_id})
+                await _task_process_business.handle_calendar_event_status_change(user_id, old_status, new_status, updated_doc)
+
         logger.info("handle_calendar_event: synced %s for event %s", action_type, feishu_event_id)
 
     async def _resolve_user_id(self, open_id: str) -> Optional[str]:
@@ -333,11 +366,6 @@ class FeishuService:
         doc = await db.db.users.find_one({"feishuOpenId": open_id})
         if doc:
             return str(doc["_id"])
-
-        doc = await db.db.study_profiles.find_one({"feishuOpenId": open_id})
-        if doc:
-            return doc.get("userId", "")
-
         return None
 
     def build_study_summary_card(self, progress: dict) -> dict:

@@ -63,7 +63,7 @@ class ChatPromptBuilder:
         }
 
     def detect_knowledge_intent(self, user_message: str) -> bool:
-        """Detect whether to prioritize knowledge base retrieval."""
+        """Detect whether the user expects private document context."""
         text = (user_message or "").strip()
         lowered = text.lower()
         if not text:
@@ -76,7 +76,6 @@ class ChatPromptBuilder:
         if any(kw in text or kw in lowered for kw in hard_keywords):
             return True
 
-        # Prioritize knowledge retrieval for definition/concept short questions
         if len(text) <= 40 and re.search(r"(什么是|定义|概念|含义|是什么意思|是啥|是什么)", text):
             return True
 
@@ -206,14 +205,14 @@ class ChatPromptBuilder:
 用户请求：{user_message}
 
 【执行要求】
-1. 你必须先调用 `retrieve_knowledge` 工具进行检索，再基于检索结果回答。
-2. 如果知识库未检索到内容，可以明确说明"未检索到相关文档内容"。
-3. 仅在知识库无结果且用户问题需要外部知识时，再考虑使用搜索工具补充。
+1. 当前没有知识库检索工具，不能声称已检索上传文档、PDF 或内部资料。
+2. 如果用户要求根据知识库、上传文档、PDF 或内部资料回答，明确说明当前无法检索这些资料，并请用户粘贴相关内容。
+3. 若问题不依赖用户私有资料，可以基于通用知识回答；需要实时信息时再考虑使用搜索工具。
 
 【语言要求】
 - 默认使用中文回复。仅当用户明确要求使用其他语言时才切换。
 
-请先调用 `retrieve_knowledge`，不要直接 final_answer。"""
+请直接给出可执行、简洁的回复。"""
 
     def _build_general_task_prompt(self, user_message: str, current_time_str: str) -> str:
         """Build prompt for general chat requests."""

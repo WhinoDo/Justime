@@ -222,8 +222,31 @@ def load_calendar_module():
     sys.modules.setdefault("app.services", types.ModuleType("app.services"))
     sys.modules.setdefault("app.core", types.ModuleType("app.core"))
 
+    fake_config = types.ModuleType("app.core.config")
+    fake_config.settings = SimpleNamespace(
+        FEISHU_INTEGRATION_ENABLED=False,
+        FEISHU_APP_ID="",
+        FEISHU_CALENDAR_ID="",
+    )
+    sys.modules["app.core.config"] = fake_config
+
+    sys.modules.setdefault("app.business", types.ModuleType("app.business"))
+
+    fake_feishu_business = types.ModuleType("app.business.feishu_calendar")
+    fake_feishu_business.FeishuCalendarBusiness = SimpleNamespace()
+    sys.modules["app.business.feishu_calendar"] = fake_feishu_business
+
+    fake_business = types.ModuleType("app.business.task_process_business")
+    fake_business._task_process_business = SimpleNamespace(
+        handle_calendar_event_status_change=lambda *args, **kwargs: None
+    )
+    sys.modules["app.business.task_process_business"] = fake_business
+
     fake_deps = types.ModuleType("app.api.deps")
     fake_deps.parse_object_id = lambda oid, field_name="ID": FakeObjectId(oid)
+    class FakeCurrentUser:
+        pass
+    fake_deps.CurrentUser = FakeCurrentUser
     sys.modules["app.api.deps"] = fake_deps
 
     fake_models = types.ModuleType("app.models.calendar")

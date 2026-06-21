@@ -137,7 +137,7 @@ describe('MessageBubble', () => {
     expect(screen.getByText('低紧急')).toBeInTheDocument()
   })
 
-  describe('RAG引用', () => {
+  describe('文档引用', () => {
     it('有引用时应该显示引用区域', () => {
       const refMessage: Message = {
         ...baseAssistantMessage,

@@ -216,7 +216,7 @@ export default function AdminApiKeysPage() {
                                 <TableRow key={key.id} className="border-white/10 hover:bg-white/5">
                                     <TableCell>
                                         <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-white/10 border border-white/15 flex items-center justify-center">
+                                            <div className="w-8 h-8 rounded-full bg-white/10 border border-white/[0.15] flex items-center justify-center">
                                                 <KeyRound className="w-4 h-4 text-white/70" />
                                             </div>
                                             <div className="flex flex-col">

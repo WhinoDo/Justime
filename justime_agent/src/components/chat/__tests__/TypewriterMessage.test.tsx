@@ -60,7 +60,7 @@ describe('TypewriterMessage', () => {
     expect(screen.getByText('User message')).toBeInTheDocument()
   })
 
-  it('handles RAG references click', () => {
+  it('handles document references click', () => {
     const mockReferenceClick = jest.fn()
     const ragReferences = [
       {

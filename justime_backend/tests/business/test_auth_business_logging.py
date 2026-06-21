@@ -22,6 +22,24 @@ def _load_auth_business_module(
     active_model_id: str | None = None,
     provider_models_error: Exception | None = None,
 ):
+    injected_modules = [
+        "fastapi",
+        "app",
+        "app.services",
+        "app.services.cache_service",
+        "app.core",
+        "app.core.normalizers",
+        "app.core.exceptions",
+        "app.services.user_service",
+        "app.services.security_service",
+        "app.services.encryption_service",
+        "app.database",
+        "app.models.auth",
+        "httpx",
+    ]
+    missing = object()
+    original_modules = {name: sys.modules.get(name, missing) for name in injected_modules}
+
     fastapi_module = types.ModuleType("fastapi")
 
     class HTTPException(Exception):
@@ -34,6 +52,21 @@ def _load_auth_business_module(
     sys.modules["fastapi"] = fastapi_module
 
     sys.modules.setdefault("app", types.ModuleType("app"))
+    sys.modules.setdefault("app.services", types.ModuleType("app.services"))
+
+    cache_service_module = types.ModuleType("app.services.cache_service")
+    class FakeCacheService:
+        pass
+    cache_service_module.CacheService = FakeCacheService
+    sys.modules["app.services.cache_service"] = cache_service_module
+
+    sys.modules.setdefault("app.core", types.ModuleType("app.core"))
+
+    normalizers_module = types.ModuleType("app.core.normalizers")
+    normalizers_module.normalize_bool = lambda v: bool(v)
+    normalizers_module.normalize_capabilities = lambda v: v
+    normalizers_module.normalize_priority = lambda v: v
+    sys.modules["app.core.normalizers"] = normalizers_module
 
     core_exceptions_module = types.ModuleType("app.core.exceptions")
 
@@ -120,6 +153,8 @@ def _load_auth_business_module(
     models_auth_module.AuthData = _Dummy
     models_auth_module.AuthResponse = AuthResponse
     models_auth_module.LLMConfig = _Dummy
+    models_auth_module.ForgotPasswordRequest = _Dummy
+    models_auth_module.ResetPasswordRequest = _Dummy
     sys.modules["app.models.auth"] = models_auth_module
 
     if provider_models_error is not None:
@@ -145,24 +180,54 @@ def _load_auth_business_module(
         httpx_module.AsyncClient = _AsyncClient
         sys.modules["httpx"] = httpx_module
 
-    spec = importlib.util.spec_from_file_location("auth_business_under_test", AUTH_BUSINESS_PATH)
-    module = importlib.util.module_from_spec(spec)
-    assert spec and spec.loader
-    spec.loader.exec_module(module)
-    return module
+    def restore_modules():
+        for name, original in original_modules.items():
+            if original is missing:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = original
+
+    try:
+        spec = importlib.util.spec_from_file_location("auth_business_under_test", AUTH_BUSINESS_PATH)
+        module = importlib.util.module_from_spec(spec)
+        assert spec and spec.loader
+        spec.loader.exec_module(module)
+        module.restore_modules = restore_modules
+        return module
+    except Exception:
+        restore_modules()
+        raise
+
+
+def _capture_logs(logger_name):
+    import logging
+    logger = logging.getLogger(logger_name)
+    logger.setLevel(logging.DEBUG)
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    return logger, handler
 
 
 class AuthBusinessLoggingTest(unittest.TestCase):
     def test_login_not_found_masks_identifier_in_logs(self):
         module = _load_auth_business_module()
+        self.addCleanup(module.restore_modules)
         payload = module.LoginRequest(identifier="demo@example.com", password="Secret!")
 
         captured = io.StringIO()
         with contextlib.redirect_stdout(captured):
-            result = asyncio.run(module.AuthBusiness.login(payload))
+            logger, handler = _capture_logs("auth_business_under_test")
+            try:
+                with self.assertRaises(module.HTTPException) as ctx:
+                    asyncio.run(module.AuthBusiness.login(payload))
+                self.assertEqual(ctx.exception.status_code, 404)
+            finally:
+                logger.removeHandler(handler)
 
         output = captured.getvalue()
-        self.assertFalse(result.success)
         self.assertNotIn("demo@example.com", output)
         self.assertIn("d***@example.com", output)
 
@@ -170,15 +235,19 @@ class AuthBusinessLoggingTest(unittest.TestCase):
         module = _load_auth_business_module(
             authenticate_error=RuntimeError("db fail for demo@example.com")
         )
+        self.addCleanup(module.restore_modules)
         payload = module.LoginRequest(identifier="demo@example.com", password="Secret!")
 
         captured = io.StringIO()
         with contextlib.redirect_stdout(captured):
-            result = asyncio.run(module.AuthBusiness.login(payload))
+            logger, handler = _capture_logs("auth_business_under_test")
+            try:
+                with self.assertRaises(RuntimeError):
+                    asyncio.run(module.AuthBusiness.login(payload))
+            finally:
+                logger.removeHandler(handler)
 
         output = captured.getvalue()
-        self.assertFalse(result.success)
-        self.assertEqual(result.message, "登录失败，请稍后重试")
         self.assertNotIn("demo@example.com", output)
 
     def test_get_provider_models_unexpected_error_does_not_leak_raw_detail(self):
@@ -195,13 +264,15 @@ class AuthBusinessLoggingTest(unittest.TestCase):
                 "provider rejected api_key=sk-secret-demo@example.com"
             ),
         )
+        self.addCleanup(module.restore_modules)
 
-        result = asyncio.run(module.AuthBusiness.get_provider_models("user-1"))
+        with self.assertRaises(module.HTTPException) as ctx:
+            asyncio.run(module.AuthBusiness.get_provider_models("user-1"))
 
-        self.assertFalse(result.success)
-        self.assertEqual(result.message, "获取供应商模型失败，请稍后重试")
-        self.assertNotIn("sk-secret", result.message)
-        self.assertNotIn("demo@example.com", result.message)
+        self.assertEqual(ctx.exception.status_code, 502)
+        self.assertEqual(ctx.exception.detail, "获取供应商模型失败，请稍后重试")
+        self.assertNotIn("sk-secret", ctx.exception.detail)
+        self.assertNotIn("demo@example.com", ctx.exception.detail)
 
 
 if __name__ == "__main__":

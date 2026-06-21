@@ -11,8 +11,7 @@ from typing import List, Dict, Any
 from fastapi import APIRouter, UploadFile, File, HTTPException, Query, status, Form
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
-from app.services.rag_service import (
-    rag_service,
+from app.services.document_storage_service import (
     DOCS_DIR,
     get_user_docs_dir,
 )
@@ -56,17 +55,13 @@ def _extract_document_text(file_path: Path) -> str:
 
     if suffix == ".pdf":
         try:
-            from app.services.rag_service import OcrFallbackPDFReader
+            from app.services.document_storage_service import OcrFallbackPDFReader
         except Exception as exc:
             raise ValueError(f"PDF 预览能力不可用: {exc}") from exc
         reader = OcrFallbackPDFReader()
         documents = reader.load_data(file_path=file_path)
     else:
-        try:
-            from llama_index.core import SimpleDirectoryReader
-        except Exception as exc:
-            raise ValueError(f"文档解析扩展依赖未安装: {exc}") from exc
-        documents = SimpleDirectoryReader(input_files=[str(file_path)]).load_data()
+        raise ValueError("当前仅支持文本类文件和 PDF 的内容预览")
         
     parts = []
     for document in documents:
@@ -245,26 +240,13 @@ async def delete_document(
 async def rebuild_index(
     current_user: CurrentUser
 ) -> Dict[str, Any]:
-    """异步触发索引重建，立即返回任务ID，不阻塞API"""
-    try:
-        from app.services.knowledge_task_service import knowledge_task_service
-
-        user_id = str(current_user["_id"])
-        user_docs_dir = get_user_docs_dir(user_id)
-
-        task_id = await knowledge_task_service.start_rebuild_task(
-            user_id=user_id,
-            docs_dir=user_docs_dir,
-        )
-
-        return {
-            "success": True,
-            "message": "索引重建任务已创建，请通过任务ID查询状态",
-            "task_id": task_id,
-            "status_endpoint": f"/api/v1/knowledge/rebuild/status/{task_id}",
-        }
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+    """Vector indexing has been removed; keep endpoint as a compatibility no-op."""
+    return {
+        "success": True,
+        "message": "知识库索引功能已移除，无需重建索引。",
+        "task_id": None,
+        "status": "removed",
+    }
 
 
 @router.get("/rebuild/status/{task_id}", summary="查询索引重建状态")
@@ -272,32 +254,17 @@ async def get_rebuild_status(
     task_id: str,
     current_user: CurrentUser
 ) -> Dict[str, Any]:
-    """查询异步索引重建任务的状态"""
-    try:
-        from app.services.knowledge_task_service import knowledge_task_service
-
-        status_data = await knowledge_task_service.get_task_status(task_id)
-        if not status_data:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="任务不存在或已过期")
-
-        user_id = str(current_user["_id"])
-        if status_data.get("user_id") != user_id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权访问此任务")
-
-        return {
-            "success": True,
-            "task_id": task_id,
-            "status": status_data.get("status"),
-            "message": status_data.get("message"),
-            "created_at": status_data.get("created_at"),
-            "started_at": status_data.get("started_at"),
-            "completed_at": status_data.get("completed_at"),
-            "error": status_data.get("error"),
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+    """Return compatibility status for removed indexing tasks."""
+    return {
+        "success": True,
+        "task_id": task_id,
+        "status": "removed",
+        "message": "知识库索引功能已移除。",
+        "created_at": None,
+        "started_at": None,
+        "completed_at": None,
+        "error": None,
+    }
 
 
 class ChunkedUploadInitRequest(BaseModel):
