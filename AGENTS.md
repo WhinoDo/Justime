@@ -72,7 +72,7 @@ justime/
 │   │   ├── services/         # 基础服务层
 │   │   │   ├── llm_service.py       # LLM API 调用 (支持流式)
 │   │   │   ├── sse_stream_service.py # SSE 流式上下文 (断点续传)
-│   │   │   ├── rag_service.py       # RAG 检索增强 (LlamaIndex)
+│   │   │   ├── rag_service.py       # RAG 服务（云服务厂商适配，主路径 NotebookLM）
 │   │   │   ├── model_router_service.py # 模型路由
 │   │   │   ├── security_service.py  # 安全服务 (加密/CSRF)
 │   │   │   ├── encryption_service.py # 加密服务
@@ -195,7 +195,7 @@ docker compose up -d
 | `/chat/sessions` | 对话 | 会话管理 |
 | `/admin/*` | 管理 | 用户管理/模型配置/统计 |
 | `/calendar/*` | 日历 | 事件 CRUD |
-| `/knowledge/*` | 知识库 | 文档管理/RAG (可选依赖) |
+| `/knowledge/*` | 知识库 | 文档管理/云 RAG (缺配置时降级) |
 | `/book-analysis/*` | 书籍 | NotebookLM 集成 |
 | `/documents/*` | 文档 | 工作文档 |
 | `/agent/*` | Agent | OpenClaw 集成 |
@@ -322,7 +322,7 @@ pytest tests/ -v --tb=short
 | SSE 流服务 | `justime_backend/app/services/sse_stream_service.py` |
 | LLM 调用 | `justime_backend/app/services/llm_service.py` |
 | 模型路由 | `justime_backend/app/services/model_router_service.py` |
-| RAG 服务 | `justime_backend/app/services/rag_service.py` |
+| RAG 服务（云 RAG） | `justime_backend/app/services/rag_service.py` |
 | 对话模型 | `justime_backend/app/models/chat.py` |
 | 前端入口页 | `justime_agent/src/app/page.tsx` |
 | 对话页面 | `justime_agent/src/app/chat/page.tsx` |
@@ -358,6 +358,6 @@ pytest tests/ -v --tb=short
 
 ## 已知问题与注意事项
 
-1. `knowledge` 模块 (LlamaIndex) 启动时可能因依赖缺失而跳过，这是预期行为
+1. `knowledge` 模块在云 RAG 未配置时降级为 unavailable，不会影响其他功能
 2. 前端 `src/app/api/` 是代理层，业务逻辑应放在组件或 `lib/` 中
 3. 后端无数据库 Migration 工具，新增集合/索引需手动在 `database/indexes.py` 中添加
