@@ -21,6 +21,7 @@ justime/
 ├── justime_backend/        # 核心后端 (FastAPI, Python 3.10+, Motor, Redis)
 ├── deployment/homelab/     # Homelab 一键部署配置 (Docker Compose)
 ├── infrastructure/         # 基础设施配置 (MongoDB, Redis 优化配置)
+├── apps/desktop/           # macOS 桌面端 (Electron 31 壳)
 ├── scripts/                # 自动化运维工具箱 (健康检查、备份、定时优化)
 └── docs/                   # 统一的项目文档库 (产品愿景、架构设计、开发计划)
 ```
@@ -38,7 +39,7 @@ Justime 采用现代前后端分离架构，面向 macOS 桌面端优化：
 | **数据库** | MongoDB 7, Redis 7 | 任务进程持久化、Evidence 存储、缓存与流式会话续传 |
 | **网关与运维** | Caddy 2 (自动 HTTPS 证书), Docker Compose | 生产环境自动化反向代理与容器编排 |
 | **AI 引擎** | DeepSeek, OpenAI, DashScope | 多模型智能路由 (Auto / Fast / Balanced / Reasoning) |
-| **桌面端** | Tauri / Electron (规划中) | macOS DMG 打包，本地文件访问与 Markdown Vault 管理 |
+| **桌面端** | Electron 31（macOS） | macOS DMG 打包，原生窗口、菜单和快捷键 |
 
 ---
 
@@ -87,6 +88,29 @@ npm install
 npm run dev
 ```
 *   前端运行地址: `http://localhost:3000`
+
+### 3. macOS 桌面端 (`apps/desktop/`)
+
+需要先启动后端和 Web 前端，再启动桌面壳：
+
+```bash
+# 桌面端开发（需要先启动 justime_agent dev server）
+cd apps/desktop
+npm install
+npm run dev
+```
+
+桌面端默认加载 `http://localhost:3000`。可通过 `JUSTIME_DESKTOP_URL` 环境变量或应用菜单 `Justime > Configure App URL` 设置远程地址。
+
+构建 unsigned DMG：
+
+```bash
+cd apps/desktop
+npm run pack       # 构建 unsigned 目录包（仅用于 smoke test）
+npm run dist:dmg   # 构建完整 unsigned DMG
+```
+
+> ⚠️ **Apple 签名和公证凭据未配置**：当前 DMG 构建为 unsigned，仅适合本地 smoke test，不适合公开分发。签名和配置是后续独立任务。
 
 ---
 
