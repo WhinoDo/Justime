@@ -53,10 +53,10 @@ export default function KnowledgeBasePage() {
     const [files, setFiles] = useState<DocumentFile[]>([])
     const [loading, setLoading] = useState(true)
     const [uploading, setUploading] = useState(false)
-    const [rebuilding, setRebuilding] = useState(false)
-    const [rebuildTaskId, setRebuildTaskId] = useState<string | null>(null)
-    const [rebuildStatus, setRebuildStatus] = useState<{ status: string; message?: string; error?: string } | null>(null)
-    const [showRebuildStatus, setShowRebuildStatus] = useState(false)
+    const [syncing, setSyncing] = useState(false)
+    const [syncTaskId, setSyncTaskId] = useState<string | null>(null)
+    const [syncStatus, setSyncStatus] = useState<{ status: string; message?: string; error?: string } | null>(null)
+    const [showSyncStatus, setShowSyncStatus] = useState(false)
     const [previewState, setPreviewState] = useState<PreviewState>({
         open: false,
         fileName: '',
@@ -174,54 +174,59 @@ export default function KnowledgeBasePage() {
         }
     }
 
-    const handleRebuild = async () => {
+    const handleSync = async () => {
         try {
-            setRebuilding(true)
-            setRebuildStatus(null)
+            setSyncing(true)
+            setSyncStatus(null)
             const res = await fetch(API_ENDPOINTS.KNOWLEDGE.REBUILD, {
                 method: 'POST',
             })
             const data = await res.json()
+            // 检测云服务不可用降级状态（HTTP 503 或结构化 unavailable）
+            if (data.status === 'unavailable' || res.status === 503) {
+                setSyncStatus({ status: 'unavailable', message: data.message || '知识库云服务未配置/暂不可用' })
+                setShowSyncStatus(true)
+                return
+            }
             if (data.success) {
-                setRebuildTaskId(data.task_id)
-                setRebuildStatus({ status: 'pending', message: '索引重建任务已创建' })
-                setShowRebuildStatus(true)
+                setSyncTaskId(data.task_id)
+                setSyncStatus({ status: 'pending', message: '云端同步任务已启动' })
+                setShowSyncStatus(true)
                 toast({
-                    title: '重建已启动',
-                    description: data.message || '索引重建任务已创建',
+                    title: '同步已启动',
+                    description: data.message || '云端同步任务已启动',
                 })
             } else {
                 throw new Error(data.error)
             }
         } catch (error) {
-            console.error('Rebuild failed:', error)
+            console.error('Sync failed:', error)
             toast({
-                title: '重建失败',
-                description: '无法重建索引',
+                title: '同步失败',
+                description: '无法同步到云端知识库',
                 variant: 'destructive',
             })
         } finally {
-            setRebuilding(false)
+            setSyncing(false)
         }
     }
 
     useEffect(() => {
-        if (!rebuildTaskId || !showRebuildStatus) return
+        if (!syncTaskId || !showSyncStatus) return
         const pollInterval = setInterval(async () => {
             try {
-                const res = await fetch(API_ENDPOINTS.KNOWLEDGE.REBUILD_STATUS(rebuildTaskId))
+                const res = await fetch(API_ENDPOINTS.KNOWLEDGE.REBUILD_STATUS(syncTaskId))
                 const data = await res.json()
-                if (data.success) {
-                    setRebuildStatus({
-                        status: data.status,
-                        message: data.message,
-                        error: data.error,
-                    })
-                    if (data.status === 'completed' || data.status === 'failed') {
-                        clearInterval(pollInterval)
-                        if (data.status === 'completed') {
-                            toast({ title: '索引重建完成', description: data.message })
-                        }
+                const status = data.status || (data.success ? 'running' : 'failed')
+                setSyncStatus({
+                    status,
+                    message: data.message,
+                    error: data.error,
+                })
+                if (status === 'completed' || status === 'failed' || status === 'unavailable') {
+                    clearInterval(pollInterval)
+                    if (status === 'completed') {
+                        toast({ title: '云端同步完成', description: data.message })
                     }
                 }
             } catch {
@@ -229,7 +234,7 @@ export default function KnowledgeBasePage() {
             }
         }, 3000)
         return () => clearInterval(pollInterval)
-    }, [rebuildTaskId, showRebuildStatus])
+    }, [syncTaskId, showSyncStatus])
 
     const closePreview = () => {
         setPreviewState((prev) => ({
@@ -359,19 +364,19 @@ export default function KnowledgeBasePage() {
                                     Knowledge Base
                                 </h1>
                                 <p className="text-sm text-white/60 mt-1 font-light tracking-wide">
-                                    Manage RAG documents and build your personal knowledge graph
+                                    管理云端知识库文档，RAG 实时同步
                                 </p>
                             </div>
                         </div>
                         <div className="flex gap-2">
                             <Button
                                 variant="outline"
-                                onClick={handleRebuild}
-                                disabled={rebuilding}
+                                onClick={handleSync}
+                                disabled={syncing}
                                 className="gap-2 bg-white/5 border-white/10 text-white hover:bg-white/10 backdrop-blur-sm"
                             >
-                                <RefreshCw className={`h-4 w-4 ${rebuilding ? 'animate-spin' : ''}`} />
-                                {rebuilding ? 'Rebuilding...' : 'Rebuild Index'}
+                                <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+                                {syncing ? '同步中...' : '同步到云端知识库'}
                             </Button>
                         </div>
                     </div>
@@ -532,41 +537,51 @@ export default function KnowledgeBasePage() {
                 </DialogContent>
             </Dialog>
 
-            <Dialog open={showRebuildStatus} onOpenChange={setShowRebuildStatus}>
+            <Dialog open={showSyncStatus} onOpenChange={setShowSyncStatus}>
                 <DialogContent className="max-w-md bg-slate-950/95 border-white/20 text-white backdrop-blur-xl">
                     <DialogHeader>
-                        <DialogTitle>索引重建状态</DialogTitle>
+                        <DialogTitle>云端同步状态</DialogTitle>
                         <DialogDescription className="text-white/60">
-                            查看索引重建任务的实时进度
+                            查看云端知识库同步任务的实时进度
                         </DialogDescription>
                     </DialogHeader>
                     <div className="py-4">
-                        {rebuildStatus ? (
+                        {syncStatus ? (
                             <div className="space-y-3">
                                 <div className="flex items-center gap-3">
-                                    {rebuildStatus.status === 'completed' ? (
+                                    {syncStatus.status === 'completed' ? (
                                         <div className="h-8 w-8 rounded-full bg-green-500/20 flex items-center justify-center">
                                             <svg className="h-5 w-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                                         </div>
-                                    ) : rebuildStatus.status === 'failed' ? (
+                                    ) : syncStatus.status === 'failed' ? (
                                         <div className="h-8 w-8 rounded-full bg-red-500/20 flex items-center justify-center">
                                             <AlertTriangle className="h-5 w-5 text-red-400" />
+                                        </div>
+                                    ) : syncStatus.status === 'unavailable' ? (
+                                        <div className="h-8 w-8 rounded-full bg-amber-500/20 flex items-center justify-center">
+                                            <AlertTriangle className="h-5 w-5 text-amber-400" />
                                         </div>
                                     ) : (
                                         <Loader2 className="h-8 w-8 animate-spin text-blue-300" />
                                     )}
                                     <div>
                                         <p className="font-medium text-white">
-                                            {rebuildStatus.status === 'completed' ? '已完成' : rebuildStatus.status === 'failed' ? '失败' : rebuildStatus.status === 'running' ? '进行中' : '等待中'}
+                                            {syncStatus.status === 'completed' ? '已完成' : syncStatus.status === 'failed' ? '失败' : syncStatus.status === 'unavailable' ? '云服务不可用' : syncStatus.status === 'running' ? '同步中' : '等待中'}
                                         </p>
-                                        {rebuildStatus.message && (
-                                            <p className="text-sm text-white/60">{rebuildStatus.message}</p>
+                                        {syncStatus.message && (
+                                            <p className="text-sm text-white/60">{syncStatus.message}</p>
                                         )}
                                     </div>
                                 </div>
-                                {rebuildStatus.error && (
+                                {syncStatus.error && (
                                     <div className="rounded-lg border border-red-500/30 bg-red-500/10 text-red-200 p-3 text-sm">
-                                        {rebuildStatus.error}
+                                        {syncStatus.error}
+                                    </div>
+                                )}
+                                {syncStatus.status === 'unavailable' && (
+                                    <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-200 p-3 text-sm flex gap-2">
+                                        <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                                        <span>知识库云服务未配置或暂不可用，请联系管理员配置云端 RAG 服务后重试。</span>
                                     </div>
                                 )}
                             </div>
