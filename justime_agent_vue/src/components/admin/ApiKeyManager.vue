@@ -13,8 +13,7 @@ interface Props {
   loading: boolean
 }
 
-defineProps<Props>()
-
+const props = defineProps<Props>()
 const emit = defineEmits<{
   create: []
   edit: [key: AdminApiKey]
@@ -24,8 +23,6 @@ const emit = defineEmits<{
 const sortedKeys = computed(() => {
   return [...props.apiKeys].sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))
 })
-
-const props = defineProps<Props>()
 </script>
 
 <template>

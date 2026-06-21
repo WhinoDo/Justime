@@ -14,8 +14,7 @@ interface Props {
   loading: boolean
 }
 
-defineProps<Props>()
-
+const props = defineProps<Props>()
 const emit = defineEmits<{
   create: []
   edit: [model: AdminModel]
@@ -26,8 +25,6 @@ const emit = defineEmits<{
 const sortedModels = computed(() => {
   return [...props.models].sort((a, b) => a.priority - b.priority || a.name.localeCompare(b.name))
 })
-
-const props = defineProps<Props>()
 </script>
 
 <template>
