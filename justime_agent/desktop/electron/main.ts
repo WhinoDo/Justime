@@ -210,8 +210,7 @@ async function bootstrap(): Promise<void> {
     if (isDev) {
       appUrl = await startDevServer();
     } else {
-      await waitForServer(`http://127.0.0.1:${PORT}`, STARTUP_TIMEOUT);
-      appUrl = `http://127.0.0.1:${PORT}`;
+      appUrl = await startProdServer();
     }
 
     await waitForServer(appUrl, STARTUP_TIMEOUT);
