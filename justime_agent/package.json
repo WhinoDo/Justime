@@ -12,7 +12,12 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "test:api": "node test-api.js"
+    "test:api": "node test-api.js",
+    "desktop:dev": "npm run desktop:compile && electron desktop/electron/main.js",
+    "desktop:compile": "tsc -p tsconfig.desktop.json",
+    "desktop:build": "npm run build && npm run desktop:compile && electron-builder --config desktop/electron-builder.yml",
+    "desktop:build:mac": "npm run build && npm run desktop:compile && electron-builder --config desktop/electron-builder.yml --mac",
+    "desktop:build:mac:arm64": "npm run build && npm run desktop:compile && electron-builder --config desktop/electron-builder.yml --mac --arm64"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.10",
@@ -71,6 +76,8 @@
     "@types/jest": "^29.5.12",
     "@typescript-eslint/eslint-plugin": "^7.16.1",
     "@typescript-eslint/parser": "^7.16.1",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8",
     "eslint": "^8.57.0",
     "eslint-config-next": "14.2.5",
     "jest": "^29.7.0",

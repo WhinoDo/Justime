@@ -13,6 +13,11 @@ node_modules/
 *.tsbuildinfo
 next-env.d.ts
 
+# Electron desktop app
+desktop/electron/*.js
+desktop/electron/*.js.map
+desktop/release/
+
 # Production
 /build
 /dist
