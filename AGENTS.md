@@ -108,7 +108,7 @@ justime/
 │   └── mongodb/              # MongoDB 部署配置
 │
 ├── apps/                     # ⭐ 应用壳
-│   └── desktop/              # ⭐ macOS 桌面端 (Electron/Tauri, 未来)
+│   └── desktop/              # ⭐ macOS 桌面端 (Electron 31, macOS)
 │
 ├── docs/                     # 设计文档与方案
 ├── .github/workflows/        # CI/CD (ci.yml, deploy.yml)

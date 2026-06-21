@@ -1,12 +1,37 @@
 # Justime macOS Desktop UI Optimization Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
-
-**Goal:** 在不另起一套完整业务代码的前提下，把 Justime macOS 桌面端从“Web/PWA 包壳”优化为更接近 Codex、Hermes 等 Agent 产品的桌面工作台体验，并将桌面端视觉主题确定为“纯白到淡紫色磨玻璃渐变”。
-
-**Architecture:** 保留 `justime_agent/` 作为唯一业务前端，保留 `apps/desktop/` 作为 Electron macOS 壳。Electron 只注入桌面运行时、窗口能力和快捷键事件；Next.js 通过 `useDesktopRuntime`、桌面布局组件和 Tailwind/CSS token 渲染桌面专属 UI。后端 FastAPI、MongoDB、Redis、TaskProcess API 不做改动。
-
-**Tech Stack:** Electron 31, Next.js 14 App Router, React 18, Tailwind CSS, Radix UI/shadcn-style components, lucide-react, Jest, React Testing Library.
+> **实施状态: 已完成** — 由三个 Issue 在 2026-06-21 完成。
+>
+> | Issue | Scope | Status |
+> |-------|-------|--------|
+> | [JUS-443](mention://issue/9bc159d5-d2f5-4a3b-989f-c5baf8bcedee) | Converge Electron shell: remove old `justime_agent/desktop/`, keep `apps/desktop/` as sole entry | ✅ 完成 |
+> | [JUS-444](mention://issue/9d321e8d-56c7-400a-8ef3-a3e307a00905) | Frontend desktop runtime, Chat workbench, shortcuts wiring | ✅ 完成 |
+> | [JUS-445](mention://issue/458924ea-46cd-460a-8300-e8556757a748) | Documentation, build and release entry unification | ✅ 完成 |
+>
+> **Task 完成情况:**
+>
+> | Plan Task | Status | Notes |
+> |-----------|--------|-------|
+> | Task 1 — 建立基线和工作分支 | ✅ JUS-443/444 | 已基于 `origin/dev` 创建功能分支 |
+> | Task 2 — Electron 壳注入桌面运行时 | ✅ JUS-444 | `preload.js` 暴露 `isDesktop`/`onCommand`，`main.js` 设 `hiddenInset`、File 菜单、快捷键 |
+> | Task 3 — 前端桌面运行时类型和 Hook | ✅ JUS-444 | `desktop.ts` 类型、`useDesktopRuntime`/`useDesktopCommands` hook + 测试 |
+> | Task 4 — 全局 Provider、Token 和基础壳组件 | ✅ JUS-444 | `DesktopRuntimeProvider`、`DesktopAppFrame`、`DesktopCommandBar`、CSS 变量与工具类 |
+> | Task 5 — 桌面端隐藏 PWA 安装提示 | ✅ JUS-444 | `PWAInstallBanner` 桌面端 `return null` |
+> | Task 6 — 改造 Chat 为桌面 Agent 工作台 | ✅ JUS-444 | 含偏差：Chat 页面使用了 macOS Messages 风格布局，与三栏 Agent Console + Context Inspector 计划有差异。右侧 `ChatContextInspector` 已实现，但页面未强制三栏。 |
+> | Task 7 — 改造 Tasks 为桌面任务驾驶舱 | ✅ JUS-444 | `TaskCockpitDesktop` 含 Focus Queue + 三阶段面板 + 指标面板 |
+> | Task 8 — 改造任务详情为桌面 Workbench | ✅ JUS-444 | `TaskDetailWorkbench` 含阶段轨道 + 工作区 + Inspector |
+> | Task 8.5 — 次级页面 Snow Lilac Glass | ✅ JUS-444 | 所有次级页面已接入 `isDesktop` 检测和桌面版 shell |
+> | Task 9 — 桌面快捷键接入 Chat | ✅ JUS-444 | `focusSignal` prop、`useDesktopCommands` 已接线 |
+> | Task 10 — 可访问性检查 | ✅ 已完成 | focus ring、min-h-0、drag region 已处理 |
+> | Task 11 — 验证 | ✅ 已完成 | lint/build/test 全通过 |
+>
+> **已知残余风险（与原始计划一致）:**
+> - Apple 签名和公证凭据缺失 → DMG unsigned，仅限 smoke test
+> - 自动更新未实现
+> - 本地 FastAPI/Python 后端打包未实现
+> - Chat 页面桌面布局与计划的三栏设计有偏差
+>
+> 以下为原始计划内容（保留供参考）:
 
 ---
 
