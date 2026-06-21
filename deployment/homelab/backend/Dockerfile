@@ -5,8 +5,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-COPY requirements-homelab.lock ./requirements-homelab.lock
-RUN pip install -r requirements-homelab.lock
+COPY requirements.lock ./requirements.lock
+RUN pip install -r requirements.lock
 
 FROM python:3.11-slim AS runtime
 
