@@ -11,11 +11,15 @@ import {
   Settings,
   User,
   Database,
+  ArrowRight,
+  GraduationCap,
   Sparkles,
   ShieldCheck,
   FolderKanban
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { JustimePageShell } from '@/components/layout/JustimePageShell'
+import { useDesktopRuntime } from '@/hooks/useDesktopRuntime'
 import { gsap } from 'gsap'
 import { useGSAP } from '@gsap/react'
 

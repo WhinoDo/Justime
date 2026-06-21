@@ -66,6 +66,10 @@ export function LoginForm({ onSuccess, onSwitchToRegister, redirectTo }: LoginFo
 
   return (
     <div className="w-full max-w-md mx-auto space-y-4">
+      <div className="text-center">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">登录账户</h2>
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">欢迎回来，请登录您的账户</p>
+      </div>
       {error && (
         <Alert className="bg-red-50 dark:bg-red-500/10 border-red-300 dark:border-red-500/30 text-red-700 dark:text-red-300 rounded-lg">
           <AlertCircle className="h-4 w-4 text-red-500" />

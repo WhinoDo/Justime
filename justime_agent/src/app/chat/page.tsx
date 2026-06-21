@@ -44,8 +44,10 @@ const ChatSidebar = dynamic(
 function ChatPageInner() {
   const { user, isLoading } = useAuth()
   const [sessionId, setSessionId] = useState<string | null>(null)
+  const [showStudyCommands, setShowStudyCommands] = useState(true)
   const [focusSignal, setFocusSignal] = useState(0)
   const searchParams = useSearchParams()
+  const isStudyMode = searchParams.get('mode') === 'study'
   const taskId = searchParams.get('taskId')
   const taskTitle = searchParams.get('taskTitle')
   const { isDesktop } = useDesktopRuntime()

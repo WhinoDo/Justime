@@ -18,6 +18,8 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/useAuth'
+import { JustimePageShell } from '@/components/layout/JustimePageShell'
+import { useDesktopRuntime } from '@/hooks/useDesktopRuntime'
 
 export default function AdminLayout({
     children,
@@ -64,7 +66,7 @@ export default function AdminLayout({
 
     if (!user || user.role !== 'admin') {
         return (
-            <div className="min-h-screen relative overflow-hidden flex items-center justify-center bg-background">
+            <JustimePageShell fullHeight variant={isDesktop ? 'desktop' : 'immersive'} blur={isDesktop ? 'none' : 'lg'} opacity={isDesktop ? 0 : 0.6} contentClassName="flex items-center justify-center">
                 <div className="relative z-10 text-center space-y-4">
                     <ShieldAlert className="w-16 h-16 text-red-500 mx-auto" />
                     <h1 className="text-2xl font-bold text-foreground">访问被拒绝</h1>

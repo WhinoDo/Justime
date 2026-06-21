@@ -30,7 +30,7 @@ export default function MaterialsPage() {
   const fetchMaterials = useCallback(async () => {
     try {
       setLoading(true)
-      const res = await fetch(API_ENDPOINTS.STUDY.PROFILE.replace('/profile', '/materials'))
+      const res = await fetch(API_ENDPOINTS.STUDY.MATERIALS)
       const data = await res.json()
       if (data.success && data.data) {
         setMaterials(data.data.materials || data.data || [])
@@ -54,7 +54,7 @@ export default function MaterialsPage() {
     try {
       const formData = new FormData()
       formData.append('file', file)
-      const res = await fetch(API_ENDPOINTS.STUDY.PROFILE.replace('/profile', '/materials'), {
+      const res = await fetch(API_ENDPOINTS.STUDY.MATERIALS, {
         method: 'POST',
         body: formData,
       })

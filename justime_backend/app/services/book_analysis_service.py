@@ -35,7 +35,7 @@ from app.database import db
 
 from app.services.knowledge_paths import DOCS_DIR as RAG_DOCS_DIR
 
-DOCS_DIR = Path(DOCUMENTS_DIR)
+DOCS_DIR = Path(RAG_DOCS_DIR)
 if not DOCS_DIR.is_absolute():
     DOCS_DIR = (Path(__file__).resolve().parents[2] / DOCS_DIR).resolve()
 DOCS_DIR.mkdir(parents=True, exist_ok=True)

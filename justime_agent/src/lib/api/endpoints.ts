@@ -65,6 +65,15 @@ export const API_ENDPOINTS = {
     VAULT_CONFIG: '/api/task-processes/vault-config',
   },
 
+  STUDY: {
+    PROFILE: '/api/study/profile',
+    PLAN: '/api/study/plan',
+    TASKS: '/api/study/tasks',
+    TASK_DETAIL: (taskId: string) => `/api/study/tasks/${taskId}`,
+    PROGRESS: '/api/study/progress',
+    MATERIALS: '/api/study/materials',
+  },
+
   ADMIN: {
     USERS: '/api/admin/users',
     USER: (userId: string) => `/api/admin/users/${userId}`,

@@ -11,8 +11,13 @@ export function PWAInstallBanner() {
   const { canInstall, isInstalled, isOffline, install, canSafariInstall } =
     usePWAInstall();
   const { updateAvailable, isUpdating, applyUpdate } = usePWAUpdate();
+  const { isDesktop } = useDesktopRuntime();
   const [dismissed, setDismissed] = useState(false);
   const [safariDismissed, setSafariDismissed] = useState(false);
+
+  if (isDesktop) {
+    return null;
+  }
 
   // Priority 1: Offline banner — always show when offline
   if (isOffline) {

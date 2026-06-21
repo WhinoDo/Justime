@@ -9,6 +9,10 @@ import { useLLMConfigs } from '@/hooks/useLLMConfig'
 import { BarChart3, Bot, ChevronLeft, Loader2, HelpCircle, Lock, CheckCircle2, XCircle, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
+import { JustimeBackground } from '@/components/ui/JustimeBackground'
+import { JustimePageShell } from '@/components/layout/JustimePageShell'
+import { useDesktopRuntime } from '@/hooks/useDesktopRuntime'
+import { cn } from '@/lib/utils'
 import { API_ENDPOINTS } from '@/lib/api/endpoints'
 import {
   Dialog,
@@ -399,22 +403,22 @@ function ModelConfigContent() {
     const maxToken = Math.max(...dailyPoints.map((point) => point.totalTokens), 1)
 
     return (
-      <div className="rounded-2xl border border-border bg-muted/50 p-4">
+      <div className={cn("rounded-2xl border p-4", isDesktop ? "bg-white/60 border-violet-200/40 shadow-sm" : "border-white/10 bg-black/20")}>
         <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
           <div>
             <div className="flex items-center gap-2">
-              <p className="text-foreground font-medium">{model.name}</p>
+              <p className={cn("font-medium", isDesktop ? "text-[#171421]" : "text-white")}>{model.name}</p>
               {model.isActive && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wide bg-emerald-500/20 text-emerald-700 dark:text-emerald-200 border border-emerald-400/30">
+                <span className={cn("px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wide border", isDesktop ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-emerald-500/20 text-emerald-200 border border-emerald-400/30")}>
                   使用中
                 </span>
               )}
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">{model.modelId || '无模型标识'}</p>
+            <p className={cn("text-xs mt-0.5", isDesktop ? "text-[#8b7aa8]" : "text-white/[0.45]")}>{model.modelId || '无模型标识'}</p>
           </div>
           <div className="text-right">
-            <p className="text-sm text-foreground/80">累计总计: <span className="font-semibold text-indigo-600 dark:text-indigo-200">{formatTokenValue(model.totalTokens)}</span> T</p>
-            <p className="text-xs text-muted-foreground">请求次数: {model.totalRequests}</p>
+            <p className={cn("text-sm", isDesktop ? "text-[#171421]" : "text-white/80")}>累计总计: <span className={cn("font-semibold", isDesktop ? "text-violet-600" : "text-indigo-200")}>{formatTokenValue(model.totalTokens)}</span> T</p>
+            <p className={cn("text-xs", isDesktop ? "text-[#6d6680]" : "text-white/[0.45]")}>请求次数: {model.totalRequests}</p>
           </div>
         </div>
 
@@ -428,20 +432,20 @@ function ModelConfigContent() {
                 key={`${model.configId}-${point.date}`}
                 className="flex-1 h-full relative group"
               >
-                <div className="absolute opacity-0 group-hover:opacity-100 bottom-full left-1/2 -translate-x-1/2 mb-1 pointer-events-none bg-popover text-popover-foreground text-[10px] px-2 py-1 rounded whitespace-nowrap z-10 transition-opacity shadow-lg">
+                <div className={cn("absolute opacity-0 group-hover:opacity-100 bottom-full left-1/2 -translate-x-1/2 mb-1 pointer-events-none text-[10px] px-2 py-1 rounded whitespace-nowrap z-10 transition-opacity shadow-md", isDesktop ? "bg-white border border-violet-200 text-[#171421]" : "bg-black/80 text-white")}>
                   {point.date}<br />总数: {point.totalTokens}<br />请求: {point.requests}
                 </div>
                 {point.totalTokens > 0 && (
                   <div
-                    className="absolute z-20 left-1/2 -translate-x-1/2 text-[8px] font-medium text-foreground whitespace-nowrap pointer-events-none select-none"
+                    className={cn("absolute z-20 left-1/2 -translate-x-1/2 text-[8px] font-medium whitespace-nowrap pointer-events-none select-none", isDesktop ? "text-violet-700" : "text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]")}
                     style={{ bottom: `calc(${Math.min(barHeight, 100)}% + 4px)` }}
                   >
                     {formatTokenValue(point.totalTokens)}
                   </div>
                 )}
-                <div className="h-full rounded-sm bg-muted relative overflow-hidden">
+                <div className={cn("h-full rounded-sm relative overflow-hidden", isDesktop ? "bg-violet-100/50" : "bg-white/5")}>
                   <div
-                    className="absolute bottom-0 left-0 right-0 rounded-sm bg-indigo-400/80 dark:bg-indigo-400/80 transition-all group-hover:bg-indigo-500 group-hover:shadow-[0_0_10px_rgba(129,140,248,0.5)]"
+                    className={cn("absolute bottom-0 left-0 right-0 rounded-sm transition-all", isDesktop ? "bg-violet-600/80 group-hover:bg-violet-500 group-hover:shadow-[0_0_8px_rgba(124,58,237,0.3)]" : "bg-indigo-400/80 group-hover:bg-indigo-300 group-hover:shadow-[0_0_10px_rgba(129,140,248,0.5)]")}
                     style={{ height: `${barHeight}%` }}
                   />
                 </div>
@@ -454,10 +458,10 @@ function ModelConfigContent() {
   }
   if (authLoading || (configsLoading && configs.length === 0)) {
     return (
-      <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-background">
-        <div className="relative z-10 flex flex-col items-center gap-3 animate-pulse">
-          <Bot className="h-10 w-10 text-muted-foreground" />
-          <p className="text-muted-foreground text-sm font-light tracking-widest uppercase">加载配置中...</p>
+      <JustimePageShell fullHeight variant={isDesktop ? "desktop" : "immersive"} blur={isDesktop ? "none" : "xl"} opacity={isDesktop ? 0 : 0.45} contentClassName="flex items-center justify-center">
+        <div className={isDesktop ? "rounded-2xl border border-violet-200/[0.45] bg-white/[0.68] px-6 py-5 text-center shadow-[0_24px_80px_rgba(112,77,171,0.14)] backdrop-blur-2xl" : "relative z-10 flex flex-col items-center gap-3 animate-pulse"}>
+          <Bot className={cn("h-10 w-10 mx-auto mb-4", isDesktop ? "text-violet-500 animate-bounce" : "text-white/50 animate-pulse")} />
+          <p className={cn("text-sm font-light tracking-widest uppercase", isDesktop ? "text-[#8b7aa8]" : "text-white/60")}>加载配置中...</p>
         </div>
       </JustimePageShell>
     )
@@ -848,30 +852,31 @@ function ModelConfigContent() {
   }
 
   return (
-    <div className="min-h-screen relative py-8 px-4 font-sans bg-background">
+    <div className="min-h-screen relative py-8 px-4 font-sans">
+      <JustimeBackground blur="lg" opacity={0.6} />
 
       <div className="relative z-10 w-full max-w-6xl mx-auto animate-in fade-in duration-700">
         <div className="flex items-center justify-between mb-6">
           <Link href={fromPath}>
-            <Button variant="ghost" className="text-muted-foreground hover:text-foreground hover:bg-accent transition-colors gap-2 pl-2">
+            <Button variant="ghost" className="text-white/70 hover:text-white hover:bg-white/10 transition-colors gap-2 pl-2">
               <ChevronLeft className="h-4 w-4" />
               <span className="tracking-wide">返回</span>
             </Button>
           </Link>
         </div>
 
-        <div className="bg-card/80 backdrop-blur-xl border border-border shadow-2xl rounded-3xl overflow-hidden flex flex-col md:flex-row min-h-[700px]">
+        <div className="bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl rounded-3xl overflow-hidden flex flex-col md:flex-row min-h-[700px]">
 
           {/* Left Sidebar - Configs List */}
-          <div className="w-full md:w-80 bg-muted/30 border-b md:border-b-0 md:border-r border-border flex flex-col">
-            <div className="p-6 border-b border-border">
+          <div className="w-full md:w-80 bg-black/20 border-b md:border-b-0 md:border-r border-white/10 flex flex-col">
+            <div className="p-6 border-b border-white/10">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-500 dark:text-indigo-300 ring-1 ring-indigo-500/30">
+                <div className="h-10 w-10 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-300 ring-1 ring-indigo-500/30">
                   <Bot className="h-5 w-5" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-foreground tracking-tight">模型配置库</h2>
-                  <p className="text-muted-foreground text-xs">选择您的专属 AI 助手</p>
+                  <h2 className="text-lg font-bold text-white tracking-tight">模型配置库</h2>
+                  <p className="text-white/50 text-xs">选择您的专属 AI 助手</p>
                 </div>
               </div>
             </div>
@@ -885,29 +890,29 @@ function ModelConfigContent() {
                   <div
                     key={config.id}
                     onClick={() => handleSelectModel(config.id)}
-                    className={`relative p-4 rounded-2xl border cursor-pointer transition-all hover-lift ${isSelected
-                      ? 'bg-sky-500/10 border-sky-300/50 dark:bg-sky-500/20 ring-1 ring-sky-300/40 shadow-lg'
+                    className={`relative p-4 rounded-2xl border cursor-pointer transition-all ${isSelected
+                      ? 'bg-sky-500/20 border-sky-300/50 ring-1 ring-sky-300/40 shadow-lg'
                       : config.isActive
-                        ? 'bg-indigo-500/10 border-indigo-400/30 dark:bg-indigo-500/20 shadow-lg'
-                        : 'bg-muted/50 border-border hover:bg-accent/50'
+                        ? 'bg-indigo-500/20 border-indigo-400/30 shadow-lg'
+                        : 'bg-white/5 border-white/5 hover:bg-white/10'
                       }`}
                   >
                     <div className="flex justify-between items-start mb-2">
-                      <h3 className="text-sm font-semibold text-foreground truncate pr-6">{config.name || '未命名'}</h3>
+                      <h3 className="text-sm font-semibold text-white truncate pr-6">{config.name || '未命名'}</h3>
                       {config.isActive && (
                         <span className="absolute top-4 right-4 h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" title="当前激活" />
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground mb-2 truncate font-mono">{config.modelId}</p>
-                    <p className="text-xs text-foreground/65 border-t border-border pt-2">
-                      总计: <span className="text-indigo-600 dark:text-indigo-200">{formatTokenValue(modelUsage?.totalTokens ?? 0)}</span> Token · {modelUsage?.totalRequests ?? 0} 次请求
+                    <p className="text-xs text-white/50 mb-2 truncate font-mono">{config.modelId}</p>
+                    <p className="text-xs text-white/[0.65] border-t border-white/10 pt-2">
+                      总计: <span className="text-indigo-200">{formatTokenValue(modelUsage?.totalTokens ?? 0)}</span> Token · {modelUsage?.totalRequests ?? 0} 次请求
                     </p>
                   </div>
                 )
               })}
 
               {filteredConfigs.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground text-sm">
+                <div className="text-center py-8 text-white/40 text-sm">
                   暂无可用模型，请等待系统管理员配置。
                 </div>
               )}
@@ -918,19 +923,19 @@ function ModelConfigContent() {
           <div className="flex-1 flex flex-col overflow-hidden">
             <div className="p-8 flex-1 overflow-y-auto">
               {!hasAvailableModels ? (
-                <div className="rounded-2xl border border-border bg-muted/50 p-6">
-                  <h1 className="text-2xl font-bold text-foreground tracking-tight">模型使用情况</h1>
-                  <p className="text-muted-foreground text-sm mt-3">
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-6">
+                  <h1 className="text-2xl font-bold text-white tracking-tight">模型使用情况</h1>
+                  <p className="text-white/60 text-sm mt-3">
                     暂无可用模型，请等待系统管理员配置。
                   </p>
                 </div>
               ) : (
                 <>
               <div>
-                <h1 className="text-2xl font-bold text-foreground tracking-tight">
+                <h1 className="text-2xl font-bold text-white tracking-tight">
                   模型使用情况
                 </h1>
-                <p className="text-muted-foreground text-sm mt-1">
+                <p className="text-white/60 text-sm mt-1">
                   {selectedConfig
                     ? `当前聚焦: ${selectedConfig.name || selectedConfig.modelId || '未命名模型'}`
                     : '当前显示所有非 GPT 模型的汇总统计'}
@@ -941,24 +946,24 @@ function ModelConfigContent() {
               <div className="mt-8 space-y-5 max-w-4xl">
                 <div className="flex items-center justify-between gap-3 flex-wrap">
                   <div className="space-y-1">
-                    <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                      <BarChart3 className="w-5 h-5 text-indigo-500" />
+                    <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                      <BarChart3 className="w-5 h-5 text-indigo-300" />
                       模型 Token 统计表
                     </h2>
-                    <p className="text-xs text-muted-foreground">按天统计应用内模型的消耗情况</p>
+                    <p className="text-xs text-white/50">按天统计应用内模型的消耗情况</p>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <Button
                       type="button" size="sm" variant="outline"
                       onClick={() => setUsageScope('primary')}
-                      className={`h-8 px-3 border-border text-xs ${usageScope === 'primary' ? 'bg-emerald-500/20 text-foreground border-emerald-400/50' : 'bg-muted/50 text-muted-foreground hover:bg-accent/50'}`}
+                      className={`h-8 px-3 border-white/[0.15] text-xs ${usageScope === 'primary' ? 'bg-emerald-500/25 text-white border-emerald-400/50' : 'bg-white/5 text-white/70 hover:bg-white/10'}`}
                     >
                       主对话链路
                     </Button>
                     <Button
                       type="button" size="sm" variant="outline"
                       onClick={() => setUsageScope('all')}
-                      className={`h-8 px-3 border-border text-xs ${usageScope === 'all' ? 'bg-violet-500/20 text-foreground border-violet-400/50' : 'bg-muted/50 text-muted-foreground hover:bg-accent/50'}`}
+                      className={`h-8 px-3 border-white/[0.15] text-xs ${usageScope === 'all' ? 'bg-amber-500/25 text-white border-amber-400/50' : 'bg-white/5 text-white/70 hover:bg-white/10'}`}
                     >
                       包含Agent总计
                     </Button>
@@ -966,7 +971,7 @@ function ModelConfigContent() {
                       <Button
                         key={days} type="button" size="sm" variant="outline"
                         onClick={() => setUsageDays(days)}
-                        className={`h-8 px-3 border-border text-xs hidden sm:flex ${usageDays === days ? 'bg-indigo-500/20 text-foreground border-indigo-400/50' : 'bg-muted/50 text-muted-foreground hover:bg-accent/50'}`}
+                        className={`h-8 px-3 border-white/[0.15] text-xs hidden sm:flex ${usageDays === days ? 'bg-indigo-500/30 text-white border-indigo-400/50' : 'bg-white/5 text-white/70 hover:bg-white/10'}`}
                       >
                         {days}天
                       </Button>
@@ -977,7 +982,7 @@ function ModelConfigContent() {
                         size="sm"
                         variant="outline"
                         onClick={() => setSelectedModelId(null)}
-                        className="h-8 px-3 border-sky-300/40 bg-sky-500/10 text-foreground text-xs hover:bg-sky-500/20"
+                        className="h-8 px-3 border-sky-300/40 bg-sky-500/20 text-white text-xs hover:bg-sky-500/[0.35]"
                       >
                         查看全部
                       </Button>
@@ -986,45 +991,45 @@ function ModelConfigContent() {
                 </div>
 
                 {usageNote && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-white/50">
                     {usageNote}
                   </p>
                 )}
 
                 {usageError && (
-                  <Alert className="bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-100">
+                  <Alert className="bg-red-500/10 border-red-500/30 text-red-100">
                     <AlertDescription>{usageError}</AlertDescription>
                   </Alert>
                 )}
 
                 {usageLoading && (
-                  <div className="rounded-2xl border border-border bg-muted/50 p-4 text-sm text-muted-foreground flex items-center gap-2">
+                  <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-white/70 flex items-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     正在加载模型 Token 统计...
                   </div>
                 )}
 
                 {!usageLoading && filteredUsageModels.length === 0 && !usageError && (
-                  <div className="text-sm text-muted-foreground bg-muted/50 border border-border rounded-xl px-4 py-3">
+                  <div className="text-sm text-white/[0.55] bg-white/5 border border-white/10 rounded-xl px-4 py-3">
                     暂无模型使用数据。开始与 AI 助手对话以生成统计记录。
                   </div>
                 )}
 
                 {!usageLoading && !usageError && !selectedModelId && filteredUsageModels.length > 0 && (
-                  <div className="rounded-2xl border border-border bg-muted/50 p-4">
-                    <p className="text-foreground font-medium">全部模型汇总（不含 GPT）</p>
+                  <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                    <p className="text-white font-medium">全部模型汇总（不含 GPT）</p>
                     <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                      <div className="rounded-xl bg-muted/50 border border-border px-3 py-2">
-                        <p className="text-xs text-muted-foreground">模型数量</p>
-                        <p className="text-lg text-foreground font-semibold">{filteredUsageModels.length}</p>
+                      <div className="rounded-xl bg-white/5 border border-white/10 px-3 py-2">
+                        <p className="text-xs text-white/[0.55]">模型数量</p>
+                        <p className="text-lg text-indigo-100 font-semibold">{filteredUsageModels.length}</p>
                       </div>
-                      <div className="rounded-xl bg-muted/50 border border-border px-3 py-2">
-                        <p className="text-xs text-muted-foreground">累计 Token</p>
-                        <p className="text-lg text-foreground font-semibold">{formatTokenValue(usageSummary.totalTokens)}</p>
+                      <div className="rounded-xl bg-white/5 border border-white/10 px-3 py-2">
+                        <p className="text-xs text-white/[0.55]">累计 Token</p>
+                        <p className="text-lg text-indigo-100 font-semibold">{formatTokenValue(usageSummary.totalTokens)}</p>
                       </div>
-                      <div className="rounded-xl bg-muted/50 border border-border px-3 py-2">
-                        <p className="text-xs text-muted-foreground">总请求次数</p>
-                        <p className="text-lg text-foreground font-semibold">{usageSummary.totalRequests}</p>
+                      <div className="rounded-xl bg-white/5 border border-white/10 px-3 py-2">
+                        <p className="text-xs text-white/[0.55]">总请求次数</p>
+                        <p className="text-lg text-indigo-100 font-semibold">{usageSummary.totalRequests}</p>
                       </div>
                     </div>
                   </div>
@@ -1041,7 +1046,7 @@ function ModelConfigContent() {
                 )}
 
                 {!usageLoading && !usageError && selectedModelId && !selectedUsageModel && (
-                  <div className="text-sm text-muted-foreground bg-muted/50 border border-border rounded-xl px-4 py-3">
+                  <div className="text-sm text-white/[0.55] bg-white/5 border border-white/10 rounded-xl px-4 py-3">
                     当前选中模型暂无 Token 使用记录。
                   </div>
                 )}
@@ -1055,10 +1060,10 @@ function ModelConfigContent() {
 
               <div className="mt-8 max-w-4xl">
                 {selectedConfig ? (
-                  <div className="rounded-2xl border border-border bg-muted/50 p-5 space-y-4">
+                  <div className="rounded-2xl border border-white/10 bg-black/20 p-5 space-y-4">
                     <div>
-                      <h2 className="text-lg font-semibold text-foreground">Temperature 参数设置</h2>
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <h2 className="text-lg font-semibold text-white">Temperature 参数设置</h2>
+                      <p className="text-xs text-white/50 mt-1">
                         当前模型: {selectedConfig.name || selectedConfig.modelId || '未命名模型'}
                       </p>
                     </div>
@@ -1086,32 +1091,32 @@ function ModelConfigContent() {
                             if (Number.isNaN(nextValue)) return
                             handleTempInput(nextValue)
                           }}
-                          className="w-24"
+                          className="w-24 bg-white/5 border-white/[0.15] text-white"
                           disabled={tempSaving}
                         />
                       </div>
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <div className="flex items-center justify-between text-xs text-white/[0.45]">
                         <span>0.0 更确定/保守</span>
                         <span>2.0 更创意/随机</span>
                       </div>
-                      <p className="text-xs text-muted-foreground">Temperature 改动会自动保存到当前模型。</p>
+                      <p className="text-xs text-white/[0.55]">Temperature 改动会自动保存到当前模型。</p>
                     </div>
 
                     {(tempSaving || tempSuccess || tempError) && (
                       <div className="text-xs">
                         {tempSaving && (
-                          <p className="text-indigo-600 dark:text-indigo-200 flex items-center gap-2">
+                          <p className="text-indigo-200 flex items-center gap-2">
                             <Loader2 className="h-3 w-3 animate-spin" />
                             正在自动保存...
                           </p>
                         )}
-                        {!tempSaving && tempSuccess && <p className="text-emerald-600 dark:text-emerald-200">{tempSuccess}</p>}
-                        {!tempSaving && tempError && <p className="text-red-600 dark:text-red-200">{tempError}</p>}
+                        {!tempSaving && tempSuccess && <p className="text-emerald-200">{tempSuccess}</p>}
+                        {!tempSaving && tempError && <p className="text-red-200">{tempError}</p>}
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div className="text-sm text-muted-foreground bg-muted/50 border border-border rounded-xl px-4 py-3">
+                  <div className="text-sm text-white/[0.55] bg-white/5 border border-white/10 rounded-xl px-4 py-3">
                     选择左侧模型后可设置 Temperature 参数。
                   </div>
                 )}
@@ -1232,10 +1237,11 @@ function ModelConfigContent() {
 export default function ModelConfigPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-background">
+      <div className="min-h-screen relative flex items-center justify-center overflow-hidden">
+        <JustimeBackground blur="xl" />
         <div className="relative z-10 flex flex-col items-center gap-3 animate-pulse">
-          <Bot className="h-10 w-10 text-muted-foreground" />
-          <p className="text-muted-foreground text-sm font-light tracking-widest uppercase">加载中...</p>
+          <Bot className="h-10 w-10 text-white/50" />
+          <p className="text-white/60 text-sm font-light tracking-widest uppercase">加载中...</p>
         </div>
       </div>
     }>

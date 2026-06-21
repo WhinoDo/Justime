@@ -6,6 +6,10 @@ import { useAuth } from '@/hooks/useAuth'
 import { Loader2, Upload, Trash2, RefreshCw, FileText, ArrowLeft, Database, Eye, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
 import { useToast } from '@/components/ui/use-toast'
+import { JustimeBackground } from '@/components/ui/JustimeBackground'
+import { JustimePageShell } from '@/components/layout/JustimePageShell'
+import { useDesktopRuntime } from '@/hooks/useDesktopRuntime'
+import { cn } from '@/lib/utils'
 import {
     Dialog,
     DialogContent,
@@ -23,7 +27,7 @@ const MarkdownPreview = dynamic(
         ssr: false,
         loading: () => (
             <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
             </div>
         )
     }
@@ -53,10 +57,10 @@ export default function KnowledgeBasePage() {
     const [files, setFiles] = useState<DocumentFile[]>([])
     const [loading, setLoading] = useState(true)
     const [uploading, setUploading] = useState(false)
-    const [syncing, setSyncing] = useState(false)
-    const [syncTaskId, setSyncTaskId] = useState<string | null>(null)
-    const [syncStatus, setSyncStatus] = useState<{ status: string; message?: string; error?: string } | null>(null)
-    const [showSyncStatus, setShowSyncStatus] = useState(false)
+    const [rebuilding, setRebuilding] = useState(false)
+    const [rebuildTaskId, setRebuildTaskId] = useState<string | null>(null)
+    const [rebuildStatus, setRebuildStatus] = useState<{ status: string; message?: string; error?: string } | null>(null)
+    const [showRebuildStatus, setShowRebuildStatus] = useState(false)
     const [previewState, setPreviewState] = useState<PreviewState>({
         open: false,
         fileName: '',
@@ -174,59 +178,33 @@ export default function KnowledgeBasePage() {
         }
     }
 
-    const handleSync = async () => {
-        try {
-            setSyncing(true)
-            setSyncStatus(null)
-            const res = await fetch(API_ENDPOINTS.KNOWLEDGE.REBUILD, {
-                method: 'POST',
-            })
-            const data = await res.json()
-            // 检测云服务不可用降级状态（HTTP 503 或结构化 unavailable）
-            if (data.status === 'unavailable' || res.status === 503) {
-                setSyncStatus({ status: 'unavailable', message: data.message || '知识库云服务未配置/暂不可用' })
-                setShowSyncStatus(true)
-                return
-            }
-            if (data.success) {
-                setSyncTaskId(data.task_id)
-                setSyncStatus({ status: 'pending', message: '云端同步任务已启动' })
-                setShowSyncStatus(true)
-                toast({
-                    title: '同步已启动',
-                    description: data.message || '云端同步任务已启动',
-                })
-            } else {
-                throw new Error(data.error)
-            }
-        } catch (error) {
-            console.error('Sync failed:', error)
-            toast({
-                title: '同步失败',
-                description: '无法同步到云端知识库',
-                variant: 'destructive',
-            })
-        } finally {
-            setSyncing(false)
-        }
+    const handleRebuild = async () => {
+        setRebuildTaskId(null)
+        setRebuildStatus({ status: 'removed', message: '知识库索引功能已移除，无需重建索引。' })
+        setShowRebuildStatus(true)
+        toast({
+            title: '索引功能已移除',
+            description: '文档上传和预览仍可使用，索引重建已关闭。',
+        })
     }
 
     useEffect(() => {
-        if (!syncTaskId || !showSyncStatus) return
+        if (!rebuildTaskId || !showRebuildStatus) return
         const pollInterval = setInterval(async () => {
             try {
-                const res = await fetch(API_ENDPOINTS.KNOWLEDGE.REBUILD_STATUS(syncTaskId))
+                const res = await fetch(API_ENDPOINTS.KNOWLEDGE.REBUILD_STATUS(rebuildTaskId))
                 const data = await res.json()
-                const status = data.status || (data.success ? 'running' : 'failed')
-                setSyncStatus({
-                    status,
-                    message: data.message,
-                    error: data.error,
-                })
-                if (status === 'completed' || status === 'failed' || status === 'unavailable') {
-                    clearInterval(pollInterval)
-                    if (status === 'completed') {
-                        toast({ title: '云端同步完成', description: data.message })
+                if (data.success) {
+                    setRebuildStatus({
+                        status: data.status,
+                        message: data.message,
+                        error: data.error,
+                    })
+                    if (data.status === 'completed' || data.status === 'failed') {
+                        clearInterval(pollInterval)
+                        if (data.status === 'completed') {
+                            toast({ title: '索引重建完成', description: data.message })
+                        }
                     }
                 }
             } catch {
@@ -234,7 +212,7 @@ export default function KnowledgeBasePage() {
             }
         }, 3000)
         return () => clearInterval(pollInterval)
-    }, [syncTaskId, showSyncStatus])
+    }, [rebuildTaskId, showRebuildStatus])
 
     const closePreview = () => {
         setPreviewState((prev) => ({
@@ -312,10 +290,10 @@ export default function KnowledgeBasePage() {
 
     if (authLoading) {
         return (
-            <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-background">
-                <div className="relative z-10 flex flex-col items-center gap-3">
-                    <Database className="h-10 w-10 text-muted-foreground animate-pulse" />
-                    <p className="text-muted-foreground text-sm font-light tracking-widest uppercase">Loading Knowledge Base</p>
+            <JustimePageShell fullHeight variant={isDesktop ? "desktop" : "immersive"} blur={isDesktop ? "none" : "xl"} opacity={isDesktop ? 0 : 0.45} contentClassName="flex items-center justify-center">
+                <div className={isDesktop ? "rounded-2xl border border-violet-200/[0.45] bg-white/[0.68] px-6 py-5 text-center shadow-[0_24px_80px_rgba(112,77,171,0.14)] backdrop-blur-2xl" : "relative z-10 flex flex-col items-center gap-3"}>
+                    <Database className={cn("h-10 w-10 animate-pulse", isDesktop ? "text-violet-500" : "text-white/50")} />
+                    <p className={cn("text-sm font-light tracking-widest uppercase", isDesktop ? "text-[#8b7aa8]" : "text-white/60")}>Loading Knowledge Base</p>
                 </div>
             </JustimePageShell>
         )
@@ -323,21 +301,32 @@ export default function KnowledgeBasePage() {
 
     if (!isAuthenticated && !authLoading) {
         return (
-            <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-background">
-                <div className="relative z-10 w-full max-w-md mx-auto text-center space-y-6 p-8 bg-card/80 backdrop-blur-2xl border border-border rounded-3xl shadow-2xl">
+            <JustimePageShell fullHeight variant={isDesktop ? "desktop" : "immersive"} blur={isDesktop ? "none" : "lg"} opacity={isDesktop ? 0 : 0.6} contentClassName="flex items-center justify-center">
+                <div className={cn(
+                    "w-full max-w-md mx-auto text-center space-y-6 p-8",
+                    isDesktop
+                        ? "bg-white/70 border border-violet-200/[0.45] rounded-3xl shadow-[0_24px_80px_rgba(112,77,171,0.12)] text-[#171421] backdrop-blur-2xl"
+                        : "bg-white/10 backdrop-blur-2xl border border-white/20 rounded-3xl shadow-2xl text-white"
+                )}>
                     <div className="space-y-4">
-                        <div className="h-20 w-20 mx-auto rounded-full bg-indigo-500/10 flex items-center justify-center ring-1 ring-indigo-500/40">
-                            <Database className="h-10 w-10 text-indigo-500 dark:text-indigo-300" />
+                        <div className={cn(
+                            "h-20 w-20 mx-auto rounded-full flex items-center justify-center ring-1",
+                            isDesktop ? "bg-violet-100 ring-violet-200" : "bg-indigo-500/20 ring-indigo-500/40"
+                        )}>
+                            <Database className={cn("h-10 w-10", isDesktop ? "text-violet-600" : "text-indigo-300")} />
                         </div>
-                        <h2 className="text-xl font-bold text-foreground">Login Required</h2>
-                        <p className="text-muted-foreground">Please login to manage your knowledge base.</p>
+                        <h2 className="text-xl font-bold">Login Required</h2>
+                        <p className={isDesktop ? "text-[#6d6680]" : "text-white/70"}>Please login to manage your knowledge base.</p>
                     </div>
                     <div className="space-y-3">
                         <Link href="/auth?mode=login&redirect=/knowledge" className="block">
-                            <Button className="w-full h-11 bg-foreground text-background border-0 hover:bg-foreground/90 font-medium rounded-xl">Login Now</Button>
+                            <Button className={cn(
+                                "w-full h-11 border-0 font-medium rounded-xl",
+                                isDesktop ? "bg-violet-600 text-white hover:bg-violet-500 shadow-sm" : "bg-white text-gray-900 hover:bg-white/90"
+                            )}>Login Now</Button>
                         </Link>
                         <Link href="/dashboard" className="block">
-                            <Button variant="ghost" className="w-full text-muted-foreground hover:text-foreground hover:bg-accent/50">Back to Dashboard</Button>
+                            <Button variant="ghost" className={isDesktop ? "w-full text-[#6d6680] hover:text-[#171421] hover:bg-violet-50/50" : "w-full text-white/50 hover:text-white hover:bg-white/5"}>Back to Dashboard</Button>
                         </Link>
                     </div>
                 </div>
@@ -593,7 +582,8 @@ export default function KnowledgeBasePage() {
     }
 
     return (
-        <div className="min-h-screen relative overflow-hidden font-sans bg-background">
+        <div className="min-h-screen relative overflow-hidden font-sans">
+            <JustimeBackground blur="lg" opacity={0.5} />
 
             <div className="relative z-10 container mx-auto p-4 md:p-8 max-w-5xl animate-in fade-in zoom-in-95 duration-700">
                 <div className="space-y-6">
@@ -601,29 +591,29 @@ export default function KnowledgeBasePage() {
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                             <Link href="/dashboard">
-                                <Button variant="ghost" size="icon" className="text-muted-foreground hover:bg-accent hover:text-foreground rounded-full">
+                                <Button variant="ghost" size="icon" className="text-white/70 hover:bg-white/10 hover:text-white rounded-full">
                                     <ArrowLeft className="h-5 w-5" />
                                 </Button>
                             </Link>
                             <div>
-                                <h1 className="text-3xl font-bold text-foreground flex items-center gap-3 drop-shadow-md">
-                                    <Database className="h-8 w-8 text-indigo-500" />
+                                <h1 className="text-3xl font-bold text-white flex items-center gap-3 drop-shadow-md">
+                                    <Database className="h-8 w-8 text-indigo-300" />
                                     Knowledge Base
                                 </h1>
-                                <p className="text-sm text-muted-foreground mt-1 font-light tracking-wide">
-                                    管理云端知识库文档，RAG 实时同步
+                                <p className="text-sm text-white/60 mt-1 font-light tracking-wide">
+                                    Manage uploaded documents. Indexing and retrieval have been removed.
                                 </p>
                             </div>
                         </div>
                         <div className="flex gap-2">
                             <Button
                                 variant="outline"
-                                onClick={handleSync}
-                                disabled={syncing}
-                                className="gap-2 bg-muted/50 border-border text-foreground hover:bg-accent/50 backdrop-blur-sm"
+                                onClick={handleRebuild}
+                                disabled={rebuilding}
+                                className="gap-2 bg-white/5 border-white/10 text-white hover:bg-white/10 backdrop-blur-sm"
                             >
-                                <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-                                {syncing ? '同步中...' : '同步到云端知识库'}
+                                <RefreshCw className={`h-4 w-4 ${rebuilding ? 'animate-spin' : ''}`} />
+                                Index Removed
                             </Button>
                         </div>
                     </div>
@@ -631,12 +621,12 @@ export default function KnowledgeBasePage() {
                     <div className="grid gap-6 md:grid-cols-3">
                         {/* Upload Area */}
                         <div className="md:col-span-1">
-                            <div className="bg-card/80 backdrop-blur-xl border border-border rounded-3xl p-6 shadow-xl h-full flex flex-col">
-                                <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-                                    <Upload className="h-5 w-5 text-blue-500" />
+                            <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-6 shadow-xl h-full flex flex-col">
+                                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                                    <Upload className="h-5 w-5 text-blue-300" />
                                     Upload
                                 </h3>
-                                <div className="flex-1 border-2 border-dashed border-border rounded-2xl p-6 text-center hover:bg-accent/30 transition-all cursor-pointer relative flex flex-col items-center justify-center group">
+                                <div className="flex-1 border-2 border-dashed border-white/20 rounded-2xl p-6 text-center hover:bg-white/5 transition-all cursor-pointer relative flex flex-col items-center justify-center group">
                                     <input
                                         type="file"
                                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
@@ -644,19 +634,19 @@ export default function KnowledgeBasePage() {
                                         disabled={uploading}
                                         accept=".pdf,.txt,.md,.markdown,.json,.csv,.yaml,.yml,.xml,.html,.htm,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.rtf,.odt,.ods,.odp,.py,.js,.ts,.tsx,.jsx,.java,.c,.cpp,.go,.rs,.log,.ini"
                                     />
-                                    <div className="h-14 w-14 rounded-full bg-blue-500/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                    <div className="h-14 w-14 rounded-full bg-blue-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                                         {uploading ? (
-                                            <Loader2 className="h-7 w-7 text-blue-500 animate-spin" />
+                                            <Loader2 className="h-7 w-7 text-blue-300 animate-spin" />
                                         ) : (
-                                            <Upload className="h-7 w-7 text-blue-500" />
+                                            <Upload className="h-7 w-7 text-blue-300" />
                                         )}
                                     </div>
                                     <div className="space-y-1">
-                                        <p className="font-medium text-sm text-foreground/90">
+                                        <p className="font-medium text-sm text-white/90">
                                             {uploading ? 'Uploading...' : 'Click or Drag files'}
                                         </p>
-                                        <p className="text-xs text-muted-foreground">
-                                            PDF, TXT, MD, DOCX, XLSX, CSV, JSON, YAML, PPTX...
+                                        <p className="text-xs text-white/50">
+                                            PDF, TXT, MD, DOCX, XLSX, CSV, JSON, YAML...
                                         </p>
                                     </div>
                                 </div>
@@ -665,21 +655,21 @@ export default function KnowledgeBasePage() {
 
                         {/* File List */}
                         <div className="md:col-span-2">
-                            <div className="bg-card/80 backdrop-blur-xl border border-border rounded-3xl p-6 shadow-xl min-h-[400px]">
-                                <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center justify-between">
+                            <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-6 shadow-xl min-h-[400px]">
+                                <h3 className="text-lg font-semibold text-white mb-4 flex items-center justify-between">
                                     <div className="flex items-center gap-2">
-                                        <FileText className="h-5 w-5 text-emerald-500" />
+                                        <FileText className="h-5 w-5 text-emerald-300" />
                                         Documents ({files.length})
                                     </div>
                                 </h3>
 
                                 {loading ? (
                                     <div className="flex justify-center py-20">
-                                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                                        <Loader2 className="h-8 w-8 animate-spin text-white/30" />
                                     </div>
                                 ) : files.length === 0 ? (
-                                    <div className="text-center py-20 text-muted-foreground flex flex-col items-center">
-                                        <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                                    <div className="text-center py-20 text-white/30 flex flex-col items-center">
+                                        <div className="h-16 w-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
                                             <FileText className="h-8 w-8 opacity-50" />
                                         </div>
                                         <p>No documents found.</p>
@@ -690,17 +680,17 @@ export default function KnowledgeBasePage() {
                                         {files.map((file) => (
                                             <div
                                                 key={file.name}
-                                                className="group flex items-center justify-between p-3 bg-muted/30 hover:bg-accent/50 border border-border hover:border-border transition-all rounded-xl"
+                                                className="group flex items-center justify-between p-3 bg-black/20 hover:bg-white/10 border border-white/5 hover:border-white/10 rounded-xl transition-all"
                                             >
                                                 <div className="flex items-center gap-3 min-w-0">
-                                                    <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 text-muted-foreground">
+                                                    <div className="h-10 w-10 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0 text-white/70">
                                                         <FileText className="h-5 w-5" />
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <p className="font-medium text-sm text-foreground truncate mr-2" title={file.name}>
+                                                        <p className="font-medium text-sm text-white/90 truncate mr-2" title={file.name}>
                                                             {file.name}
                                                         </p>
-                                                        <p className="text-xs text-muted-foreground font-mono">
+                                                        <p className="text-xs text-white/40 font-mono">
                                                             {formatSize(file.size)} · {formatDate(file.modified)}
                                                         </p>
                                                     </div>
@@ -709,7 +699,7 @@ export default function KnowledgeBasePage() {
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        className="text-muted-foreground hover:text-sky-500 hover:bg-sky-500/10 rounded-lg"
+                                                        className="text-white/30 hover:text-sky-300 hover:bg-sky-500/20 rounded-lg"
                                                         onClick={() => openPreview(file.name)}
                                                         title="预览文档"
                                                     >
@@ -718,7 +708,7 @@ export default function KnowledgeBasePage() {
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        className="text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 rounded-lg"
+                                                        className="text-white/30 hover:text-rose-300 hover:bg-rose-500/20 rounded-lg"
                                                         onClick={() => handleDelete(file.name)}
                                                         title="删除文档"
                                                     >
@@ -736,38 +726,38 @@ export default function KnowledgeBasePage() {
             </div>
 
             <Dialog open={previewState.open} onOpenChange={(open) => !open && closePreview()}>
-                <DialogContent className="max-w-4xl max-h-[85vh] bg-card border-border text-foreground backdrop-blur-xl">
+                <DialogContent className="max-w-4xl max-h-[85vh] bg-slate-950/95 border-white/20 text-white backdrop-blur-xl">
                     <DialogHeader>
                         <DialogTitle className="truncate pr-10">文档预览: {previewState.fileName}</DialogTitle>
-                        <DialogDescription className="text-muted-foreground">
+                        <DialogDescription className="text-white/60">
                             {previewState.isPdf ? '原生 PDF 预览（保留图片与排版）' : '在线查看文档解析内容（来自知识库预览接口）'}
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="h-[62vh] rounded-xl border border-border bg-muted/30">
+                    <div className="h-[62vh] rounded-xl border border-white/10 bg-black/20">
                         {previewState.isPdf ? (
                             <iframe
                                 key={previewState.rawUrl}
                                 src={previewState.rawUrl}
-                                className="h-full w-full rounded-xl border-0 bg-card"
+                                className="h-full w-full rounded-xl border-0 bg-white"
                                 title={`PDF Preview: ${previewState.fileName}`}
                             />
                         ) : (
                             <ScrollArea className="h-full w-full p-4">
                                 {previewState.loading ? (
-                                    <div className="h-full min-h-[240px] flex items-center justify-center text-muted-foreground text-sm">
+                                    <div className="h-full min-h-[240px] flex items-center justify-center text-white/70 text-sm">
                                         <Loader2 className="h-4 w-4 animate-spin mr-2" />
                                         正在加载文档内容...
                                     </div>
                                 ) : previewState.error ? (
-                                    <div className="rounded-lg border border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-200 p-4 text-sm flex gap-2">
+                                    <div className="rounded-lg border border-red-500/30 bg-red-500/10 text-red-200 p-4 text-sm flex gap-2">
                                         <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
                                         <span>{previewState.error}</span>
                                     </div>
                                 ) : isMarkdownFile(previewState.fileName) ? (
                                     <MarkdownPreview content={previewState.content || '暂无内容'} />
                                 ) : (
-                                    <pre className="whitespace-pre-wrap break-words text-sm leading-6 text-foreground font-mono">
+                                    <pre className="whitespace-pre-wrap break-words text-sm leading-6 text-white/90 font-mono">
                                         {previewState.content || '暂无内容'}
                                     </pre>
                                 )}
@@ -776,64 +766,58 @@ export default function KnowledgeBasePage() {
                     </div>
 
                     {!previewState.isPdf && previewState.truncated && !previewState.loading && !previewState.error && (
-                        <p className="text-xs text-violet-600 dark:text-violet-300">
+                        <p className="text-xs text-amber-300/90">
                             文档较长，当前仅展示前 {previewState.maxChars.toLocaleString()} 字内容（原文 {previewState.charCount.toLocaleString()} 字）。
                         </p>
                     )}
                 </DialogContent>
             </Dialog>
 
-            <Dialog open={showSyncStatus} onOpenChange={setShowSyncStatus}>
-                <DialogContent className="max-w-md bg-card border-border text-foreground backdrop-blur-xl">
+            <Dialog open={showRebuildStatus} onOpenChange={setShowRebuildStatus}>
+                <DialogContent className="max-w-md bg-slate-950/95 border-white/20 text-white backdrop-blur-xl">
                     <DialogHeader>
-                        <DialogTitle>云端同步状态</DialogTitle>
-                        <DialogDescription className="text-muted-foreground">
-                            查看云端知识库同步任务的实时进度
+                        <DialogTitle>索引重建状态</DialogTitle>
+                        <DialogDescription className="text-white/60">
+                            知识库索引与检索功能已移除
                         </DialogDescription>
                     </DialogHeader>
                     <div className="py-4">
-                        {syncStatus ? (
+                        {rebuildStatus ? (
                             <div className="space-y-3">
                                 <div className="flex items-center gap-3">
-                                    {syncStatus.status === 'completed' ? (
-                                        <div className="h-8 w-8 rounded-full bg-green-500/20 flex items-center justify-center">
-                                            <svg className="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                                        </div>
-                                    ) : syncStatus.status === 'failed' ? (
-                                        <div className="h-8 w-8 rounded-full bg-red-500/20 flex items-center justify-center">
-                                            <AlertTriangle className="h-5 w-5 text-red-500" />
-                                        </div>
-                                    ) : syncStatus.status === 'unavailable' ? (
+                                    {rebuildStatus.status === 'disabled' ? (
                                         <div className="h-8 w-8 rounded-full bg-amber-500/20 flex items-center justify-center">
-                                            <AlertTriangle className="h-5 w-5 text-amber-400" />
+                                            <AlertTriangle className="h-5 w-5 text-amber-300" />
+                                        </div>
+                                    ) : rebuildStatus.status === 'completed' ? (
+                                        <div className="h-8 w-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                                            <svg className="h-5 w-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                        </div>
+                                    ) : rebuildStatus.status === 'failed' ? (
+                                        <div className="h-8 w-8 rounded-full bg-red-500/20 flex items-center justify-center">
+                                            <AlertTriangle className="h-5 w-5 text-red-400" />
                                         </div>
                                     ) : (
-                                        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+                                        <Loader2 className="h-8 w-8 animate-spin text-blue-300" />
                                     )}
                                     <div>
-                                        <p className="font-medium text-foreground">
-                                            {syncStatus.status === 'completed' ? '已完成' : syncStatus.status === 'failed' ? '失败' : syncStatus.status === 'unavailable' ? '云服务不可用' : syncStatus.status === 'running' ? '同步中' : '等待中'}
+                                        <p className="font-medium text-white">
+                                            {rebuildStatus.status === 'disabled' ? '已停用' : rebuildStatus.status === 'completed' ? '已完成' : rebuildStatus.status === 'failed' ? '失败' : rebuildStatus.status === 'running' ? '进行中' : '等待中'}
                                         </p>
-                                        {syncStatus.message && (
-                                            <p className="text-sm text-muted-foreground">{syncStatus.message}</p>
+                                        {rebuildStatus.message && (
+                                            <p className="text-sm text-white/60">{rebuildStatus.message}</p>
                                         )}
                                     </div>
                                 </div>
-                                {syncStatus.error && (
-                                    <div className="rounded-lg border border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-200 p-3 text-sm">
-                                        {syncStatus.error}
-                                    </div>
-                                )}
-                                {syncStatus.status === 'unavailable' && (
-                                    <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-200 p-3 text-sm flex gap-2">
-                                        <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-                                        <span>知识库云服务未配置或暂不可用，请联系管理员配置云端 RAG 服务后重试。</span>
+                                {rebuildStatus.error && (
+                                    <div className="rounded-lg border border-red-500/30 bg-red-500/10 text-red-200 p-3 text-sm">
+                                        {rebuildStatus.error}
                                     </div>
                                 )}
                             </div>
                         ) : (
                             <div className="flex items-center justify-center py-4">
-                                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                                <Loader2 className="h-6 w-6 animate-spin text-white/50" />
                             </div>
                         )}
                     </div>

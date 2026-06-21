@@ -234,28 +234,28 @@ export default function ProfilePage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-background">
-                <div className="relative z-10 flex flex-col items-center gap-3">
-                    <div className="h-10 w-10 border-2 border-border border-t-foreground rounded-full animate-spin" />
-                    <p className="text-muted-foreground text-sm font-light tracking-widest uppercase">Loading Profile</p>
+            <JustimePageShell fullHeight variant={isDesktop ? "desktop" : "immersive"} blur={isDesktop ? "none" : "xl"} opacity={isDesktop ? 0 : 0.45} contentClassName="flex items-center justify-center">
+                <div className={isDesktop ? "rounded-2xl border border-violet-200/[0.45] bg-white/[0.68] px-6 py-5 text-center shadow-[0_24px_80px_rgba(112,77,171,0.14)] backdrop-blur-2xl" : "relative z-10 flex flex-col items-center gap-3 animate-pulse"}>
+                    <Loader2 className={cn("h-8 w-8 animate-spin mx-auto mb-4", isDesktop ? "text-violet-500" : "text-white/50")} />
+                    <p className={cn("text-sm font-light tracking-widest uppercase", isDesktop ? "text-[#8b7aa8]" : "text-white/60")}>Loading Profile</p>
                 </div>
-            </div>
+            </JustimePageShell>
         )
     }
 
     if (!isAuthenticated || !user) {
         return (
-            <div className="min-h-screen relative flex items-center justify-center p-6 overflow-hidden bg-background">
-                <div className="relative z-10 w-full max-w-md bg-card/80 backdrop-blur-xl border border-border p-8 rounded-3xl text-center space-y-6 shadow-2xl">
-                    <div className="h-20 w-20 bg-muted rounded-full mx-auto flex items-center justify-center">
-                        <User className="h-10 w-10 text-muted-foreground" />
+            <JustimePageShell fullHeight variant={isDesktop ? "desktop" : "immersive"} blur={isDesktop ? "none" : "lg"} opacity={isDesktop ? 0 : 0.6} contentClassName="flex items-center justify-center">
+                <div className={isDesktop ? "w-full max-w-md mx-auto text-center space-y-6 p-8 bg-white/[0.68] border border-violet-200/[0.45] rounded-3xl shadow-[0_24px_80px_rgba(112,77,171,0.14)] backdrop-blur-2xl text-[#171421]" : "relative z-10 w-full max-w-md bg-white/10 backdrop-blur-xl border border-white/20 p-8 rounded-3xl text-center space-y-6 shadow-2xl"}>
+                    <div className={cn("h-20 w-20 rounded-full mx-auto flex items-center justify-center", isDesktop ? "bg-violet-100 border border-violet-200/50 text-violet-600" : "bg-white/10 text-white/70")}>
+                        <User className="h-10 w-10" />
                     </div>
                     <div className="space-y-2">
-                        <h2 className="text-2xl font-bold text-foreground">未登录</h2>
-                        <p className="text-muted-foreground">请先登录以管理您的数字身份</p>
+                        <h2 className={cn("text-2xl font-bold", isDesktop ? "text-[#171421]" : "text-white")}>未登录</h2>
+                        <p className={isDesktop ? "text-[#6d6680]" : "text-white/60"}>请先登录以管理您的数字身份</p>
                     </div>
                     <Link href="/auth?mode=login" className="block">
-                        <Button className="w-full bg-muted hover:bg-accent text-foreground border-0 backdrop-blur-md transition-all">
+                        <Button className={cn("w-full border-0 font-medium rounded-xl shadow-sm", isDesktop ? "bg-violet-600 hover:bg-violet-500 text-white" : "bg-white/20 hover:bg-white/30 text-white backdrop-blur-md transition-all")}>
                             前往登录
                         </Button>
                     </Link>
@@ -636,7 +636,18 @@ export default function ProfilePage() {
     }
 
     return (
-        <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden font-sans bg-background">
+        <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden font-sans">
+            {/* Full Screen Background */}
+            <div className="absolute inset-0 z-0">
+                <img
+                    src="/images/justime_login_bg.png"
+                    alt="Justime Background"
+                    className="w-full h-full object-cover scale-105"
+                />
+                {/* Overlay for better text contrast */}
+                <div className="absolute inset-0 bg-black/40 backdrop-blur-[8px]" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
+            </div>
 
             {/* Main Glass Container - Identity Hub */}
             <div className="relative z-10 w-full max-w-2xl animate-in fade-in zoom-in-95 duration-700">
@@ -644,14 +655,14 @@ export default function ProfilePage() {
                 {/* Navigation Header */}
                 <div className="flex items-center justify-between mb-6 px-2">
                     <Link href="/dashboard">
-                        <Button variant="ghost" className="text-muted-foreground hover:text-foreground hover:bg-accent transition-colors gap-2 pl-2">
+                        <Button variant="ghost" className="text-white/70 hover:text-white hover:bg-white/10 transition-colors gap-2 pl-2">
                             <ChevronRight className="h-4 w-4 rotate-180" />
                             <span className="tracking-wide">Back to Dashboard</span>
                         </Button>
                     </Link>
                 </div>
 
-                <div className="bg-card/80 backdrop-blur-2xl border border-border shadow-2xl rounded-[2.5rem] overflow-hidden">
+                <div className="bg-white/10 backdrop-blur-2xl border border-white/20 shadow-2xl rounded-[2.5rem] overflow-hidden">
 
                     {/* Hero Section */}
                     <div className="relative pt-12 pb-8 px-8 flex flex-col items-center text-center">
@@ -661,10 +672,10 @@ export default function ProfilePage() {
                         {/* Avatar Ring */}
                         <div className="relative group">
                             <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 rounded-full opacity-75 group-hover:opacity-100 blur transition duration-500 animate-tilt"></div>
-                            <div className="relative h-28 w-28 rounded-full p-1 bg-muted backdrop-blur-md ring-1 ring-border">
-                                <div className="h-full w-full rounded-full overflow-hidden bg-muted flex items-center justify-center relative">
+                            <div className="relative h-28 w-28 rounded-full p-1 bg-black/20 backdrop-blur-md ring-1 ring-white/30">
+                                <div className="h-full w-full rounded-full overflow-hidden bg-white/10 flex items-center justify-center relative">
                                     {/* Fallback Initials */}
-                                    <span className="text-3xl font-bold text-foreground/80 tracking-widest">{initials}</span>
+                                    <span className="text-3xl font-bold text-white/80 tracking-widest">{initials}</span>
                                     {/* Image Overlay (if available) */}
                                     <img
                                         src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`}
@@ -673,20 +684,20 @@ export default function ProfilePage() {
                                     />
                                 </div>
                             </div>
-                            <div className="absolute bottom-1 right-1 h-6 w-6 bg-emerald-500 rounded-full border-2 border-card shadow-lg flex items-center justify-center" title="Active">
+                            <div className="absolute bottom-1 right-1 h-6 w-6 bg-emerald-500 rounded-full border-2 border-white/10 shadow-lg flex items-center justify-center" title="Active">
                                 <Sparkles className="h-3 w-3 text-emerald-100" />
                             </div>
                         </div>
 
                         {/* Name & Role */}
                         <div className="mt-5 space-y-1">
-                            <h1 className="text-3xl font-bold text-foreground tracking-tight drop-shadow-md">
+                            <h1 className="text-3xl font-bold text-white tracking-tight drop-shadow-md">
                                 {user.displayName || user.username}
                             </h1>
-                            <div className="flex items-center justify-center gap-2 text-muted-foreground text-sm">
-                                <span className="font-mono tracking-wider dark:text-muted-foreground">@{user.username}</span>
-                                <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
-                                <Badge variant="outline" className={`border-0 backdrop-blur-md bg-muted px-2 py-0.5 text-xs font-medium tracking-wide ${isAdmin ? 'text-purple-500 ring-1 ring-purple-500/30 dark:text-purple-300' : 'text-blue-500 ring-1 ring-blue-500/30 dark:text-blue-300'}`}>
+                            <div className="flex items-center justify-center gap-2 text-white/60 text-sm">
+                                <span className="font-mono tracking-wider">@{user.username}</span>
+                                <span className="w-1 h-1 rounded-full bg-white/30" />
+                                <Badge variant="outline" className={`border-0 backdrop-blur-md bg-white/10 px-2 py-0.5 text-xs font-medium tracking-wide ${isAdmin ? 'text-purple-200 ring-1 ring-purple-500/30' : 'text-blue-200 ring-1 ring-blue-500/30'}`}>
                                     {isAdmin ? 'ADMINISTRATOR' : 'MEMBER'}
                                 </Badge>
                             </div>
@@ -694,17 +705,17 @@ export default function ProfilePage() {
 
                         {/* Stats / Metadata Grid */}
                         <div className="grid grid-cols-2 gap-3 mt-8 w-full max-w-sm">
-                            <div className="bg-muted/50 border border-border rounded-2xl p-3 flex flex-col items-center transition-colors hover:bg-accent/50">
-                                <span className="text-muted-foreground text-xs uppercase tracking-widest mb-1">Joined</span>
-                                <div className="flex items-center gap-1.5 text-foreground/90">
-                                    <Clock className="h-3.5 w-3.5 text-blue-500" />
+                            <div className="bg-white/5 border border-white/10 rounded-2xl p-3 flex flex-col items-center transition-colors hover:bg-white/10">
+                                <span className="text-white/40 text-xs uppercase tracking-widest mb-1">Joined</span>
+                                <div className="flex items-center gap-1.5 text-white/90">
+                                    <Clock className="h-3.5 w-3.5 text-blue-400" />
                                     <span className="font-medium text-sm">{new Date().toLocaleDateString()}</span>
                                 </div>
                             </div>
-                            <div className="bg-muted/50 border border-border rounded-2xl p-3 flex flex-col items-center transition-colors hover:bg-accent/50">
-                                <span className="text-muted-foreground text-xs uppercase tracking-widest mb-1">Status</span>
-                                <div className="flex items-center gap-1.5 text-foreground/90">
-                                    <Shield className="h-3.5 w-3.5 text-emerald-500" />
+                            <div className="bg-white/5 border border-white/10 rounded-2xl p-3 flex flex-col items-center transition-colors hover:bg-white/10">
+                                <span className="text-white/40 text-xs uppercase tracking-widest mb-1">Status</span>
+                                <div className="flex items-center gap-1.5 text-white/90">
+                                    <Shield className="h-3.5 w-3.5 text-emerald-400" />
                                     <span className="font-medium text-sm">Protected</span>
                                 </div>
                             </div>
@@ -715,15 +726,15 @@ export default function ProfilePage() {
                     <div className="px-6 pb-8 space-y-4">
 
                         {/* Account Details */}
-                        <div className="bg-muted/50 rounded-2xl p-1">
-                            <div className="flex items-center justify-between p-4 rounded-xl hover:bg-accent/50 transition-colors group">
+                        <div className="bg-black/20 rounded-2xl p-1">
+                            <div className="flex items-center justify-between p-4 rounded-xl hover:bg-white/5 transition-colors group">
                                 <div className="flex items-center gap-4">
-                                    <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground group-hover:text-blue-500 group-hover:bg-blue-500/10 transition-all">
+                                    <div className="h-10 w-10 rounded-full bg-white/5 flex items-center justify-center text-white/60 group-hover:text-blue-300 group-hover:bg-blue-500/20 transition-all">
                                         <Mail className="h-5 w-5" />
                                     </div>
                                     <div className="text-left">
-                                        <p className="text-xs text-muted-foreground uppercase tracking-wider">Email Address</p>
-                                        <p className="text-foreground font-medium">{user.email}</p>
+                                        <p className="text-xs text-white/40 uppercase tracking-wider">Email Address</p>
+                                        <p className="text-white/90 font-medium">{user.email}</p>
                                     </div>
                                 </div>
                             </div>
@@ -795,11 +806,11 @@ export default function ProfilePage() {
                         </div>
 
                         {/* Profile Info */}
-                        <div className="bg-muted/50 rounded-2xl p-4 border border-border space-y-4">
+                        <div className="bg-black/20 rounded-2xl p-4 border border-white/10 space-y-4">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <h3 className="text-foreground font-semibold">个人信息</h3>
-                                    <p className="text-muted-foreground text-xs">设置您的展示名称、联系方式等基本信息</p>
+                                    <h3 className="text-white font-semibold">个人信息</h3>
+                                    <p className="text-white/40 text-xs">设置您的展示名称、联系方式等基本信息</p>
                                 </div>
                             </div>
 
@@ -808,37 +819,37 @@ export default function ProfilePage() {
                                     value={profileForm.displayName}
                                     onChange={(e) => setProfileForm(prev => ({ ...prev, displayName: e.target.value }))}
                                     placeholder="显示名称"
-                                    className="h-10 rounded-xl bg-muted/50 border border-border px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-blue-400/40"
+                                    className="h-10 rounded-xl bg-white/5 border border-white/[0.15] px-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-blue-400/40"
                                 />
                                 <input
                                     value={profileForm.phone}
                                     onChange={(e) => setProfileForm(prev => ({ ...prev, phone: e.target.value }))}
                                     placeholder="手机号码"
-                                    className="h-10 rounded-xl bg-muted/50 border border-border px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-blue-400/40"
+                                    className="h-10 rounded-xl bg-white/5 border border-white/[0.15] px-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-blue-400/40"
                                 />
                                 <input
                                     value={profileForm.location}
                                     onChange={(e) => setProfileForm(prev => ({ ...prev, location: e.target.value }))}
                                     placeholder="所在位置"
-                                    className="h-10 rounded-xl bg-muted/50 border border-border px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-blue-400/40"
+                                    className="h-10 rounded-xl bg-white/5 border border-white/[0.15] px-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-blue-400/40"
                                 />
                                 <input
                                     value={profileForm.website}
                                     onChange={(e) => setProfileForm(prev => ({ ...prev, website: e.target.value }))}
                                     placeholder="个人网站"
-                                    className="h-10 rounded-xl bg-muted/50 border border-border px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-blue-400/40"
+                                    className="h-10 rounded-xl bg-white/5 border border-white/[0.15] px-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-blue-400/40"
                                 />
                                 <input
                                     value={profileForm.department}
                                     onChange={(e) => setProfileForm(prev => ({ ...prev, department: e.target.value }))}
                                     placeholder="部门"
-                                    className="h-10 rounded-xl bg-muted/50 border border-border px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-blue-400/40"
+                                    className="h-10 rounded-xl bg-white/5 border border-white/[0.15] px-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-blue-400/40"
                                 />
                                 <input
                                     value={profileForm.jobTitle}
                                     onChange={(e) => setProfileForm(prev => ({ ...prev, jobTitle: e.target.value }))}
                                     placeholder="职位"
-                                    className="h-10 rounded-xl bg-muted/50 border border-border px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-blue-400/40"
+                                    className="h-10 rounded-xl bg-white/5 border border-white/[0.15] px-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-blue-400/40"
                                 />
                             </div>
 
@@ -846,19 +857,19 @@ export default function ProfilePage() {
                                 value={profileForm.bio}
                                 onChange={(e) => setProfileForm(prev => ({ ...prev, bio: e.target.value }))}
                                 placeholder="个人简介"
-                                className="w-full h-20 rounded-xl bg-muted/50 border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:border-blue-400/40"
+                                className="w-full h-20 rounded-xl bg-white/5 border border-white/[0.15] px-3 py-2 text-sm text-white placeholder:text-white/30 resize-none focus:outline-none focus:border-blue-400/40"
                             />
                         </div>
 
                         {/* Work/Study Habits */}
-                        <div className="bg-muted/50 rounded-2xl p-4 border border-border space-y-4">
+                        <div className="bg-black/20 rounded-2xl p-4 border border-white/10 space-y-4">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <h3 className="text-foreground font-semibold">工作与学习习惯</h3>
-                                    <p className="text-muted-foreground text-xs">模型会在任务安排和拆解时参考这些偏好</p>
+                                    <h3 className="text-white font-semibold">工作与学习习惯</h3>
+                                    <p className="text-white/40 text-xs">模型会在任务安排和拆解时参考这些偏好</p>
                                 </div>
                                 {isHabitLoading && (
-                                    <span className="text-muted-foreground text-xs">加载中...</span>
+                                    <span className="text-white/50 text-xs">加载中...</span>
                                 )}
                             </div>
 
@@ -867,13 +878,13 @@ export default function ProfilePage() {
                                     value={habitForm.occupation}
                                     onChange={(e) => setHabitForm(prev => ({ ...prev, occupation: e.target.value }))}
                                     placeholder="你的工作角色（如：后端工程师）"
-                                    className="h-10 rounded-xl bg-muted/50 border border-border px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-blue-400/40"
+                                    className="h-10 rounded-xl bg-white/5 border border-white/[0.15] px-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-blue-400/40"
                                 />
                                 <input
                                     value={habitForm.currentStudyFocus}
                                     onChange={(e) => setHabitForm(prev => ({ ...prev, currentStudyFocus: e.target.value }))}
                                     placeholder="当前学习重点（如：算法/英语）"
-                                    className="h-10 rounded-xl bg-muted/50 border border-border px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-blue-400/40"
+                                    className="h-10 rounded-xl bg-white/5 border border-white/[0.15] px-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-blue-400/40"
                                 />
                                 <input
                                     type="number"
@@ -882,7 +893,7 @@ export default function ProfilePage() {
                                     value={habitForm.preferredFocusMinutes}
                                     onChange={(e) => setHabitForm(prev => ({ ...prev, preferredFocusMinutes: Number(e.target.value || 45) }))}
                                     placeholder="偏好专注时长（分钟）"
-                                    className="h-10 rounded-xl bg-muted/50 border border-border px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-blue-400/40"
+                                    className="h-10 rounded-xl bg-white/5 border border-white/[0.15] px-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-blue-400/40"
                                 />
                                 <input
                                     type="number"
@@ -891,7 +902,7 @@ export default function ProfilePage() {
                                     value={habitForm.preferredBreakMinutes}
                                     onChange={(e) => setHabitForm(prev => ({ ...prev, preferredBreakMinutes: Number(e.target.value || 10) }))}
                                     placeholder="偏好休息时长（分钟）"
-                                    className="h-10 rounded-xl bg-muted/50 border border-border px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-blue-400/40"
+                                    className="h-10 rounded-xl bg-white/5 border border-white/[0.15] px-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-blue-400/40"
                                 />
                                 <input
                                     type="number"
@@ -900,13 +911,13 @@ export default function ProfilePage() {
                                     value={habitForm.maxFocusSessionsPerDay}
                                     onChange={(e) => setHabitForm(prev => ({ ...prev, maxFocusSessionsPerDay: Number(e.target.value || 4) }))}
                                     placeholder="每日深度任务上限"
-                                    className="h-10 rounded-xl bg-muted/50 border border-border px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-blue-400/40"
+                                    className="h-10 rounded-xl bg-white/5 border border-white/[0.15] px-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-blue-400/40"
                                 />
                                 <input
                                     value={habitForm.planningPreference}
                                     onChange={(e) => setHabitForm(prev => ({ ...prev, planningPreference: e.target.value }))}
                                     placeholder="计划偏好（如：先难后易）"
-                                    className="h-10 rounded-xl bg-muted/50 border border-border px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-blue-400/40"
+                                    className="h-10 rounded-xl bg-white/5 border border-white/[0.15] px-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-blue-400/40"
                                 />
                             </div>
 
@@ -915,19 +926,19 @@ export default function ProfilePage() {
                                     value={habitForm.highEfficiencyPeriods}
                                     onChange={(e) => setHabitForm(prev => ({ ...prev, highEfficiencyPeriods: e.target.value }))}
                                     placeholder="高效时段（每行一条，如 09:00-11:30）"
-                                    className="h-24 rounded-xl bg-muted/50 border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:border-blue-400/40"
+                                    className="h-24 rounded-xl bg-white/5 border border-white/[0.15] px-3 py-2 text-sm text-white placeholder:text-white/30 resize-none focus:outline-none focus:border-blue-400/40"
                                 />
                                 <textarea
                                     value={habitForm.lowEfficiencyPeriods}
                                     onChange={(e) => setHabitForm(prev => ({ ...prev, lowEfficiencyPeriods: e.target.value }))}
                                     placeholder="低效时段（每行一条）"
-                                    className="h-24 rounded-xl bg-muted/50 border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:border-blue-400/40"
+                                    className="h-24 rounded-xl bg-white/5 border border-white/[0.15] px-3 py-2 text-sm text-white placeholder:text-white/30 resize-none focus:outline-none focus:border-blue-400/40"
                                 />
                                 <textarea
                                     value={habitForm.weeklyUnavailableSlots}
                                     onChange={(e) => setHabitForm(prev => ({ ...prev, weeklyUnavailableSlots: e.target.value }))}
                                     placeholder="不可用时段（如 周三 14:00-17:00）"
-                                    className="h-24 rounded-xl bg-muted/50 border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:border-blue-400/40"
+                                    className="h-24 rounded-xl bg-white/5 border border-white/[0.15] px-3 py-2 text-sm text-white placeholder:text-white/30 resize-none focus:outline-none focus:border-blue-400/40"
                                 />
                             </div>
 
@@ -935,15 +946,15 @@ export default function ProfilePage() {
                                 value={habitForm.notes}
                                 onChange={(e) => setHabitForm(prev => ({ ...prev, notes: e.target.value }))}
                                 placeholder="补充说明（如：午休后30分钟不排高强度任务）"
-                                className="w-full h-20 rounded-xl bg-muted/50 border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:border-blue-400/40"
+                                className="w-full h-20 rounded-xl bg-white/5 border border-white/[0.15] px-3 py-2 text-sm text-white placeholder:text-white/30 resize-none focus:outline-none focus:border-blue-400/40"
                             />
 
                             <div className="flex items-center justify-between">
-                                <span className="text-xs text-muted-foreground">{habitSaveMessage || '保存后自动应用到聊天任务规划'}</span>
+                                <span className="text-xs text-white/40">{habitSaveMessage || '保存后自动应用到聊天任务规划'}</span>
                                 <Button
                                     onClick={handleSaveHabits}
                                     disabled={isHabitSaving || isHabitLoading}
-                                    className="h-10 px-5 bg-blue-500/20 hover:bg-blue-500/30 text-foreground border border-blue-400/30 rounded-xl"
+                                    className="h-10 px-5 bg-blue-500/30 hover:bg-blue-500/40 text-blue-100 border border-blue-400/30 rounded-xl"
                                 >
                                     {isHabitSaving ? '保存中...' : '保存习惯'}
                                 </Button>
@@ -953,33 +964,33 @@ export default function ProfilePage() {
                         {/* Navigation Menu */}
                         <div className="grid gap-3">
                             <Link href="/model-config?from=/profile">
-                                <div className="group flex items-center justify-between p-4 bg-muted/50 border border-border rounded-2xl hover:bg-accent/50 hover:border-border transition-all cursor-pointer">
+                                <div className="group flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 hover:border-white/20 hover:scale-[1.01] transition-all cursor-pointer">
                                     <div className="flex items-center gap-4">
-                                        <div className="h-12 w-12 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-500 dark:text-indigo-300 shadow-inner ring-1 ring-indigo-500/30">
+                                        <div className="h-12 w-12 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-300 shadow-inner ring-1 ring-indigo-500/30">
                                             <Bot className="h-6 w-6" />
                                         </div>
                                         <div>
-                                            <h3 className="text-foreground font-semibold">LLM Configuration</h3>
-                                            <p className="text-muted-foreground text-sm">Model API keys & Agent settings</p>
+                                            <h3 className="text-white font-semibold">LLM Configuration</h3>
+                                            <p className="text-white/40 text-sm">Model API keys & Agent settings</p>
                                         </div>
                                     </div>
-                                    <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                                    <ChevronRight className="h-5 w-5 text-white/20 group-hover:text-white/60 transition-colors" />
                                 </div>
                             </Link>
 
                             {isAdmin && (
                                 <Link href="/admin">
-                                    <div className="group flex items-center justify-between p-4 bg-muted/50 border border-border rounded-2xl hover:bg-accent/50 hover:border-border transition-all cursor-pointer">
+                                    <div className="group flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 hover:border-white/20 hover:scale-[1.01] transition-all cursor-pointer">
                                         <div className="flex items-center gap-4">
-                                            <div className="h-12 w-12 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500 dark:text-purple-300 shadow-inner ring-1 ring-purple-500/30">
+                                            <div className="h-12 w-12 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-300 shadow-inner ring-1 ring-purple-500/30">
                                                 <LayoutDashboard className="h-6 w-6" />
                                             </div>
                                             <div>
-                                                <h3 className="text-foreground font-semibold">Admin Panel</h3>
-                                                <p className="text-muted-foreground text-sm">System stats & User management</p>
+                                                <h3 className="text-white font-semibold">Admin Panel</h3>
+                                                <p className="text-white/40 text-sm">System stats & User management</p>
                                             </div>
                                         </div>
-                                        <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                                        <ChevronRight className="h-5 w-5 text-white/20 group-hover:text-white/60 transition-colors" />
                                     </div>
                                 </Link>
                             )}
@@ -989,7 +1000,7 @@ export default function ProfilePage() {
                         <div className="pt-4">
                             <Button
                                 variant="destructive"
-                                className="w-full h-12 bg-rose-500/20 hover:bg-rose-500/30 text-foreground border border-rose-500/30 rounded-xl backdrop-blur-sm transition-all"
+                                className="w-full h-12 bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-500/30 rounded-xl backdrop-blur-sm transition-all"
                                 onClick={handleLogout}
                             >
                                 <LogOut className="h-4 w-4 mr-2" />
@@ -1001,7 +1012,7 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="mt-6 text-center">
-                    <p className="text-muted-foreground/50 text-xs tracking-widest uppercase">Justime Agent System v1.0</p>
+                    <p className="text-white/20 text-xs tracking-widest uppercase">Justime Agent System v1.0</p>
                 </div>
             </div>
         </div>

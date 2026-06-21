@@ -4,9 +4,11 @@ import { useState, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import type { CalendarEventData } from '@/components/calendar/BigCalendar'
 import { Button } from '@/components/ui/button'
-import { Plus, RefreshCw, MessageCircle, Calendar as CalendarIcon, Loader2 } from 'lucide-react'
+import { Plus, ArrowLeft, RefreshCw, MessageCircle, Calendar as CalendarIcon, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
+import { JustimePageShell } from '@/components/layout/JustimePageShell'
+import { useDesktopRuntime } from '@/hooks/useDesktopRuntime'
 import { SlotInfo, View } from 'react-big-calendar'
 import { API_ENDPOINTS } from '@/lib/api/endpoints'
 
@@ -199,7 +201,7 @@ export default function CalendarPage() {
   // 认证加载中
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <JustimePageShell fullHeight variant={isDesktop ? 'desktop' : 'immersive'} blur={isDesktop ? 'none' : 'xl'} opacity={isDesktop ? 0 : 0.45} contentClassName="flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
           <p className="text-muted-foreground text-sm font-light tracking-widest uppercase">Syncing Calendar</p>
@@ -211,7 +213,7 @@ export default function CalendarPage() {
   // 未登录提示
   if (!isAuthenticated || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <JustimePageShell fullHeight variant={isDesktop ? 'desktop' : 'immersive'} blur={isDesktop ? 'none' : 'lg'} opacity={isDesktop ? 0 : 0.6} contentClassName="flex items-center justify-center">
         <div className="w-full max-w-md mx-auto text-center space-y-6 p-8 bg-card border border-border rounded-xl shadow-mac-lg">
           <div className="space-y-4">
             <div className="h-20 w-20 mx-auto rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
