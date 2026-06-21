@@ -275,6 +275,15 @@ EXPO_PUBLIC_ENV=production
 EXPO_PUBLIC_DEBUG=false
 ```
 
+### 云 RAG 配置
+
+RAG 知识库功能通过云服务厂商接入（当前主路径 NotebookLM）。相关配置项请参考 `justime_backend/.env.example`：
+- `RAG_PROVIDER` — 云 RAG 服务提供商选择
+- `NOTEBOOKLM_ENABLED`、`NOTEBOOKLM_STORAGE_PATH`、`NOTEBOOKLM_AUTH_JSON` — NotebookLM 云 RAG 配置
+- `DASHSCOPE_API_KEY` — 阿里云 DashScope（语音/可选 RAG）
+
+移动端无需额外配置。
+
 ## 安全检查清单
 
 部署前必须确认:

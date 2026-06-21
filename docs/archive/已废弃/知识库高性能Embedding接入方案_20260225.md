@@ -1,3 +1,7 @@
+> **⚠️ 已废弃：本地 RAG 方案已于 JUS-435 移除，改用云服务厂商 RAG（NotebookLM 主路径）。**  
+> 本文描述加载本地 `BAAI/bge-base-zh-v1.5` 模型 + LlamaIndex 本地索引的方案，已被云 RAG 架构完全取代。  
+> 请参考当前实现：`justime_backend/app/services/notebooklm_service.py` 及配置 `.env.example` 中 `NOTEBOOKLM_*` / `DASHSCOPE_*` 字段。
+
 # 知识库高性能本地 Embedding 接入与重构方案
 
 ## 1. 背景与选型说明
