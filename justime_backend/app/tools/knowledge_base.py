@@ -13,10 +13,13 @@ except Exception:
         return func
 
 try:
-    from app.services.rag_service import rag_service, set_current_user_context, clear_current_user_context
+    from app.services.rag_service import rag_service
 except Exception:
     rag_service = None
 
+try:
+    from app.services.knowledge_paths import set_current_user_context, clear_current_user_context
+except Exception:
     def set_current_user_context(user_id: str):
         return None
 

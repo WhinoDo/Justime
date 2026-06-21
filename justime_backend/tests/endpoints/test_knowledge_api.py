@@ -158,8 +158,26 @@ def load_knowledge_module():
     sys.modules["pydantic"] = fake_pydantic
 
     sys.modules.setdefault("app", types.ModuleType("app"))
+    sys.modules["app"].__path__ = []  # Make app a namespace package
     sys.modules.setdefault("app.services", types.ModuleType("app.services"))
     sys.modules.setdefault("app.core", types.ModuleType("app.core"))
+    sys.modules.setdefault("app.api", types.ModuleType("app.api"))
+    sys.modules["app.api"].__path__ = []  # Make app.api a namespace package
+    sys.modules.setdefault("app.api.deps", types.ModuleType("app.api.deps"))
+    sys.modules["app.api.deps"].CurrentUser = None
+
+    temp_docs_dir = Path(tempfile.mkdtemp(prefix="knowledge-test-docs-"))
+
+    fake_knowledge_paths = types.ModuleType("app.services.knowledge_paths")
+    fake_knowledge_paths.DOCS_DIR = temp_docs_dir
+
+    def get_user_docs_dir(user_id):
+        user_dir = temp_docs_dir / user_id
+        user_dir.mkdir(parents=True, exist_ok=True)
+        return user_dir
+
+    fake_knowledge_paths.get_user_docs_dir = get_user_docs_dir
+    sys.modules["app.services.knowledge_paths"] = fake_knowledge_paths
 
     fake_config = types.ModuleType("app.core.config")
     fake_config.settings = SimpleNamespace(
@@ -177,18 +195,8 @@ def load_knowledge_module():
     fake_security.SecurityService = SimpleNamespace(get_current_user=lambda: None)
     sys.modules["app.services.security_service"] = fake_security
 
-    temp_docs_dir = Path(tempfile.mkdtemp(prefix="knowledge-test-docs-"))
-
     fake_rag = types.ModuleType("app.services.rag_service")
-    fake_rag.DOCS_DIR = temp_docs_dir
     fake_rag.rag_service = SimpleNamespace()
-
-    def get_user_docs_dir(user_id):
-        user_dir = temp_docs_dir / user_id
-        user_dir.mkdir(parents=True, exist_ok=True)
-        return user_dir
-
-    fake_rag.get_user_docs_dir = get_user_docs_dir
     sys.modules["app.services.rag_service"] = fake_rag
 
     fake_task_service = types.ModuleType("app.services.knowledge_task_service")

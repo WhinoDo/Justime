@@ -76,14 +76,14 @@ class KnowledgeTaskService:
         user_id: str,
         docs_dir: Path,
     ):
-        from app.services.rag_service import (
-            rag_service,
+        from app.services.rag_service import rag_service
+        from app.services.knowledge_paths import (
             set_current_user_context,
             clear_current_user_context,
         )
 
         try:
-            await self.update_task_status(task_id, "running", "正在重建索引...")
+            await self.update_task_status(task_id, "running", "正在同步文档到云端 RAG...")
 
             loop = asyncio.get_event_loop()
             set_current_user_context(user_id)
@@ -97,7 +97,7 @@ class KnowledgeTaskService:
             finally:
                 clear_current_user_context()
 
-            if result.startswith("重建索引失败") or result.startswith("文档目录"):
+            if result.startswith("重建索引失败") or result.startswith("文档目录") or "不可用" in result:
                 await self.update_task_status(
                     task_id,
                     "failed",
