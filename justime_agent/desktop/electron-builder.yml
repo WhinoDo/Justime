@@ -1,0 +1,63 @@
+# Electron Builder Configuration for Justime macOS Desktop App
+# See https://www.electron.build/configuration/configuration
+
+appId: com.justime.desktop
+productName: Justime
+copyright: Copyright © 2024 Justime
+
+directories:
+  buildResources: build
+  output: release
+
+files:
+  - desktop/electron/**/*.js
+  - package.json
+
+# Include the Next.js standalone output as extra resources
+extraResources:
+  - from: .next/standalone
+    to: standalone
+    filter:
+      - "**/*"
+      - "!node_modules/.cache"
+
+# macOS specific configuration
+mac:
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+    - target: zip
+      arch:
+        - x64
+        - arm64
+  category: public.app-category.productivity
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: desktop/entitlements.mac.plist
+  entitlementsInherit: desktop/entitlements.mac.plist
+  artifactName: "${productName}-${version}-${arch}.${ext}"
+
+# DMG configuration
+dmg:
+  title: "${productName} ${version}"
+  icon: desktop/icons/icon.icns
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications
+
+# Code signing and notarization placeholders
+# Actual credentials must be configured in CI/CD environment:
+#   CSC_LINK, CSC_KEY_PASSWORD, APPLE_ID, APPLE_ID_PASSWORD, APPLE_TEAM_ID
+#
+# For local development builds (unsigned), omit CSC_* env vars.
+# For production: export these env vars before running build.
+afterSign: desktop/scripts/notarize.mjs
+
+# Runtime electron version is managed by electron-builder
+# Do NOT pin electron version here; use the version in package.json
