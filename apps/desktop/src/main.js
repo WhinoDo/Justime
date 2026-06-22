@@ -1,35 +1,10 @@
 const { app, BrowserWindow, Menu, shell, dialog } = require('electron')
 const fs = require('node:fs')
 const path = require('node:path')
+const { isValidAppUrl, canOpenExternalUrl } = require('./url-policy')
 
 const DEFAULT_APP_URL = 'http://localhost:3000'
 const isDev = !app.isPackaged
-
-function isValidHttpUrl(value) {
-  try {
-    const url = new URL(value)
-    return url.protocol === 'http:' || url.protocol === 'https:'
-  } catch {
-    return false
-  }
-}
-
-function isLocalHost(hostname) {
-  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === '[::1]'
-}
-
-function canOpenExternalUrl(value) {
-  try {
-    const url = new URL(value)
-    if (url.protocol === 'https:' || url.protocol === 'mailto:') {
-      return true
-    }
-
-    return url.protocol === 'http:' && isLocalHost(url.hostname)
-  } catch {
-    return false
-  }
-}
 
 function openExternalUrl(value) {
   if (canOpenExternalUrl(value)) {
@@ -58,7 +33,7 @@ function readConfiguredAppUrl() {
   }
 
   candidates.push(DEFAULT_APP_URL)
-  return candidates.find((value) => typeof value === 'string' && isValidHttpUrl(value.trim())).trim()
+  return candidates.find((value) => typeof value === 'string' && isValidAppUrl(value.trim())).trim()
 }
 
 function writeConfiguredAppUrl(appUrl) {
