@@ -24,10 +24,6 @@ struct NativeWebView: NSViewRepresentable {
         Coordinator(policy: navigationPolicy, openExternalURL: openExternalURL)
     }
 
-    func makeCoordinator() -> NativeBridgeHandler {
-        NativeBridgeHandler()
-    }
-
     func makeNSView(context: Context) -> WKWebView {
         let coordinator = context.coordinator
         let configuration = WKWebViewConfiguration()
@@ -39,7 +35,7 @@ struct NativeWebView: NSViewRepresentable {
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.allowsBackForwardNavigationGestures = true
-        webView.navigationDelegate = context.coordinator
+        webView.navigationDelegate = coordinator
         webView.load(URLRequest(url: url))
         return webView
     }
@@ -48,17 +44,18 @@ struct NativeWebView: NSViewRepresentable {
         // No dynamic updates needed for the skeleton
     }
 
-    static func dismantleNSView(_ nsView: WKWebView, coordinator: NativeBridgeHandler) {
+    static func dismantleNSView(_ nsView: WKWebView, coordinator: Coordinator) {
         nsView.configuration.userContentController.removeScriptMessageHandler(forName: NativeBridge.messageHandlerName)
     }
 
-    final class Coordinator: NSObject, WKNavigationDelegate {
+    final class Coordinator: NativeBridgeHandler, WKNavigationDelegate {
         private let policy: NavigationPolicy
         private let openExternalURL: @MainActor (URL) -> Void
 
         init(policy: NavigationPolicy, openExternalURL: @MainActor @escaping (URL) -> Void) {
             self.policy = policy
             self.openExternalURL = openExternalURL
+            super.init()
         }
 
         func webView(
