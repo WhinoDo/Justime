@@ -5,16 +5,59 @@
 
 ---
 
-## Current Electron Fallback
+## Fallback Statement
 
-The current desktop distribution is an Electron shell (`apps/desktop/package.json`) that loads the web app via `BrowserWindow`.
-The DMG produced by the existing pack/dmg scripts is **unsigned** and intended for internal smoke-test only.
-`hardenedRuntime: false` in `package.json` confirms that no code signing is applied today.
-As long as the native release gates below are not satisfied, the Electron fallback remains the production path.
+`apps/desktop` Electron remains the **production fallback** until every native release gate in this runbook passes and the release owner approves replacement. No native build may ship to end users until the credentialed release gates below are satisfied.
 
 ---
 
-## Required Native Release Inputs
+## Phase 1 — Local Build, Test, and Smoke (No Secrets)
+
+These gates verify the native codebase compiles, tests pass, and the app shell functions correctly. They require **no Apple credentials, signing certificates, or CI secrets** and can be run by any developer on a macOS machine with Xcode installed.
+
+### 1.1 Build
+
+```bash
+cd apps/macos-native
+swift build
+```
+
+Must exit 0. Confirms the Swift package resolves dependencies and compiles all targets.
+
+### 1.2 Test
+
+```bash
+cd apps/macos-native
+swift test
+```
+
+Must exit 0 with all tests passing. Covers unit tests for NavigationPolicy, NativeBridge, SSEStreamParser, SessionCookiePolicy, and AppConfig.
+
+### 1.3 Manual Smoke
+
+After building and testing, verify the native shell against a **local** Justime web URL:
+
+1. Launch the native shell app.
+2. Confirm it loads the local Justime web URL (default: `http://localhost:3000`).
+3. Log in with a test account.
+4. Relaunch the app — verify the authenticated session persists.
+5. Trigger **New Chat** — confirm a new conversation starts.
+6. Trigger **Focus Chat Input** — confirm the input field receives focus.
+7. Trigger **Open Tasks** — confirm the task list opens (once merged).
+
+All steps must complete without crash or blank screen.
+
+### 1.4 CI Gate (GitHub Actions)
+
+The `.github/workflows/macos-native.yml` workflow runs `swift build` and `swift test` on a macOS runner. It contains **no signing, notarization, or credential steps**. This provides automated Phase 1 verification on every push and PR.
+
+---
+
+## Phase 2 — Credentialed Release Gates (Pending)
+
+Every item below is **Pending** and represents a release blocker. None of these may be bypassed or silently resolved — each requires explicit owner approval.
+
+### Required Native Release Inputs
 
 Before any native production release can be attempted, all of the following must be resolved and documented:
 
@@ -28,9 +71,7 @@ Before any native production release can be attempted, all of the following must
 | 6 | **Update feed host** — HTTPS endpoint serving a Sparkle-compatible `appcast.xml` (or equivalent) for auto-update | Pending |
 | 7 | **Release owner** — named individual responsible for cutting the release and responding to Gate/notarization failures | Pending |
 
----
-
-## Signing And Notarization Gate
+### Signing And Notarization Gate
 
 A native macOS build **cannot proceed to production release** until every item below is passing:
 
@@ -42,9 +83,7 @@ A native macOS build **cannot proceed to production release** until every item b
 
 If any of the above fails, the build is **not releasable**. Document the failure in the release issue and escalate to the release owner.
 
----
-
-## Auto-Update Gate
+### Auto-Update Gate
 
 Auto-update (e.g. via Sparkle) is **not enabled** in production until both conditions below are met:
 
@@ -81,8 +120,8 @@ If a native release causes critical regressions:
 
 ## Explicit Non-Actions
 
-This runbook is **documentation only**. The following actions are explicitly out of scope and must not be performed as part of this issue:
+This runbook is **documentation only**. The following actions are explicitly out of scope:
 
-- **Do not modify CI workflows** (`.github/workflows/**`) — CI changes require a separate issue with platform-config review.
 - **Do not store credentials** — no Apple Developer certificates, API keys, app-specific passwords, or notarization credentials may be added to this repository.
-- **Do not disable the Electron fallback** — the Electron shell remains the production path until all gates above are satisfied and verified.
+- **Do not disable the Electron fallback** — the Electron shell (`apps/desktop`) remains the production path until all Phase 2 gates above are satisfied and the release owner approves replacement.
+- **Do not add signing or notarization steps to CI** — the `.github/workflows/macos-native.yml` workflow is limited to build and test only.
