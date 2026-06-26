@@ -12,7 +12,10 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "test:api": "node test-api.js"
+    "test:api": "node test-api.js",
+    "desktop:dev": "cd ../apps/desktop && npm run dev",
+    "desktop:install": "cd ../apps/desktop && npm install",
+    "desktop:build": "cd ../apps/desktop && npm run dist:dmg"
   },
   "dependencies": {
     "@gsap/react": "^2.1.1",
