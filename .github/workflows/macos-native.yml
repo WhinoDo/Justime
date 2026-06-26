@@ -1,0 +1,37 @@
+name: macOS Native
+
+on:
+  push:
+    branches: [main, master, dev]
+    paths:
+      - 'apps/macos-native/**'
+  pull_request:
+    branches: [main, master, dev]
+    paths:
+      - 'apps/macos-native/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Swift Build & Test
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Build
+        run: |
+          cd apps/macos-native
+          swift build
+
+      - name: Test
+        run: |
+          cd apps/macos-native
+          swift test
