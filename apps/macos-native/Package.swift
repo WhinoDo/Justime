@@ -10,7 +10,11 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "JustimeNative",
-            path: "Sources/JustimeNative"
+            path: "Sources/JustimeNative",
+            resources: [
+                .copy("Resources/BundleInfo.plist"),
+                .copy("Resources/JustimeNative.entitlements")
+            ]
         ),
         .testTarget(
             name: "JustimeNativeTests",
