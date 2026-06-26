@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Sparkles, Brain, Search, Calculator, Calendar } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { LucideIcon } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface ThinkingLoaderProps {
     input: string
@@ -17,6 +18,16 @@ interface ThinkingStep {
 
 export function ThinkingLoader({ input }: ThinkingLoaderProps) {
     const [step, setStep] = useState(0)
+    const [reducedMotion, setReducedMotion] = useState(false)
+
+    useEffect(() => {
+        if (typeof window.matchMedia !== 'function') return
+        const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+        setReducedMotion(mq.matches)
+        const handler = (e: MediaQueryListEvent) => setReducedMotion(e.matches)
+        mq.addEventListener('change', handler)
+        return () => mq.removeEventListener('change', handler)
+    }, [])
 
     const normalizedInput = input.trim().toLowerCase()
     const isGreeting = /^[你您]好|^hello|^hi|在吗/i.test(input.trim())
@@ -115,44 +126,62 @@ export function ThinkingLoader({ input }: ThinkingLoaderProps) {
     return (
         <div className="flex items-center gap-3 px-4 py-3 rounded-2xl rounded-bl-md border border-white/10 bg-white/10 dark:bg-white/10 backdrop-blur-xl shadow-md text-white/90">
             <div className="relative flex items-center justify-center w-8 h-8">
-                <div className="absolute inset-0 bg-blue-500/20 rounded-full animate-ping" />
+                {!reducedMotion && (
+                    <div className="absolute inset-0 bg-blue-500/20 rounded-full animate-ping" />
+                )}
                 <div className="relative flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 shadow-md">
-                    <CurrentIcon className="w-4 h-4 text-white animate-pulse" />
+                    <CurrentIcon className={cn("w-4 h-4 text-white", !reducedMotion && "animate-pulse")} />
                 </div>
             </div>
 
             <div className="flex flex-col">
-                <AnimatePresence mode="wait">
-                    <motion.span
-                        key={step}
-                        initial={{ opacity: 0, y: 5 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -5 }}
-                        transition={{ duration: 0.3 }}
-                        className="text-sm font-medium text-white/80 dark:text-white/80"
-                    >
+                {reducedMotion ? (
+                    <span className="text-sm font-medium text-white/80 dark:text-white/80">
                         {steps[step].text}
-                    </motion.span>
-                </AnimatePresence>
+                    </span>
+                ) : (
+                    <AnimatePresence mode="wait">
+                        <motion.span
+                            key={step}
+                            initial={{ opacity: 0, y: 5 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -5 }}
+                            transition={{ duration: 0.3 }}
+                            className="text-sm font-medium text-white/80 dark:text-white/80"
+                        >
+                            {steps[step].text}
+                        </motion.span>
+                    </AnimatePresence>
+                )}
             </div>
 
             {/* Typing Dots */}
             <div className="flex gap-1 ml-2">
-                <motion.div
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ repeat: Infinity, duration: 1, delay: 0 }}
-                    className="w-1.5 h-1.5 bg-white/60 rounded-full"
-                />
-                <motion.div
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ repeat: Infinity, duration: 1, delay: 0.2 }}
-                    className="w-1.5 h-1.5 bg-white/60 rounded-full"
-                />
-                <motion.div
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ repeat: Infinity, duration: 1, delay: 0.4 }}
-                    className="w-1.5 h-1.5 bg-white/60 rounded-full"
-                />
+                {reducedMotion ? (
+                    <>
+                        <div className="w-1.5 h-1.5 bg-white/60 rounded-full" />
+                        <div className="w-1.5 h-1.5 bg-white/60 rounded-full" />
+                        <div className="w-1.5 h-1.5 bg-white/60 rounded-full" />
+                    </>
+                ) : (
+                    <>
+                        <motion.div
+                            animate={{ scale: [1, 1.2, 1] }}
+                            transition={{ repeat: Infinity, duration: 1, delay: 0 }}
+                            className="w-1.5 h-1.5 bg-white/60 rounded-full"
+                        />
+                        <motion.div
+                            animate={{ scale: [1, 1.2, 1] }}
+                            transition={{ repeat: Infinity, duration: 1, delay: 0.2 }}
+                            className="w-1.5 h-1.5 bg-white/60 rounded-full"
+                        />
+                        <motion.div
+                            animate={{ scale: [1, 1.2, 1] }}
+                            transition={{ repeat: Infinity, duration: 1, delay: 0.4 }}
+                            className="w-1.5 h-1.5 bg-white/60 rounded-full"
+                        />
+                    </>
+                )}
             </div>
         </div>
     )
