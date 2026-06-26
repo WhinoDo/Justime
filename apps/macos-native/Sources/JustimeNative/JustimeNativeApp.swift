@@ -2,6 +2,10 @@ import SwiftUI
 
 @main
 struct JustimeNativeApp: App {
+    private let commandRouter = NativeCommandRouter { command in
+        print("[NativeCommand] Dispatched: \(command.bridgeEventType)")
+    }
+
     var body: some Scene {
         WindowGroup("Justime") {
             NativeWebView(url: AppConfig.resolveAppURL())
@@ -10,18 +14,21 @@ struct JustimeNativeApp: App {
         .defaultSize(width: 1280, height: 800)
         .commands {
             CommandGroup(after: .newItem) {
-                Button("New Chat") {}
-                    .disabled(true)
-                    .keyboardShortcut("n", modifiers: .command)
+                Button("New Chat") {
+                    commandRouter.route(.newChat)
+                }
+                .keyboardShortcut("n", modifiers: .command)
 
-                Button("Focus Chat Input") {}
-                    .disabled(true)
-                    .keyboardShortcut("l", modifiers: .command)
+                Button("Focus Chat Input") {
+                    commandRouter.route(.focusChatInput)
+                }
+                .keyboardShortcut("l", modifiers: .command)
             }
             CommandGroup(after: .toolbar) {
-                Button("Open Tasks") {}
-                    .disabled(true)
-                    .keyboardShortcut("t", modifiers: [.command, .shift])
+                Button("Open Tasks") {
+                    commandRouter.route(.openTasks)
+                }
+                .keyboardShortcut("t", modifiers: [.command, .shift])
             }
         }
     }
