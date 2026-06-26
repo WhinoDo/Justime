@@ -90,7 +90,7 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-inter), "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
     padding-left: env(safe-area-inset-left);
@@ -461,5 +461,93 @@
 
   html[data-justime-runtime="desktop"] .desktop-focus-ring {
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white;
+  }
+}
+
+/* Desktop dark-mode token overrides */
+@layer base {
+  html.dark[data-justime-runtime="desktop"] {
+    --background: 260 25% 6%;
+    --foreground: 260 20% 98%;
+    --card: 260 20% 10%;
+    --card-foreground: 260 20% 98%;
+    --popover: 260 20% 10%;
+    --popover-foreground: 260 20% 98%;
+    --primary: 262 83% 58%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 260 20% 14%;
+    --secondary-foreground: 260 20% 98%;
+    --muted: 260 15% 14%;
+    --muted-foreground: 260 10% 60%;
+    --accent: 260 25% 15%;
+    --accent-foreground: 260 20% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 260 20% 15%;
+    --input: 260 20% 15%;
+    --ring: 262 83% 58%;
+    --desktop-hairline: 260 20% 18%;
+    --desktop-glass-bg: 26 20 36 / 0.72;
+    --desktop-glass-strong: 26 20 36 / 0.88;
+    --desktop-lilac-bg: 38 28 58 / 0.68;
+    --desktop-lilac-strong: 38 28 58 / 0.82;
+    --desktop-shadow: 0 0 0 / 0.36;
+  }
+
+  html.dark[data-justime-runtime="desktop"] body {
+    background:
+      radial-gradient(circle at 18% 8%, rgba(26, 20, 36, 0.96) 0, rgba(26, 20, 36, 0) 32%),
+      radial-gradient(circle at 88% 18%, rgba(58, 38, 88, 0.62) 0, rgba(58, 38, 88, 0) 34%),
+      linear-gradient(135deg, #1a1424 0%, #1e1830 34%, #221a38 68%, #2a1e44 100%) !important;
+    color: hsl(260 20% 98%) !important;
+  }
+}
+
+/* Draggable titlebar region for desktop shell */
+@layer utilities {
+  .desktop-titlebar-safe {
+    padding-top: var(--desktop-titlebar-height, 52px);
+  }
+
+  .desktop-traffic-light-safe {
+    padding-left: 78px;
+  }
+}
+
+/* Reduced-motion: disable custom animations */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-ping,
+  .animate-pulse,
+  .animate-bounce,
+  .animate-blob,
+  .animate-spin,
+  .animate-spring-in,
+  .animate-mac-slide-in,
+  .animate-mac-fade-in,
+  .animate-mac-sidebar-in,
+  .animate-slide-in {
+    animation: none !important;
+  }
+
+  .mac-card-hover:hover {
+    transform: none !important;
+  }
+
+  .mac-btn-press:active {
+    transform: none !important;
+  }
+
+  .hover-lift:hover,
+  .hover-lift:active {
+    transform: none !important;
   }
 }

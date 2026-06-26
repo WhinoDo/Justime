@@ -35,6 +35,7 @@ export function JustimePageShell({
       <div className={cn(
         'relative z-10',
         fullHeight ? 'h-full' : 'min-h-screen',
+        variant === 'desktop' && 'desktop-titlebar-safe',
         contentClassName
       )}>
         {children}
