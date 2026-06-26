@@ -66,7 +66,7 @@ Key architectural decisions:
 
 ### Phase 1 — Native Shell MVP
 
-- Auth: cookie injection, biometric unlock, secure token storage in Keychain.
+- Auth: cookie injection, biometric unlock. WKWebView persists the backend's existing HttpOnly cookies natively — native code must **not** extract HttpOnly cookie values into plaintext Keychain storage or any other local store.
 - SSE: `WKWebView` SSE streaming verified end-to-end with Redis resume.
 - Task workspace: local Markdown vault read/write via bridge.
 - Notifications: `UNUserNotificationCenter` for task/chat events.
@@ -93,12 +93,12 @@ The following contracts are **authoritative in the web/FastAPI layer** and must 
 
 | Contract | Owner | Scope |
 |---|---|---|
-| Auth cookie names & JWT structure | `jushi_backend/app/api/v1/endpoints/auth.py` | Cookie names (`token`, `refresh_token`), HS256 JWT claims, refresh flow |
-| Chat/session/task REST endpoints | `jushi_backend/app/api/v1/endpoints/chat.py` | All `/api/v1/chat/*` routes, request/response schemas |
-| SSE event format | `jushi_backend/app/services/sse_stream_service.py` | Event types (`start`, `token`, `metadata`, `usage`, `done`, `error`), `Last-Event-ID` resume |
-| Redis resume semantics | `jushi_backend/app/services/sse_stream_service.py` | TTL, key format, replay behaviour |
-| TaskProcess models | `jushi_backend/app/models/` | Pydantic models for chat, tasks, sessions |
-| BFF proxy layer | `jushi_agent/src/app/api/` | Next.js API routes that proxy to FastAPI |
+| Auth cookie names & JWT structure | `justime_backend/app/api/v1/endpoints/auth.py` | Cookie names (`access_token`, `refresh_token`), HS256 JWT claims, refresh flow |
+| Chat/session/task REST endpoints | `justime_backend/app/api/v1/endpoints/chat.py` | All `/api/v1/chat/*` routes, request/response schemas |
+| SSE event format | `justime_backend/app/services/sse_stream_service.py` | Event types (`start`, `token`, `metadata`, `usage`, `done`, `error`), `Last-Event-ID` resume |
+| Redis resume semantics | `justime_backend/app/services/sse_stream_service.py` | TTL, key format, replay behaviour |
+| TaskProcess models | `justime_backend/app/models/` | Pydantic models for chat, tasks, sessions |
+| BFF proxy layer | `justime_agent/src/app/api/` | Next.js API routes that proxy to FastAPI |
 
 The native shell **consumes** these contracts via WKWebView. It must not introduce parallel endpoints, modify request/response shapes, or bypass the BFF proxy. Any proposed contract change follows the normal backend change process and is independent of this ADR.
 
@@ -120,7 +120,7 @@ The existing `apps/desktop/` Electron shell is governed by the following policy:
 
 | Capability | Phase 1 Target | Acceptance Test | Electron Fallback |
 |---|---|---|---|
-| **Login / Cookie / JWT** | Cookie injected into WKWebView; biometric unlock for returning users | Login flow completes in native WKWebView; `document.cookie` contains valid `token`; session persists across app restart | Full Electron support |
+| **Login / Cookie / JWT** | WKWebView persists `access_token` and `refresh_token` HttpOnly cookies natively; biometric unlock for returning users; native code must not extract HttpOnly cookie values into plaintext storage | Login flow completes in native WKWebView; `document.cookie` shows valid `access_token` (HttpOnly flag not accessible to JS but cookie is set by backend); session persists across app restart; no plaintext cookie storage in Keychain | Full Electron support |
 | **SSE Stream / Resume** | `WKWebView` receives SSE events; `Last-Event-ID` resume works after network drop | Start a chat stream → disconnect network → reconnect → stream resumes from last event; no duplicate tokens | Full Electron support |
 | **Local Markdown Vault** | Native bridge reads/writes `.md` files in user-selected directory | Create, edit, delete a vault note from the web UI; files appear on disk with correct content; no data loss on crash | Not available in Electron |
 | **Notifications** | `UNUserNotificationCenter` for chat and task events | Notification appears when chat reply arrives; clicking notification focuses the app; notification permissions prompt shown on first launch | Not available in Electron |
