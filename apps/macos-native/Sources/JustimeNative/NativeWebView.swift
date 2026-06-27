@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 import WebKit
 
@@ -5,6 +6,7 @@ struct NativeWebView: NSViewRepresentable {
     let url: URL
     let navigationPolicy: NavigationPolicy
     let sessionCookiePolicy: SessionCookiePolicy
+    let loadStateViewModel: LoadStateViewModel
     var openExternalURL: @MainActor (URL) -> Void = { url in
         NSWorkspace.shared.open(url)
     }
@@ -13,6 +15,7 @@ struct NativeWebView: NSViewRepresentable {
         url: URL,
         navigationPolicy: NavigationPolicy = .defaultPolicy,
         sessionCookiePolicy: SessionCookiePolicy? = nil,
+        loadStateViewModel: LoadStateViewModel = LoadStateViewModel(),
         openExternalURL: (@MainActor (URL) -> Void)? = nil
     ) {
         self.url = url
@@ -20,13 +23,14 @@ struct NativeWebView: NSViewRepresentable {
         self.sessionCookiePolicy = sessionCookiePolicy ?? SessionCookiePolicy(
             allowedOrigins: navigationPolicy.allowedOrigins
         )
+        self.loadStateViewModel = loadStateViewModel
         if let openExternalURL {
             self.openExternalURL = openExternalURL
         }
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(policy: navigationPolicy, openExternalURL: openExternalURL)
+        Coordinator(policy: navigationPolicy, loadStateViewModel: loadStateViewModel, openExternalURL: openExternalURL)
     }
 
     func makeNSView(context: Context) -> WKWebView {
@@ -41,12 +45,15 @@ struct NativeWebView: NSViewRepresentable {
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.allowsBackForwardNavigationGestures = true
         webView.navigationDelegate = coordinator
+
+        loadStateViewModel.markLoading(url)
         webView.load(URLRequest(url: url))
+        coordinator.attachWebView(webView)
         return webView
     }
 
     func updateNSView(_ nsView: WKWebView, context: Context) {
-        // No dynamic updates needed for the skeleton
+        // Load state changes are handled by the Coordinator directly.
     }
 
     static func dismantleNSView(_ nsView: WKWebView, coordinator: Coordinator) {
@@ -74,12 +81,61 @@ struct NativeWebView: NSViewRepresentable {
 
     final class Coordinator: NativeBridgeHandler, WKNavigationDelegate {
         private let policy: NavigationPolicy
+        private let loadStateViewModel: LoadStateViewModel
         private let openExternalURL: @MainActor (URL) -> Void
+        private weak var webView: WKWebView?
+        private var overlayView: NSView?
+        private var cancellable: Any?
 
-        init(policy: NavigationPolicy, openExternalURL: @MainActor @escaping (URL) -> Void) {
+        init(policy: NavigationPolicy, loadStateViewModel: LoadStateViewModel, openExternalURL: @MainActor @escaping (URL) -> Void) {
             self.policy = policy
+            self.loadStateViewModel = loadStateViewModel
             self.openExternalURL = openExternalURL
             super.init()
+        }
+
+        func attachWebView(_ webView: WKWebView) {
+            self.webView = webView
+            self.cancellable = loadStateViewModel.$state
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] state in
+                    self?.updateOverlay(for: state)
+                }
+        }
+
+        private func updateOverlay(for state: LoadState) {
+            guard let webView else { return }
+
+            if case .failed = state {
+                showOverlay(on: webView)
+            } else {
+                hideOverlay()
+            }
+        }
+
+        private func showOverlay(on webView: WKWebView) {
+            guard overlayView == nil else { return }
+            let overlay = NSHostingView(rootView: LoadFailureView(
+                viewModel: loadStateViewModel,
+                retryAction: { [weak webView, weak self] in
+                    self?.loadStateViewModel.markLoading(webView?.url ?? URL(string: "about:blank")!)
+                    webView?.reload()
+                }
+            ))
+            overlay.translatesAutoresizingMaskIntoConstraints = false
+            webView.addSubview(overlay)
+            NSLayoutConstraint.activate([
+                overlay.topAnchor.constraint(equalTo: webView.topAnchor),
+                overlay.leadingAnchor.constraint(equalTo: webView.leadingAnchor),
+                overlay.trailingAnchor.constraint(equalTo: webView.trailingAnchor),
+                overlay.bottomAnchor.constraint(equalTo: webView.bottomAnchor)
+            ])
+            overlayView = overlay
+        }
+
+        private func hideOverlay() {
+            overlayView?.removeFromSuperview()
+            overlayView = nil
         }
 
         func webView(
@@ -101,6 +157,32 @@ struct NativeWebView: NSViewRepresentable {
             case .cancel:
                 decisionHandler(.cancel)
             }
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            if let url = webView.url {
+                loadStateViewModel.markLoaded(url)
+            }
+        }
+
+        func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+            let nsError = error as NSError
+            let failedURL = webView.url ?? loadStateViewModel.failedURL ?? URL(string: "unknown://")!
+            loadStateViewModel.markFailed(
+                url: failedURL,
+                code: nsError.code,
+                description: nsError.localizedDescription
+            )
+        }
+
+        func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+            let nsError = error as NSError
+            let failedURL = webView.url ?? loadStateViewModel.failedURL ?? URL(string: "unknown://")!
+            loadStateViewModel.markFailed(
+                url: failedURL,
+                code: nsError.code,
+                description: nsError.localizedDescription
+            )
         }
     }
 }
