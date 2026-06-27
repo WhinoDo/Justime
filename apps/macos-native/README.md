@@ -34,7 +34,7 @@ After building and testing, launch the native shell and verify:
 See [`docs/runbooks/macos-native-release-gates.md`](../../docs/runbooks/macos-native-release-gates.md) for the full release gate plan:
 
 - **Phase 1 (no secrets)** — local `swift build`, `swift test`, and manual smoke. These can run today.
-- **Phase 2 (credentialed)** — signing, notarization, Sparkle update feed, Gatekeeper. All are Pending.
+- **Phase 2 (credentialed)** — signing, notarization: scripts and CI job present (see below). Sparkle update feed: Pending.
 - **Fallback** — `apps/desktop` Electron remains the production path until all Phase 2 gates pass.
 
 ## URL Resolution
@@ -57,9 +57,39 @@ The sandbox profile is the minimum required for a WKWebView client that connects
 
 Broad file-access entitlements are intentionally excluded.
 
+## Code Signing & Notarization
+
+The repo includes scripts for local and CI signing:
+
+| Script | Purpose |
+|--------|---------|
+| `scripts/codesign.sh` | Signs the release binary with a Developer ID certificate |
+| `scripts/build-dmg.sh` | Creates a signed DMG from the binary |
+| `scripts/notarize.sh` | Submits the DMG for Apple notarization and staples the ticket |
+
+### Local signing
+
+```bash
+cd apps/macos-native
+swift build -c release
+bash scripts/codesign.sh --identity "Developer ID Application: Name (TeamID)"
+bash scripts/build-dmg.sh --identity "Developer ID Application: Name (TeamID)"
+bash scripts/notarize.sh Justime.dmg --apple-id <id> --password <app-pw> --team-id <team>
+```
+
+All scripts accept `--identity` / credential flags or read from env vars (`CODESIGN_IDENTITY`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`).
+
+### CI signing
+
+The `sign-and-notarize` job in `.github/workflows/macos-native.yml` runs on `macos-14` and requires these repository secrets:
+
+- `DEVELOPER_CERTIFICATE_BASE64` — base64-encoded `.p12` Developer ID certificate
+- `DEVELOPER_CERTIFICATE_PASSWORD` — password for the `.p12`
+- `APPLE_ID` — Apple Developer account email
+- `APPLE_APP_SPECIFIC_PASSWORD` — app-specific password for notarytool
+- `APPLE_TEAM_ID` — 10-character Apple Developer Team ID
+
 ## Pending (Out of Scope)
 
-- Apple Developer Team ID and signing certificate configuration
-- Notarization credentials and CI integration
 - Sparkle framework integration
 - Release-mode entitlements hardening
