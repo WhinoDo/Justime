@@ -1,8 +1,10 @@
+import AppKit
 import SwiftUI
 
 @main
 struct JustimeNativeApp: App {
     @State private var pendingDeepLink: URL?
+    @State private var resizeObserver: NSObjectProtocol?
 
     private let commandRouter = NativeCommandRouter { command in
         print("[NativeCommand] Dispatched: \(command.bridgeEventType)")
@@ -22,6 +24,13 @@ struct JustimeNativeApp: App {
             .onAppear {
                 if let window = NSApplication.shared.windows.first {
                     TitlebarController.configureWindow(window)
+                    resizeObserver = TitlebarController.observeResize(for: window)
+                }
+            }
+            .onDisappear {
+                if let observer = resizeObserver {
+                    NotificationCenter.default.removeObserver(observer)
+                    resizeObserver = nil
                 }
             }
             .onOpenURL { url in

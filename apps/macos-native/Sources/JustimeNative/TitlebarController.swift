@@ -10,6 +10,17 @@ enum TitlebarController {
         repositionTrafficLights(in: window, position: position)
     }
 
+    static func observeResize(for window: NSWindow, position: TrafficLightPosition = .defaultPosition) -> NSObjectProtocol {
+        return NotificationCenter.default.addObserver(
+            forName: NSWindow.didResizeNotification,
+            object: window,
+            queue: .main
+        ) { [weak window] _ in
+            guard let window else { return }
+            repositionTrafficLights(in: window, position: position)
+        }
+    }
+
     static func repositionTrafficLights(in window: NSWindow, position: TrafficLightPosition) {
         guard let closeButton = window.standardWindowButton(.closeButton),
               let miniaturizeButton = window.standardWindowButton(.miniaturizeButton),
