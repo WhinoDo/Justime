@@ -106,7 +106,7 @@ enum AnyCodable: Codable, Equatable {
 
 struct NativeChatStreamEvent: Codable, Equatable {
     let event: String
-    let data: [String: String]
+    let data: [String: AnyCodable]
 
     enum CodingKeys: String, CodingKey {
         case event

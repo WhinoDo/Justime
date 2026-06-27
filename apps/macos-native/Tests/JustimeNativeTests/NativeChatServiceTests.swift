@@ -185,8 +185,8 @@ struct NativeChatStreamEventTests {
         let data = try #require(json.data(using: .utf8))
         let event = try testDecoder().decode(NativeChatStreamEvent.self, from: data)
         #expect(event.event == "start")
-        #expect(event.data["conversationId"] == "conv_123")
-        #expect(event.data["messageId"] == "msg_456")
+        #expect(event.data["conversationId"] == .string("conv_123"))
+        #expect(event.data["messageId"] == .string("msg_456"))
     }
 
     @Test("Decodes token event")
@@ -197,62 +197,67 @@ struct NativeChatStreamEventTests {
         let data = try #require(json.data(using: .utf8))
         let event = try testDecoder().decode(NativeChatStreamEvent.self, from: data)
         #expect(event.event == "token")
-        #expect(event.data["content"] == "Hello")
-        #expect(event.data["messageId"] == "msg_456")
+        #expect(event.data["content"] == .string("Hello"))
+        #expect(event.data["messageId"] == .string("msg_456"))
     }
 
-    @Test("Decodes metadata event")
+    @Test("Decodes metadata event with mixed types")
     func testDecodeMetadataEvent() throws {
         let json = """
-        {"event": "metadata", "data": {"model": "deepseek-chat", "sessionId": "sess_abc"}}
+        {"event": "metadata", "data": {"sessionId": "sess_abc", "messageId": "msg_456", "model": "deepseek-chat", "resumed": false, "resumedTokenIndex": 0}}
         """
         let data = try #require(json.data(using: .utf8))
         let event = try testDecoder().decode(NativeChatStreamEvent.self, from: data)
         #expect(event.event == "metadata")
-        #expect(event.data["model"] == "deepseek-chat")
-        #expect(event.data["sessionId"] == "sess_abc")
+        #expect(event.data["sessionId"] == .string("sess_abc"))
+        #expect(event.data["model"] == .string("deepseek-chat"))
+        #expect(event.data["resumed"] == .bool(false))
+        #expect(event.data["resumedTokenIndex"] == .int(0))
     }
 
-    @Test("Decodes usage event")
+    @Test("Decodes usage event with integer token counts")
     func testDecodeUsageEvent() throws {
         let json = """
-        {"event": "usage", "data": {"promptTokens": "120", "completionTokens": "45", "totalTokens": "165"}}
+        {"event": "usage", "data": {"promptTokens": 120, "completionTokens": 45, "totalTokens": 165}}
         """
         let data = try #require(json.data(using: .utf8))
         let event = try testDecoder().decode(NativeChatStreamEvent.self, from: data)
         #expect(event.event == "usage")
-        #expect(event.data["promptTokens"] == "120")
-        #expect(event.data["completionTokens"] == "45")
-        #expect(event.data["totalTokens"] == "165")
+        #expect(event.data["promptTokens"] == .int(120))
+        #expect(event.data["completionTokens"] == .int(45))
+        #expect(event.data["totalTokens"] == .int(165))
     }
 
-    @Test("Decodes done event")
+    @Test("Decodes done event with integer fields")
     func testDecodeDoneEvent() throws {
         let json = """
-        {"event": "done", "data": {"messageId": "msg_456"}}
+        {"event": "done", "data": {"messageId": "msg_456", "totalMs": 3200, "totalTokens": 42}}
         """
         let data = try #require(json.data(using: .utf8))
         let event = try testDecoder().decode(NativeChatStreamEvent.self, from: data)
         #expect(event.event == "done")
-        #expect(event.data["messageId"] == "msg_456")
+        #expect(event.data["messageId"] == .string("msg_456"))
+        #expect(event.data["totalMs"] == .int(3200))
+        #expect(event.data["totalTokens"] == .int(42))
     }
 
-    @Test("Decodes error event")
+    @Test("Decodes error event with optional canResume boolean")
     func testDecodeErrorEvent() throws {
         let json = """
-        {"event": "error", "data": {"message": "Model rate limit exceeded"}}
+        {"event": "error", "data": {"message": "Model rate limit exceeded", "canResume": true}}
         """
         let data = try #require(json.data(using: .utf8))
         let event = try testDecoder().decode(NativeChatStreamEvent.self, from: data)
         #expect(event.event == "error")
-        #expect(event.data["message"] == "Model rate limit exceeded")
+        #expect(event.data["message"] == .string("Model rate limit exceeded"))
+        #expect(event.data["canResume"] == .bool(true))
     }
 
     @Test("Roundtrip encode-decode preserves event and data")
     func testRoundtrip() throws {
         let original = NativeChatStreamEvent(
-            event: "token",
-            data: ["content": "world", "messageId": "msg_789"]
+            event: "usage",
+            data: ["promptTokens": .int(100), "completionTokens": .int(50)]
         )
         let encoder = testEncoder()
         let data = try encoder.encode(original)
