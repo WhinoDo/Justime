@@ -50,6 +50,9 @@ logs/
 # Mobile / native build artifacts
 justime_agent/android/
 **/.expo/
+apps/macos-native/.build/
+apps/macos-native/Frameworks/
+apps/macos-native/Package.resolved
 
 # IDE
 .idea/

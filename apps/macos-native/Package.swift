@@ -10,11 +10,19 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "JustimeNative",
+            dependencies: [
+                "Sparkle"
+            ],
             path: "Sources/JustimeNative",
             resources: [
                 .copy("Resources/BundleInfo.plist"),
-                .copy("Resources/JustimeNative.entitlements")
+                .copy("Resources/JustimeNative.entitlements"),
+                .copy("Resources/appcast.xml")
             ]
+        ),
+        .binaryTarget(
+            name: "Sparkle",
+            path: "Frameworks/Sparkle.xcframework"
         ),
         .testTarget(
             name: "JustimeNativeTests",

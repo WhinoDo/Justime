@@ -3,6 +3,7 @@ import SwiftUI
 
 @main
 struct JustimeNativeApp: App {
+    @StateObject private var updateManager = UpdateManager()
     @State private var pendingDeepLink: URL?
     @State private var resizeObserver: NSObjectProtocol?
 
@@ -58,6 +59,12 @@ struct JustimeNativeApp: App {
                     commandRouter.route(.openTasks)
                 }
                 .keyboardShortcut("t", modifiers: [.command, .shift])
+            }
+            CommandGroup(after: .appSettings) {
+                Button("Check for Updates\u{2026}") {
+                    updateManager.checkForUpdates()
+                }
+                .disabled(!updateManager.canCheckForUpdates)
             }
         }
     }
