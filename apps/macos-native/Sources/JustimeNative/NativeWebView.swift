@@ -7,6 +7,7 @@ struct NativeWebView: NSViewRepresentable {
     let navigationPolicy: NavigationPolicy
     let sessionCookiePolicy: SessionCookiePolicy
     let loadStateViewModel: LoadStateViewModel
+    @Binding var pendingNavigation: URL?
     var openExternalURL: @MainActor (URL) -> Void = { url in
         NSWorkspace.shared.open(url)
     }
@@ -16,6 +17,7 @@ struct NativeWebView: NSViewRepresentable {
         navigationPolicy: NavigationPolicy = .defaultPolicy,
         sessionCookiePolicy: SessionCookiePolicy? = nil,
         loadStateViewModel: LoadStateViewModel = LoadStateViewModel(),
+        pendingNavigation: Binding<URL?> = .constant(nil),
         openExternalURL: (@MainActor (URL) -> Void)? = nil
     ) {
         self.url = url
@@ -24,6 +26,7 @@ struct NativeWebView: NSViewRepresentable {
             allowedOrigins: navigationPolicy.allowedOrigins
         )
         self.loadStateViewModel = loadStateViewModel
+        self._pendingNavigation = pendingNavigation
         if let openExternalURL {
             self.openExternalURL = openExternalURL
         }
@@ -53,7 +56,10 @@ struct NativeWebView: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: WKWebView, context: Context) {
-        // Load state changes are handled by the Coordinator directly.
+        if let pendingURL = pendingNavigation {
+            nsView.load(URLRequest(url: pendingURL))
+            pendingNavigation = nil
+        }
     }
 
     static func dismantleNSView(_ nsView: WKWebView, coordinator: Coordinator) {
