@@ -10,11 +10,14 @@ struct JustimeNativeApp: App {
 
     var body: some Scene {
         WindowGroup("Justime") {
-            NativeWebView(
-                url: AppConfig.resolveAppURL(),
-                pendingNavigation: $pendingDeepLink
-            )
-            .padding(.top, TitlebarController.titlebarHeight)
+            ZStack {
+                VibrancyBackground()
+                NativeWebView(
+                    url: AppConfig.resolveAppURL(),
+                    pendingNavigation: $pendingDeepLink
+                )
+                .padding(.top, TitlebarController.titlebarHeight)
+            }
             .frame(minWidth: 1120, minHeight: 760)
             .onAppear {
                 if let window = NSApplication.shared.windows.first {
