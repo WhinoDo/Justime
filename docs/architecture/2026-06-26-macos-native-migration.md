@@ -11,6 +11,13 @@ Explicitly **reject** the following for Phase 1:
 - **Full SwiftUI rewrite** — too costly; the web frontend is mature and the team's primary investment. A ground-up rewrite defers delivery by many months with no incremental value.
 - **Tauri** — introduces a Rust toolchain dependency and a new WebView runtime (WebKitGTK on Linux / WebView2 on Windows). Tauri's macOS story is viable but its Rust-based plugin model raises the barrier for the existing TypeScript/Python team. Revisit in Phase 3 if cross-platform unification becomes a priority.
 
+For Phase 2, adopt an **incremental screen-by-screen SwiftUI replacement** strategy:
+
+- Migrate individual screens from WKWebView to native SwiftUI one capability at a time, starting with Chat and Calendar.
+- Keep WKWebView as an in-app fallback for all screens until each migrated SwiftUI screen passes its parity acceptance gates.
+- Keep the Electron shell as a production fallback until release gates and production stability gates pass across all migrated screens.
+- Do **not** attempt a wholesale SwiftUI rewrite; each screen migrates independently with its own parity criteria.
+
 ## Option Comparison
 
 | Criteria | SwiftUI/AppKit + WKWebView | Tauri | Full SwiftUI Rewrite |
@@ -74,11 +81,33 @@ Key architectural decisions:
 - Auto-update: Sparkle integrated with signed appcast feed.
 - Electron fallback remains fully functional.
 
-### Phase 2 — Local Backend & Parity
+### Phase 2 — Local Backend & Native SwiftUI Migration
+
+Phase 2 has two parallel workstreams: local backend embedding and the native SwiftUI migration lane. The migration lane replaces web screens with native SwiftUI screens incrementally, using WKWebView as an in-app fallback until each screen passes parity.
+
+#### Native SwiftUI Migration Lane
+
+Each sub-phase is a self-contained deliverable with its own acceptance gates. A sub-phase is not started until its predecessor gates pass.
+
+| Sub-phase | Scope | Exit criteria |
+|---|---|---|
+| **2A — Typed Native API Client** | Build a Swift `JustimeAPI` client that calls FastAPI `/api/v1/*` endpoints directly (auth, chat, calendar, knowledge). The client uses `URLSession` with cookie-based auth and typed request/response models matching the Pydantic schemas. | Client compiles; unit tests pass against mock server; auth flow (login → refresh → authenticated call) works end-to-end. |
+| **2B — Native Route Registry** | Introduce a `NativeRouteRegistry` that decides per-route whether to render a SwiftUI screen or fall back to WKWebView. Routes are registered with a priority and capability flag. The registry exposes a single `View(for: URL)` resolution used by the main window. | Registry correctly selects SwiftUI for migrated routes and WKWebView for all others; adding a new SwiftUI screen requires only one registry entry. |
+| **2C — Chat & Calendar MVP Screens** | Build native SwiftUI screens for Chat (message list, input, SSE streaming) and Calendar (event list, day/week views, CRUD). These screens call the typed native API client (2A) and are registered in the route registry (2B). | Chat: send message → receive SSE stream → display tokens → persist session. Calendar: create/edit/delete event → list refreshes → day/week views render. Both screens pass the same acceptance tests as the WKWebView versions. |
+| **2D — WKWebView Fallback Removal per Screen** | Remove WKWebView fallback for a specific screen only when that screen has passed parity acceptance tests and has been stable in pre-release testing for ≥ 1 release cycle. Rollback criteria: if a SwiftUI screen fails in production, re-enable WKWebView fallback for that screen within one release. | Per-screen removal is gated on: parity acceptance pass, ≥ 1 release-cycle stability, rollback runbook updated. WKWebView is never fully removed until all screens are migrated. |
+
+#### Routing Contract: SwiftUI vs WKWebView
+
+The routing contract for native screens is:
+
+- **Migrated SwiftUI screens** call FastAPI `/api/v1/*` through the typed native `JustimeAPI` client built in Phase 2A. They do **not** load the Next.js app or use the BFF proxy.
+- **Non-migrated screens** continue to run inside WKWebView, loading the existing Next.js app and routing API calls through the BFF proxy as before.
+- **No screen is removed from WKWebView** until it has a registered SwiftUI counterpart in the `NativeRouteRegistry` (Phase 2B) that passes all parity acceptance tests.
+
+#### Local Backend Embedding
 
 - Embed Python runtime; launch/manage FastAPI as a child process.
 - Local-only mode: app works offline with bundled backend + SQLite/MongoDB Lite.
-- Migrate remaining desktop-specific UI to native SwiftUI where it improves UX (e.g., native preferences, native menubar search).
 - Deprecation warnings in Electron build.
 
 ### Phase 3 — Cross-Platform & Cleanup
@@ -130,6 +159,8 @@ The existing `apps/desktop/` Electron shell is governed by the following policy:
 | **Dark Mode** | WKWebView respects system appearance; native chrome uses SwiftUI automatic colours | Toggle system dark mode → web content and native chrome both switch; no flash of wrong theme | Full Electron support |
 | **Signing / Notarization** | Developer ID certificate; `codesign` + `notarytool`; stapled DMG | `spctl --assess --type execute Justime.app` returns accepted; DMG opens without Gatekeeper warning | Not production-ready (`hardenedRuntime: false`) |
 | **Auto-Update** | Sparkle with signed appcast.xml | New version detected → download → verify signature → install → relaunch; user can defer | Not available in Electron |
+| **Chat (native SwiftUI parity)** | Native SwiftUI Chat screen (Phase 2C): message list, text input, SSE streaming via `JustimeAPI` typed client; per-route registry entry in `NativeRouteRegistry` | Send a message → SSE stream returns tokens → message list renders incrementally; session persists across app restart; parity with WKWebView Chat on all acceptance tests | WKWebView fallback via `NativeRouteRegistry` until parity pass; Electron fallback until Phase 3 deletion |
+| **Calendar (native SwiftUI parity)** | Native SwiftUI Calendar screen (Phase 2C): day/week views, event CRUD via `JustimeAPI` typed client; per-route registry entry in `NativeRouteRegistry` | Create/edit/delete event → calendar refreshes; day and week views render correctly; parity with WKWebView Calendar on all acceptance tests | WKWebView fallback via `NativeRouteRegistry` until parity pass; Electron fallback until Phase 3 deletion |
 
 ## Risks And Rollback
 

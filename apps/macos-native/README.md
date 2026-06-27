@@ -4,17 +4,11 @@ Phase 1 app bundle foundation for the Justime macOS native client.
 
 ## Status
 
-**Phase 1 — SwiftPM bundle foundation.** SwiftPM remains the current build and test path. Bundle metadata and entitlements are placeholders for local development; they are not production-signed.
+**Phase 1 foundation is present on `dev`.** The SwiftPM bundle, entitlements, auth bridge, SSE bridge skeleton, release-gates runbook, navigation policy, and menu/shortcuts are merged. Bundle metadata and entitlements remain placeholders for local development; they are not production-signed.
 
-This phase does not include:
+**Phase 2 — Native SwiftUI migration is pending child work.** Phase 2A (typed native API client), 2B (route registry), 2C (Chat and Calendar SwiftUI screens), and 2D (per-screen WKWebView fallback removal) each have their own tracking issues. See `docs/architecture/2026-06-26-macos-native-migration.md` for the full migration lane and acceptance gates.
 
-- Code signing with a real Apple Developer certificate
-- Notarization or stapling
-- Auto-update (Sparkle or equivalent)
-- Deep linking or URL scheme handling
-- Native menu actions
-
-The existing Electron desktop app (`apps/desktop/`) remains the production shell until the native client completes its release gates.
+**WKWebView remains the fallback.** No web screen is removed from WKWebView until its native SwiftUI counterpart passes parity acceptance tests. The Electron shell (`apps/desktop/`) remains the production path until all release gates pass.
 
 ## Build & Test
 
