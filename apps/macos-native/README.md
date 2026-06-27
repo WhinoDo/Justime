@@ -63,8 +63,8 @@ The repo includes scripts for local and CI signing:
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/codesign.sh` | Signs the release binary with a Developer ID certificate |
-| `scripts/build-dmg.sh` | Creates a signed DMG from the binary |
+| `scripts/build-dmg.sh` | Creates `.app` bundle from SwiftPM binary, signs it, and packages a signed DMG |
+| `scripts/codesign.sh` | Signs an existing `.app` bundle with a Developer ID certificate (standalone use) |
 | `scripts/notarize.sh` | Submits the DMG for Apple notarization and staples the ticket |
 
 ### Local signing
@@ -72,10 +72,13 @@ The repo includes scripts for local and CI signing:
 ```bash
 cd apps/macos-native
 swift build -c release
-bash scripts/codesign.sh --identity "Developer ID Application: Name (TeamID)"
 bash scripts/build-dmg.sh --identity "Developer ID Application: Name (TeamID)"
 bash scripts/notarize.sh Justime.dmg --apple-id <id> --password <app-pw> --team-id <team>
 ```
+
+`build-dmg.sh` creates `JustimeNative.app` (a proper `.app` bundle with `Contents/MacOS/`, `Contents/Resources/`, and `Info.plist` from `BundleInfo.plist`), signs it with hardened runtime and entitlements, then packages it into a signed DMG.
+
+`codesign.sh` is available for standalone re-signing of the `.app` bundle without rebuilding the DMG.
 
 All scripts accept `--identity` / credential flags or read from env vars (`CODESIGN_IDENTITY`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`).
 

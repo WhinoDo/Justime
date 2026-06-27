@@ -80,12 +80,7 @@ jobs:
           IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | grep "Developer ID" | head -1 | sed 's/.*"\(.*\)".*/\1/')
           echo "CODESIGN_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
 
-      - name: Code sign binary
-        run: |
-          cd apps/macos-native
-          bash scripts/codesign.sh
-
-      - name: Build DMG
+      - name: Build .app bundle and signed DMG
         run: |
           cd apps/macos-native
           bash scripts/build-dmg.sh
