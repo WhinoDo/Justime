@@ -96,8 +96,8 @@ export const ChatHeader = memo(function ChatHeader({
   const isDesktop = density === 'desktop'
 
   return (
-    <div className="sticky top-0 z-40 border-b border-border bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur px-4 py-3 md:px-6">
-      <div className="flex items-center justify-between">
+    <div className="sticky top-0 z-40 border-b border-border bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur px-4 py-3 md:px-6" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}>
+      <div className="flex items-center justify-between" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-900/30">
             <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
@@ -117,7 +117,7 @@ export const ChatHeader = memo(function ChatHeader({
             <div className="flex items-center gap-1.5">
               {selectedModel ? (
                 <Link href="/model-config?from=/chat">
-                  <div className="flex cursor-pointer items-center gap-1 rounded-md border border-border bg-background px-2 py-1.5 transition-colors hover:bg-accent">
+                  <div className="flex cursor-pointer items-center gap-1 rounded-lg border border-border bg-background px-2 py-1.5 transition-colors hover:bg-accent">
                     <Bot className="h-3.5 w-3.5 text-purple-500" />
                     <span className="text-xs font-medium text-foreground">
                       {selectedModel}
@@ -126,7 +126,7 @@ export const ChatHeader = memo(function ChatHeader({
                 </Link>
               ) : (
                 <Link href="/model-config?from=/chat">
-                  <div className="flex cursor-pointer items-center gap-1 rounded-md border border-violet-200/50 bg-violet-50 px-2 py-1.5 transition-colors dark:bg-violet-900/20">
+                  <div className="flex cursor-pointer items-center gap-1 rounded-lg border border-violet-200/50 bg-violet-50 px-2 py-1.5 transition-colors dark:bg-violet-900/20">
                     <AlertTriangle className="h-3.5 w-3.5 text-violet-500" />
                     <span className="text-xs font-medium text-violet-700 dark:text-violet-300">
                       未配置模型
@@ -206,7 +206,7 @@ export const ChatHeader = memo(function ChatHeader({
             variant={isDesktop ? "ghost" : "outline"}
             size="sm"
             onClick={onClearChat}
-            className="h-8 text-xs text-muted-foreground hover:text-red-600 hover:border-red-200"
+            className="h-8 rounded-lg text-xs text-muted-foreground hover:text-red-600 hover:border-red-200"
             disabled={isEmpty}
           >
             <Trash2 className="w-3.5 h-3.5 mr-1.5" />
