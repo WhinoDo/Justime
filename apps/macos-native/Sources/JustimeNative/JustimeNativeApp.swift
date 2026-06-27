@@ -14,13 +14,20 @@ struct JustimeNativeApp: App {
                 url: AppConfig.resolveAppURL(),
                 pendingNavigation: $pendingDeepLink
             )
+            .padding(.top, TitlebarController.titlebarHeight)
             .frame(minWidth: 1120, minHeight: 760)
+            .onAppear {
+                if let window = NSApplication.shared.windows.first {
+                    TitlebarController.configureWindow(window)
+                }
+            }
             .onOpenURL { url in
                 let base = AppConfig.resolveAppURL()
                 let link = DeepLinkHandler.parse(url: url)
                 pendingDeepLink = DeepLinkHandler.resolveWebURL(link: link, baseURL: base)
             }
         }
+        .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1280, height: 800)
         .commands {
             CommandGroup(after: .newItem) {
