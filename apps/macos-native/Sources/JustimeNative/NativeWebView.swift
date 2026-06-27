@@ -43,9 +43,16 @@ struct NativeWebView: NSViewRepresentable {
 
         let contentController = configuration.userContentController
         contentController.add(coordinator, name: NativeBridge.messageHandlerName)
+        let transparentCSS = WKUserScript(
+            source: "document.documentElement.style.background='transparent';document.body.style.background='transparent';",
+            injectionTime: .atDocumentEnd,
+            forMainFrameOnly: true
+        )
+        contentController.addUserScript(transparentCSS)
         configuration.userContentController = contentController
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
+        webView.setValue(false, forKey: "drawsBackground")
         webView.allowsBackForwardNavigationGestures = true
         webView.navigationDelegate = coordinator
 
