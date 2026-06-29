@@ -153,4 +153,38 @@ describe('ChatSidebar', () => {
     const sessionButton = screen.getByText('Session 1').closest('button')
     expect(sessionButton).toHaveClass('bg-purple-500/10')
   })
+
+  it('session list should have overflow-y-auto for local scroll', () => {
+    mockUseChatSessions.mockReturnValue({
+      sessions: mockSessions,
+      loading: false,
+      error: null,
+      reload: jest.fn(),
+    })
+
+    const { container } = render(
+      <ChatSidebar
+        userId="user1"
+        currentSessionId={null}
+        onSelectSession={mockOnSelectSession}
+      />
+    )
+
+    const sessionList = container.querySelector('.overflow-y-auto')
+    expect(sessionList).toBeTruthy()
+    expect(sessionList!.className).toContain('overflow-y-auto')
+  })
+
+  it('sidebar root should have h-full for full-height shell contract', () => {
+    const { container } = render(
+      <ChatSidebar
+        userId="user1"
+        currentSessionId={null}
+        onSelectSession={mockOnSelectSession}
+      />
+    )
+
+    const root = container.firstElementChild as HTMLElement
+    expect(root.className).toContain('h-full')
+  })
 })

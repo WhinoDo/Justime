@@ -100,7 +100,7 @@ export const ChatInputArea = memo(function ChatInputArea({
         {/* Floating RAG preview panel */}
         {previewOpen && selectedReference && (
           <div className="absolute bottom-[calc(100%-1rem)] left-1/2 -translate-x-1/2 w-full max-w-5xl px-4 z-50 animate-in slide-in-from-bottom-4 fade-in duration-200">
-            <div className="h-[400px] overflow-hidden rounded-2xl border border-white/15 bg-black/40 shadow-2xl backdrop-blur-2xl">
+            <div className="max-h-[min(400px,50vh)] overflow-y-auto rounded-2xl border border-white/15 bg-black/40 shadow-2xl backdrop-blur-2xl">
               <RagReferencePreviewPanel
                 open={previewOpen}
                 reference={selectedReference}
