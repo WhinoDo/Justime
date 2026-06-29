@@ -25,8 +25,8 @@ export function JustimePageShell({
   return (
     <div
       className={cn(
-        'relative overflow-hidden',
-        fullHeight ? 'h-screen' : 'min-h-screen',
+        'relative',
+        fullHeight ? 'jushi-app' : 'min-h-screen overflow-hidden',
         variant === 'desktop' && 'bg-[#fbfaff] text-[#171421]',
         className
       )}
@@ -34,7 +34,7 @@ export function JustimePageShell({
       <JustimeBackground blur={blur} opacity={opacity} />
       <div className={cn(
         'relative z-10',
-        fullHeight ? 'h-full' : 'min-h-screen',
+        fullHeight ? 'h-full local-scroll' : 'min-h-screen',
         variant === 'desktop' && 'desktop-titlebar-safe',
         contentClassName
       )}>
