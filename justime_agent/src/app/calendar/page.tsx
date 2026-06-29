@@ -239,7 +239,7 @@ export default function CalendarPage() {
 
   if (isDesktop) {
     return (
-      <JustimePageShell variant="desktop" blur="none" opacity={0} contentClassName="h-screen flex flex-col px-6 py-6 overflow-hidden">
+      <JustimePageShell variant="desktop" fullHeight blur="none" opacity={0} contentClassName="h-full flex flex-col px-6 py-6 overflow-hidden">
         {/* 页面头部 */}
         <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between mb-4 flex-shrink-0 bg-white/[0.68] p-4 rounded-2xl border border-violet-200/[0.45] shadow-[0_12px_40px_rgba(112,77,171,0.06)] backdrop-blur-2xl">
           <div className="flex items-center justify-between sm:justify-start gap-4">
@@ -292,7 +292,7 @@ export default function CalendarPage() {
         </div>
 
         {/* 日历主体 */}
-        <div className="flex-1 bg-white/70 border border-violet-200/40 shadow-[0_24px_80px_rgba(112,77,171,0.08)] rounded-2xl overflow-hidden p-2 backdrop-blur-2xl">
+        <div className="flex-1 min-h-0 bg-white/70 border border-violet-200/40 shadow-[0_24px_80px_rgba(112,77,171,0.08)] rounded-2xl overflow-hidden p-2 backdrop-blur-2xl">
           {loading && events.length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center p-8">
@@ -343,9 +343,9 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <JustimePageShell fullHeight contentClassName="h-full flex flex-col overflow-hidden">
 
-      <div className="mx-auto p-4 md:p-6 max-w-7xl h-screen flex flex-col">
+      <div className="mx-auto p-4 md:p-6 max-w-7xl h-full flex flex-col">
         {/* macOS 风格顶部工具栏 */}
         <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between mb-4 flex-shrink-0 bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur border-b border-border rounded-t-xl px-4 py-3">
           <div className="flex items-center justify-between sm:justify-start gap-3">
@@ -393,7 +393,7 @@ export default function CalendarPage() {
         </div>
 
         {/* 日历主体 - 白色背景容器 */}
-        <div className="flex-1 bg-white dark:bg-gray-950 rounded-b-xl border-x border-b border-border shadow-sm overflow-hidden">
+        <div className="flex-1 min-h-0 bg-white dark:bg-gray-950 rounded-b-xl border-x border-b border-border shadow-sm overflow-hidden">
           {loading && events.length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center p-8">
@@ -440,6 +440,6 @@ export default function CalendarPage() {
           onEditEvent={handleSelectEvent}
         />
       </div>
-    </div>
+    </JustimePageShell>
   )
 }
