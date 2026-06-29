@@ -88,13 +88,18 @@
     @apply border-border;
   }
 
+  html {
+    height: 100%;
+    height: 100dvh;
+  }
+
   body {
     @apply bg-background text-foreground;
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
+    margin: 0;
+    min-height: 100%;
+    min-height: 100dvh;
+    overflow: hidden;
   }
 }
 
@@ -412,6 +417,32 @@
       linear-gradient(135deg, #ffffff 0%, #fbfaff 34%, #f4edff 68%, #eadcff 100%) !important;
     color: hsl(257 24% 10%) !important;
     padding: 0;
+  }
+}
+
+/* Viewport height contract for desktop / WKWebView */
+@layer utilities {
+  /* Locked to the visible app window; no document-level scroll. */
+  .jushi-app {
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Scrollable area inside a locked shell. */
+  .local-scroll {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  /* Safe-area padding applied inside the app frame, not on body. */
+  .safe-area-content {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
   }
 }
 
