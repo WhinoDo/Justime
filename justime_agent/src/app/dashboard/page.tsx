@@ -151,9 +151,9 @@ export default function DashboardPage() {
 
   if (isDesktop) {
     return (
-      <JustimePageShell variant="desktop" blur="none" opacity={0} contentClassName="min-h-screen px-6 py-8">
-        <div ref={containerRef} className="mx-auto max-w-6xl">
-          <div className="mb-8 rounded-3xl border border-violet-200/[0.45] bg-white/[0.66] p-7 shadow-[0_24px_80px_rgba(112,77,171,0.12)] backdrop-blur-2xl">
+      <JustimePageShell fullHeight variant="desktop" blur="none" opacity={0} contentClassName="flex flex-col px-6 py-8 desktop-scrollbar">
+        <div ref={containerRef} className="mx-auto flex w-full max-w-6xl flex-1 flex-col min-h-0">
+          <div className="mb-8 shrink-0 rounded-3xl border border-violet-200/[0.45] bg-white/[0.66] p-7 shadow-[0_24px_80px_rgba(112,77,171,0.12)] backdrop-blur-2xl">
             <div className="flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-violet-200/50 bg-white/70 text-violet-600 shadow-sm">
                 <Sparkles className="h-5 w-5" />
@@ -167,24 +167,32 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {cards.map((card, index) => {
-              const desktopColors = getDesktopCardColor(card.title)
-              return (
-                <Link key={index} href={card.href} className="group block">
-                  <div className="h-full rounded-2xl border border-violet-200/[0.45] bg-white/[0.64] p-5 shadow-[0_18px_60px_rgba(112,77,171,0.10)] backdrop-blur-2xl transition hover:-translate-y-0.5 hover:border-violet-300/70 hover:bg-white/[0.82]">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className={cn('rounded-xl p-2.5', desktopColors.bg)}>
-                        <card.icon className={cn('h-5 w-5', desktopColors.text)} />
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className="grid grid-cols-1 gap-4 pb-4 md:grid-cols-2 lg:grid-cols-3">
+              {cards.map((card, index) => {
+                const desktopColors = getDesktopCardColor(card.title)
+                return (
+                  <Link key={index} href={card.href} className="group block">
+                    <div className="h-full rounded-2xl border border-violet-200/[0.45] bg-white/[0.64] p-5 shadow-[0_18px_60px_rgba(112,77,171,0.10)] backdrop-blur-2xl transition hover:-translate-y-0.5 hover:border-violet-300/70 hover:bg-white/[0.82]">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className={cn('rounded-xl p-2.5', desktopColors.bg)}>
+                          <card.icon className={cn('h-5 w-5', desktopColors.text)} />
+                        </div>
+                        <ArrowRight className="h-4 w-4 text-[#8b7aa8] transition group-hover:translate-x-0.5 group-hover:text-violet-600" />
                       </div>
-                      <ArrowRight className="h-4 w-4 text-[#8b7aa8] transition group-hover:translate-x-0.5 group-hover:text-violet-600" />
+                      <h2 className="mt-4 text-base font-semibold text-[#171421]">{card.title}</h2>
+                      <p className="mt-2 line-clamp-2 text-sm leading-6 text-[#6d6680]">{card.description}</p>
                     </div>
-                    <h2 className="mt-4 text-base font-semibold text-[#171421]">{card.title}</h2>
-                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-[#6d6680]">{card.description}</p>
-                  </div>
-                </Link>
-              )
-            })}
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="shrink-0 pt-4 text-center">
+            <p className="text-xs text-[#8b7aa8] font-mono tracking-widest uppercase">
+              JUSTIME WORKBENCH v0.5.0
+            </p>
           </div>
         </div>
       </JustimePageShell>
