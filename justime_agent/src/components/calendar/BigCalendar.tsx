@@ -143,7 +143,7 @@ export function BigCalendar({
     <div className="h-full flex flex-col calendar-theme-glass">
 
       {/* Calendar Body */}
-      <div className="flex-1">
+      <div className="flex-1 min-h-0">
         <Calendar
           localizer={localizer}
           events={events}

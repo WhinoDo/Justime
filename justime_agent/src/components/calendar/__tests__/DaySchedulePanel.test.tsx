@@ -236,4 +236,18 @@ describe('DaySchedulePanel', () => {
     expect(titles[1]).toHaveTextContent('写代码')
     expect(titles[2]).toHaveTextContent('午休提醒')
   })
+
+  it('renders panel with flex-col layout and fixed viewport positioning', () => {
+    const { container } = renderPanel()
+    const panel = container.querySelector('.fixed.inset-y-0.right-0')
+    expect(panel).toBeInTheDocument()
+    expect(panel!.className).toContain('flex-col')
+  })
+
+  it('renders only the timeline content area as scrollable', () => {
+    const { container } = renderPanel()
+    const scrollable = container.querySelector('.overflow-y-auto')
+    expect(scrollable).toBeInTheDocument()
+    expect(scrollable!.className).toContain('flex-1')
+  })
 })

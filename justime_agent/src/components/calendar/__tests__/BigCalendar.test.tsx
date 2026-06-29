@@ -165,4 +165,18 @@ describe('BigCalendar', () => {
     const { container } = render(<BigCalendar events={[]} />)
     expect(container.querySelector('.calendar-theme-glass')).toBeInTheDocument()
   })
+
+  it('renders root with h-full flex-col for local scroll containment', () => {
+    const { container } = render(<BigCalendar events={[]} />)
+    const root = container.firstElementChild as HTMLElement
+    expect(root.className).toContain('h-full')
+    expect(root.className).toContain('flex-col')
+  })
+
+  it('renders calendar body with min-h-0 to prevent flex overflow', () => {
+    const { container } = render(<BigCalendar events={[]} />)
+    const calendarBody = container.querySelector('.min-h-0')
+    expect(calendarBody).toBeInTheDocument()
+    expect(calendarBody!.className).toContain('flex-1')
+  })
 })
