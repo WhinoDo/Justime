@@ -197,4 +197,16 @@ describe('ChatInterface', () => {
 
     expect(screen.getByPlaceholderText('输入 "@" 唤起常用语，或粘贴代码快速提问')).toHaveFocus()
   })
+
+  it('renders with overflow-hidden to prevent document scroll', async () => {
+    const { container } = render(<ChatInterface />)
+
+    await waitFor(() => {
+      expect(screen.getByText('矩时智能助手')).toBeInTheDocument()
+    })
+
+    const outerDiv = container.firstElementChild as HTMLElement
+    expect(outerDiv.className).toContain('overflow-hidden')
+    expect(outerDiv.className).toContain('min-h-0')
+  })
 })
