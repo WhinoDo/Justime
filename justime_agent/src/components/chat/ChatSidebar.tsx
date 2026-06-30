@@ -56,7 +56,7 @@ export function ChatSidebar({
             {/* macOS 风格新建会话按钮 */}
             <div className="px-3 pb-2">
                 <Button
-                    className="w-full justify-center gap-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 shadow-sm text-sm font-medium"
+                    className="w-full justify-start gap-2 rounded-lg border border-white/10 bg-white/10 text-white hover:bg-white/15"
                     onClick={() => onSelectSession(null)}
                 >
                     <Plus className="h-4 w-4" />
@@ -71,19 +71,19 @@ export function ChatSidebar({
                         key={session._id}
                         type="button"
                         className={cn(
-                            "group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-all duration-150",
-                            "hover:bg-gray-100 dark:hover:bg-gray-700/50",
+                            "group flex w-full items-center gap-2.5 rounded-lg border border-transparent px-2.5 py-2 text-left text-[13px] transition-all duration-150",
+                            "hover:bg-white/10",
                             currentSessionId === session._id
-                                ? "bg-purple-500/10 text-purple-600 dark:text-purple-400"
-                                : "text-foreground"
+                                ? "border-blue-400/30 bg-blue-500/20"
+                                : "bg-transparent"
                         )}
                         onClick={() => onSelectSession(session._id)}
                     >
                         <div className={cn(
-                            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+                            "flex h-6 w-6 shrink-0 items-center justify-center rounded-md",
                             currentSessionId === session._id
-                                ? "bg-purple-500/15 text-purple-600 dark:text-purple-400"
-                                : "bg-gray-100 dark:bg-gray-800 text-muted-foreground"
+                                ? "bg-blue-400/20"
+                                : "bg-white/10"
                         )}>
                             <MessageSquare className="h-4 w-4" />
                         </div>
