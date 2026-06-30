@@ -45,6 +45,11 @@
 
     --radius: 0.5rem;
     /* macOS 小圆角 8px */
+
+    --macos-vibrancy-bg: rgba(255, 255, 255, 0.65);
+    --macos-vibrancy-border: rgba(255, 255, 255, 0.18);
+    --macos-vibrancy-blur: 20px;
+    --macos-vibrancy-saturate: 180%;
   }
 
   .dark {
@@ -80,6 +85,11 @@
     --border: 260 20% 15%;
     --input: 260 20% 15%;
     --ring: 262 83% 58%;
+
+    --macos-vibrancy-bg: rgba(30, 30, 30, 0.65);
+    --macos-vibrancy-border: rgba(255, 255, 255, 0.12);
+    --macos-vibrancy-blur: 20px;
+    --macos-vibrancy-saturate: 180%;
   }
 }
 
