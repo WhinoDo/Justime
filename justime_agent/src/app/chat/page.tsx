@@ -147,7 +147,7 @@ function ChatPageInner() {
     <JustimePageShell fullHeight>
       <div className="flex h-full gap-0 p-0">
         {/* 左侧侧边栏 - macOS 风格 */}
-        <div className="hidden w-72 flex-shrink-0 rounded-[10px] min-h-0 border-r border-border md:flex md:flex-col bg-white dark:bg-gray-950">
+        <div className="hidden w-[260px] flex-shrink-0 rounded-[10px] min-h-0 border-r border-border md:flex md:flex-col bg-white dark:bg-gray-950">
           <ChatSidebar
             userId={user.id}
             currentSessionId={sessionId}
