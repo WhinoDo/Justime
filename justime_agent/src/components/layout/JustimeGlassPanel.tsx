@@ -7,7 +7,7 @@ interface JustimeGlassPanelProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const panelVariants = {
-  glass: 'border border-white/20 bg-white/10 text-white shadow-2xl backdrop-blur-xl',
+  glass: 'border border-white/20 bg-white/10 text-white backdrop-blur-xl shadow-[0_22px_70px_4px_rgba(0,0,0,0.28)]',
   desktop: 'border border-violet-200/40 bg-white/70 text-[#171421] shadow-[0_24px_80px_rgba(112,77,171,0.14)] backdrop-blur-2xl',
   sidebar: 'border-r border-violet-200/40 bg-white/[0.62] text-[#171421] shadow-none backdrop-blur-2xl',
   inspector: 'border-l border-violet-200/40 bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(244,237,255,0.74))] text-[#171421] shadow-none backdrop-blur-2xl',
