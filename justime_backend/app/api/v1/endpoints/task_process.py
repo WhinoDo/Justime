@@ -4,7 +4,13 @@ from fastapi import APIRouter, HTTPException, Query, status
 
 from app.api.deps import CurrentUser
 from app.business.task_process_business import _task_process_business
-from app.models.task_process import TaskAgentRequest, TaskProcessCreate, TaskProcessListQuery, TaskProcessUpdate
+from app.models.task_process import (
+    MilestoneStatusUpdate,
+    TaskAgentRequest,
+    TaskProcessCreate,
+    TaskProcessListQuery,
+    TaskProcessUpdate,
+)
 
 router = APIRouter()
 
@@ -55,6 +61,27 @@ async def get_task_process(task_id: str, current_user: CurrentUser):
 async def update_task_process(task_id: str, payload: TaskProcessUpdate, current_user: CurrentUser):
     try:
         task = await _task_process_business.update_task_process(str(current_user["_id"]), task_id, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if not task:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="任务不存在")
+    return {"success": True, "data": {"task": task}}
+
+
+@router.patch("/{task_id}/milestones/{milestone_id}", summary="更新里程碑状态")
+async def update_milestone_status(
+    task_id: str,
+    milestone_id: str,
+    payload: MilestoneStatusUpdate,
+    current_user: CurrentUser,
+):
+    try:
+        task = await _task_process_business.update_milestone_status(
+            str(current_user["_id"]),
+            task_id,
+            milestone_id,
+            payload.status,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     if not task:
