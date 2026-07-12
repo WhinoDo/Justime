@@ -190,4 +190,55 @@ describe('useTaskProcesses', () => {
     expect(url.searchParams.get('search')).toBe('roadmap')
     expect(url.searchParams.get('page')).toBe('2')
   })
+
+  it('uses the reset page for an immediate filter while search is pending', async () => {
+    jest.useFakeTimers()
+    const { result, rerender } = renderHook(
+      (query: TaskProcessListQuery) => useTaskProcesses(query),
+      {
+        initialProps: {
+          search: 'old term',
+          phase: '',
+          page: 2,
+          page_size: 12,
+        } as TaskProcessListQuery,
+      },
+    )
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(result.current.loading).toBe(false)
+    mockFetch.mockClear()
+
+    rerender({ search: 'new term', phase: '', page: 1, page_size: 12 })
+    expect(mockFetch).not.toHaveBeenCalled()
+
+    rerender({ search: 'new term', phase: 'during', page: 1, page_size: 12 })
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+    let url = requestUrl()
+    expect(url.searchParams.get('search')).toBe('old term')
+    expect(url.searchParams.get('phase')).toBe('during')
+    expect(url.searchParams.get('page')).toBe('1')
+
+    act(() => {
+      jest.advanceTimersByTime(299)
+    })
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      jest.advanceTimersByTime(1)
+      await Promise.resolve()
+    })
+
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+    url = requestUrl(1)
+    expect(url.searchParams.get('search')).toBe('new term')
+    expect(url.searchParams.get('phase')).toBe('during')
+    expect(url.searchParams.get('page')).toBe('1')
+  })
 })

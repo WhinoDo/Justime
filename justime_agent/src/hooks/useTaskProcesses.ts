@@ -57,6 +57,16 @@ interface CommittedTaskSearch {
   page: number
 }
 
+interface ImmediateTaskQuery {
+  status: TaskStatus | ''
+  phase: TaskPhase | ''
+  category: TaskCategory | ''
+  priority: TaskPriority | ''
+  sortBy: TaskProcessSortBy
+  sortOrder: TaskProcessSortOrder
+  pageSize: number
+}
+
 async function requestJson<T>(input: RequestInfo, init?: RequestInit): Promise<RequestResult<T>> {
   try {
     const res = await fetch(input, {
@@ -105,14 +115,41 @@ export function useTaskProcesses(options: UseTaskProcessesOptions = {}) {
     totalPages: 0,
   })
   const requestIdRef = useRef(0)
+  const immediateQueryRef = useRef<ImmediateTaskQuery>({
+    status,
+    phase,
+    category,
+    priority,
+    sortBy: sort_by,
+    sortOrder: sort_order,
+    pageSize: page_size,
+  })
   const trimmedSearch = search.trim()
   const searchPending = trimmedSearch !== committedSearch.value
+  const previousImmediateQuery = immediateQueryRef.current
+  const immediateQueryChanged = previousImmediateQuery.status !== status
+    || previousImmediateQuery.phase !== phase
+    || previousImmediateQuery.category !== category
+    || previousImmediateQuery.priority !== priority
+    || previousImmediateQuery.sortBy !== sort_by
+    || previousImmediateQuery.sortOrder !== sort_order
+    || previousImmediateQuery.pageSize !== page_size
 
   useEffect(() => {
-    if (searchPending || committedSearch.page === page) return
+    immediateQueryRef.current = {
+      status,
+      phase,
+      category,
+      priority,
+      sortBy: sort_by,
+      sortOrder: sort_order,
+      pageSize: page_size,
+    }
+
+    if ((searchPending && !immediateQueryChanged) || committedSearch.page === page) return
 
     setCommittedSearch((current) => ({ ...current, page }))
-  }, [committedSearch.page, page, searchPending])
+  }, [category, committedSearch.page, immediateQueryChanged, page, page_size, phase, priority, searchPending, sort_by, sort_order, status])
 
   useEffect(() => {
     if (!searchPending) return
@@ -124,7 +161,7 @@ export function useTaskProcesses(options: UseTaskProcessesOptions = {}) {
     return () => window.clearTimeout(timer)
   }, [page, searchPending, trimmedSearch])
 
-  const requestPage = searchPending ? committedSearch.page : page
+  const requestPage = searchPending && !immediateQueryChanged ? committedSearch.page : page
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams()
