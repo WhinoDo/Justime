@@ -53,34 +53,47 @@ class ChatBusiness:
         task_id: Optional[str],
         session_id: str,
         role: str,
+        message_id: str,
         content: str,
     ) -> None:
         if not task_id or not content.strip():
+            logger.debug("Skipping chat Evidence for unbound or empty %s message", role)
             return
-        try:
-            from app.business.task_process_business import _task_process_business
-            from app.models.evidence import EvidenceCreate
 
-            title_prefix = "用户对话" if role == "user" else "AI 回复"
-            payload = EvidenceCreate(
-                task_id=task_id,
-                type="chat",
-                title=f"{title_prefix} / {datetime.now(timezone.utc).strftime('%m-%d %H:%M')}",
-                content=content[:50000],
-                source=session_id,
-                metadata={"role": role},
-            )
-            await _task_process_business.create_evidence(
-                user_id,
-                payload,
-                ai_extracted=(role == "ai"),
-            )
-            await db.db.task_processes.update_one(
-                {"_id": _task_process_business._ensure_object_id(task_id, "任务ID"), "userId": user_id},
-                {"$addToSet": {"related_chat_session_ids": session_id}, "$set": {"updatedAt": datetime.now(timezone.utc)}},
-            )
-        except Exception as exc:
-            logger.warning(f"Failed to mirror chat into task evidence: {exc}")
+        from app.business.task_process_business import _task_process_business
+        from app.models.evidence import EvidenceCreate
+
+        source_by_role = {
+            "user": "chat:user",
+            "assistant": "chat:assistant",
+        }
+        if role not in source_by_role:
+            raise ValueError(f"Unsupported chat Evidence role: {role}")
+
+        payload = EvidenceCreate(
+            task_id=task_id,
+            type="chat",
+            title="用户对话" if role == "user" else "AI 回复",
+            content=content[:50000],
+            source=source_by_role[role],
+            source_id=message_id,
+            metadata={"role": role},
+        )
+        await _task_process_business.create_evidence(
+            user_id,
+            payload,
+            ai_extracted=False,
+        )
+        await db.db.task_processes.update_one(
+            {
+                "_id": _task_process_business._ensure_object_id(task_id, "任务ID"),
+                "userId": user_id,
+            },
+            {
+                "$addToSet": {"related_chat_session_ids": session_id},
+                "$set": {"updatedAt": datetime.now(timezone.utc)},
+            },
+        )
 
     async def update_message_interactive_state(self, message_id: str, updates: Dict[str, Any]):
         return await chat_persistence.update_message_interactive_state(message_id, updates)
@@ -115,10 +128,19 @@ class ChatBusiness:
             session_id,
             "ai",
             openclaw_result.text,
+            taskId=request.taskId,
             taskAnalysis={
                 "source": "openclaw",
                 "taskType": request.taskType or "general",
             },
+        )
+        await self._sync_task_evidence_from_chat(
+            user_id=user_id,
+            task_id=request.taskId,
+            session_id=session_id,
+            role="assistant",
+            message_id=ai_message_id,
+            content=openclaw_result.text,
         )
 
         routing_meta["mainModel"] = "openclaw/embedded"
@@ -206,16 +228,23 @@ class ChatBusiness:
             session_id = await self.create_session(user_id, title)
 
         try:
-            await self.save_message(session_id, "user", request.message, taskId=request.taskId)
+            user_message_id = await self.save_message(
+                session_id,
+                "user",
+                request.message,
+                taskId=request.taskId,
+            )
+        except Exception as e:
+            logger.error(f"Failed to save user message: {e}")
+        else:
             await self._sync_task_evidence_from_chat(
                 user_id=user_id,
                 task_id=request.taskId,
                 session_id=session_id,
                 role="user",
+                message_id=user_message_id,
                 content=request.message,
             )
-        except Exception as e:
-            logger.error(f"Failed to save user message: {e}")
 
         if self._should_use_openclaw(request):
             try:
@@ -579,15 +608,17 @@ class ChatBusiness:
                     save_kwargs["taskAnalysis"] = timing_strategy.get("analysisMeta")
                 save_kwargs["taskId"] = request.taskId
                 ai_message_id = await self.save_message(session_id, "ai", ai_content, **save_kwargs)
+            except Exception as e:
+                logger.error(f"Failed to save AI message: {e}")
+            else:
                 await self._sync_task_evidence_from_chat(
                     user_id=user_id,
                     task_id=request.taskId,
                     session_id=session_id,
-                    role="ai",
+                    role="assistant",
+                    message_id=ai_message_id,
                     content=ai_content,
                 )
-            except Exception as e:
-                logger.error(f"Failed to save AI message: {e}")
 
             logger.info(f"日程建议数量: {len(suggested_events)}")
             logger.info(f"任务分解: {'有' if task_decomposition else '无'}")
@@ -717,12 +748,18 @@ class ChatBusiness:
             )
 
             recent_context = await chat_persistence.build_recent_context(session_id, 8)
-            await self.save_message(session_id, "user", request.message, taskId=request.taskId)
+            user_message_id = await self.save_message(
+                session_id,
+                "user",
+                request.message,
+                taskId=request.taskId,
+            )
             await self._sync_task_evidence_from_chat(
                 user_id=user_id,
                 task_id=request.taskId,
                 session_id=session_id,
                 role="user",
+                message_id=user_message_id,
                 content=request.message,
             )
 
@@ -871,7 +908,8 @@ class ChatBusiness:
                 user_id=user_id,
                 task_id=request.taskId,
                 session_id=session_id,
-                role="ai",
+                role="assistant",
+                message_id=ai_message_id,
                 content=accumulated_content,
             )
 
