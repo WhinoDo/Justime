@@ -159,14 +159,16 @@ async def test_unconfigured_provider_returns_structured_state_without_task():
     result = await module.rebuild_index(current_user={"_id": "user-1"})
 
     assert task_service.started is False
+    assert result["success"] is False
     assert result["task_id"] is None
-    assert result["status"] == "degraded"
+    assert result["status"] == "unavailable"
+    assert result["provider_status"] == "degraded"
+    assert result["availability"] == state()
     assert result["error_code"] == "PROVIDER_NOT_CONFIGURED"
-    assert set(state()).issubset(result)
 
 
 @pytest.mark.asyncio
-async def test_configured_provider_creates_task_without_claiming_ready():
+async def test_configured_provider_preserves_mobile_queue_contract():
     configured = state(
         mode="cloud", provider="notebooklm", status="degraded", error_code=None
     )
@@ -177,9 +179,12 @@ async def test_configured_provider_creates_task_without_claiming_ready():
     result = await module.rebuild_index(current_user={"_id": "user-1"})
 
     assert task_service.started is True
-    assert result["success"] is False
+    assert result["success"] is True
     assert result["task_id"] == "task-1"
-    assert result["status"] == "degraded"
+    assert result["status"] == "pending"
+    assert result["task_status"] == "pending"
+    assert result["provider_status"] == "degraded"
+    assert result["availability"] == configured
     assert result["error_code"] is None
     assert "removed" not in repr(result)
 
@@ -206,7 +211,11 @@ async def test_failed_task_status_is_retryable_and_does_not_leak_raw_error():
         task_id="task-1", current_user={"_id": "user-1"}
     )
 
-    assert result["status"] == "unavailable"
+    assert result["success"] is True
+    assert result["status"] == "failed"
+    assert result["task_status"] == "failed"
+    assert result["provider_status"] == "unavailable"
+    assert result["availability"]["status"] == "unavailable"
     assert result["retryable"] is True
     assert result["error_code"] == "PROVIDER_UNAVAILABLE"
     assert result["error"] is None
@@ -238,8 +247,39 @@ async def test_completed_task_status_is_the_only_successful_rebuild_state():
 
     assert result["success"] is True
     assert result["task_status"] == "completed"
-    assert result["status"] == "ready"
+    assert result["status"] == "completed"
+    assert result["provider_status"] == "ready"
+    assert result["availability"]["status"] == "ready"
     assert result["error_code"] is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("task_status", ["pending", "running"])
+async def test_in_progress_poll_preserves_mobile_lifecycle_status(task_status):
+    configured = state(
+        mode="cloud", provider="notebooklm", status="degraded", error_code=None
+    )
+    rag = types.SimpleNamespace(get_availability_state=lambda: configured)
+    task_service = FakeTaskService({
+        "task_id": "task-1",
+        "user_id": "user-1",
+        "status": task_status,
+        "message": "provider detail",
+        "error": None,
+        "created_at": 1,
+        "started_at": 2 if task_status == "running" else None,
+        "completed_at": None,
+    })
+    module = load_knowledge_module(rag, task_service)
+
+    result = await module.get_rebuild_status(
+        task_id="task-1", current_user={"_id": "user-1"}
+    )
+
+    assert result["success"] is True
+    assert result["status"] == task_status
+    assert result["task_status"] == task_status
+    assert result["availability"] == configured
 
 
 def test_api_registers_knowledge_router_unconditionally():

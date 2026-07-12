@@ -6,6 +6,7 @@
 
 import asyncio
 import logging
+import re
 from pathlib import Path
 from typing import Any, Dict, Literal, Optional, TypedDict
 
@@ -106,6 +107,7 @@ def user_context_required_state() -> RAGAvailabilityState:
 
 # 共享路径工具（不依赖本地 RAG 引擎）
 from app.services.knowledge_paths import (
+    DOCS_DIR,
     get_user_docs_dir,
     get_current_user_context,
 )
@@ -139,6 +141,48 @@ def _run_async(coro, timeout: int = 300):
     except RuntimeError:
         pass
     return asyncio.run(coro)
+
+
+_SYNC_RESULT_PATTERN = re.compile(r"^已同步 (\d+) 个文件到 NotebookLM$")
+
+
+def _user_id_from_docs_dir(docs_dir: Optional[Path]) -> Optional[str]:
+    """Recover only the direct user directory identity below DOCS_DIR."""
+    if docs_dir is None:
+        return None
+
+    try:
+        docs_root = Path(DOCS_DIR).expanduser().resolve()
+        resolved_docs_dir = Path(docs_dir).expanduser().resolve()
+    except (OSError, RuntimeError, TypeError, ValueError):
+        return None
+
+    if resolved_docs_dir.parent != docs_root:
+        return None
+
+    user_id = resolved_docs_dir.name.strip()
+    return user_id or None
+
+
+def _eligible_source_count(docs_dir: Path) -> int:
+    """Match NotebookLMService.sync_all_sources file selection exactly."""
+    if not docs_dir.exists():
+        return 0
+    return sum(
+        1
+        for file_path in docs_dir.iterdir()
+        if file_path.is_file() and not file_path.name.startswith(".")
+    )
+
+
+def _complete_sync_count(result: Any, expected_count: int) -> Optional[int]:
+    if not isinstance(result, str):
+        return None
+    match = _SYNC_RESULT_PATTERN.fullmatch(result)
+    if match is None:
+        return None
+    synced_count = int(match.group(1))
+    return synced_count if synced_count == expected_count else None
 
 
 class RAGService:
@@ -186,6 +230,7 @@ class RAGService:
         self,
         docs_dir: Optional[Path] = None,
         persist: bool = True,
+        user_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """同步文档到云端 RAG（语义从"本地重建索引"改为"云同步"）。
 
@@ -198,7 +243,12 @@ class RAGService:
                 **provider_not_configured_state(),
             })
 
-        target_user_id = get_current_user_context()
+        explicit_user_id = str(user_id or "").strip() or None
+        target_user_id = (
+            explicit_user_id
+            or get_current_user_context()
+            or _user_id_from_docs_dir(docs_dir)
+        )
         if not target_user_id:
             return RAGResult({
                 "success": False,
@@ -208,14 +258,38 @@ class RAGService:
 
         try:
             target_docs_dir = docs_dir or get_user_docs_dir(target_user_id)
+            resolved_docs_root = Path(DOCS_DIR).expanduser().resolve()
+            resolved_target_docs_dir = Path(target_docs_dir).expanduser().resolve()
+            expected_docs_dir = Path(get_user_docs_dir(target_user_id)).expanduser().resolve()
+            if (
+                resolved_target_docs_dir != expected_docs_dir
+                or resolved_target_docs_dir.parent != resolved_docs_root
+            ):
+                return RAGResult({
+                    "success": False,
+                    "message": "重建索引失败：需要用户上下文",
+                    **user_context_required_state(),
+                })
+
+            expected_count = _eligible_source_count(resolved_target_docs_dir)
             result = _run_async(
-                _notebooklm_service.sync_all_sources(target_user_id, target_docs_dir),
+                _notebooklm_service.sync_all_sources(
+                    target_user_id,
+                    resolved_target_docs_dir,
+                ),
                 timeout=600,
             )
-            message = result if isinstance(result, str) else "文档已同步到云 RAG"
+            synced_count = _complete_sync_count(result, expected_count)
+            if synced_count is None:
+                return RAGResult({
+                    "success": False,
+                    "message": "重建索引失败：云 RAG 服务暂时不可用",
+                    **provider_unavailable_state(),
+                })
+
             return RAGResult({
                 "success": True,
-                "message": message,
+                "message": f"已同步 {synced_count} 个文件到 NotebookLM",
                 **provider_ready_state(),
             })
         except Exception:

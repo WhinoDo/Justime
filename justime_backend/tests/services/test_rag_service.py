@@ -1,5 +1,7 @@
+import asyncio
 import importlib.util
 import sys
+import threading
 import types
 from pathlib import Path
 
@@ -8,7 +10,13 @@ RAG_SERVICE_PATH = (
 )
 
 
-def load_rag_module(*, enabled=True, provider=None, user_id="user-1"):
+def load_rag_module(
+    *,
+    enabled=True,
+    provider=None,
+    user_id="user-1",
+    docs_root=Path("/tmp/docs"),
+):
     app_module = types.ModuleType("app")
     app_module.__path__ = []
     services_module = types.ModuleType("app.services")
@@ -17,13 +25,17 @@ def load_rag_module(*, enabled=True, provider=None, user_id="user-1"):
     core_module.__path__ = []
 
     paths_module = types.ModuleType("app.services.knowledge_paths")
-    paths_module.DOCS_DIR = Path("/tmp/docs")
+    paths_module.DOCS_DIR = docs_root
     paths_module.SUPPORTED_DOC_EXTENSIONS = [".md"]
     paths_module._ensure_directory = lambda path: path
-    paths_module.get_user_docs_dir = lambda current_user: Path("/tmp/docs") / current_user
-    paths_module.set_current_user_context = lambda value: None
-    paths_module.clear_current_user_context = lambda: None
-    paths_module.get_current_user_context = lambda: user_id
+    paths_module.get_user_docs_dir = lambda current_user: docs_root / current_user
+    context = threading.local()
+    context.user_id = user_id
+    paths_module.set_current_user_context = lambda value: setattr(
+        context, "user_id", value
+    )
+    paths_module.clear_current_user_context = lambda: setattr(context, "user_id", None)
+    paths_module.get_current_user_context = lambda: getattr(context, "user_id", None)
 
     config_module = types.ModuleType("app.core.config")
     config_module.settings = types.SimpleNamespace(NOTEBOOKLM_ENABLED=enabled)
@@ -47,6 +59,7 @@ def load_rag_module(*, enabled=True, provider=None, user_id="user-1"):
     module = importlib.util.module_from_spec(spec)
     assert spec and spec.loader
     spec.loader.exec_module(module)
+    module.test_paths = paths_module
     return module
 
 
@@ -75,6 +88,21 @@ class LegacyErrorProvider:
             "answer": "NotebookLM 查询出错: token=secret-value",
             "references": [],
         }
+
+
+class RecordingSyncProvider:
+    def __init__(self, synced_count):
+        self.synced_count = synced_count
+        self.calls = []
+
+    async def sync_all_sources(self, user_id, docs_dir):
+        self.calls.append((user_id, docs_dir))
+        return f"已同步 {self.synced_count} 个文件到 NotebookLM"
+
+
+class MalformedSyncProvider:
+    async def sync_all_sources(self, user_id, docs_dir):
+        return {"synced": 1}
 
 
 def assert_state(result, expected):
@@ -178,16 +206,30 @@ def test_ready_provider_preserves_answer_and_references():
     })
 
 
-def test_rebuild_results_are_structured_and_sanitize_provider_failure(caplog):
-    ready_module = load_rag_module(enabled=True, provider=ReadyProvider())
-    ready = ready_module.RAGService().rebuild_index(Path("/tmp/docs"))
+def test_rebuild_results_are_structured_and_sanitize_provider_failure(
+    tmp_path, caplog
+):
+    user_docs_dir = tmp_path / "user-1"
+    user_docs_dir.mkdir()
+    (user_docs_dir / "guide.md").write_text("guide")
+
+    ready_module = load_rag_module(
+        enabled=True,
+        provider=ReadyProvider(),
+        docs_root=tmp_path,
+    )
+    ready = ready_module.RAGService().rebuild_index(user_docs_dir)
 
     assert ready["success"] is True
     assert ready["status"] == "ready"
     assert ready.startswith("已同步")
 
-    failing_module = load_rag_module(enabled=True, provider=FailingProvider())
-    failed = failing_module.RAGService().rebuild_index(Path("/tmp/docs"))
+    failing_module = load_rag_module(
+        enabled=True,
+        provider=FailingProvider(),
+        docs_root=tmp_path,
+    )
+    failed = failing_module.RAGService().rebuild_index(user_docs_dir)
 
     serialized = repr(failed) + caplog.text
     assert "secret-value" not in serialized
@@ -195,3 +237,112 @@ def test_rebuild_results_are_structured_and_sanitize_provider_failure(caplog):
     assert failed["success"] is False
     assert failed["error_code"] == "PROVIDER_UNAVAILABLE"
     assert failed["retryable"] is True
+
+
+def test_rebuild_recovers_validated_user_context_across_executor(tmp_path):
+    user_docs_dir = tmp_path / "user-1"
+    user_docs_dir.mkdir()
+    (user_docs_dir / "guide.md").write_text("guide")
+    provider = RecordingSyncProvider(synced_count=1)
+    module = load_rag_module(
+        enabled=True,
+        provider=provider,
+        docs_root=tmp_path,
+    )
+    module.test_paths.set_current_user_context("user-1")
+
+    async def execute_rebuild():
+        loop = asyncio.get_running_loop()
+        worker_context = await loop.run_in_executor(
+            None, module.get_current_user_context
+        )
+        result = await loop.run_in_executor(
+            None,
+            module.RAGService().rebuild_index,
+            user_docs_dir,
+            False,
+        )
+        return worker_context, result
+
+    worker_context, result = asyncio.run(execute_rebuild())
+
+    assert worker_context is None
+    assert result["success"] is True
+    assert result["status"] == "ready"
+    assert provider.calls == [("user-1", user_docs_dir.resolve())]
+
+
+def test_rebuild_rejects_unvalidated_docs_path_as_user_context(tmp_path):
+    nested_docs_dir = tmp_path / "nested" / "user-1"
+    nested_docs_dir.mkdir(parents=True)
+    provider = RecordingSyncProvider(synced_count=0)
+    module = load_rag_module(
+        enabled=True,
+        provider=provider,
+        user_id=None,
+        docs_root=tmp_path,
+    )
+
+    result = module.RAGService().rebuild_index(nested_docs_dir)
+
+    assert result["success"] is False
+    assert result["error_code"] == "USER_CONTEXT_REQUIRED"
+    assert provider.calls == []
+
+
+def test_rebuild_rejects_user_directory_symlink_outside_docs_root(tmp_path):
+    docs_root = tmp_path / "docs"
+    docs_root.mkdir()
+    outside_dir = tmp_path / "outside"
+    outside_dir.mkdir()
+    (docs_root / "user-1").symlink_to(outside_dir, target_is_directory=True)
+    provider = RecordingSyncProvider(synced_count=0)
+    module = load_rag_module(
+        enabled=True,
+        provider=provider,
+        docs_root=docs_root,
+    )
+
+    result = module.RAGService().rebuild_index(docs_root / "user-1")
+
+    assert result["success"] is False
+    assert result["error_code"] == "USER_CONTEXT_REQUIRED"
+    assert provider.calls == []
+
+
+def test_partial_provider_sync_cannot_claim_ready(tmp_path):
+    user_docs_dir = tmp_path / "user-1"
+    user_docs_dir.mkdir()
+    (user_docs_dir / "first.md").write_text("first")
+    (user_docs_dir / "second.md").write_text("second")
+    (user_docs_dir / ".ignored").write_text("ignored")
+    provider = RecordingSyncProvider(synced_count=1)
+    module = load_rag_module(
+        enabled=True,
+        provider=provider,
+        docs_root=tmp_path,
+    )
+
+    result = module.RAGService().rebuild_index(user_docs_dir)
+
+    assert result["success"] is False
+    assert result["status"] == "unavailable"
+    assert result["retryable"] is True
+    assert result["error_code"] == "PROVIDER_UNAVAILABLE"
+
+
+def test_malformed_provider_sync_result_cannot_claim_ready(tmp_path):
+    user_docs_dir = tmp_path / "user-1"
+    user_docs_dir.mkdir()
+    (user_docs_dir / "guide.md").write_text("guide")
+    module = load_rag_module(
+        enabled=True,
+        provider=MalformedSyncProvider(),
+        docs_root=tmp_path,
+    )
+
+    result = module.RAGService().rebuild_index(user_docs_dir)
+
+    assert result["success"] is False
+    assert result["status"] == "unavailable"
+    assert result["error_code"] == "PROVIDER_UNAVAILABLE"

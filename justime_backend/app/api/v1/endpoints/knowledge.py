@@ -116,6 +116,25 @@ def _unavailable_provider_state() -> Dict[str, Any]:
     )
 
 
+def _rebuild_availability_fields(availability: Dict[str, Any]) -> Dict[str, Any]:
+    """Expose provider state without colliding with legacy task lifecycle status."""
+    provider_state = {
+        "mode": availability["mode"],
+        "provider": availability["provider"],
+        "status": availability["status"],
+        "retryable": availability["retryable"],
+        "error_code": availability["error_code"],
+    }
+    return {
+        "mode": provider_state["mode"],
+        "provider": provider_state["provider"],
+        "provider_status": provider_state["status"],
+        "retryable": provider_state["retryable"],
+        "error_code": provider_state["error_code"],
+        "availability": provider_state,
+    }
+
+
 def _resolve_safe_document_path(doc_path: str, docs_root: Path) -> Path:
     if not doc_path:
         raise HTTPException(status_code=400, detail="path 不能为空")
@@ -340,19 +359,21 @@ async def rebuild_index(
             "success": False,
             "message": "云 RAG 服务未配置，未创建重建任务",
             "task_id": None,
+            "status": "unavailable",
             "task_status": None,
-            **availability,
+            **_rebuild_availability_fields(availability),
         }
 
     user_id = str(current_user["_id"])
     docs_dir = get_user_docs_dir(user_id)
     task_id = await knowledge_task_service.start_rebuild_task(user_id, docs_dir)
     return {
-        "success": False,
+        "success": True,
         "message": "云 RAG 重建任务已创建",
         "task_id": task_id,
+        "status": "pending",
         "task_status": "pending",
-        **_pending_provider_state(),
+        **_rebuild_availability_fields(_pending_provider_state()),
     }
 
 
@@ -376,13 +397,14 @@ async def get_rebuild_status(
         return {
             "success": False,
             "task_id": task_id,
+            "status": "not_found",
             "task_status": None,
             "message": "未找到索引重建任务",
             "created_at": None,
             "started_at": None,
             "completed_at": None,
             "error": None,
-            **availability,
+            **_rebuild_availability_fields(availability),
         }
 
     user_id = str(current_user["_id"])
@@ -390,29 +412,30 @@ async def get_rebuild_status(
         return {
             "success": False,
             "task_id": task_id,
+            "status": "not_found",
             "task_status": None,
             "message": "未找到索引重建任务",
             "created_at": None,
             "started_at": None,
             "completed_at": None,
             "error": None,
-            **_build_rag_state(
-                mode="cloud",
-                provider="notebooklm",
-                status_value="error",
-                retryable=False,
-                error_code="REBUILD_TASK_NOT_FOUND",
+            **_rebuild_availability_fields(
+                _build_rag_state(
+                    mode="cloud",
+                    provider="notebooklm",
+                    status_value="error",
+                    retryable=False,
+                    error_code="REBUILD_TASK_NOT_FOUND",
+                )
             ),
         }
 
     raw_status = task_state.get("status")
     if raw_status == "completed":
         state = _ready_provider_state()
-        success = True
         message = "云 RAG 索引重建已完成"
     elif raw_status == "failed":
         state = _unavailable_provider_state()
-        success = False
         message = "云 RAG 索引重建失败，请稍后重试"
     elif raw_status == "cancelled":
         state = _build_rag_state(
@@ -422,23 +445,22 @@ async def get_rebuild_status(
             retryable=False,
             error_code="REBUILD_CANCELLED",
         )
-        success = False
         message = "云 RAG 索引重建已取消"
     else:
         state = _pending_provider_state()
-        success = False
         message = "云 RAG 索引重建进行中"
 
     return {
-        "success": success,
+        "success": True,
         "task_id": task_id,
+        "status": raw_status,
         "task_status": raw_status,
         "message": message,
         "created_at": task_state.get("created_at"),
         "started_at": task_state.get("started_at"),
         "completed_at": task_state.get("completed_at"),
         "error": None,
-        **state,
+        **_rebuild_availability_fields(state),
     }
 
 
