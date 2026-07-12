@@ -32,6 +32,10 @@ def create_app() -> FastAPI:
         version=settings.VERSION,
         openapi_url=f"{settings.API_V1_STR}/openapi.json"
     )
+    app.state.dependency_initialization = {
+        "mongodb": {"status": "pending", "error_code": None},
+        "redis": {"status": "pending", "error_code": None},
+    }
 
     setup_middlewares(app)
 
@@ -43,16 +47,41 @@ def create_app() -> FastAPI:
     async def startup_event():
         try:
             await connect_to_mongo()
+            app.state.dependency_initialization["mongodb"] = {
+                "status": "available",
+                "error_code": None,
+            }
             logger.info("数据库连接成功")
         except Exception as e:
+            app.state.dependency_initialization["mongodb"] = {
+                "status": "unavailable",
+                "error_code": "MONGODB_INIT_FAILED",
+            }
             logger.warning(f'数据库连接失败，某些功能可能不可用: {e}')
         
         try:
             from app.core.redis_client import RedisClient
             await RedisClient.init()
             if RedisClient.is_enabled():
+                app.state.dependency_initialization["redis"] = {
+                    "status": "available",
+                    "error_code": None,
+                }
                 logger.info("Redis 缓存连接成功")
+            else:
+                app.state.dependency_initialization["redis"] = {
+                    "status": "unavailable",
+                    "error_code": (
+                        "REDIS_INIT_FAILED"
+                        if settings.REDIS_URL
+                        else "REDIS_NOT_CONFIGURED"
+                    ),
+                }
         except Exception as e:
+            app.state.dependency_initialization["redis"] = {
+                "status": "unavailable",
+                "error_code": "REDIS_INIT_FAILED",
+            }
             logger.warning(f'Redis 连接失败，缓存功能不可用: {e}')
 
         try:

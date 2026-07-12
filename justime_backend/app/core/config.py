@@ -94,6 +94,7 @@ class Settings(BaseSettings):
     REDIS_SOCKET_CONNECT_TIMEOUT: int = 5
     REDIS_RETRY_ON_TIMEOUT: bool = True
     REDIS_HEALTH_CHECK_INTERVAL: int = 30
+    REDIS_REQUIRED: bool = False
     
     # JWT配置
     JWT_SECRET: str = ""
