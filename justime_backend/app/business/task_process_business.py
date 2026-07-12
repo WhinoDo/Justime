@@ -23,7 +23,9 @@ from app.models.task_process import (
     AIAssessment,
     AISuggestion,
     Blocker,
+    LearningMaterial,
     Milestone,
+    PreparationItem,
     TaskAgentResponse,
     TaskProcessCreate,
     TaskProcessListQuery,
@@ -72,6 +74,8 @@ class TaskProcessBusiness:
             started_at=doc.get("started_at"),
             completed_at=doc.get("completed_at"),
             deadline=doc.get("deadline"),
+            materials=[LearningMaterial(**item) for item in doc.get("materials", [])],
+            preparation_items=[PreparationItem(**item) for item in doc.get("preparation_items", [])],
             milestones=[Milestone(**item) for item in doc.get("milestones", [])],
             blockers=[Blocker(**item) for item in doc.get("blockers", [])],
             ai_suggestions=[AISuggestion(**item) for item in doc.get("ai_suggestions", [])],
@@ -221,6 +225,10 @@ class TaskProcessBusiness:
             agent_result = await task_agent_service.run(task, "plan", "", [])
             updates = {
                 "milestones": [item.model_dump(mode="json") for item in agent_result.get("milestones", [])],
+                "materials": [item.model_dump(mode="json") for item in agent_result.get("materials", [])],
+                "preparation_items": [
+                    item.model_dump(mode="json") for item in agent_result.get("preparation_items", [])
+                ],
                 "ai_plan": agent_result.get("plan"),
                 "ai_suggestions": [item.model_dump(mode="json") for item in agent_result.get("suggestions", [])],
                 "status": "planned",
@@ -310,10 +318,15 @@ class TaskProcessBusiness:
         updates: Dict[str, Any] = {"updatedAt": datetime.utcnow()}
         assessment = result.get("assessment")
         suggestions = result.get("suggestions") or []
-        if mode == "plan" and result.get("milestones"):
-            updates["milestones"] = [item.model_dump(mode="json") for item in result["milestones"]]
-            updates["ai_plan"] = result.get("plan")
-            updates["status"] = "planned"
+        if mode == "plan":
+            updates["materials"] = [item.model_dump(mode="json") for item in result.get("materials", [])]
+            updates["preparation_items"] = [
+                item.model_dump(mode="json") for item in result.get("preparation_items", [])
+            ]
+            if result.get("milestones"):
+                updates["milestones"] = [item.model_dump(mode="json") for item in result["milestones"]]
+                updates["ai_plan"] = result.get("plan")
+                updates["status"] = "planned"
         if assessment:
             updates["ai_last_assessment"] = assessment.model_dump(mode="json")
             updates["progress"] = assessment.progress
