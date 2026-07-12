@@ -1,6 +1,6 @@
 import CoreGraphics
 
-struct TrafficLightPosition {
+struct TrafficLightPosition: Equatable {
     var topInset: CGFloat
     var leadingInset: CGFloat
 
