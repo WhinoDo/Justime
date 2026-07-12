@@ -61,6 +61,14 @@ async def _create_indexes() -> None:
         await db.db.users.create_index([("username", 1)], unique=True, sparse=True)
         logger.info("✅ 用户索引创建完成")
 
+        # 密码重置令牌过期清理索引
+        await db.db.password_reset_tokens.create_index(
+            [("expires_at", 1)],
+            name="idx_password_reset_tokens_expires_at_ttl",
+            expireAfterSeconds=0,
+        )
+        logger.info("✅ 密码重置令牌索引创建完成")
+
         # 聊天会话索引
         await db.db.chat_sessions.create_index([("userId", 1), ("updatedAt", -1)])
         logger.info("✅ 聊天会话索引创建完成")

@@ -4,7 +4,7 @@
 
 from typing import List, Optional
 from pydantic_settings import BaseSettings
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 
 class LLMConfig(BaseModel):
@@ -104,6 +104,7 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30  # 30分钟（OAuth2 最佳实践）
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 30  # 30天
+    PASSWORD_RESET_TTL_MINUTES: int = Field(default=15, ge=1, le=1440)
     
     # CORS配置
     ALLOWED_ORIGINS: List[str] = [

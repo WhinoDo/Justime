@@ -13,6 +13,8 @@ logger = logging.getLogger(__name__)
 class EmailService:
     """邮件发送服务"""
 
+    DEV_RESET_TOKEN_FILE = "/tmp/justime_reset_tokens.txt"
+
     def __init__(self):
         self.smtp_host = os.getenv("SMTP_HOST", "")
         self.smtp_port = int(os.getenv("SMTP_PORT", "587"))
@@ -21,7 +23,13 @@ class EmailService:
         self.from_email = os.getenv("SMTP_FROM_EMAIL", "noreply@justime.ai")
         self.frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
-    async def send_password_reset_email(self, to_email: str, token: str, user_name: str) -> bool:
+    async def send_password_reset_email(
+        self,
+        to_email: str,
+        token: str,
+        user_name: str,
+        ttl_minutes: int,
+    ) -> bool:
         """
         发送密码重置邮件
 
@@ -29,6 +37,7 @@ class EmailService:
             to_email: 收件人邮箱
             token: 重置令牌
             user_name: 用户名
+            ttl_minutes: 重置链接有效分钟数
 
         Returns:
             bool: 发送是否成功
@@ -63,7 +72,7 @@ class EmailService:
                     </p>
                     <p>或者，您可以将以下链接复制到浏览器地址栏：</p>
                     <p style="word-break: break-all; color: #6b7280; font-size: 13px;">{reset_url}</p>
-                    <p style="color: #ef4444; font-weight: bold;">此链接将在 1 小时后失效。</p>
+                    <p style="color: #ef4444; font-weight: bold;">此链接将在 {ttl_minutes} 分钟后失效。</p>
                     <p>如果您没有请求重置密码，请忽略此邮件。</p>
                     <div class="footer">
                         <p>此邮件由系统自动发送，请勿直接回复。</p>
@@ -98,30 +107,31 @@ class EmailService:
                     password=self.smtp_password,
                     start_tls=True,
                 )
-                logger.info(f"Password reset email sent to {to_email}")
+                logger.info("Password reset email sent")
                 return True
-            except Exception as e:
-                logger.error(f"Failed to send email via SMTP: {e}")
-                return False
-        else:
-            # 开发环境：打印邮件内容到日志
-            logger.info("=" * 60)
-            logger.info("📧 [DEV MODE] Password Reset Email")
-            logger.info(f"To: {to_email}")
-            logger.info(f"Subject: {subject}")
-            logger.info(f"Reset URL: {reset_url}")
-            logger.info("=" * 60)
+            except Exception:
+                logger.error("Password reset email delivery failed via SMTP")
+                if not settings.DEBUG:
+                    return False
+        elif not settings.DEBUG:
+            logger.error("Password reset email delivery unavailable: SMTP is not configured")
+            return False
 
-            # 在开发环境中，将重置链接写入文件方便测试
-            dev_token_file = "/tmp/justime_reset_tokens.txt"
-            try:
-                with open(dev_token_file, "a") as f:
-                    import datetime
-                    f.write(f"{datetime.datetime.now().isoformat()} | {to_email} | {reset_url}\n")
-            except OSError:
-                pass
+        logger.info("=" * 60)
+        logger.info("[DEV MODE] Password Reset Email")
+        logger.info(f"To: {to_email}")
+        logger.info(f"Subject: {subject}")
+        logger.info(f"Reset URL: {reset_url}")
+        logger.info("=" * 60)
 
-            return True
+        try:
+            with open(self.DEV_RESET_TOKEN_FILE, "a", encoding="utf-8") as f:
+                import datetime
+                f.write(f"{datetime.datetime.now().isoformat()} | {to_email} | {reset_url}\n")
+        except OSError:
+            pass
+
+        return True
 
 
 email_service = EmailService()
