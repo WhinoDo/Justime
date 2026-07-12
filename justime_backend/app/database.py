@@ -3,12 +3,28 @@
 实现真实的 MongoDB 连接/关闭逻辑。
 """
 
+import hashlib
+import json
 import logging
 from motor.motor_asyncio import AsyncIOMotorClient
 from app.core.config import settings
 from app.core.log_sanitizer import mask_connection_string
 
 logger = logging.getLogger(__name__)
+
+
+class EvidenceSourceIdConflictError(RuntimeError):
+    """Raised when existing Evidence rows prevent the idempotency index."""
+
+
+class EvidenceSourceIdIndexError(RuntimeError):
+    """Raised when the required Evidence idempotency index cannot be created."""
+
+
+def _evidence_conflict_key_fingerprint(key: dict) -> str:
+    serialized = json.dumps(key, sort_keys=True, separators=(",", ":"), default=str)
+    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()[:16]
+
 
 class Database:
     client: AsyncIOMotorClient = None
@@ -109,6 +125,59 @@ async def _create_indexes() -> None:
         await db.db.evidence.create_index([("task_id", 1), ("type", 1)])
         await db.db.evidence.create_index([("userId", 1), ("createdAt", -1)])
         await db.db.evidence.create_index([("task_id", 1), ("milestone_id", 1)])
+        try:
+            conflict_summary = await db.db.evidence.aggregate(
+                [
+                    {"$match": {"source_id": {"$type": "string"}}},
+                    {
+                        "$group": {
+                            "_id": {
+                                "userId": "$userId",
+                                "task_id": "$task_id",
+                                "type": "$type",
+                                "source_id": "$source_id",
+                            },
+                            "count": {"$sum": 1},
+                        }
+                    },
+                    {"$match": {"count": {"$gt": 1}}},
+                    {
+                        "$facet": {
+                            "summary": [{"$count": "conflict_groups"}],
+                            "samples": [{"$limit": 5}],
+                        }
+                    },
+                ]
+            ).to_list(length=1)
+            summary = conflict_summary[0] if conflict_summary else {}
+            group_summary = summary.get("summary") or []
+            conflict_groups = (
+                group_summary[0].get("conflict_groups", 0) if group_summary else 0
+            )
+            if conflict_groups:
+                sample_details = ", ".join(
+                    "key_sha256="
+                    f"{_evidence_conflict_key_fingerprint(sample.get('_id', {}))} "
+                    f"count={sample.get('count', 0)}"
+                    for sample in summary.get("samples", [])
+                )
+                raise EvidenceSourceIdConflictError(
+                    "Evidence source_id unique index preflight found "
+                    f"{conflict_groups} conflicting tenant-scoped group(s); "
+                    f"samples=[{sample_details}]"
+                )
+            await db.db.evidence.create_index(
+                [("userId", 1), ("task_id", 1), ("type", 1), ("source_id", 1)],
+                name="uq_evidence_user_task_type_source_id",
+                unique=True,
+                partialFilterExpression={"source_id": {"$type": "string"}},
+            )
+        except EvidenceSourceIdConflictError:
+            raise
+        except Exception as exc:
+            raise EvidenceSourceIdIndexError(
+                "Required Evidence source_id unique index could not be created"
+            ) from exc
         logger.info("✅ Evidence 索引创建完成")
 
         # Knowledge Output (知识输出) 索引
@@ -118,6 +187,8 @@ async def _create_indexes() -> None:
         await db.db.knowledge_outputs.create_index([("vault_relative_path", 1), ("userId", 1)], unique=True, sparse=True)
         logger.info("✅ Knowledge Output 索引创建完成")
 
+    except (EvidenceSourceIdConflictError, EvidenceSourceIdIndexError):
+        raise
     except Exception as e:
         logger.warning(f"⚠️ 创建索引时出现警告: {e}")
 

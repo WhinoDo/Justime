@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 
 from bson import ObjectId
 from pymongo import ReturnDocument
+from pymongo.errors import DuplicateKeyError
 
 from app.database import db
 from app.models.evidence import EvidenceCreate, EvidenceOut, EvidenceUpdate, TimeLogCreate
@@ -438,19 +439,10 @@ class TaskProcessBusiness:
         task = await self.get_task_process(user_id, payload.task_id)
         if not task:
             raise ValueError("任务不存在")
-        if payload.source_id:
-            existing = await self._evidence_collection().find_one(
-                {
-                    "task_id": payload.task_id,
-                    "type": payload.type,
-                    "source_id": payload.source_id,
-                    "userId": user_id,
-                }
-            )
-            if existing:
-                return self._serialize_evidence(existing)
         now = datetime.utcnow()
         doc = payload.model_dump()
+        if payload.source_id is None:
+            doc.pop("source_id", None)
         doc.update(
             {
                 "userId": user_id,
@@ -461,8 +453,28 @@ class TaskProcessBusiness:
                 "updatedAt": now,
             }
         )
-        result = await self._evidence_collection().insert_one(doc)
-        saved = await self._evidence_collection().find_one({"_id": result.inserted_id})
+        collection = self._evidence_collection()
+        if payload.source_id:
+            idempotency_filter = {
+                "userId": user_id,
+                "task_id": payload.task_id,
+                "type": payload.type,
+                "source_id": payload.source_id,
+            }
+            try:
+                saved = await collection.find_one_and_update(
+                    idempotency_filter,
+                    {"$setOnInsert": doc},
+                    upsert=True,
+                    return_document=ReturnDocument.AFTER,
+                )
+            except DuplicateKeyError:
+                saved = await collection.find_one(idempotency_filter)
+                if saved is None:
+                    raise
+        else:
+            result = await collection.insert_one(doc)
+            saved = await collection.find_one({"_id": result.inserted_id})
         evidence = self._serialize_evidence(saved)
         await self._recalculate_task_metrics(user_id, payload.task_id)
         return evidence

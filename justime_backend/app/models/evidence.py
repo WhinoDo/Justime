@@ -48,11 +48,15 @@ class EvidenceBase(BaseModel):
     def validate_loose_text(cls, value: str) -> str:
         return (value or "").strip()
 
-    @field_validator("source_id")
+    @field_validator("source_id", mode="before")
     @classmethod
     def validate_source_id(cls, value: Optional[str]) -> Optional[str]:
-        value = (value or "").strip()
-        return value or None
+        if value is None:
+            return None
+        if isinstance(value, str):
+            value = value.strip()
+            return value or None
+        return value
 
     @field_validator("content")
     @classmethod
