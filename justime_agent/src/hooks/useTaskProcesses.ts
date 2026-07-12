@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { API_ENDPOINTS } from '@/lib/api/endpoints'
 import type {
   Evidence,
@@ -10,20 +10,61 @@ import type {
   KnowledgeOutput,
   KnowledgeOutputUpdatePayload,
   TaskProcess,
+  TaskCategory,
   TaskProcessCreatePayload,
+  TaskPhase,
+  TaskPriority,
+  TaskStatus,
   TaskProcessUpdatePayload,
   TimeLogCreatePayload,
 } from '@/types/taskProcess'
 
-interface UseTaskProcessesOptions {
+export type TaskProcessSortBy = 'createdAt' | 'updatedAt' | 'deadline' | 'priority' | 'progress'
+export type TaskProcessSortOrder = 'asc' | 'desc'
+
+export interface TaskProcessListQuery {
+  status?: TaskStatus | ''
+  phase?: TaskPhase | ''
+  category?: TaskCategory | ''
+  priority?: TaskPriority | ''
+  search?: string
+  sort_by?: TaskProcessSortBy
+  sort_order?: TaskProcessSortOrder
+  page?: number
+  page_size?: number
+}
+
+interface UseTaskProcessesOptions extends TaskProcessListQuery {
   enabled?: boolean
-  categories?: TaskProcess['category'][]
+}
+
+interface TaskProcessListResponse {
+  items: TaskProcess[]
+  total: number
+  page: number
+  page_size: number
+  total_pages: number
 }
 
 interface RequestResult<T> {
   success: boolean
   data?: T
   error?: string
+}
+
+interface CommittedTaskSearch {
+  value: string
+  page: number
+}
+
+interface ImmediateTaskQuery {
+  status: TaskStatus | ''
+  phase: TaskPhase | ''
+  category: TaskCategory | ''
+  priority: TaskPriority | ''
+  sortBy: TaskProcessSortBy
+  sortOrder: TaskProcessSortOrder
+  pageSize: number
 }
 
 async function requestJson<T>(input: RequestInfo, init?: RequestInit): Promise<RequestResult<T>> {
@@ -48,27 +89,118 @@ async function requestJson<T>(input: RequestInfo, init?: RequestInit): Promise<R
 }
 
 export function useTaskProcesses(options: UseTaskProcessesOptions = {}) {
-  const { enabled = true, categories } = options
+  const {
+    enabled = true,
+    status = '',
+    phase = '',
+    category = '',
+    priority = '',
+    search = '',
+    sort_by = 'updatedAt',
+    sort_order = 'desc',
+    page = 1,
+    page_size = 20,
+  } = options
   const [tasks, setTasks] = useState<TaskProcess[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [committedSearch, setCommittedSearch] = useState<CommittedTaskSearch>({
+    value: search.trim(),
+    page,
+  })
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page,
+    pageSize: page_size,
+    totalPages: 0,
+  })
+  const requestIdRef = useRef(0)
+  const immediateQueryRef = useRef<ImmediateTaskQuery>({
+    status,
+    phase,
+    category,
+    priority,
+    sortBy: sort_by,
+    sortOrder: sort_order,
+    pageSize: page_size,
+  })
+  const trimmedSearch = search.trim()
+  const searchPending = trimmedSearch !== committedSearch.value
+  const previousImmediateQuery = immediateQueryRef.current
+  const immediateQueryChanged = previousImmediateQuery.status !== status
+    || previousImmediateQuery.phase !== phase
+    || previousImmediateQuery.category !== category
+    || previousImmediateQuery.priority !== priority
+    || previousImmediateQuery.sortBy !== sort_by
+    || previousImmediateQuery.sortOrder !== sort_order
+    || previousImmediateQuery.pageSize !== page_size
+
+  useEffect(() => {
+    immediateQueryRef.current = {
+      status,
+      phase,
+      category,
+      priority,
+      sortBy: sort_by,
+      sortOrder: sort_order,
+      pageSize: page_size,
+    }
+
+    if ((searchPending && !immediateQueryChanged) || committedSearch.page === page) return
+
+    setCommittedSearch((current) => ({ ...current, page }))
+  }, [category, committedSearch.page, immediateQueryChanged, page, page_size, phase, priority, searchPending, sort_by, sort_order, status])
+
+  useEffect(() => {
+    if (!searchPending) return
+
+    const timer = window.setTimeout(() => {
+      setCommittedSearch({ value: trimmedSearch, page })
+    }, 300)
+
+    return () => window.clearTimeout(timer)
+  }, [page, searchPending, trimmedSearch])
+
+  const requestPage = searchPending && !immediateQueryChanged ? committedSearch.page : page
+
+  const queryString = useMemo(() => {
+    const params = new URLSearchParams()
+    if (status) params.set('status', status)
+    if (phase) params.set('phase', phase)
+    if (category) params.set('category', category)
+    if (priority) params.set('priority', priority)
+    if (committedSearch.value) params.set('search', committedSearch.value)
+    params.set('sort_by', sort_by)
+    params.set('sort_order', sort_order)
+    params.set('page', String(requestPage))
+    params.set('page_size', String(page_size))
+    return params.toString()
+  }, [category, committedSearch.value, page_size, phase, priority, requestPage, sort_by, sort_order, status])
 
   const fetchTasks = useCallback(async () => {
     if (!enabled) {
       setLoading(false)
       return
     }
+    const requestId = ++requestIdRef.current
     setLoading(true)
     setError(null)
-    const result = await requestJson<{ items: TaskProcess[] }>(API_ENDPOINTS.TASK_PROCESS.BASE)
+    const result = await requestJson<TaskProcessListResponse>(API_ENDPOINTS.TASK_PROCESS.LIST(queryString))
+    if (requestId !== requestIdRef.current) return
     if (result.success) {
-      const items = result.data?.items || []
-      setTasks(categories?.length ? items.filter((item) => categories.includes(item.category)) : items)
+      const data = result.data
+      setTasks(data?.items || [])
+      setPagination({
+        total: data?.total || 0,
+        page: data?.page || requestPage,
+        pageSize: data?.page_size || page_size,
+        totalPages: data?.total_pages || 0,
+      })
     } else {
       setError(result.error || '获取任务失败')
     }
     setLoading(false)
-  }, [categories, enabled])
+  }, [enabled, page_size, queryString, requestPage])
 
   useEffect(() => {
     fetchTasks()
@@ -80,15 +212,10 @@ export function useTaskProcesses(options: UseTaskProcessesOptions = {}) {
       body: JSON.stringify(payload),
     })
     if (result.success && result.data?.task) {
-      setTasks((prev) => {
-        if (categories?.length && !categories.includes(result.data!.task.category)) {
-          return prev
-        }
-        return [result.data!.task, ...prev]
-      })
+      await fetchTasks()
     }
     return result
-  }, [categories])
+  }, [fetchTasks])
 
   const updateTask = useCallback(async (taskId: string, payload: TaskProcessUpdatePayload) => {
     const result = await requestJson<{ task: TaskProcess }>(API_ENDPOINTS.TASK_PROCESS.DETAIL(taskId), {
@@ -96,21 +223,19 @@ export function useTaskProcesses(options: UseTaskProcessesOptions = {}) {
       body: JSON.stringify(payload),
     })
     if (result.success && result.data?.task) {
-      setTasks((prev) => {
-        const nextTask = result.data!.task
-        if (categories?.length && !categories.includes(nextTask.category)) {
-          return prev.filter((item) => item.id !== taskId)
-        }
-        return prev.map((item) => (item.id === taskId ? nextTask : item))
-      })
+      await fetchTasks()
     }
     return result
-  }, [categories])
+  }, [fetchTasks])
 
   return {
     tasks,
     loading,
     error,
+    total: pagination.total,
+    page: pagination.page,
+    pageSize: pagination.pageSize,
+    totalPages: pagination.totalPages,
     refetch: fetchTasks,
     createTask,
     updateTask,

@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { TaskCockpitDesktop } from '../TaskCockpitDesktop'
 import type { TaskProcess } from '@/types/taskProcess'
 
@@ -29,12 +29,31 @@ const tasks: TaskProcess[] = [
 ]
 
 describe('TaskCockpitDesktop', () => {
-  it('renders focus queue, phase board, and metrics', () => {
-    render(<TaskCockpitDesktop tasks={tasks} />)
+  it('renders backend results, query controls, pagination, and page metrics', () => {
+    const onQueryChange = jest.fn()
+    render(
+      <TaskCockpitDesktop
+        tasks={tasks}
+        query={{ page: 2, sort_by: 'updatedAt', sort_order: 'desc' }}
+        total={31}
+        totalPages={4}
+        onQueryChange={onQueryChange}
+      />,
+    )
 
-    expect(screen.getByText('Focus Queue')).toBeInTheDocument()
-    expect(screen.getByText('During')).toBeInTheDocument()
-    expect(screen.getAllByText('推进 macOS 桌面端').length).toBeGreaterThan(0)
+    expect(screen.getByText('Query')).toBeInTheDocument()
+    expect(screen.getByText('共 31 项 · 第 2 页')).toBeInTheDocument()
+    expect(screen.getByText('第 2 / 4 页')).toBeInTheDocument()
+    expect(screen.getByText('推进 macOS 桌面端')).toBeInTheDocument()
     expect(screen.getByText('累计投入')).toBeInTheDocument()
+    expect(screen.getByText('当前页阶段分布')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('状态筛选'), { target: { value: 'active' } })
+    fireEvent.change(screen.getByLabelText('优先级筛选'), { target: { value: 'high' } })
+    fireEvent.click(screen.getByRole('button', { name: '上一页' }))
+
+    expect(onQueryChange).toHaveBeenCalledWith({ status: 'active' })
+    expect(onQueryChange).toHaveBeenCalledWith({ priority: 'high' })
+    expect(onQueryChange).toHaveBeenCalledWith({ page: 1 })
   })
 })

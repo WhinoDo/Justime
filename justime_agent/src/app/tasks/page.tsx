@@ -1,21 +1,41 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useCallback, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { JustimePageShell } from '@/components/layout/JustimePageShell'
 import { TaskCockpit } from '@/components/tasks/TaskCockpit'
 import { TaskCreateLauncher } from '@/components/tasks/TaskCreateLauncher'
 import { useAuth } from '@/hooks/useAuth'
-import { useTaskProcesses } from '@/hooks/useTaskProcesses'
+import { useTaskProcesses, type TaskProcessListQuery } from '@/hooks/useTaskProcesses'
 import { useDesktopRuntime } from '@/hooks/useDesktopRuntime'
 import { DesktopAppFrame } from '@/components/layout/DesktopAppFrame'
 
 export default function TasksPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth()
-  const { tasks, loading, createTask } = useTaskProcesses({ enabled: isAuthenticated })
+  const [query, setQuery] = useState<Required<Pick<TaskProcessListQuery, 'search' | 'sort_by' | 'sort_order' | 'page' | 'page_size'>> & TaskProcessListQuery>({
+    status: '',
+    phase: '',
+    category: '',
+    priority: '',
+    search: '',
+    sort_by: 'updatedAt',
+    sort_order: 'desc',
+    page: 1,
+    page_size: 12,
+  })
+  const { tasks, loading, error, total, totalPages, createTask } = useTaskProcesses({
+    enabled: isAuthenticated,
+    ...query,
+  })
   const { isDesktop } = useDesktopRuntime()
 
-  const taskList = useMemo(() => tasks, [tasks])
+  const updateQuery = useCallback((updates: Partial<TaskProcessListQuery>) => {
+    setQuery((current) => ({
+      ...current,
+      ...updates,
+      page: Object.prototype.hasOwnProperty.call(updates, 'page') ? updates.page || 1 : 1,
+    }))
+  }, [])
 
   if (authLoading) return null
 
@@ -34,7 +54,16 @@ export default function TasksPage() {
             />
           }
         >
-          <TaskCockpit tasks={taskList} loading={loading} variant="desktop" />
+          <TaskCockpit
+            tasks={tasks}
+            loading={loading}
+            error={error}
+            query={query}
+            total={total}
+            totalPages={totalPages}
+            onQueryChange={updateQuery}
+            variant="desktop"
+          />
         </DesktopAppFrame>
       </JustimePageShell>
     )
@@ -51,7 +80,15 @@ export default function TasksPage() {
             buttonContent={<><Plus className="mr-2 h-4 w-4" />新建任务</>}
           />
         </div>
-        <TaskCockpit tasks={taskList} loading={loading} />
+        <TaskCockpit
+          tasks={tasks}
+          loading={loading}
+          error={error}
+          query={query}
+          total={total}
+          totalPages={totalPages}
+          onQueryChange={updateQuery}
+        />
       </div>
     </JustimePageShell>
   )
