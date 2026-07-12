@@ -9,6 +9,7 @@ import type {
   KnowledgeRollbackPayload,
   KnowledgeOutput,
   KnowledgeOutputUpdatePayload,
+  PreparationItem,
   TaskProcess,
   TaskCategory,
   TaskProcessCreatePayload,
@@ -291,6 +292,17 @@ export function useTaskProcessDetail(taskId: string, enabled = true) {
     return result
   }, [taskId])
 
+  const updatePreparationItems = useCallback(async (items: PreparationItem[]) => {
+    const result = await requestJson<{ task: TaskProcess }>(API_ENDPOINTS.TASK_PROCESS.DETAIL(taskId), {
+      method: 'PATCH',
+      body: JSON.stringify({ preparation_items: items }),
+    })
+    if (result.success && result.data?.task) {
+      setTask(result.data.task)
+    }
+    return result
+  }, [taskId])
+
   const createEvidence = useCallback(async (payload: EvidenceCreatePayload) => {
     const result = await requestJson<{ evidence: Evidence }>(API_ENDPOINTS.TASK_PROCESS.EVIDENCE(taskId), {
       method: 'POST',
@@ -371,6 +383,7 @@ export function useTaskProcessDetail(taskId: string, enabled = true) {
     error,
     refresh,
     updateTask,
+    updatePreparationItems,
     createEvidence,
     createTimeLog,
     generateKnowledgeOutput,

@@ -7,6 +7,8 @@ import { JustimeGlassPanel } from '@/components/layout/JustimeGlassPanel'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { TaskDetailActions, type TaskDetailActionsProps } from './TaskDetailActions'
+import { BeforeWorkspace } from './BeforeWorkspace'
+import type { PreparationItem } from '@/types/taskProcess'
 
 interface TaskPhaseDetailProps {
   task: TaskProcess
@@ -16,6 +18,7 @@ interface TaskPhaseDetailProps {
   onCreateEvidence: TaskDetailActionsProps['onCreateEvidence']
   onCreateTimeLog: TaskDetailActionsProps['onCreateTimeLog']
   onGenerateKnowledge: TaskDetailActionsProps['onGenerateKnowledge']
+  onUpdatePreparationItems: (items: PreparationItem[]) => Promise<{ success: boolean; error?: string }>
 }
 
 export function TaskPhaseDetail({
@@ -26,6 +29,7 @@ export function TaskPhaseDetail({
   onCreateEvidence,
   onCreateTimeLog,
   onGenerateKnowledge,
+  onUpdatePreparationItems,
 }: TaskPhaseDetailProps) {
   return (
     <div className="space-y-6">
@@ -70,19 +74,7 @@ export function TaskPhaseDetail({
             subtitle: '目标、里程碑与前置准备',
             active: task.phase === 'before',
             content: (
-              <div className="space-y-3">
-                {task.milestones.length === 0 ? (
-                  <div className="rounded-3xl bg-black/10 p-4 text-sm text-white/50">当前没有 milestones。</div>
-                ) : task.milestones.map((milestone) => (
-                  <div key={milestone.id} className="rounded-3xl border border-white/10 bg-black/10 p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-medium text-white">{milestone.title}</p>
-                      <span className="text-xs uppercase tracking-[0.2em] text-white/[0.45]">{milestone.status}</span>
-                    </div>
-                    {milestone.description ? <p className="mt-2 text-sm text-white/[0.55]">{milestone.description}</p> : null}
-                  </div>
-                ))}
-              </div>
+              <BeforeWorkspace task={task} onUpdatePreparationItems={onUpdatePreparationItems} />
             ),
           },
           {

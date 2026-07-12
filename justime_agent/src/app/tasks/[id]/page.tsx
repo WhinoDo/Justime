@@ -28,6 +28,7 @@ export default function TaskDetailPage() {
     outputs,
     loading,
     updateTask,
+    updatePreparationItems,
     createEvidence,
     createTimeLog,
     generateKnowledgeOutput,
@@ -107,6 +108,15 @@ export default function TaskDetailPage() {
                   evidence={evidence}
                   outputs={outputs}
                   onEditTask={() => setEditOpen(true)}
+                  onUpdatePreparationItems={async (items) => {
+                    const result = await updatePreparationItems(items)
+                    toast({
+                      title: result.success ? '准备清单已更新' : '准备清单更新失败',
+                      description: result.success ? 'Before 准备状态已保存。' : (result.error || '请稍后重试'),
+                      ...(result.success ? {} : { variant: 'destructive' as const }),
+                    })
+                    return { success: result.success, error: result.error }
+                  }}
                   onCreateEvidence={async (payload) => {
                     const result = await createEvidence(payload)
                     toast({

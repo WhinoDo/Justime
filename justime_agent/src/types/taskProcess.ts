@@ -16,6 +16,20 @@ export interface Milestone {
   completed_at?: string | null
 }
 
+export interface LearningMaterial {
+  title: string
+  url?: string | null
+  summary: string
+  source: string
+}
+
+export interface PreparationItem {
+  id: string
+  title: string
+  done: boolean
+  order: number
+}
+
 export interface Blocker {
   id: string
   description: string
@@ -61,6 +75,8 @@ export interface TaskProcess {
   started_at?: string | null
   completed_at?: string | null
   deadline?: string | null
+  materials?: LearningMaterial[]
+  preparation_items?: PreparationItem[]
   milestones: Milestone[]
   blockers: Blocker[]
   ai_suggestions: AISuggestion[]
@@ -155,6 +171,7 @@ export interface TaskProcessUpdatePayload {
   progress?: number
   estimated_hours?: number | null
   deadline?: string | null
+  preparation_items?: PreparationItem[]
 }
 
 export interface EvidenceCreatePayload {
