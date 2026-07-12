@@ -74,7 +74,7 @@ class ChatBusiness:
             task_id=task_id,
             type="chat",
             title="用户对话" if role == "user" else "AI 回复",
-            content=content,
+            content=content[:50000],
             source=source_by_role[role],
             source_id=message_id,
             metadata={"role": role},

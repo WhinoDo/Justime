@@ -250,6 +250,73 @@ async def test_unbound_stream_succeeds_without_evidence(
     assert await clean_db.evidence.count_documents({}) == 0
 
 
+async def test_oversized_assistant_response_preserves_terminal_sequence_and_truncates_evidence(
+    clean_db,
+    configured_business,
+    monkeypatch,
+):
+    provider_calls = 0
+    oversized_response = "a" * 50000 + "z"
+
+    async def provider(**_kwargs):
+        nonlocal provider_calls
+        provider_calls += 1
+        yield {"choices": [{"delta": {"content": oversized_response}}]}
+
+    monkeypatch.setattr(llm_service, "chat_completion_stream", provider)
+    user_id = "user-1"
+    task_id = await _create_task(user_id)
+    session_id = await chat_persistence.create_session(user_id, "Oversized response")
+    request = ChatStreamRequest(
+        message="hi",
+        taskId=task_id,
+        sessionId=session_id,
+    )
+
+    events = await _collect_stream(
+        configured_business.process_chat_stream(request, user_id)
+    )
+
+    assert provider_calls == 1
+    assert [event["event"] for event in events] == [
+        "metadata",
+        "token",
+        "usage",
+        "done",
+    ]
+
+    messages = await clean_db.chat_messages.find(
+        {"sessionId": session_id}
+    ).sort("timestamp", 1).to_list(length=10)
+    evidence = await clean_db.evidence.find(
+        {"task_id": task_id, "type": "chat"}
+    ).sort("createdAt", 1).to_list(length=10)
+
+    assert len(messages) == 2
+    assert messages[1]["content"] == oversized_response
+    assert len(evidence) == 2
+    assert evidence[1]["source"] == "chat:assistant"
+    assert evidence[1]["source_id"] == str(messages[1]["_id"])
+    assert evidence[1]["content"] == oversized_response[:50000]
+    assert len(evidence[1]["content"]) == 50000
+
+    original_evidence_ids = [item["_id"] for item in evidence]
+    await configured_business._sync_task_evidence_from_chat(
+        user_id=user_id,
+        task_id=task_id,
+        session_id=session_id,
+        role="assistant",
+        message_id=str(messages[1]["_id"]),
+        content=oversized_response,
+    )
+
+    repeated = await clean_db.evidence.find(
+        {"task_id": task_id, "type": "chat"}
+    ).sort("createdAt", 1).to_list(length=10)
+    assert [item["_id"] for item in repeated] == original_evidence_ids
+    assert repeated[1]["content"] == oversized_response[:50000]
+
+
 async def test_unauthorized_task_binding_preserves_business_error(
     clean_db,
     configured_business,
