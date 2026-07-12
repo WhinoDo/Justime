@@ -24,6 +24,7 @@ from app.business.feishu_calendar import FeishuCalendarBusiness
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+ASSOCIATION_FIELDS = {"taskId", "milestoneId"}
 
 
 def _serialize_event(doc: dict) -> dict:
@@ -47,6 +48,70 @@ def _to_jsonable(value: Any) -> Any:
     if isinstance(value, tuple):
         return [_to_jsonable(item) for item in value]
     return value
+
+
+def _association_update(payload: Any) -> Optional[dict[str, Optional[str]]]:
+    fields_set = set(getattr(payload, "model_fields_set", set()))
+    provided_fields = fields_set & ASSOCIATION_FIELDS
+    if not provided_fields:
+        return None
+    if provided_fields != ASSOCIATION_FIELDS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="taskId 与 milestoneId 必须同时提供",
+        )
+
+    task_id = payload.taskId
+    milestone_id = payload.milestoneId
+    if task_id is None and milestone_id is None:
+        return {"taskId": None, "milestoneId": None}
+    if not isinstance(task_id, str) or not isinstance(milestone_id, str):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="taskId 与 milestoneId 必须同时为非空字符串或 null",
+        )
+
+    task_id = task_id.strip()
+    milestone_id = milestone_id.strip()
+    if not task_id or not milestone_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="taskId 与 milestoneId 必须同时为非空字符串或 null",
+        )
+    return {"taskId": task_id, "milestoneId": milestone_id}
+
+
+async def _validate_milestone_association(
+    user_id: str,
+    association: Optional[dict[str, Optional[str]]],
+) -> None:
+    if not association or association["taskId"] is None:
+        return
+
+    task_id = association["taskId"]
+    milestone_id = association["milestoneId"]
+    try:
+        task_oid = ObjectId(task_id)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="任务不存在",
+        ) from exc
+
+    task = await db.db["task_processes"].find_one(
+        {"_id": task_oid, "userId": user_id},
+        {"milestones": 1},
+    )
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="任务不存在",
+        )
+    if not any(item.get("id") == milestone_id for item in task.get("milestones", [])):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="里程碑不存在",
+        )
 
 
 @router.get("/events", summary="获取日历事件列表")
@@ -148,10 +213,13 @@ async def create_event(
         raise HTTPException(status_code=400, detail="结束时间必须晚于开始时间")
 
     user_id = str(current_user["_id"])
+    association = _association_update(payload)
+    await _validate_milestone_association(user_id, association)
+    effective_payload = payload.model_copy(update=association) if association else payload
 
     if settings.FEISHU_INTEGRATION_ENABLED:
         try:
-            event = await FeishuCalendarBusiness.create_event(user_id, payload)
+            event = await FeishuCalendarBusiness.create_event(user_id, effective_payload)
             return {
                 "success": True,
                 "data": {"event": event},
@@ -162,6 +230,8 @@ async def create_event(
             raise HTTPException(status_code=500, detail=f"飞书日程创建失败: {e}")
 
     event_doc = payload.dict()
+    if association:
+        event_doc.update(association)
     event_doc["userId"] = user_id
     event_doc["createdAt"] = datetime.utcnow()
     event_doc["updatedAt"] = datetime.utcnow()
@@ -183,10 +253,13 @@ async def update_event(
     current_user: CurrentUser
 ):
     user_id = str(current_user["_id"])
+    association = _association_update(payload)
+    await _validate_milestone_association(user_id, association)
+    effective_payload = payload.model_copy(update=association) if association else payload
 
     if settings.FEISHU_INTEGRATION_ENABLED:
         try:
-            event = await FeishuCalendarBusiness.update_event(user_id, event_id, payload)
+            event = await FeishuCalendarBusiness.update_event(user_id, event_id, effective_payload)
             return {
                 "success": True,
                 "data": {"event": event},
@@ -200,6 +273,8 @@ async def update_event(
     oid = parse_object_id(event_id, "事件ID")
 
     update_data = payload.dict(exclude_unset=True)
+    if association:
+        update_data.update(association)
     if not update_data:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="没有可更新的字段")
 
@@ -227,7 +302,12 @@ async def update_event(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="事件不存在")
 
     new_status = result.get("status")
-    if new_status == "completed" and old_status != "completed" and result.get("taskId"):
+    if (
+        new_status == "completed"
+        and old_status != "completed"
+        and result.get("taskId")
+        and result.get("milestoneId")
+    ):
         from app.business.task_process_business import _task_process_business
         await _task_process_business.handle_calendar_event_status_change(user_id, old_status, new_status, result)
 

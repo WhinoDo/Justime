@@ -349,8 +349,67 @@ class TaskProcessBusiness:
         )
         if not doc:
             raise ValueError("里程碑不存在")
+        if status == "completed":
+            await self._complete_linked_calendar_events(user_id, task_id, milestone_id)
         counts = await self._task_counts(task_id)
         return self._serialize_task(doc, counts["evidence"], counts["knowledge"])
+
+    async def _complete_linked_calendar_events(
+        self,
+        user_id: str,
+        task_id: str,
+        milestone_id: str,
+    ) -> None:
+        query = {
+            "userId": user_id,
+            "taskId": task_id,
+            "milestoneId": milestone_id,
+            "status": {"$ne": "completed"},
+        }
+        now = datetime.utcnow()
+
+        from app.core.config import settings
+
+        if not settings.FEISHU_INTEGRATION_ENABLED:
+            await db.db["calendar_events"].update_many(
+                query,
+                {"$set": {"status": "completed", "updatedAt": now}},
+            )
+            return
+
+        from app.business.feishu_calendar import FeishuCalendarBusiness
+        from app.models.calendar import CalendarEventUpdate
+
+        cursor = db.db["calendar_events"].find(query)
+        events = await cursor.to_list(length=None)
+        for event in events:
+            event_filter = {
+                "_id": event["_id"],
+                "userId": user_id,
+                "status": {"$ne": "completed"},
+            }
+            updated = await db.db["calendar_events"].update_one(
+                event_filter,
+                {"$set": {"status": "completed", "updatedAt": now}},
+            )
+            if updated.modified_count == 0:
+                continue
+            try:
+                await FeishuCalendarBusiness.update_event(
+                    user_id,
+                    str(event["_id"]),
+                    CalendarEventUpdate(status="completed"),
+                )
+            except Exception:
+                rollback = {
+                    "status": event.get("status"),
+                    "updatedAt": event.get("updatedAt"),
+                }
+                await db.db["calendar_events"].update_one(
+                    {"_id": event["_id"], "userId": user_id, "updatedAt": now},
+                    {"$set": rollback},
+                )
+                raise
 
     async def run_task_agent(self, user_id: str, task_id: str, mode: str, user_input: str = "") -> TaskAgentResponse:
         task = await self.get_task_process(user_id, task_id)
@@ -418,61 +477,49 @@ class TaskProcessBusiness:
     async def handle_calendar_event_status_change(
         self, user_id: str, old_status: str, new_status: str, event_doc: Dict[str, Any]
     ) -> None:
-        if new_status != "completed":
+        if new_status != "completed" or old_status == "completed":
             return
 
         task_id_str = event_doc.get("taskId")
-        if not task_id_str:
-            return
-
-        try:
-            task_oid = self._ensure_object_id(task_id_str, "任务ID")
-        except ValueError:
-            logger.warning(f"Invalid taskId format in calendar event: {task_id_str}")
-            return
-
-        task_doc = await self._task_collection().find_one({"_id": task_oid, "userId": user_id})
-        if not task_doc:
-            logger.warning(f"TaskProcess not found: {task_id_str} for user {user_id}")
+        milestone_id = event_doc.get("milestoneId")
+        if not task_id_str or not milestone_id:
             return
 
         event_id_str = str(event_doc.get("_id") or event_doc.get("id") or "")
         if not event_id_str:
             return
 
-        existing_evidence = await self._evidence_collection().find_one({
-            "task_id": task_id_str,
-            "metadata.calendar_event_id": event_id_str
-        })
-        if existing_evidence:
+        try:
+            task = await self.update_milestone_status(
+                user_id,
+                task_id_str,
+                milestone_id,
+                "completed",
+            )
+        except ValueError as exc:
+            logger.warning(
+                "Calendar event %s has an invalid milestone association: %s",
+                event_id_str,
+                exc,
+            )
+            return
+        if not task:
+            logger.warning("TaskProcess not found: %s for user %s", task_id_str, user_id)
             return
 
-        matched_milestone_id = None
-        task_milestones = task_doc.get("milestones", [])
         event_title = event_doc.get("title", "")
-        
-        for ms in task_milestones:
-            ms_title = ms.get("title", "")
-            if ms_title and event_title and (ms_title == event_title or ms_title in event_title or event_title in ms_title):
-                matched_milestone_id = ms.get("id")
-                ms["status"] = "completed"
-                ms["completed_at"] = datetime.utcnow()
-                break
-
-        if matched_milestone_id:
-            await self._task_collection().update_one(
-                {"_id": task_oid},
-                {"$set": {"milestones": task_milestones, "updatedAt": datetime.utcnow()}}
-            )
-
         payload = EvidenceCreate(
             task_id=task_id_str,
             type="milestone_complete",
             title=f"完成日程: {event_title}",
             content=f"已完成关联日程: {event_title}\n描述: {event_doc.get('description', '')}",
             source="calendar",
-            milestone_id=matched_milestone_id,
-            metadata={"calendar_event_id": event_id_str, "completed_at": datetime.utcnow().isoformat()}
+            source_id=event_id_str,
+            milestone_id=milestone_id,
+            metadata={
+                "calendar_event_id": event_id_str,
+                "completed_at": datetime.utcnow().isoformat(),
+            },
         )
         await self.create_evidence(user_id, payload)
 
