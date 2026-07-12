@@ -198,9 +198,27 @@ async def test_resume_validation_returns_explicit_codes(fake_redis, monkeypatch)
     assert ahead.error_code == "invalid_last_event_id"
 
 
+@pytest.mark.parametrize("event_id", ["stream:0", "stream:1", "stream:10"])
+async def test_event_id_parser_accepts_canonical_sequences(event_id):
+    parsed = SSEEventID.parse(event_id)
+    assert parsed is not None
+    assert str(parsed) == event_id
+
+
 @pytest.mark.parametrize(
     "event_id",
-    ["stream:+1", "stream:01", "stream: 1", "stream:\t1", "stream:-0"],
+    [
+        "stream:+1",
+        "stream:01",
+        "stream: 1",
+        "stream:\t1",
+        "stream:1 ",
+        "stream:-0",
+        "stream:-1",
+        "stream:",
+        "stream:not-a-number",
+        "missing-separator",
+    ],
 )
 async def test_event_id_parser_rejects_noncanonical_sequences(event_id):
     assert SSEEventID.parse(event_id) is None
@@ -208,22 +226,26 @@ async def test_event_id_parser_rejects_noncanonical_sequences(event_id):
     assert result.error_code == "invalid_last_event_id"
 
 
+@pytest.mark.parametrize("redis_error", [ConnectionError("redis down"), TimeoutError("redis timeout")])
 async def test_resume_reports_storage_unavailable_when_redis_get_fails(
     fake_redis,
     monkeypatch,
+    redis_error,
 ):
-    monkeypatch.setattr(fake_redis, "get", AsyncMock(side_effect=ConnectionError("redis down")))
+    monkeypatch.setattr(fake_redis, "get", AsyncMock(side_effect=redis_error))
 
     result = await SSEStreamService.validate_resume("stream_1:1", "user-1")
 
     assert result.error_code == "stream_storage_unavailable"
 
 
+@pytest.mark.parametrize("redis_error", [ConnectionError("redis down"), TimeoutError("redis timeout")])
 async def test_producer_lease_reports_storage_unavailable_when_redis_set_fails(
     fake_redis,
     monkeypatch,
+    redis_error,
 ):
-    monkeypatch.setattr(fake_redis, "set", AsyncMock(side_effect=ConnectionError("redis down")))
+    monkeypatch.setattr(fake_redis, "set", AsyncMock(side_effect=redis_error))
 
     with pytest.raises(SSEStreamError, match="stream_storage_unavailable"):
         await SSEStreamService.acquire_producer_lease("stream_1")

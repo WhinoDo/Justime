@@ -232,14 +232,16 @@ async def test_foreign_resume_returns_explicit_error_without_provider(
     provider.assert_not_called()
 
 
+@pytest.mark.parametrize("redis_error", [ConnectionError("redis down"), TimeoutError("redis timeout")])
 async def test_resume_redis_outage_returns_storage_error_without_provider(
     configured_business,
     fake_redis,
     monkeypatch,
+    redis_error,
 ):
     provider = AsyncMock()
     monkeypatch.setattr(llm_service, "chat_completion_stream", provider)
-    monkeypatch.setattr(fake_redis, "get", AsyncMock(side_effect=ConnectionError("redis down")))
+    monkeypatch.setattr(fake_redis, "get", AsyncMock(side_effect=redis_error))
 
     events = await collect_stream(
         configured_business.process_chat_stream(
@@ -254,10 +256,12 @@ async def test_resume_redis_outage_returns_storage_error_without_provider(
     provider.assert_not_called()
 
 
+@pytest.mark.parametrize("redis_error", [ConnectionError("redis down"), TimeoutError("redis timeout")])
 async def test_producer_lease_redis_outage_returns_storage_error_without_provider(
     configured_business,
     fake_redis,
     monkeypatch,
+    redis_error,
 ):
     provider = AsyncMock()
     monkeypatch.setattr(llm_service, "chat_completion_stream", provider)
@@ -265,7 +269,7 @@ async def test_producer_lease_redis_outage_returns_storage_error_without_provide
 
     async def fail_producer_lease(key, *args, **kwargs):
         if key.startswith("sse:producer:"):
-            raise ConnectionError("redis down")
+            raise redis_error
         return await original_set(key, *args, **kwargs)
 
     monkeypatch.setattr(fake_redis, "set", fail_producer_lease)
