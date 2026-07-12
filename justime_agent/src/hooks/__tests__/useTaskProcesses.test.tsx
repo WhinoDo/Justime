@@ -118,4 +118,66 @@ describe('useTaskProcesses', () => {
     expect(mockFetch).toHaveBeenCalledTimes(1)
     expect(requestUrl().searchParams.get('search')).toBe('roadmap')
   })
+
+  it('debounces a changed search and its page reset as one request', async () => {
+    jest.useFakeTimers()
+    const { result, rerender } = renderHook(
+      (query: TaskProcessListQuery) => useTaskProcesses(query),
+      {
+        initialProps: {
+          search: 'old term',
+          page: 2,
+          page_size: 12,
+        },
+      },
+    )
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(result.current.loading).toBe(false)
+    mockFetch.mockClear()
+
+    rerender({ search: '  new term  ', page: 1, page_size: 12 })
+    expect(mockFetch).not.toHaveBeenCalled()
+
+    act(() => {
+      jest.advanceTimersByTime(299)
+    })
+    expect(mockFetch).not.toHaveBeenCalled()
+
+    await act(async () => {
+      jest.advanceTimersByTime(1)
+      await Promise.resolve()
+    })
+
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+    const url = requestUrl()
+    expect(url.searchParams.get('search')).toBe('new term')
+    expect(url.searchParams.get('page')).toBe('1')
+    expect(url.searchParams.get('page_size')).toBe('12')
+  })
+
+  it('requests page-only changes immediately when search is unchanged', async () => {
+    const { result, rerender } = renderHook(
+      (query: TaskProcessListQuery) => useTaskProcesses(query),
+      {
+        initialProps: {
+          search: 'roadmap',
+          page: 1,
+          page_size: 12,
+        },
+      },
+    )
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    mockFetch.mockClear()
+
+    rerender({ search: 'roadmap', page: 2, page_size: 12 })
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1))
+    const url = requestUrl()
+    expect(url.searchParams.get('search')).toBe('roadmap')
+    expect(url.searchParams.get('page')).toBe('2')
+  })
 })

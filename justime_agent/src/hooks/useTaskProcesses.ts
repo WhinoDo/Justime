@@ -52,6 +52,11 @@ interface RequestResult<T> {
   error?: string
 }
 
+interface CommittedTaskSearch {
+  value: string
+  page: number
+}
+
 async function requestJson<T>(input: RequestInfo, init?: RequestInit): Promise<RequestResult<T>> {
   try {
     const res = await fetch(input, {
@@ -89,7 +94,10 @@ export function useTaskProcesses(options: UseTaskProcessesOptions = {}) {
   const [tasks, setTasks] = useState<TaskProcess[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [debouncedSearch, setDebouncedSearch] = useState(search.trim())
+  const [committedSearch, setCommittedSearch] = useState<CommittedTaskSearch>({
+    value: search.trim(),
+    page,
+  })
   const [pagination, setPagination] = useState({
     total: 0,
     page,
@@ -97,14 +105,20 @@ export function useTaskProcesses(options: UseTaskProcessesOptions = {}) {
     totalPages: 0,
   })
   const requestIdRef = useRef(0)
+  const trimmedSearch = search.trim()
+  const searchPending = trimmedSearch !== committedSearch.value
 
   useEffect(() => {
+    if (!searchPending) return
+
     const timer = window.setTimeout(() => {
-      setDebouncedSearch(search.trim())
+      setCommittedSearch({ value: trimmedSearch, page })
     }, 300)
 
     return () => window.clearTimeout(timer)
-  }, [search])
+  }, [page, searchPending, trimmedSearch])
+
+  const requestPage = searchPending ? committedSearch.page : page
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams()
@@ -112,13 +126,13 @@ export function useTaskProcesses(options: UseTaskProcessesOptions = {}) {
     if (phase) params.set('phase', phase)
     if (category) params.set('category', category)
     if (priority) params.set('priority', priority)
-    if (debouncedSearch) params.set('search', debouncedSearch)
+    if (committedSearch.value) params.set('search', committedSearch.value)
     params.set('sort_by', sort_by)
     params.set('sort_order', sort_order)
-    params.set('page', String(page))
+    params.set('page', String(requestPage))
     params.set('page_size', String(page_size))
     return params.toString()
-  }, [category, debouncedSearch, page, page_size, phase, priority, sort_by, sort_order, status])
+  }, [category, committedSearch.value, page_size, phase, priority, requestPage, sort_by, sort_order, status])
 
   const fetchTasks = useCallback(async () => {
     if (!enabled) {
@@ -135,7 +149,7 @@ export function useTaskProcesses(options: UseTaskProcessesOptions = {}) {
       setTasks(data?.items || [])
       setPagination({
         total: data?.total || 0,
-        page: data?.page || page,
+        page: data?.page || requestPage,
         pageSize: data?.page_size || page_size,
         totalPages: data?.total_pages || 0,
       })
@@ -143,7 +157,7 @@ export function useTaskProcesses(options: UseTaskProcessesOptions = {}) {
       setError(result.error || '获取任务失败')
     }
     setLoading(false)
-  }, [enabled, page, page_size, queryString])
+  }, [enabled, page_size, queryString, requestPage])
 
   useEffect(() => {
     fetchTasks()
