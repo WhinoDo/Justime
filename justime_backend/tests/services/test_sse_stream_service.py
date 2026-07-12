@@ -1,10 +1,12 @@
 import json
 from typing import Any, Dict
+from unittest.mock import AsyncMock
 
 import pytest
 
 from app.core.redis_client import RedisClient
 from app.services.sse_stream_service import (
+    SSEEventID,
     SSEStreamContext,
     SSEStreamError,
     SSEStreamService,
@@ -194,6 +196,37 @@ async def test_resume_validation_returns_explicit_codes(fake_redis, monkeypatch)
 
     ahead = await SSEStreamService.validate_resume("stream_1:4", "user-1")
     assert ahead.error_code == "invalid_last_event_id"
+
+
+@pytest.mark.parametrize(
+    "event_id",
+    ["stream:+1", "stream:01", "stream: 1", "stream:\t1", "stream:-0"],
+)
+async def test_event_id_parser_rejects_noncanonical_sequences(event_id):
+    assert SSEEventID.parse(event_id) is None
+    result = await SSEStreamService.validate_resume(event_id, "user-1")
+    assert result.error_code == "invalid_last_event_id"
+
+
+async def test_resume_reports_storage_unavailable_when_redis_get_fails(
+    fake_redis,
+    monkeypatch,
+):
+    monkeypatch.setattr(fake_redis, "get", AsyncMock(side_effect=ConnectionError("redis down")))
+
+    result = await SSEStreamService.validate_resume("stream_1:1", "user-1")
+
+    assert result.error_code == "stream_storage_unavailable"
+
+
+async def test_producer_lease_reports_storage_unavailable_when_redis_set_fails(
+    fake_redis,
+    monkeypatch,
+):
+    monkeypatch.setattr(fake_redis, "set", AsyncMock(side_effect=ConnectionError("redis down")))
+
+    with pytest.raises(SSEStreamError, match="stream_storage_unavailable"):
+        await SSEStreamService.acquire_producer_lease("stream_1")
 
 
 async def _true() -> bool:

@@ -230,3 +230,53 @@ async def test_foreign_resume_returns_explicit_error_without_provider(
     assert events[0]["event"] == "error"
     assert events[0]["data"]["code"] == "foreign_stream"
     provider.assert_not_called()
+
+
+async def test_resume_redis_outage_returns_storage_error_without_provider(
+    configured_business,
+    fake_redis,
+    monkeypatch,
+):
+    provider = AsyncMock()
+    monkeypatch.setattr(llm_service, "chat_completion_stream", provider)
+    monkeypatch.setattr(fake_redis, "get", AsyncMock(side_effect=ConnectionError("redis down")))
+
+    events = await collect_stream(
+        configured_business.process_chat_stream(
+            ChatStreamRequest(message="hi", sessionId="sess_owner"),
+            "user-1",
+            "stream_1:1",
+        )
+    )
+
+    assert events[0]["event"] == "error"
+    assert events[0]["data"]["code"] == "stream_storage_unavailable"
+    provider.assert_not_called()
+
+
+async def test_producer_lease_redis_outage_returns_storage_error_without_provider(
+    configured_business,
+    fake_redis,
+    monkeypatch,
+):
+    provider = AsyncMock()
+    monkeypatch.setattr(llm_service, "chat_completion_stream", provider)
+    original_set = fake_redis.set
+
+    async def fail_producer_lease(key, *args, **kwargs):
+        if key.startswith("sse:producer:"):
+            raise ConnectionError("redis down")
+        return await original_set(key, *args, **kwargs)
+
+    monkeypatch.setattr(fake_redis, "set", fail_producer_lease)
+
+    events = await collect_stream(
+        configured_business.process_chat_stream(
+            ChatStreamRequest(message="hi", sessionId="sess_owner"),
+            "user-1",
+        )
+    )
+
+    assert events[0]["event"] == "error"
+    assert events[0]["data"]["code"] == "stream_storage_unavailable"
+    provider.assert_not_called()

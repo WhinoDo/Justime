@@ -22,6 +22,7 @@ SSE_PRODUCER_HEARTBEAT_INTERVAL = 5.0
 SSE_SUBSCRIBER_POLL_INTERVAL = 0.05
 
 _STREAM_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
+_SEQUENCE_PATTERN = re.compile(r"^(?:0|[1-9][0-9]*)$")
 
 _APPEND_EVENT_LUA = """
 local key = KEYS[1]
@@ -108,15 +109,10 @@ class SSEEventID:
         stream_id, raw_sequence = event_id_str.rsplit(":", 1)
         if not _STREAM_ID_PATTERN.fullmatch(stream_id):
             return None
-
-        try:
-            sequence = int(raw_sequence)
-        except ValueError:
+        if not _SEQUENCE_PATTERN.fullmatch(raw_sequence):
             return None
 
-        if sequence < 0:
-            return None
-        return cls(stream_id=stream_id, sequence=sequence)
+        return cls(stream_id=stream_id, sequence=int(raw_sequence))
 
 
 @dataclass(frozen=True)
@@ -234,15 +230,23 @@ class SSEStreamService:
 
     @staticmethod
     async def load_stream(stream_id: str) -> Optional[SSEStreamContext]:
-        if not RedisClient.is_enabled():
+        client = RedisClient.get_client()
+        if client is None:
             return None
 
-        data = await RedisClient.get_json(SSEStreamService._stream_key(stream_id))
-        if data is None:
-            return None
         try:
+            raw_data = await client.get(SSEStreamService._stream_key(stream_id))
+        except Exception as exc:
+            logger.warning("Failed to load SSE stream %s: %s", stream_id, exc)
+            raise SSEStreamError("stream_storage_unavailable") from exc
+
+        if raw_data is None:
+            return None
+        raw_data = SSEStreamService._decode_redis_result(raw_data)
+        try:
+            data = json.loads(raw_data) if isinstance(raw_data, str) else raw_data
             return SSEStreamContext.from_dict(data)
-        except (TypeError, ValueError) as exc:
+        except (json.JSONDecodeError, TypeError, ValueError) as exc:
             logger.warning("Invalid SSE stream context for %s: %s", stream_id, exc)
             return None
 
@@ -283,15 +287,21 @@ class SSEStreamService:
 
     @staticmethod
     async def acquire_producer_lease(stream_id: str) -> Optional[str]:
-        if not RedisClient.is_enabled():
-            return None
+        client = RedisClient.get_client()
+        if client is None:
+            raise SSEStreamError("stream_storage_unavailable")
+
         token = secrets.token_hex(16)
-        acquired = await RedisClient.set(
-            SSEStreamService._producer_key(stream_id),
-            token,
-            ex=SSE_PRODUCER_LEASE_TTL,
-            nx=True,
-        )
+        try:
+            acquired = await client.set(
+                SSEStreamService._producer_key(stream_id),
+                token,
+                ex=SSE_PRODUCER_LEASE_TTL,
+                nx=True,
+            )
+        except Exception as exc:
+            logger.warning("Failed to acquire SSE producer lease for %s: %s", stream_id, exc)
+            raise SSEStreamError("stream_storage_unavailable") from exc
         return token if acquired else None
 
     @staticmethod
@@ -333,7 +343,14 @@ class SSEStreamService:
 
     @staticmethod
     async def producer_is_active(stream_id: str) -> bool:
-        return bool(await RedisClient.exists(SSEStreamService._producer_key(stream_id)))
+        client = RedisClient.get_client()
+        if client is None:
+            raise SSEStreamError("stream_storage_unavailable")
+        try:
+            return bool(await client.exists(SSEStreamService._producer_key(stream_id)))
+        except Exception as exc:
+            logger.warning("Failed to inspect SSE producer lease for %s: %s", stream_id, exc)
+            raise SSEStreamError("stream_storage_unavailable") from exc
 
     @staticmethod
     async def _session_belongs_to_user(session_id: str, user_id: str) -> bool:
@@ -362,7 +379,10 @@ class SSEStreamService:
         if not RedisClient.is_enabled():
             return SSEResumeResult(context=None, error_code="stream_storage_unavailable")
 
-        context = await SSEStreamService.load_stream(parsed.stream_id)
+        try:
+            context = await SSEStreamService.load_stream(parsed.stream_id)
+        except SSEStreamError as exc:
+            return SSEResumeResult(context=None, error_code=exc.code)
         if context is None:
             return SSEResumeResult(context=None, error_code="stream_expired")
 
