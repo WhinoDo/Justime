@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { History, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { MarkdownPreview } from '@/components/knowledge/MarkdownPreview'
 import {
   Dialog,
   DialogContent,
@@ -12,7 +13,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
+import { KnowledgeOutputVersionDiff } from '@/components/tasks/KnowledgeOutputVersionDiff'
 import type { KnowledgeOutput, KnowledgeOutputUpdatePayload } from '@/types/taskProcess'
 
 interface KnowledgeOutputEditorDialogProps {
@@ -38,6 +41,7 @@ export function KnowledgeOutputEditorDialog({
   const [saving, setSaving] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState('edit')
 
   useEffect(() => {
     if (!open || !output) return
@@ -47,6 +51,7 @@ export function KnowledgeOutputEditorDialog({
     setSaving(false)
     setPublishing(false)
     setError(null)
+    setActiveTab('edit')
   }, [open, output])
 
   if (!output) return null
@@ -120,8 +125,8 @@ export function KnowledgeOutputEditorDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl rounded-[28px] border border-white/10 bg-slate-950/95 p-0 text-white shadow-2xl">
-        <form onSubmit={handleSave} className="space-y-6 p-6">
+      <DialogContent className="h-[min(90vh,900px)] w-[calc(100vw-2rem)] max-w-3xl rounded-[28px] border border-white/10 bg-slate-950/95 p-0 text-white shadow-2xl">
+        <form onSubmit={handleSave} className="flex h-full min-h-0 flex-col gap-6 p-6">
           <DialogHeader>
             <DialogTitle className="text-xl text-white">编辑 KnowledgeOutput</DialogTitle>
             <DialogDescription className="text-white/[0.55]">
@@ -129,7 +134,7 @@ export function KnowledgeOutputEditorDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
               <div className="mb-3 flex items-center gap-2 text-white/80">
                 <History className="h-4 w-4 text-amber-200" />
@@ -168,8 +173,24 @@ export function KnowledgeOutputEditorDialog({
               <Input id="output-vault-path" value={vaultPath} onChange={(e) => setVaultPath(e.target.value)} className="border-white/10 bg-white/5 text-white" />
             </div>
             <div className="space-y-2">
-              <label className="text-sm text-white/70" htmlFor="output-markdown">Markdown</label>
-              <Textarea id="output-markdown" value={markdown} onChange={(e) => setMarkdown(e.target.value)} className="min-h-[320px] border-white/10 bg-white/5 font-mono text-white" />
+              <span className="text-sm text-white/70">Markdown</span>
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList aria-label="Markdown 查看模式" className="grid w-full grid-cols-3 rounded-lg border border-white/10 bg-black/15 p-1 text-white/55">
+                  <TabsTrigger value="edit" className="rounded-md text-white/65 data-[state=active]:bg-white/10 data-[state=active]:text-white">编辑</TabsTrigger>
+                  <TabsTrigger value="preview" className="rounded-md text-white/65 data-[state=active]:bg-white/10 data-[state=active]:text-white">预览</TabsTrigger>
+                  <TabsTrigger value="diff" className="rounded-md text-white/65 data-[state=active]:bg-white/10 data-[state=active]:text-white">Diff</TabsTrigger>
+                </TabsList>
+                <TabsContent value="edit" className="mt-3 h-[360px]">
+                  <label className="sr-only" htmlFor="output-markdown">Markdown</label>
+                  <Textarea id="output-markdown" value={markdown} onChange={(e) => setMarkdown(e.target.value)} className="h-full min-h-0 resize-none border-white/10 bg-white/5 font-mono text-white" />
+                </TabsContent>
+                <TabsContent value="preview" className="mt-3 h-[360px] overflow-auto rounded-lg border border-white/10 bg-white/[0.04] p-5">
+                  <MarkdownPreview content={markdown} />
+                </TabsContent>
+                <TabsContent value="diff" className="mt-3 h-[360px]">
+                  <KnowledgeOutputVersionDiff output={{ ...output, title, markdown, vault_relative_path: vaultPath }} />
+                </TabsContent>
+              </Tabs>
             </div>
           </div>
 
