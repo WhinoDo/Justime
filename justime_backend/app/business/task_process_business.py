@@ -730,11 +730,13 @@ class TaskProcessBusiness:
             },
             return_document=ReturnDocument.AFTER,
         )
+        indexing_attempt_id = str(ObjectId())
         pending = await self._knowledge_collection().find_one_and_update(
             {"_id": doc["_id"], "userId": user_id, "status": "published"},
             {
                 "$set": {
                     "indexing_status": "pending",
+                    "indexing_attempt_id": indexing_attempt_id,
                     "indexing_error_code": None,
                     "indexing_retryable": False,
                     "indexed_at": None,
@@ -816,12 +818,24 @@ class TaskProcessBusiness:
                 "indexed_at": None,
             }
         outcome["updatedAt"] = datetime.utcnow()
+        indexing_attempt_id = doc.get("indexing_attempt_id")
         saved = await self._knowledge_collection().find_one_and_update(
-            {"_id": doc["_id"], "userId": user_id, "status": "published"},
-            {"$set": outcome},
+            {
+                "_id": doc["_id"],
+                "userId": user_id,
+                "status": "published",
+                "indexing_status": "pending",
+                "indexing_attempt_id": indexing_attempt_id,
+            },
+            {"$set": {**outcome, "indexing_attempt_id": None}},
             return_document=ReturnDocument.AFTER,
         )
-        return self._serialize_knowledge_output(saved or {**doc, **outcome})
+        if saved:
+            return self._serialize_knowledge_output(saved)
+        current = await self._knowledge_collection().find_one(
+            {"_id": doc["_id"], "userId": user_id}
+        )
+        return self._serialize_knowledge_output(current or doc)
 
     async def reindex_knowledge_output(self, user_id: str, output_id: str) -> Optional[KnowledgeOutputOut]:
         doc = await self._knowledge_collection().find_one(
@@ -837,6 +851,7 @@ class TaskProcessBusiness:
             raise KnowledgeOutputIndexConflict("当前知识产出不可重试索引")
 
         await self._validated_published_path(user_id, doc)
+        indexing_attempt_id = str(ObjectId())
         pending = await self._knowledge_collection().find_one_and_update(
             {
                 "_id": doc["_id"],
@@ -849,6 +864,7 @@ class TaskProcessBusiness:
             {
                 "$set": {
                     "indexing_status": "pending",
+                    "indexing_attempt_id": indexing_attempt_id,
                     "indexing_error_code": None,
                     "indexing_retryable": False,
                     "indexed_at": None,

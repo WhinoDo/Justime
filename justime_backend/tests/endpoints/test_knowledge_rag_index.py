@@ -1,4 +1,6 @@
+import asyncio
 import copy
+import threading
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -249,6 +251,53 @@ async def test_retry_succeeds_without_republishing_or_rewriting_file(monkeypatch
         await business.reindex_knowledge_output("user-1", str(doc["_id"]))
     assert publish_calls == []
     assert published_path.read_text(encoding="utf-8") == "original file"
+
+
+@pytest.mark.asyncio
+async def test_stale_indexing_completion_cannot_overwrite_newer_success(
+    monkeypatch, tmp_path
+):
+    doc = output_doc()
+    collection = FakeKnowledgeCollection([doc])
+    first_started = threading.Event()
+    release_first = threading.Event()
+    call_count = 0
+    call_lock = threading.Lock()
+
+    def rag_result(**kwargs):
+        nonlocal call_count
+        with call_lock:
+            call_count += 1
+            call_number = call_count
+        if call_number == 1:
+            first_started.set()
+            assert release_first.wait(timeout=5)
+            return {
+                "success": False,
+                "status": "unavailable",
+                "retryable": True,
+                "error_code": PROVIDER_UNAVAILABLE,
+            }
+        return ready_result()
+
+    business = build_business(monkeypatch, collection, tmp_path, rag_result)
+    older_attempt = asyncio.create_task(
+        business.publish_knowledge_output("user-1", str(doc["_id"]))
+    )
+    assert await asyncio.to_thread(first_started.wait, 5)
+
+    newer_result = await business.publish_knowledge_output("user-1", str(doc["_id"]))
+    release_first.set()
+    older_result = await older_attempt
+    persisted = collection.current(str(doc["_id"]))
+
+    assert newer_result.indexing_status == "success"
+    assert older_result.indexing_status == "success"
+    assert persisted["indexing_status"] == "success"
+    assert persisted["indexing_error_code"] is None
+    assert persisted["indexing_retryable"] is False
+    assert persisted["indexed_at"] is not None
+    assert persisted["indexing_attempt_id"] is None
 
 
 @pytest.mark.asyncio
