@@ -14,7 +14,8 @@ docs/
 │   ├── legacy-module-inventory.md # 遗留模块盘点与兼容/废弃决策矩阵
 │   ├── 2026-06-26-macos-native-migration.md # macOS 原生迁移 ADR
 │   ├── macos-native-api-contract.md # macOS 原生 API 契约
-│   └── task-data-lifecycle.md # TaskProcess 数据生命周期与所有权
+│   ├── task-data-lifecycle.md # TaskProcess 数据生命周期与所有权
+│   └── markdown-vault-transport.md # Markdown Vault 本地/远程传输与安全契约
 │
 ├── runbooks/                   # 发布与运维门禁
 │   └── macos-native-release-gates.md # macOS 原生构建、签名、公证与更新门禁
