@@ -7,7 +7,7 @@
 ## 〇、前置警示与方向抉择
 
 > [!CAUTION]
-> **本仓库已于 2026-05-30 完成了向「考研智能学习助手」的第一次转型 [TRANSFORMATION_PLAN.md](file:///Users/zhuyuxuan/Desktop/Code/Justime/docs/design/TRANSFORMATION_PLAN.md)。** 
+> **本仓库已于 2026-05-30 完成了向「考研智能学习助手」的第一次转型 [TRANSFORMATION_PLAN.md](../design/TRANSFORMATION_PLAN.md)。**
 > 本次调整为第二次转型，定位泛化为「AI 个人任务进程操作系统」。新定位在用户范围、产品价值和差异化竞争上均显著优于考研助手定位，但由于涉及到底层模型重构与桌面端开发，开发周期会有所延长。为确保项目成功，开发团队应承诺在 6 个月内保持该方向的稳定性。
 
 ---
@@ -60,14 +60,15 @@ graph TD
 
 Justime 采用前后端分离的双端架构：
 
-*   **前端 Web/桌面壳 (Next.js 14)**：负责 Process Cockpit (任务驾驶舱)、Before/During/After 详情页、绑卡式 ChatInterface 以及日历同步视图。
+*   **前端 Web (Next.js 14)**：负责 Process Cockpit (任务驾驶舱)、Before/During/After 详情页、绑卡式 ChatInterface 以及日历同步视图。
+*   **macOS 原生壳 (SwiftUI/AppKit + WKWebView)**：加载现有 Web 前端并提供原生能力桥接；`apps/desktop` Electron 壳在原生发布门禁全部通过前继续作为生产 fallback。
 *   **后端服务 (FastAPI)**：通过 `endpoints` -> `business` -> `services` 三层架构进行业务编排。
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │  前端层: Next.js 14 (App Router) + Tailwind CSS + recharts        │
 ├──────────────────────────────────────────────────────────────────┤
-│  API 代理层: src/app/api/ (桌面端直接请求后端以规避跨域)          │
+│  API 代理层: src/app/api/ (Web/WKWebView 主路径继续使用 BFF)      │
 ├──────────────────────────────────────────────────────────────────┤
 │  后端编排层: TaskProcessBusiness + ChatBusiness                  │
 ├──────────────────────────┬──────────┬──────────┬─────────────────┤
@@ -80,18 +81,21 @@ Justime 采用前后端分离的双端架构：
 
 ## 5. macOS 桌面端技术路线与选型
 
-### 5.1 桌面壳选型：从 Electron 快速验证过渡到 Tauri
+### 5.1 桌面壳选型：SwiftUI/AppKit + WKWebView 主路线
 
-为了解决 Next.js 14 App Router 依赖 Node.js 运行时与桌面端静态分发的兼容性问题，我们采用两步走策略：
+当前决策以 [macOS 原生迁移 ADR](../architecture/2026-06-26-macos-native-migration.md) 为准：
 
-| 方案 | 架构说明 | 优点 | 缺点 | 适用阶段 |
-|---|---|---|---|---|
-| **方案 A：Tauri + Next.js Static Export** | Tauri WebView 加载 Next.js `output: 'export'` 静态产物，跳过 BFF 直接请求本地/云端后端。 | 体积小 (~15MB)，内存占用极低，对本地文件监听支持好。 | 需要重构部分 SSR/API Routes 逻辑，改为 `'use client'` 动态渲染。 | **中期/正式版** |
-| **方案 B：Electron + Next.js Server** | Electron 主进程直接拉起 Next.js dev/prod 服务，BrowserWindow 加载 `localhost:3000`。 | 前端代码几乎零改动，完美保留 Next.js 全特性 (RSC、BFF API)。 | 安装包大 (~200MB+)，内存和 CPU 资源占用高。 | **Phase 1 (快速验证原型)** |
+| 路线 | 架构说明 | 当前定位 |
+|---|---|---|
+| **SwiftUI/AppKit + WKWebView** | 原生 SwiftUI 壳通过 WKWebView 加载现有 Next.js 应用，并使用版本化 bridge 逐步提供文件、通知、窗口与更新能力。 | **主路线**；`apps/macos-native` 已建立并通过无凭据构建/测试与 smoke gate。 |
+| **Electron + Next.js** | `apps/desktop` 继续承载现有 Web 应用。 | **生产 fallback**；原生认证、SSE、任务工作台、签名/公证与自动更新门禁全部通过前不得移除。 |
+| **Tauri** | Rust 插件模型与另一套工具链会提高当前 TypeScript/Python 团队的维护成本。 | **Phase 1 明确不采用**；仅在未来跨平台统一成为优先目标时重新评估。 |
+
+Phase 2 采用逐屏迁移：Chat 和 Calendar 的 SwiftUI 实现目前只是 parity candidate，生产路由所有权仍属于 WKWebView Web 页面；只有独立 promotion issue 提交完整等价性、遥测、回滚和发布门禁证据后，单个路由才能切换。
 
 ### 5.2 后端运行方案：分层演进策略
 
-1.  **Phase 1 (MVP)**：**云端后端**。桌面壳仅封装前端，直接连接已部署的 Docker Compose 云端后端。用户只需在设置中配置 `NEXT_PUBLIC_BACKEND_URL`。**不应在首个版本同时引入“新方向”和“本地运行复杂性”。**
+1.  **Phase 1 (MVP)**：**现有 Web + 云端/已部署后端**。WKWebView 加载现有 Next.js 应用，由 Web/BFF 路径访问 FastAPI；本阶段不同时引入本地后端复杂性。
 2.  **Phase 2 (混合版)**：**本地打包运行**。使用 `PyInstaller` 将 FastAPI + 依赖打包成单个可执行二进制（Sidecar）。数据库使用本地 SQLite（替代 MongoDB 简化环境），Redis 缓存使用内嵌的内存结构。
 3.  **Phase 3 (本地纯净版)**：**全面本地化**。集成本地 Ollama (LLM) 和 ChromaDB (RAG)，实现离线运行与彻底的隐私保护。
 
@@ -375,21 +379,23 @@ sequenceDiagram
 - [x] 将新数据模型注册到 `models/__init__.py`
 
 ### Sprint 1: 后端 Task Process 核心与 Agent 服务 (4-6周)
-- [ ] 创建 `endpoints/task_process.py` — 任务进程 CRUD API
-- [ ] 创建 `endpoints/evidence.py` — 证据上传与采集 API
-- [ ] 创建 `endpoints/knowledge_outputs.py` — 成果归档 API
-- [ ] 编写核心业务编排 `business/task_process_business.py` (管理阶段流转)
-- [ ] 实现统一的任务 Agent `services/task_agent_service.py` (plan / monitor / summarize 模式)
-- [ ] 实现成果写入服务 `services/markdown_export_service.py` (处理本地目录写入)
-- [ ] 在 `api.py` 注册所有新端点并编写测试用例
+- [x] 创建 `endpoints/task_process.py` — 任务进程创建、查询、更新与 Agent API
+- [x] 创建 `endpoints/evidence.py` — Evidence 与 time log API
+- [x] 创建 `endpoints/knowledge_outputs.py` — KnowledgeOutput 创建、生成、编辑、发布与回滚 API
+- [x] 编写核心业务编排 `business/task_process_business.py` (管理阶段流转)
+- [x] 建立统一任务 Agent `services/task_agent_service.py` 的 plan / monitor / summarize 主链路
+- [x] 建立成果写入服务 `services/markdown_export_service.py`
+- [x] 在 `api.py` 注册新端点并建立 TaskProcess 生命周期/API 测试
+- [ ] 扩展完整 Agent 工具链、Vault 冲突/覆盖策略与 KnowledgeOutput 回滚测试闭环
 
 ### Sprint 2: 前端 Task Process 驾驶舱与三阶段 UI (4-6周)
-- [ ] 创建前端 `src/types/task.ts` 类型定义，配置 API 代理路由
-- [ ] 实现 `src/app/tasks/` 页面 (任务列表与列表过滤器)
-- [ ] 实现 `src/app/tasks/[id]/page.tsx` 三阶段详情页
-- [ ] 实现 Evidence 记录与 Timeline 展示组件
-- [ ] 改造 `ChatInterface.tsx` 聊天框，使其可与当前选中的任务进行上下文绑定
-- [ ] 改造首页 Dashboard 为全新的 **Process Cockpit**
+- [x] 创建前端 `src/types/taskProcess.ts` 类型定义、API 端点与 hooks
+- [x] 实现 `src/app/tasks/` 页面及搜索、过滤、排序、分页基础能力
+- [x] 实现 `src/app/tasks/[id]/page.tsx` 详情页与桌面 workbench 基础
+- [x] 实现 Evidence / time log 记录与 KnowledgeOutput 面板
+- [x] 打通 `ChatInterface.tsx` 与选中 TaskProcess 的基础上下文绑定
+- [x] 建立 Dashboard / Tasks 的 Process Cockpit 基础入口与组件
+- [ ] 完成 Before / During / After 专业工作台、Evidence Timeline、跨任务建议和可视化
 
 ### Sprint 3: Obsidian 本地同步与语义检索增强 (3-4周)
 - [ ] 实现大模型结构化 Prompt 输出 Markdown
@@ -399,27 +405,32 @@ sequenceDiagram
 - [ ] 实现新知识生成后的 RAG 索引增量更新
 
 ### Sprint 4: macOS 桌面端封装与 DMG 打包 (1-2周)
-- [ ] 创建桌面端工程目录 `apps/desktop/`
-- [ ] MVP 阶段通过 Electron 容器运行，启动 Next.js 服务器，实现快速打包
-- [ ] 配置 `electron-builder` 编写 DMG 打包脚本
-- [ ] 实现桌面端特有的环境变量切换与本地文件权限获取
-- [ ] 增加 macOS 系统通知及状态栏菜单
+- [x] 保留 `apps/desktop/` Electron 壳作为生产 fallback
+- [x] 创建 `apps/macos-native/` SwiftUI/AppKit + WKWebView 原生工程
+- [x] 建立 SwiftPM build/test、自动 smoke 与 DMG/sign/notarize 脚本门禁
+- [x] 建立原生配置、导航、bridge、菜单/快捷键与 Sparkle 集成骨架
+- [ ] **需外部输入**：Developer ID 证书与密码、Apple ID/app-specific password/team ID、bundle identifier、entitlements 审查
+- [ ] **需外部输入**：Sparkle EdDSA key、生产 appcast feed、发布 owner 与签名/公证/Gatekeeper 实机验收
+- [ ] 完成文件权限、通知及任务工作台等原生能力的产品验收；Chat/Calendar 继续以 WKWebView 为生产 owner
 
 ### Sprint 5: 端到端测试联调与打磨 (1周)
 - [ ] 跑通“学习 Python 虚拟环境” Demo 完整测试
 - [ ] 修复多模型路由与 SSE 打字机流失重连 Bug
-- [ ] 打包发布第一个稳定版 `Justime.dmg`
+- [ ] **需外部输入**：完成签名、公证、staple、Gatekeeper 与 Sparkle 门禁后发布首个稳定版 `Justime.dmg`
 
 ---
 
 ## 14. 技术风险与缓解措施
 
-1.  **Next.js App Router 静态导出限制**：
-    *   *风险*：Next.js 14 的部分页面使用了服务端特性，Tauri 静态打包可能会报错。
-    *   *缓解*：在打包桌面端静态产物前，将受影响页面逐步重构为 `'use client'` 动态渲染，并通过本地配置绕过 BFF 代理层直接请求本地 FastAPI。
+1.  **WKWebView 与 Web/BFF 契约漂移**：
+    *   *风险*：原生 bridge、路由所有权、Cookie/SSE 行为与 Web/BFF 实现独立演进时可能产生兼容性或安全回归。
+    *   *缓解*：维持版本化 bridge/API 契约，默认使用 WKWebView Web 路由；原生候选页面只有通过 route-scoped parity、遥测与回滚门禁后才可 promotion。
 2.  **AI 生成 Markdown 格式不稳**：
     *   *风险*：大模型偶尔会输出不合规的 Markdown 或是遗漏 Frontmatter。
     *   *缓解*：使用 JSON Schema 或强约束的 Pydantic 模型解析 AI 的原始输出，并在后端使用统一的 Markdown 渲染模板，确保输出文件的稳健性。
 3.  **macOS 文件访问权限与沙盒限制**：
     *   *风险*：macOS 沙盒模式可能阻止应用直接写入本地非沙盒目录（如 Obsidian Vault 目录）。
-    *   *缓解*：在 Electron 中使用 Node.js `fs` 直接操作本地文件，并在打包 DMG 时配置相应的 Entitlements 以申请用户授权；对于 Tauri 路径，使用 `tauri-plugin-dialog` 引导用户选择目录以获取授权。
+    *   *缓解*：通过原生 document picker / security-scoped bookmark 与最小权限 bridge 获取用户授权，发布前审查 hardened runtime entitlements；门禁未通过时保留 Electron fallback。
+4.  **签名、公证与自动更新外部依赖**：
+    *   *风险*：Developer ID、notarytool 凭据、bundle/entitlements 决策或 Sparkle key/feed 缺失时，构建即使通过也不可公开发布。
+    *   *缓解*：严格执行 release-gates runbook 的 fail-closed 门禁，不把无凭据 build/test/smoke 结果表述为 signed、notarized 或 releasable。

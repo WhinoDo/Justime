@@ -4,7 +4,7 @@
 > 目的：明确哪些内容还未修改，哪些内容只改了一半，便于后续继续推进。
 
 ## 1. 后端仍未完成
-- `database/indexes.py` 中为 `task_processes`、`evidence`、`knowledge_outputs` 显式补 MongoDB 索引。
+- `database/indexes.py` 已为 `task_processes`、`evidence`、`knowledge_outputs` 配置索引；后续仍需结合生产查询与 explain 证据复核索引效果。
 - `services/task_agent_service.py` 尚未达到规划中的完整统一 Agent 形态，`plan / research / monitor / coach / summarize / knowledge` 全模式和工具链未全部打通。
 - `services/markdown_export_service.py` 尚未完成完整 Vault 安全策略：
   - 路径冲突检测
@@ -64,18 +64,18 @@
 - SQLite 本地后端方案未开始。
 - Ollama / ChromaDB 本地纯净版未开始。
 
-## 7. macOS 桌面端仍未开始
-- `apps/desktop/` 工程目录还未创建。
-- Electron MVP 封装未开始。
-- `electron-builder` 与 DMG 打包脚本未开始。
-- 桌面端环境变量切换未开始。
-- 本地文件权限获取流程未开始。
-- macOS 系统通知与状态栏菜单未开始。
+## 7. macOS 桌面端已建立基础，生产发布仍受门禁约束
+- `apps/macos-native/` SwiftUI/AppKit + WKWebView 原生壳已存在；`apps/desktop/` Electron 壳继续作为受支持的生产 fallback。
+- 原生 SwiftPM build/test、自动 smoke、DMG/sign/notarize 脚本和 CI 门禁已建立；JUS-498 证据只确认无凭据 build/test/smoke 通过。
+- **需外部输入**：Developer ID 证书与密码、Apple ID/app-specific password/team ID、bundle identifier 决策、hardened runtime entitlements 审查。
+- **需外部输入**：Sparkle EdDSA key、生产 appcast feed、命名 release owner，以及签名、公证、staple、Gatekeeper 和更新回滚实机验证。
+- Native Chat / Calendar 代码是 parity candidate；生产路由 owner 仍为 WKWebView fallback，未通过独立 promotion 门禁前不得切换。
+- 本地 Markdown 文件权限、系统通知及任务工作台等原生能力仍需按 ADR acceptance matrix 完成产品验收。
 
 ## 8. 端到端联调仍未完成
 - “学习 Python 虚拟环境” 端到端 Demo 还没跑通验收。
 - 多模型路由与 SSE 断流重连的真实联调还没完成。
-- 首个稳定版 `Justime.dmg` 还没开始打包。
+- 首个稳定版 `Justime.dmg` 尚不可发布；无凭据构建不等于生产签名、公证或可发布状态。
 
 ## 9. 测试层仍欠缺
 - 后端 TaskProcess / Evidence / KnowledgeOutput 的完整接口测试覆盖还不够。
@@ -86,15 +86,15 @@
 
 ## 10. 已修改但未完全收口的部分
 - `KnowledgeOutput`：已支持编辑、发布、版本历史、回滚，但还缺：
-  - 版本对比
-  - 指定版本预览
   - 回滚后的差异提示
+  - 发布前 Vault 路径/结果预览与更完整的冲突处理
+- `KnowledgeOutput` 版本对比和所选版本 Markdown 预览已实现；仍需补充更完整的端到端与回滚联动验收。
 - `/study`：已做学习任务专用筛选，但仍未完成旧模块清退。
 - 任务详情页：已拆出独立 KnowledgeOutput 面板，但 Before / During 的专业工作台还不完整。
 - Chat 绑定任务：已打通基础链路，但还没有彻底约束和统一所有入口。
 
 ## 11. 建议的后续执行顺序
-1. 先补后端索引、Vault 策略、KnowledgeOutput 测试闭环。
+1. 先基于生产查询复核后端索引，并补 Vault 策略、KnowledgeOutput 测试闭环。
 2. 再完善任务详情页的 Before / During 专业工作台。
 3. 然后清退旧 `study` 模块与兼容层。
-4. 最后推进桌面端封装、离线能力和 DMG 打包。
+4. 并行完善原生能力；生产 DMG 发布必须等待外部凭据、签名/公证/Gatekeeper 与 Sparkle 门禁全部通过，期间保留 Electron fallback。

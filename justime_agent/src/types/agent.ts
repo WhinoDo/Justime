@@ -1,6 +1,6 @@
 /**
  * Agent 相关 TypeScript 类型定义
- * 对应 jushi_backend/app/models/agent.py 中的 Pydantic 模型
+ * 对应 justime_backend/app/models/agent.py 中的 Pydantic 模型
  */
 
 /** 工具信息 */
