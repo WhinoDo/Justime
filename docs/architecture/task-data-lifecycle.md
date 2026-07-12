@@ -182,6 +182,14 @@ batch and deadline. It is not adopted by the parent batch and is not restored
 with the parent. A child independently archived before parent deletion is
 included in the parent batch and restores to archived, not active.
 
+The parent batch inventory must still record every pre-existing soft-deleted
+child as a cross-batch dependency. That entry references the child's original
+deletion batch, source purge manifest, and source manifest item; it is not a
+second purge item and does not transfer ownership. The original deletion batch
+remains the sole authority for the child's deadline, hold checks, destructive
+work, completion result, and retries. Section 10.3 defines the evidence the
+parent manifest must observe before parent-last purge may proceed.
+
 No new Evidence or KnowledgeOutput may be created under an archived or
 soft-deleted task. Lifecycle restore/export operations are allowed through
 their explicit query modes. A child in trash cannot be independently restored
@@ -427,20 +435,65 @@ records:
 - each object type and ID, including KnowledgeOutput version IDs;
 - expected lifecycle state and concurrency/version token;
 - child-before-parent ordering;
+- cross-batch dependency entries for retained children owned by an earlier
+  deletion batch, including source batch, manifest, and item IDs;
 - per-item status, attempt count, bounded error code, and completion time;
 - hold checks and final operation outcome.
+
+Each retained object has exactly one owning purge item: the item in the purge
+manifest for its own deletion batch. A parent manifest must not copy, adopt, or
+execute an independently deleted child's purge item. If that child's source
+manifest does not yet exist when parent purge is prepared, the lifecycle
+service creates it deterministically from the child's immutable original batch
+inventory before recording the dependency. The source manifest then remains
+the sole retry authority for that child.
+
+A cross-batch dependency follows these rules:
+
+- The child's original `purge_eligible_at` and hold scope are authoritative.
+  The parent deadline cannot accelerate the child. A child that is not yet
+  eligible or is held blocks the parent manifest.
+- The parent purge operation may enqueue or wait for the source manifest, but
+  only a worker resuming that source manifest may purge or retry the child.
+  Retry counts, errors, and final status are written to the source item.
+- The dependency is complete only when the source item is durably complete and
+  a matching content-free tombstone binds the child object ID to the source
+  deletion batch, manifest, operation, and completion result. The parent
+  manifest records the observed source IDs and tombstone ID; it never writes a
+  duplicate child completion result.
+- A missing child without that source completion record and matching tombstone
+  is a failure, not evidence of purge. A restored, re-deleted, or
+  concurrency-mismatched child invalidates the dependency and requires a new
+  parent purge attempt against the child's current deletion identity.
+- Source-manifest failure or an active hold leaves the dependency blocked.
+  Recovery and retries remain owned by the source manifest even when the
+  parent manifest initiated the wait.
 
 The required order is:
 
 1. Validate the manifest, deadline, owner scope, and holds.
-2. Purge Evidence content and its content-bearing secondary copies, search
-   documents, caches, and generated indexes named by the manifest.
-3. Purge KnowledgeOutput current content, all version snapshots, and its
-   content-bearing secondary copies and indexes.
-4. Confirm every retained child item is purged or is explicitly blocking the
-   operation under hold.
-5. Purge the TaskProcess content last.
-6. Write or finalize content-free tombstones and a purge-complete audit event.
+2. Resume parent-owned Evidence items and purge their content-bearing secondary
+   copies, search documents, caches, and generated indexes named by the
+   manifest.
+3. Resume parent-owned KnowledgeOutput items and purge current content, all
+   version snapshots, and content-bearing secondary copies and indexes.
+4. Resolve every cross-batch dependency through its source manifest. Wait while
+   a source item is ineligible or held; retry failures only through that source
+   manifest.
+5. Recheck under the parent concurrency/version guard that every parent-owned
+   child item is complete, every cross-batch dependency has the required source
+   completion and tombstone evidence, no child hold is active, and no retained
+   or unmanifested child content remains.
+6. Purge the TaskProcess content last. Failure of any condition in step 5 keeps
+   the parent soft-deleted and blocks this step.
+7. Write or finalize the parent tombstone and purge-complete audit event.
+
+Step 5 is the exact parent-last authorization condition. A pre-existing child
+that is retained, not yet purge-eligible, held, failed, missing without proof,
+or completed only in parent-local state blocks parent purge. The parent may be
+purged only after the child's original manifest supplies durable completion and
+tombstone evidence and the guarded recheck confirms that no retained child
+content survives.
 
 Database foreign-key or collection cascade, if introduced later, must not be
 used as the deletion mechanism because it cannot provide this inventory,
@@ -459,6 +512,9 @@ operation ID/idempotency key.
   A mismatch fails closed instead of overwriting a newer action.
 - Purge retries resume the existing manifest. They do not construct a new
   inventory from whatever children happen to remain.
+- A parent-manifest retry re-observes cross-batch source state but never takes
+  over source-item retries. Source-manifest retries remain keyed to the child's
+  original purge operation.
 - A manifest item is considered complete only after its primary content and
   every declared content-bearing secondary copy are deleted and the item result
   is durably recorded.
