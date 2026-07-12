@@ -84,6 +84,7 @@ class FeishuCalendarBusiness:
             "emotionScore": local_extra.get("emotionScore", None),
             "aiGenerated": local_extra.get("aiGenerated", False),
             "taskId": local_extra.get("taskId", None),
+            "milestoneId": local_extra.get("milestoneId", None),
             "userId": local_extra.get("userId", "")
         }
         
@@ -101,20 +102,19 @@ class FeishuCalendarBusiness:
         start_iso = cls._to_rfc3339(start) if isinstance(start, datetime) else str(start)
         end_iso = cls._to_rfc3339(end) if isinstance(end, datetime) else str(end)
         
-        feishu_event = {
-            "summary": justime_data.get("title", ""),
-            "description": justime_data.get("description", ""),
-            "start_time": {
-                "date_time": start_iso
-            },
-            "end_time": {
-                "date_time": end_iso
-            }
-        }
+        feishu_event = {}
+        if "title" in justime_data:
+            feishu_event["summary"] = justime_data["title"]
+        if "description" in justime_data:
+            feishu_event["description"] = justime_data["description"]
+        if "start" in justime_data:
+            feishu_event["start_time"] = {"date_time": start_iso}
+        if "end" in justime_data:
+            feishu_event["end_time"] = {"date_time": end_iso}
         
         # 处理全天事件
-        if justime_data.get("allDay"):
-            feishu_event["is_all_day"] = True
+        if "allDay" in justime_data:
+            feishu_event["is_all_day"] = bool(justime_data["allDay"])
             
         # 处理地点
         location = justime_data.get("location")
@@ -213,6 +213,7 @@ class FeishuCalendarBusiness:
             "emotionScore": event_dict.get("emotionScore"),
             "aiGenerated": event_dict.get("aiGenerated", False),
             "taskId": event_dict.get("taskId"),
+            "milestoneId": event_dict.get("milestoneId"),
             "createdAt": datetime.utcnow(),
             "updatedAt": datetime.utcnow()
         }
@@ -251,7 +252,18 @@ class FeishuCalendarBusiness:
         old_status = existing.get("status") if existing else None
 
         mongo_update = {}
-        for key in ["type", "priority", "status", "color", "resources", "reminders", "emotionScore", "aiGenerated", "taskId"]:
+        for key in [
+            "type",
+            "priority",
+            "status",
+            "color",
+            "resources",
+            "reminders",
+            "emotionScore",
+            "aiGenerated",
+            "taskId",
+            "milestoneId",
+        ]:
             if key in update_dict:
                 mongo_update[key] = update_dict[key]
                 
@@ -269,13 +281,20 @@ class FeishuCalendarBusiness:
             "userId": user_id
         })
         
+        merged_event = cls.feishu_to_justime_event(fe_event, local_extra)
         new_status = local_extra.get("status") if local_extra else None
         task_id = local_extra.get("taskId") if local_extra else None
-        if new_status == "completed" and old_status != "completed" and task_id:
+        milestone_id = local_extra.get("milestoneId") if local_extra else None
+        if new_status == "completed" and old_status != "completed" and task_id and milestone_id:
             from app.business.task_process_business import _task_process_business
-            await _task_process_business.handle_calendar_event_status_change(user_id, old_status, new_status, local_extra)
+            await _task_process_business.handle_calendar_event_status_change(
+                user_id,
+                old_status,
+                new_status,
+                merged_event,
+            )
 
-        return cls.feishu_to_justime_event(fe_event, local_extra)
+        return merged_event
 
     @classmethod
     async def delete_event(cls, user_id: str, event_id: str) -> None:

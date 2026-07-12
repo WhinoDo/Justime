@@ -42,6 +42,7 @@ class CalendarEventBase(BaseModel):
     emotionScore: Optional[int] = Field(None, ge=0, le=10, description="创建时情绪分数")
     aiGenerated: bool = Field(False, description="是否由AI生成")
     taskId: Optional[str] = Field(None, description="关联任务ID")
+    milestoneId: Optional[str] = Field(None, description="关联里程碑ID")
 
 
 class CalendarEventCreate(CalendarEventBase):
@@ -66,6 +67,7 @@ class CalendarEventUpdate(BaseModel):
     emotionScore: Optional[int] = Field(None, ge=0, le=10)
     aiGenerated: Optional[bool] = None
     taskId: Optional[str] = None
+    milestoneId: Optional[str] = None
 
 
 class CalendarEventOut(CalendarEventBase):
