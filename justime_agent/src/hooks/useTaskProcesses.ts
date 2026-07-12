@@ -109,6 +109,12 @@ export function useTaskProcesses(options: UseTaskProcessesOptions = {}) {
   const searchPending = trimmedSearch !== committedSearch.value
 
   useEffect(() => {
+    if (searchPending || committedSearch.page === page) return
+
+    setCommittedSearch((current) => ({ ...current, page }))
+  }, [committedSearch.page, page, searchPending])
+
+  useEffect(() => {
     if (!searchPending) return
 
     const timer = window.setTimeout(() => {

@@ -119,14 +119,14 @@ describe('useTaskProcesses', () => {
     expect(requestUrl().searchParams.get('search')).toBe('roadmap')
   })
 
-  it('debounces a changed search and its page reset as one request', async () => {
+  it('debounces a changed search and page reset after ordinary page navigation', async () => {
     jest.useFakeTimers()
     const { result, rerender } = renderHook(
       (query: TaskProcessListQuery) => useTaskProcesses(query),
       {
         initialProps: {
           search: 'old term',
-          page: 2,
+          page: 1,
           page_size: 12,
         },
       },
@@ -136,6 +136,16 @@ describe('useTaskProcesses', () => {
       await Promise.resolve()
     })
     expect(result.current.loading).toBe(false)
+    mockFetch.mockClear()
+
+    rerender({ search: 'old term', page: 2, page_size: 12 })
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+    expect(requestUrl().searchParams.get('search')).toBe('old term')
+    expect(requestUrl().searchParams.get('page')).toBe('2')
     mockFetch.mockClear()
 
     rerender({ search: '  new term  ', page: 1, page_size: 12 })
