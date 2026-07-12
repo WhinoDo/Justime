@@ -112,7 +112,11 @@ class SSEEventID:
         if not _SEQUENCE_PATTERN.fullmatch(raw_sequence):
             return None
 
-        return cls(stream_id=stream_id, sequence=int(raw_sequence))
+        try:
+            sequence = int(raw_sequence)
+        except ValueError:
+            return None
+        return cls(stream_id=stream_id, sequence=sequence)
 
 
 @dataclass(frozen=True)

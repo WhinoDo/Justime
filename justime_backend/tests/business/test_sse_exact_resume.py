@@ -173,6 +173,11 @@ async def test_completed_resume_replays_through_done_without_provider(
     [
         ("malformed", "invalid_last_event_id"),
         ("missing_stream:1", "stream_expired"),
+        pytest.param(
+            "stream:" + ("9" * 5000),
+            "invalid_last_event_id",
+            id="oversized-sequence",
+        ),
     ],
 )
 async def test_invalid_resume_returns_explicit_error_without_provider(

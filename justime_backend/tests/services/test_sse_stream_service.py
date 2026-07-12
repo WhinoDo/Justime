@@ -226,6 +226,14 @@ async def test_event_id_parser_rejects_noncanonical_sequences(event_id):
     assert result.error_code == "invalid_last_event_id"
 
 
+async def test_event_id_parser_rejects_sequence_over_integer_conversion_limit():
+    event_id = "stream:" + ("9" * 5000)
+
+    assert SSEEventID.parse(event_id) is None
+    result = await SSEStreamService.validate_resume(event_id, "user-1")
+    assert result.error_code == "invalid_last_event_id"
+
+
 @pytest.mark.parametrize("redis_error", [ConnectionError("redis down"), TimeoutError("redis timeout")])
 async def test_resume_reports_storage_unavailable_when_redis_get_fails(
     fake_redis,
