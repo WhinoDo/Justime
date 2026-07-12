@@ -33,7 +33,7 @@ GPT 的文档在**产品定位（§1-3）**和**概念设计（§6-9）**方面�
 
 | # | 缺陷 | 严重程度 | 说明 |
 |---|------|---------|------|
-| 1 | **目录名写错** | 🔴 严重 | 文档全文用 `jushi_agent` / `jushi_backend`，但仓库实际目录是 `justime_agent` / `justime_backend`，说明 GPT 未实际读取仓库 |
+| 1 | **目录名写错** | 🔴 严重 | 旧文档误用 `jushi_agent` / `jushi_backend`；legacy root `jushi_agent/` 已删除且不可构建或运行，唯一正式 Web 前端为 `justime_agent/`，正式后端为 `justime_backend/` |
 | 2 | **忽略了已存在的 study 模块** | 🔴 严重 | 仓库已有 `study.py` 模型（考研学习计划/任务/进度/复习/资料）、`study_agent_service.py`、`study_report_service.py`、`study_agent_business.py`、前端 `study/` 和 `progress/` 页面——这些是 Task Process 的天然基础，GPT 完全没提 |
 | 3 | **忽略了已存在的 Agent 模块** | 🟡 中等 | 仓库已有 `agent.py` 模型、`agent_service.py`（36KB）、`agent_business.py`、`openclaw_service.py`，Agent 框架已有雏形 |
 | 4 | **Tauri + Next.js 兼容性未深入** | 🟡 中等 | Next.js 14 的 App Router 依赖 Node.js 服务端运行时（RSC、API Routes），Tauri v2 的前端用 WebView 加载静态资源——二者存在架构冲突，文档未给出具体解决方案 |

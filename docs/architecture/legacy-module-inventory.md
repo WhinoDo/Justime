@@ -17,9 +17,9 @@ This ADR inventories six legacy module groups — **Study**, **Task Timing**, **
 | Study (backend compat layer) | Shim over TaskProcess; reads/writes `study_profiles_compat` | **保留兼容层** until Phase 3 | Low | NEW ISSUE: Remove study compat endpoints |
 | Study (frontend pages/hooks) | Isolated legacy surface; no cross-references from modern UIs; usage telemetry unknown | **废弃待清理** | Medium | NEW ISSUE: Remove study frontend |
 | Task Timing | Actively called by `chat_business.py` | **保留并迁移** to Evidence time_log | Medium | NEW ISSUE: Task Timing → Evidence integration |
-| Book Analysis | Partially integrated with TaskProcess; active, user-visible mobile workflow plus historical Web UI in the removal-approved `jushi_agent/` tree | **保留并迁移** to TaskProcess reading while preserving mobile parity | High | NEW ISSUE: Complete BookAnalysis integration |
+| Book Analysis | Partially integrated with TaskProcess; active, user-visible mobile workflow plus historical Web UI formerly stored in the removed `jushi_agent/` tree | **保留并迁移** to TaskProcess reading while preserving mobile parity | High | NEW ISSUE: Complete BookAnalysis integration |
 | Review Schedule | Read-only on `review_schedules` collection; no write path found | **废弃待清理** | Low | NEW ISSUE: Remove review_schedules read path |
-| `jushi_agent/` root directory | 3 legacy source files with pre-rename branding; not a canonical application surface | **批准删除**; removal is tracked by JUS-515 and is not blocked by page parity | Low | JUS-515 |
+| `jushi_agent/` root directory | Removed from `dev` by JUS-516; it previously held 3 legacy source files with pre-rename branding | **已删除**; non-canonical and non-runnable; page parity is not a removal blocker | Low | JUS-516 / JUS-517 |
 | `justime_agent_vue` | Vue 3/Vite auth, dashboard, and admin application; recent source activity; current production build fails; repository CI/deployment integration not found | **保留并隔离** until parity and usage/deployment evidence are established | Medium | NEW ISSUE: Inventory/decommission legacy Vue deployment |
 | `apps/desktop` (Electron) | Active production fallback | **保留** | Low | — |
 | `apps/macos-native` (SwiftUI) | Phase 1 merged; Phase 2 pending | **保留** | Low | — |
@@ -52,8 +52,10 @@ git log --oneline --all -- apps/desktop/ | head -10
 git log --oneline --all -- apps/macos-native/ | head -10
 git log --oneline --all -- mobile/jushi_mobile/ | head -10
 
-# jushi_agent contents verification
-find jushi_agent/ -type f | sort
+# Historical jushi_agent evidence and current removal verification
+git ls-tree -r --name-only 4bd7d628b529bb342c8bbe3cf2a43464093f1190 -- jushi_agent
+git ls-files jushi_agent
+test ! -e jushi_agent
 
 # Active mobile Book Analysis callers
 rg -n "book-analysis|bookAnalysisService|BOOK_ANALYSIS" mobile/jushi_mobile
@@ -180,7 +182,7 @@ The study endpoint file header explicitly states: *"The old study-specific model
 - `book_analysis_service.py:481-493` — On project completion, updates TaskProcess to `status="completed", phase="after"`
 - `book_analysis_service.py:503-515` — On failure, updates TaskProcess to `status="blocked"`
 
-**Web frontend presence:** No page for Book Analysis exists in `justime_agent/src/app/`. A historical page exists in `jushi_agent/src/app/book-analysis/page.tsx` (pre-rename codebase with "聚时" branding), but JUS-515 approves deletion of that legacy tree without migrating its pages. The absence of a current Next.js Book Analysis page is a separate product gap, not a blocker for deleting `jushi_agent/`.
+**Web frontend presence:** No page for Book Analysis exists in `justime_agent/src/app/`. A historical page formerly existed at `jushi_agent/src/app/book-analysis/page.tsx` (pre-rename codebase with "聚时" branding), but JUS-516 removed that legacy tree without migrating its pages. The absence of a current Next.js Book Analysis page is a separate product gap and did not block removal of `jushi_agent/`.
 
 **Active mobile callers and user entry:**
 - `mobile/jushi_mobile/app/_layout.tsx:51-52` registers the Book Analysis list and detail routes.
@@ -191,9 +193,9 @@ The study endpoint file header explicitly states: *"The old study-specific model
 - `mobile/jushi_mobile/constants/api-endpoints.ts:40-45` maps those calls to `/api/v1/book-analysis/projects*`.
 - Commit `869a233` introduced the mobile Book Analysis workflow, including its navigation, screens, service, and types.
 
-**Observed status:** Book Analysis is an active, user-visible mobile workflow, not a backend-only feature or a frontend that exists only under `jushi_agent`. The current Next.js Web app lacks parity, but `mobile/jushi_mobile` already exercises the complete project lifecycle.
+**Observed status:** Book Analysis is an active, user-visible mobile workflow, not a backend-only feature or a frontend that depended on the now-removed `jushi_agent` tree. The current Next.js Web app lacks parity, but `mobile/jushi_mobile` already exercises the complete project lifecycle.
 
-**Proposed Decision:** **保留并迁移** — Complete the TaskProcess integration (per plans doc §1: *"BookAnalysis -> category='reading' 的任务化收口仍未完成"*) and preserve the active mobile route/service/API contract during the `jushi_mobile` to `justime_mobile` migration. `mobile/jushi_mobile` must not be deprecated until the target mobile application passes Book Analysis list, upload, chapter-edit, run, status, and detail parity checks. Any future Web implementation should be specified independently and must not retain or migrate files from `jushi_agent/` as part of this ADR.
+**Proposed Decision:** **保留并迁移** — Complete the TaskProcess integration (per plans doc §1: *"BookAnalysis -> category='reading' 的任务化收口仍未完成"*) and preserve the active mobile route/service/API contract during the `jushi_mobile` to `justime_mobile` migration. `mobile/jushi_mobile` must not be deprecated until the target mobile application passes Book Analysis list, upload, chapter-edit, run, status, and detail parity checks. Any future Web implementation should be specified independently and must not restore or migrate files from the removed `jushi_agent/` tree as part of this ADR.
 
 **Risk:** High. Removing or changing Book Analysis without mobile parity would break a visible profile workflow and its persisted projects. The backend also depends on NotebookLM CLI (`notebooklm-py`), which requires Google authentication. The `_validate_runtime_dependencies()` method (line 958-968) checks for CLI and auth at runtime; NotebookLM contract changes remain an operational risk.
 
@@ -223,11 +225,11 @@ The study endpoint file header explicitly states: *"The old study-specific model
 
 ### 3.5 Root Legacy Web Surface (`jushi_agent`)
 
-**Observed evidence:** The root directory contains only three tracked source files: `src/app/page.tsx`, `src/app/book-analysis/page.tsx`, and `src/components/auth/AuthPageShell.tsx`. They retain pre-rename "聚时" branding and are not the canonical `justime_agent` application. The Book Analysis page is historical evidence of an earlier Web workflow; active Book Analysis callers are independently present in `mobile/jushi_mobile` as documented in section 3.3.
+**Observed evidence:** At the ADR baseline, the root directory contained only three tracked source files: `src/app/page.tsx`, `src/app/book-analysis/page.tsx`, and `src/components/auth/AuthPageShell.tsx`. They retained pre-rename "聚时" branding and were never the canonical `justime_agent` application. JUS-516 removed all three files and the resulting empty root directory from `dev` in Reviewer merge `e12aaf461230fa83fa1055c1050f90ebdb978d9e`; `git ls-files jushi_agent` is now empty and the path does not exist. The Book Analysis page remains historical evidence of an earlier Web workflow; active Book Analysis callers are independently present in `mobile/jushi_mobile` as documented in section 3.3.
 
-**Authoritative disposition:** Complete removal is approved and tracked by JUS-515. Missing Book Analysis or authentication pages in `justime_agent` are independent product gaps and do not block deletion; JUS-512 does not migrate those pages. JUS-515 owns removal of the directory and cleanup of current code, build, deployment, CI, Agent-instruction, and architecture references while preserving explicitly labelled historical evidence where useful.
+**Authoritative disposition:** **Removed, non-canonical, and non-runnable.** JUS-516 completed the approved removal tracked by JUS-515. Missing Book Analysis, authentication, or Home parity in `justime_agent` remains an independent product gap; those gaps did not block removal and this ADR does not migrate or restore the historical pages. The only formal Web frontend is `justime_agent/`.
 
-**Risk:** Low for this ADR because the removal implementation and verification are delegated to JUS-515. The cleanup issue must still prove that `justime_agent` has no runtime dependency on this tree and must not alter the canonical Web application while deleting the legacy files.
+**Risk:** Low. JUS-516 independently verified that `justime_agent` had no runtime dependency on the removed tree: lint, all 554 Jest tests, and the production build passed before and after the deletion-only merge. Any future work on missing Web pages must be tracked as product development against `justime_agent/`, not as restoration of `jushi_agent/`.
 
 ---
 
@@ -330,9 +332,9 @@ The study endpoint file header explicitly states: *"The old study-specific model
 | Study frontend (pages, hooks, types) | Only `/study` page; isolated legacy surface; usage telemetry unknown | Yes (TaskProcess UI supersedes) | 考研学习 page | 废弃待清理 (confirm via access logs) |
 | Study tools import (agent_service) | No active callers (fallback path used) | N/A | No | 废弃待清理 |
 | Task Timing | `chat_business.py` (active) | Partially (needs Evidence integration) | Indirectly via chat | 保留并迁移 |
-| Book Analysis | Backend service; historical Web page in removal-approved tree; active `mobile/jushi_mobile` routes, screens, and service | Partially (creates TaskProcess) | Mobile profile/list/detail workflow; historical Web UI is not retained | 保留并迁移; preserve mobile parity |
+| Book Analysis | Backend service; historical Web page from the removed legacy tree; active `mobile/jushi_mobile` routes, screens, and service | Partially (creates TaskProcess) | Mobile profile/list/detail workflow; historical Web UI was not retained | 保留并迁移; preserve mobile parity |
 | Review Schedule | `scheduler_service.py` (read-only; no write path found; runtime collection contents unknown) | Yes (planned SM-2 under KO) | None observed | 废弃待清理 (verify collection state) |
-| `jushi_agent/` root directory | 3 legacy source files (home page, book-analysis page, auth shell) | N/A | Historical legacy Web UI; not canonical | 批准删除; tracked by JUS-515; no parity blocker |
+| `jushi_agent/` root directory | Removed from `dev`; historically contained home, book-analysis, and auth source fragments | N/A | Historical legacy Web UI only; no runnable surface remains | 已删除; non-canonical and non-runnable; no parity blocker |
 | `justime_agent_vue` | Vue router, auth store, admin store; current build fails; no repository CI/deployment caller found | Functionality overlaps current Web app; parity not yet proven | Home/auth/dashboard/admin routes; external usage unknown | 保留并隔离 pending parity + telemetry |
 | `apps/desktop` (Electron) | Production fallback | No (complementary) | Desktop app | 保留 |
 | `apps/macos-native` (SwiftUI) | Target platform | No (complementary) | Desktop app | 保留 |
@@ -352,7 +354,7 @@ Each proposed action requires a dedicated issue to avoid a single monolithic cle
 | NEW ISSUE | [Migration] Task Timing → Evidence time_log integration | High | Backend service, chat_business |
 | NEW ISSUE | [Migration] Complete BookAnalysis → TaskProcess reading integration while preserving mobile parity | High | Backend service, mobile contract |
 | NEW ISSUE | [Cleanup] Remove orphaned review_schedules read path from scheduler_service | Low | Backend service |
-| JUS-515 | [Cleanup] Remove `jushi_agent/` and its active repository references | High | Repo structure, CI/deployment/config references |
+| JUS-515 / JUS-516 / JUS-517 | [Cleanup] Remove `jushi_agent/` and finalize its historical references | High | Completed code removal plus documentation finalization |
 | NEW ISSUE | [Inventory] Inventory/decommission legacy Vue deployment after parity and telemetry verification | Medium | Vue app, deployment inventory, maintained Web parity |
 | NEW ISSUE | [Migration] Consolidate jushi_mobile → justime_mobile with feature parity exit criteria | High | Mobile codebase |
 
@@ -397,8 +399,8 @@ Each proposed action requires a dedicated issue to avoid a single monolithic cle
 - `justime_agent/src/types/study.ts`
 - `justime_agent/src/lib/api/endpoints.ts:68-75`
 
-**book_analysis historical Web frontend (approved for removal under JUS-515):**
-- `jushi_agent/src/app/book-analysis/page.tsx` — historical book analysis UI with "聚时" branding; not a migration or deletion blocker
+**book_analysis historical Web frontend (removed by JUS-516; path retained here as evidence only):**
+- `jushi_agent/src/app/book-analysis/page.tsx` — removed historical book analysis UI with "聚时" branding; not a migration or deletion blocker
 
 **book_analysis active mobile callers:**
 - `mobile/jushi_mobile/app/_layout.tsx:51-52` — list and detail route registration
@@ -408,9 +410,9 @@ Each proposed action requires a dedicated issue to avoid a single monolithic cle
 - `mobile/jushi_mobile/services/bookAnalysisService.ts:14-128` — API calls
 - `mobile/jushi_mobile/constants/api-endpoints.ts:40-45` — `/api/v1/book-analysis` endpoint mapping
 
-**Other jushi_agent legacy files (approved for removal under JUS-515):**
-- `jushi_agent/src/app/page.tsx` — historical home page with "聚时" branding
-- `jushi_agent/src/components/auth/AuthPageShell.tsx` — historical auth shell component
+**Other removed jushi_agent legacy files (historical paths only):**
+- `jushi_agent/src/app/page.tsx` — removed historical home page with "聚时" branding
+- `jushi_agent/src/components/auth/AuthPageShell.tsx` — removed historical auth shell component
 
 ### 6.3 Legacy Vue Evidence
 
