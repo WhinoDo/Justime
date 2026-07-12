@@ -104,6 +104,43 @@ The routing contract for native screens is:
 - **Non-migrated screens** continue to run inside WKWebView, loading the existing Next.js app and routing API calls through the BFF proxy as before.
 - **No screen is removed from WKWebView** until it has a registered SwiftUI counterpart in the `NativeRouteRegistry` (Phase 2B) that passes all parity acceptance tests.
 
+#### Authoritative Chat and Calendar Route Ownership
+
+The production owner for both Chat and Calendar is the Web implementation rendered through the native shell's WKWebView. `NativeScreenRegistry` therefore resolves `.chat` to `.webFallback(path: "/chat")` and `.calendar` to `.webFallback(path: "/calendar")`. Existing native SwiftUI views, models, or services are parity candidates only; their presence does not grant route ownership and they must not be activated implicitly.
+
+| Route | Current production owner | Native candidate status |
+|---|---|---|
+| Chat (`/chat`) | WKWebView `webFallback` | Default off; not eligible to become primary until the Chat gates below pass and a separate promotion issue is approved. |
+| Calendar (`/calendar`) | WKWebView `webFallback` | Default off; not eligible to become primary until the Calendar gates below pass and a separate promotion issue is approved. |
+
+Promotion is decided independently per route. Chat parity does not promote Calendar, and Calendar parity does not promote Chat. The future promotion issue must attach evidence for every applicable gate:
+
+| Gate | Required evidence before promotion |
+|---|---|
+| **Auth and session** | Automated tests cover login, refresh, logout, expired credentials, and app restart for the candidate route with 100% pass rate; cookie names, expiry handling, and user identity match the Web route. |
+| **API and BFF equivalence** | Contract tests exercise every endpoint and request/response field used by the Web route, including validation and authorization failures, with no undocumented native-only endpoint or schema. Any intentional direct FastAPI use must prove response and error-semantic parity with the Web/BFF flow. |
+| **SSE reconnect (Chat)** | Deterministic tests inject a disconnect after `start`, during `token`, and before `done`; each case resumes from `Last-Event-ID` with no missing or duplicate token and preserves the session. Calendar records this gate as not applicable. |
+| **Accessibility** | Keyboard-only navigation completes every primary workflow; VoiceOver announces controls, labels, focus changes, errors, and streamed Chat updates; the accessibility audit has zero critical or high-severity findings. |
+| **Offline and error handling** | Tests cover startup offline, mid-request loss, timeout, 401/403, 429, and 5xx responses; the candidate shows a recoverable state, does not lose confirmed user data, and succeeds after retry or re-authentication. |
+| **Telemetry** | Route entry, selected implementation, success, fallback, error class, latency, and rollback-switch state are emitted for 100% of parity scenarios without message content, calendar content, credentials, or tokens. Dashboards distinguish Web and native outcomes for the route. |
+| **Build and signing** | The exact promotion HEAD passes Swift build, unit/integration tests, warning-as-error checks, smoke tests, and all non-credentialed macOS CI jobs. The signed release candidate passes `codesign` verification, notarization, and Gatekeeper assessment before production rollout. |
+| **Rollback readiness** | An automated test proves that setting the route's rollout switch to off resolves the next route entry to the original WKWebView path without data migration or app reinstall. The runbook names the owner, command/configuration change, verification query, and communication steps. |
+
+Promotion requires a new, independently reviewed code issue. That issue must introduce or use a route-scoped rollout switch evaluated by `NativeScreenRegistry`; the native value is default off and the off state resolves to the existing `webFallback` path. The issue must identify the exact candidate HEAD, gate evidence, telemetry dashboard, rollback runbook, and release owner. It must not remove or rename the Web route.
+
+Rollout proceeds in this fixed order for each route:
+
+1. Keep native default off in production and enable it only for internal/pre-release users after all parity gates pass.
+2. Complete one full pre-release cycle with no unresolved critical or high-severity route defect, no authentication/session data loss, and no rollback trigger below.
+3. Make native primary only in a subsequent reviewed release change. Keep the route switch and WKWebView path available for at least one additional production release cycle.
+4. Disable native immediately if any authentication/session data loss occurs, the route cannot complete its primary workflow, the native crash/error rate exceeds the Web baseline by more than 1 percentage point over at least 100 route entries, or the rollback owner declares a release blocker. The switch returns ownership to `webFallback`; remediation and re-promotion require another reviewed issue.
+
+Rejected routing options:
+
+- **Implicit native activation.** Adding a SwiftUI view, service, test, or registry capability must never change the production owner without the promotion issue and rollout switch.
+- **Permanent dual-primary routing.** A route has exactly one production owner for a given rollout-switch state; Web and native must not both claim primary ownership or make nondeterministic ownership decisions.
+- **Removing fallback before parity.** The WKWebView path must remain intact through parity validation, staged rollout, and the required rollback window.
+
 #### Local Backend Embedding
 
 - Embed Python runtime; launch/manage FastAPI as a child process.
@@ -129,7 +166,7 @@ The following contracts are **authoritative in the web/FastAPI layer** and must 
 | TaskProcess models | `justime_backend/app/models/` | Pydantic models for chat, tasks, sessions |
 | BFF proxy layer | `justime_agent/src/app/api/` | Next.js API routes that proxy to FastAPI |
 
-The native shell **consumes** these contracts via WKWebView. It must not introduce parallel endpoints, modify request/response shapes, or bypass the BFF proxy. Any proposed contract change follows the normal backend change process and is independent of this ADR.
+The current production routes **consume** these contracts through WKWebView and the BFF proxy. A separately promoted native route may consume the same FastAPI contracts through the typed `JustimeAPI` client only after proving the API/BFF equivalence gate above. Neither path may introduce parallel endpoints or modify request/response shapes. Any proposed contract change follows the normal backend change process and is independent of this ADR.
 
 ## Electron Fallback Policy
 
