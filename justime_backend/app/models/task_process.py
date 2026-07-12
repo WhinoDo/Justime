@@ -9,7 +9,7 @@ import re
 from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 TaskStatus = Literal[
@@ -69,6 +69,12 @@ class Milestone(BaseModel):
         if not value:
             raise ValueError("里程碑标题不能为空")
         return value
+
+
+class MilestoneStatusUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: MilestoneStatus
 
 
 class LearningMaterial(BaseModel):

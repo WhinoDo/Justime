@@ -27,6 +27,7 @@ from app.models.task_process import (
     Blocker,
     LearningMaterial,
     Milestone,
+    MilestoneStatus,
     PreparationItem,
     TaskAgentResponse,
     TaskProcessCreate,
@@ -308,6 +309,46 @@ class TaskProcessBusiness:
         )
         if not doc:
             return None
+        counts = await self._task_counts(task_id)
+        return self._serialize_task(doc, counts["evidence"], counts["knowledge"])
+
+    async def update_milestone_status(
+        self,
+        user_id: str,
+        task_id: str,
+        milestone_id: str,
+        status: MilestoneStatus,
+    ) -> Optional[TaskProcessOut]:
+        task_oid = self._ensure_object_id(task_id, "任务ID")
+        task_doc = await self._task_collection().find_one({"_id": task_oid, "userId": user_id})
+        if not task_doc:
+            return None
+
+        milestone = next(
+            (item for item in task_doc.get("milestones", []) if item.get("id") == milestone_id),
+            None,
+        )
+        if milestone is None:
+            raise ValueError("里程碑不存在")
+
+        now = datetime.utcnow()
+        updates: Dict[str, Any] = {
+            "milestones.$[milestone].status": status,
+            "updatedAt": now,
+        }
+        if status == "completed":
+            updates["milestones.$[milestone].completed_at"] = now
+        else:
+            updates["milestones.$[milestone].completed_at"] = None
+
+        doc = await self._task_collection().find_one_and_update(
+            {"_id": task_oid, "userId": user_id, "milestones.id": milestone_id},
+            {"$set": updates},
+            array_filters=[{"milestone.id": milestone_id}],
+            return_document=ReturnDocument.AFTER,
+        )
+        if not doc:
+            raise ValueError("里程碑不存在")
         counts = await self._task_counts(task_id)
         return self._serialize_task(doc, counts["evidence"], counts["knowledge"])
 
