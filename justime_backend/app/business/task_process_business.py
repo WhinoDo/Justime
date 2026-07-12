@@ -4,7 +4,7 @@ import logging
 import math
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -164,6 +164,20 @@ class TaskProcessBusiness:
         knowledge_count = await self._knowledge_collection().count_documents({"task_id": task_id})
         return {"evidence": evidence_count, "knowledge": knowledge_count}
 
+    async def _page_task_counts(self, task_ids: List[str]) -> Tuple[Dict[str, int], Dict[str, int]]:
+        if not task_ids:
+            return {}, {}
+
+        pipeline = [
+            {"$match": {"task_id": {"$in": task_ids}}},
+            {"$group": {"_id": "$task_id", "count": {"$sum": 1}}},
+        ]
+        evidence_rows = await self._evidence_collection().aggregate(pipeline).to_list(length=None)
+        knowledge_rows = await self._knowledge_collection().aggregate(pipeline).to_list(length=None)
+        evidence_counts = {row["_id"]: int(row["count"]) for row in evidence_rows}
+        knowledge_counts = {row["_id"]: int(row["count"]) for row in knowledge_rows}
+        return evidence_counts, knowledge_counts
+
     def _validate_phase_transition(self, current_phase: str, next_phase: str) -> None:
         if self.phase_order[next_phase] < self.phase_order[current_phase]:
             raise ValueError("任务阶段只允许单向推进，不能回退")
@@ -292,11 +306,17 @@ class TaskProcessBusiness:
         docs = await cursor.to_list(length=query.page_size)
         total = await self._task_collection().count_documents(filters)
 
+        task_ids = [str(doc["_id"]) for doc in docs]
+        evidence_counts, knowledge_counts = await self._page_task_counts(task_ids)
         items: List[TaskProcessOut] = []
-        for doc in docs:
-            task_id = str(doc["_id"])
-            counts = await self._task_counts(task_id)
-            items.append(self._serialize_task(doc, counts["evidence"], counts["knowledge"]))
+        for doc, task_id in zip(docs, task_ids):
+            items.append(
+                self._serialize_task(
+                    doc,
+                    evidence_counts.get(task_id, 0),
+                    knowledge_counts.get(task_id, 0),
+                )
+            )
 
         return {
             "items": items,
