@@ -1,0 +1,21 @@
+# .trivyignore — Approved Security Exceptions
+#
+# Each line contains a CVE ID that has been reviewed and explicitly approved
+# by the project architect. Trivy will suppress findings listed here so that
+# approved exceptions do not block CI.
+#
+# Format:
+#   CVE-YYYY-NNNNN   # optional comment explaining the decision
+#
+# Process:
+#   1. A CRITICAL/HIGH CVE appears in CI and blocks the pipeline.
+#   2. The responsible agent or developer documents the CVE in
+#      docs/security-exceptions.md with justification.
+#   3. The architect reviews and approves by merging the exception.
+#   4. The CVE ID is added to this file so Trivy ignores it.
+#
+# IMPORTANT: Never suppress a CVE without a matching entry in
+# docs/security-exceptions.md. Periodically review and remove stale entries.
+
+# --- Approved exceptions below this line ---
+# (none yet — add CVE IDs here only after architect approval)

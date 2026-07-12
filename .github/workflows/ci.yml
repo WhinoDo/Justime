@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, dev]
   pull_request:
-    branches: [main, master]
+    branches: [main, master, dev]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -188,10 +188,30 @@ jobs:
           scan-type: 'fs'
           scan-ref: '.'
           format: 'table'
-          exit-code: '0'
+          exit-code: '1'
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy SARIF report
+        if: always()
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy SARIF artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-sarif
+          path: trivy-results.sarif
+          retention-days: 7
 
   ci-gate:
     name: CI Gate
@@ -234,7 +254,8 @@ jobs:
           fi
           
           if [ "${{ needs.security-scan.result }}" != "success" ]; then
-            echo "::warning::Security scan completed with findings"
+            echo "::error::Security scan failed — CRITICAL/HIGH vulnerabilities found with no approved exception in .trivyignore"
+            exit 1
           fi
           
           echo "=========================================="

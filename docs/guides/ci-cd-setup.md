@@ -8,7 +8,7 @@
 
 | 工作流 | 文件 | 触发条件 | 用途 |
 |--------|------|----------|------|
-| CI | `.github/workflows/ci.yml` | push/PR 到 main/master | 代码质量检查和测试 |
+| CI | `.github/workflows/ci.yml` | push/PR to main/master/dev | 代码质量检查和测试 |
 | Deploy | `.github/workflows/deploy.yml` | push 到 main 或 tag | 构建和部署 |
 
 ## CI 工作流
@@ -84,16 +84,25 @@
 
 #### 5. security-scan
 
-安全漏洞扫描。
+安全漏洞扫描（阻断型）。
 
 ```yaml
 - Trivy 文件系统扫描
 - 检测 CRITICAL/HIGH 级别漏洞
+- exit-code: '1' — 发现未批准的 CRITICAL/HIGH 漏洞时 job 失败
+- .trivyignore 中列出的 CVE 被视为已批准例外，不阻断 CI
+- SARIF 报告作为 artifact 上传，供安全审计使用
 ```
+
+**安全例外流程**：当 Trivy 报告新的 CRITICAL/HIGH 漏洞时：
+1. 在 [docs/security-exceptions.md](../security-exceptions.md) 中记录漏洞评估和处理决定
+2. 由首席架构师审批例外清单
+3. 审批通过后将 CVE ID 添加到 `.trivyignore`
+4. 未获批准的漏洞必须通过升级依赖或修补代码解决
 
 #### 6. ci-gate
 
-CI 门禁，汇总所有 job 结果。
+CI 门禁，汇总所有 job 结果。任一 job 失败（包括 security-scan）均阻断合并。
 
 ### 并发控制
 
@@ -246,3 +255,4 @@ act -j frontend-tests
 
 - [部署指南](../DEPLOYMENT.md)
 - [架构设计](./deployment-overview.md)
+- [安全例外清单](../security-exceptions.md)
