@@ -2,13 +2,15 @@
 
 import Link from 'next/link'
 import { ArrowRight, BookOpenCheck, Clock3, FileText, MessageSquareMore, Pencil, Sparkles } from 'lucide-react'
-import type { Evidence, KnowledgeOutput, TaskProcess } from '@/types/taskProcess'
+import type { Evidence, KnowledgeOutput, PreparationItem, TaskProcess } from '@/types/taskProcess'
 import { JustimeGlassPanel } from '@/components/layout/JustimeGlassPanel'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { TaskDetailActions, type TaskDetailActionsProps } from './TaskDetailActions'
 import { BeforeWorkspace } from './BeforeWorkspace'
-import type { PreparationItem } from '@/types/taskProcess'
+import { EvidenceTimeline } from './EvidenceTimeline'
+import { BlockerPanel } from './BlockerPanel'
+import { SuggestionPanel } from './SuggestionPanel'
 
 interface TaskPhaseDetailProps {
   task: TaskProcess
@@ -83,19 +85,10 @@ export function TaskPhaseDetail({
             subtitle: 'Evidence、执行与阻塞',
             active: task.phase === 'during',
             content: (
-              <div className="space-y-3">
-                {evidence.length === 0 ? (
-                  <div className="rounded-3xl bg-black/10 p-4 text-sm text-white/50">还没有 Evidence。</div>
-                ) : evidence.slice(0, 8).map((item) => (
-                  <div key={item.id} className="rounded-3xl border border-white/10 bg-black/10 p-4">
-                    <div className="flex items-center justify-between gap-3 text-xs uppercase tracking-[0.2em] text-white/[0.45]">
-                      <span>{item.type}</span>
-                      <span>{item.createdAt ? new Date(item.createdAt).toLocaleDateString('zh-CN') : ''}</span>
-                    </div>
-                    <p className="mt-2 text-sm font-medium text-white">{item.title || '未命名 Evidence'}</p>
-                    <p className="mt-2 line-clamp-3 text-sm text-white/[0.55]">{item.content}</p>
-                  </div>
-                ))}
+              <div className="space-y-6">
+                <EvidenceTimeline evidence={evidence} />
+                <BlockerPanel blockers={task.blockers} />
+                <SuggestionPanel suggestions={task.ai_suggestions} />
               </div>
             ),
           },
