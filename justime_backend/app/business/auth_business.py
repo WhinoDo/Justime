@@ -6,6 +6,8 @@ import logging
 import secrets
 from bson import ObjectId
 from fastapi import HTTPException
+from pymongo import ReturnDocument
+from app.core.config import settings
 from app.services.user_service import UserService
 from app.models.auth import (
     RegisterRequest, LoginRequest, SafeUser,
@@ -559,11 +561,12 @@ class AuthBusiness:
         user_name = user.get("displayName") or user.get("username") or email.split("@")[0]
         
         reset_token = secrets.token_urlsafe(32)
-        expires_at = datetime.utcnow() + timedelta(minutes=15)
+        ttl_minutes = settings.PASSWORD_RESET_TTL_MINUTES
+        expires_at = datetime.utcnow() + timedelta(minutes=ttl_minutes)
         
         await db.db.password_reset_tokens.delete_many({"user_id": user_id})
         
-        await db.db.password_reset_tokens.insert_one({
+        insert_result = await db.db.password_reset_tokens.insert_one({
             "user_id": user_id,
             "token": reset_token,
             "expires_at": expires_at,
@@ -571,7 +574,15 @@ class AuthBusiness:
             "used": False
         })
         
-        await email_service.send_password_reset_email(email, reset_token, user_name)
+        delivered = await email_service.send_password_reset_email(
+            email,
+            reset_token,
+            user_name,
+            ttl_minutes,
+        )
+        if not delivered:
+            await db.db.password_reset_tokens.delete_one({"_id": insert_result.inserted_id})
+            logger.warning("Password reset email delivery failed")
         
         return AuthResponse(
             success=True,
@@ -586,19 +597,21 @@ class AuthBusiness:
         if db.db is None:
             raise HTTPException(status_code=503, detail="数据库连接失败")
 
-        token_doc = await db.db.password_reset_tokens.find_one({
+        hashed_password = await UserService.get_password_hash(new_password)
+        now = datetime.utcnow()
+
+        token_doc = await db.db.password_reset_tokens.find_one_and_update({
             "token": token,
             "used": False,
-            "expires_at": {"$gt": datetime.utcnow()}
-        })
+            "expires_at": {"$gt": now}
+        }, {
+            "$set": {"used": True, "used_at": now}
+        }, return_document=ReturnDocument.AFTER)
 
         if not token_doc:
             raise HTTPException(status_code=400, detail="重置链接无效或已过期")
 
         user_id = token_doc["user_id"]
-
-        hashed_password = await UserService.get_password_hash(new_password)
-        now = datetime.utcnow()
 
         result = await db.db.users.update_one(
             {"_id": ObjectId(user_id)},
@@ -610,11 +623,6 @@ class AuthBusiness:
 
         # 使该用户的数据缓存失效
         await CacheService.invalidate_user_data(user_id)
-
-        await db.db.password_reset_tokens.update_one(
-            {"_id": token_doc["_id"]},
-            {"$set": {"used": True, "used_at": datetime.utcnow()}}
-        )
 
         return AuthResponse(
             success=True,
@@ -665,4 +673,3 @@ class AuthBusiness:
         )
 
 auth_business = AuthBusiness()
-
