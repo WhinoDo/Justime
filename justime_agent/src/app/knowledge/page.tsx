@@ -1,9 +1,22 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/useAuth'
-import { Loader2, Upload, Trash2, RefreshCw, FileText, ArrowLeft, Database, Eye, AlertTriangle } from 'lucide-react'
+import {
+    Loader2,
+    Upload,
+    Trash2,
+    RefreshCw,
+    FileText,
+    ArrowLeft,
+    Database,
+    Eye,
+    AlertTriangle,
+    CheckCircle2,
+    CloudOff,
+    CircleAlert,
+} from 'lucide-react'
 import Link from 'next/link'
 import { useToast } from '@/components/ui/use-toast'
 import { JustimeBackground } from '@/components/ui/JustimeBackground'
@@ -52,6 +65,208 @@ interface PreviewState {
     maxChars: number
 }
 
+type RAGMode = 'cloud' | 'unavailable'
+type RAGProvider = 'notebooklm' | 'none'
+type RAGAvailabilityStatus = 'ready' | 'degraded' | 'unavailable' | 'error'
+
+interface RAGAvailability {
+    mode: RAGMode
+    provider: RAGProvider
+    status: RAGAvailabilityStatus
+    retryable: boolean
+    error_code: string | null
+}
+
+interface RebuildPayload {
+    success?: boolean
+    task_id?: string | null
+    status?: string
+    task_status?: string | null
+    mode?: unknown
+    provider?: unknown
+    provider_status?: unknown
+    retryable?: unknown
+    error_code?: unknown
+    availability?: unknown
+}
+
+interface RebuildState {
+    taskStatus: string | null
+    availability: RAGAvailability
+}
+
+const AVAILABILITY_STATUSES: RAGAvailabilityStatus[] = ['ready', 'degraded', 'unavailable', 'error']
+const RAG_MODES: RAGMode[] = ['cloud', 'unavailable']
+const RAG_PROVIDERS: RAGProvider[] = ['notebooklm', 'none']
+const TERMINAL_TASK_STATUSES = new Set(['completed', 'failed', 'cancelled', 'not_found'])
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null
+}
+
+function parseAvailability(value: unknown): RAGAvailability | null {
+    if (!isRecord(value)) return null
+
+    const { mode, provider, status, retryable, error_code: errorCode } = value
+    if (
+        !RAG_MODES.includes(mode as RAGMode)
+        || !RAG_PROVIDERS.includes(provider as RAGProvider)
+        || !AVAILABILITY_STATUSES.includes(status as RAGAvailabilityStatus)
+        || typeof retryable !== 'boolean'
+        || (errorCode !== null && typeof errorCode !== 'string')
+    ) {
+        return null
+    }
+
+    return {
+        mode: mode as RAGMode,
+        provider: provider as RAGProvider,
+        status: status as RAGAvailabilityStatus,
+        retryable,
+        error_code: errorCode as string | null,
+    }
+}
+
+function normalizeAvailability(payload: RebuildPayload): RAGAvailability | null {
+    const nestedAvailability = parseAvailability(payload.availability)
+    if (nestedAvailability) return nestedAvailability
+
+    return parseAvailability({
+        mode: payload.mode,
+        provider: payload.provider,
+        status: payload.provider_status,
+        retryable: payload.retryable,
+        error_code: payload.error_code,
+    })
+}
+
+function getErrorCopy(errorCode: string | null): string {
+    switch (errorCode) {
+        case 'PROVIDER_NOT_CONFIGURED':
+            return '云端知识服务尚未配置。文档管理仍可正常使用。'
+        case 'PROVIDER_UNAVAILABLE':
+            return '云端知识服务暂时不可用。文档管理仍可正常使用。'
+        case 'USER_CONTEXT_REQUIRED':
+            return '当前用户上下文无效，暂时无法连接云端知识服务。'
+        case 'REBUILD_TASK_NOT_FOUND':
+            return '未找到本次索引任务，请重新发起重建。'
+        case 'REBUILD_CANCELLED':
+            return '本次索引重建已取消。'
+        default:
+            return '云端知识服务当前受限，请稍后再试。'
+    }
+}
+
+function getAvailabilityPresentation(state: RebuildState) {
+    const { status, error_code: errorCode } = state.availability
+
+    if (status === 'ready') {
+        return {
+            label: '服务就绪',
+            description: state.taskStatus === 'completed' ? '云端知识索引已重建完成。' : '云端知识服务可用。',
+            icon: CheckCircle2,
+            desktopClasses: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+            immersiveClasses: 'border-emerald-400/30 bg-emerald-500/10 text-emerald-100',
+            iconClasses: 'text-emerald-500',
+        }
+    }
+
+    if (status === 'degraded') {
+        return {
+            label: '服务受限',
+            description: errorCode ? getErrorCopy(errorCode) : '云端知识索引正在准备，文档管理仍可正常使用。',
+            icon: AlertTriangle,
+            desktopClasses: 'border-amber-200 bg-amber-50 text-amber-900',
+            immersiveClasses: 'border-amber-400/30 bg-amber-500/10 text-amber-100',
+            iconClasses: 'text-amber-500',
+        }
+    }
+
+    if (status === 'unavailable') {
+        return {
+            label: '服务不可用',
+            description: getErrorCopy(errorCode),
+            icon: CloudOff,
+            desktopClasses: 'border-orange-200 bg-orange-50 text-orange-900',
+            immersiveClasses: 'border-orange-400/30 bg-orange-500/10 text-orange-100',
+            iconClasses: 'text-orange-500',
+        }
+    }
+
+    return {
+        label: '服务异常',
+        description: getErrorCopy(errorCode),
+        icon: CircleAlert,
+        desktopClasses: 'border-rose-200 bg-rose-50 text-rose-900',
+        immersiveClasses: 'border-rose-400/30 bg-rose-500/10 text-rose-100',
+        iconClasses: 'text-rose-500',
+    }
+}
+
+function RebuildStatusView({
+    state,
+    isDesktop,
+    rebuilding,
+    onRetry,
+}: {
+    state: RebuildState | null
+    isDesktop: boolean
+    rebuilding: boolean
+    onRetry: () => void
+}) {
+    if (!state) {
+        return (
+            <div className="flex items-center justify-center py-4" role="status" aria-live="polite">
+                <Loader2 className={cn('h-6 w-6 animate-spin', isDesktop ? 'text-violet-500' : 'text-white/50')} />
+                <span className="sr-only">正在获取云端知识服务状态</span>
+            </div>
+        )
+    }
+
+    const presentation = getAvailabilityPresentation(state)
+    const StatusIcon = presentation.icon
+
+    return (
+        <div
+            className={cn(
+                'space-y-4 rounded-lg border p-4',
+                isDesktop ? presentation.desktopClasses : presentation.immersiveClasses
+            )}
+            role="status"
+            aria-live="polite"
+            data-provider-status={state.availability.status}
+        >
+            <div className="flex items-start gap-3">
+                <StatusIcon className={cn('mt-0.5 h-5 w-5 shrink-0', presentation.iconClasses)} aria-hidden="true" />
+                <div className="min-w-0 space-y-1">
+                    <p className="font-medium">{presentation.label}</p>
+                    <p className={cn('text-sm', isDesktop ? 'text-current/80' : 'text-white/70')}>
+                        {presentation.description}
+                    </p>
+                </div>
+            </div>
+            {state.availability.retryable && (
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={onRetry}
+                    disabled={rebuilding}
+                    className={cn(
+                        'gap-2',
+                        isDesktop
+                            ? 'border-current/20 bg-white/70 hover:bg-white'
+                            : 'border-white/20 bg-white/5 text-white hover:bg-white/10'
+                    )}
+                >
+                    <RefreshCw className={cn('h-4 w-4', rebuilding && 'animate-spin')} />
+                    重试重建
+                </Button>
+            )}
+        </div>
+    )
+}
+
 export default function KnowledgeBasePage() {
     const { isAuthenticated, isLoading: authLoading } = useAuth()
     const [files, setFiles] = useState<DocumentFile[]>([])
@@ -59,8 +274,9 @@ export default function KnowledgeBasePage() {
     const [uploading, setUploading] = useState(false)
     const [rebuilding, setRebuilding] = useState(false)
     const [rebuildTaskId, setRebuildTaskId] = useState<string | null>(null)
-    const [rebuildStatus, setRebuildStatus] = useState<{ status: string; message?: string; error?: string } | null>(null)
+    const [rebuildStatus, setRebuildStatus] = useState<RebuildState | null>(null)
     const [showRebuildStatus, setShowRebuildStatus] = useState(false)
+    const rebuildInFlightRef = useRef(false)
     const [previewState, setPreviewState] = useState<PreviewState>({
         open: false,
         fileName: '',
@@ -77,7 +293,7 @@ export default function KnowledgeBasePage() {
     const { isDesktop } = useDesktopRuntime()
 
     // 加载文件列表
-    const loadFiles = async () => {
+    const loadFiles = useCallback(async () => {
         try {
             setLoading(true)
             const res = await fetch(API_ENDPOINTS.KNOWLEDGE.FILES)
@@ -97,13 +313,13 @@ export default function KnowledgeBasePage() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [toast])
 
     useEffect(() => {
         if (isAuthenticated) {
             loadFiles()
         }
-    }, [isAuthenticated])
+    }, [isAuthenticated, loadFiles])
 
     // 处理文件上传
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -179,40 +395,115 @@ export default function KnowledgeBasePage() {
     }
 
     const handleRebuild = async () => {
+        if (rebuildInFlightRef.current) return
+
+        rebuildInFlightRef.current = true
+        setRebuilding(true)
         setRebuildTaskId(null)
-        setRebuildStatus({ status: 'removed', message: '知识库索引功能已移除，无需重建索引。' })
+        setRebuildStatus(null)
         setShowRebuildStatus(true)
-        toast({
-            title: '索引功能已移除',
-            description: '文档上传和预览仍可使用，索引重建已关闭。',
-        })
+
+        try {
+            const response = await fetch(API_ENDPOINTS.KNOWLEDGE.REBUILD, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+            })
+            const payload = await response.json() as RebuildPayload
+            const availability = normalizeAvailability(payload)
+
+            if (!availability) {
+                throw new Error('INVALID_RAG_AVAILABILITY')
+            }
+
+            const taskStatus = typeof payload.task_status === 'string'
+                ? payload.task_status
+                : typeof payload.status === 'string'
+                    ? payload.status
+                    : null
+
+            setRebuildStatus({ taskStatus, availability })
+
+            if (payload.success && typeof payload.task_id === 'string' && payload.task_id) {
+                setRebuildTaskId(payload.task_id)
+                return
+            }
+
+            setRebuilding(false)
+            rebuildInFlightRef.current = false
+        } catch (error) {
+            console.error('Rebuild failed:', error)
+            setRebuildStatus({
+                taskStatus: 'failed',
+                availability: {
+                    mode: 'unavailable',
+                    provider: 'none',
+                    status: 'error',
+                    retryable: false,
+                    error_code: null,
+                },
+            })
+            setRebuilding(false)
+            rebuildInFlightRef.current = false
+        }
     }
 
     useEffect(() => {
-        if (!rebuildTaskId || !showRebuildStatus) return
-        const pollInterval = setInterval(async () => {
+        if (!rebuildTaskId) return
+        let cancelled = false
+        let pollTimeout: ReturnType<typeof setTimeout> | null = null
+
+        const pollRebuildStatus = async () => {
             try {
                 const res = await fetch(API_ENDPOINTS.KNOWLEDGE.REBUILD_STATUS(rebuildTaskId))
-                const data = await res.json()
-                if (data.success) {
-                    setRebuildStatus({
-                        status: data.status,
-                        message: data.message,
-                        error: data.error,
-                    })
-                    if (data.status === 'completed' || data.status === 'failed') {
-                        clearInterval(pollInterval)
-                        if (data.status === 'completed') {
-                            toast({ title: '索引重建完成', description: data.message })
-                        }
-                    }
+                const payload = await res.json() as RebuildPayload
+                const availability = normalizeAvailability(payload)
+                if (!availability) {
+                    throw new Error('INVALID_RAG_AVAILABILITY')
                 }
-            } catch {
-                clearInterval(pollInterval)
+
+                const taskStatus = typeof payload.task_status === 'string'
+                    ? payload.task_status
+                    : typeof payload.status === 'string'
+                        ? payload.status
+                        : null
+
+                if (cancelled) return
+                setRebuildStatus({ taskStatus, availability })
+
+                if (taskStatus && TERMINAL_TASK_STATUSES.has(taskStatus)) {
+                    setRebuilding(false)
+                    rebuildInFlightRef.current = false
+                    if (taskStatus === 'completed') {
+                        toast({ title: '索引重建完成', description: '云端知识索引已更新。' })
+                    }
+                    return
+                }
+
+                pollTimeout = setTimeout(pollRebuildStatus, 3000)
+            } catch (error) {
+                if (cancelled) return
+                console.error('Failed to poll rebuild status:', error)
+                setRebuildStatus({
+                    taskStatus: 'failed',
+                    availability: {
+                        mode: 'unavailable',
+                        provider: 'none',
+                        status: 'error',
+                        retryable: false,
+                        error_code: null,
+                    },
+                })
+                setRebuilding(false)
+                rebuildInFlightRef.current = false
             }
-        }, 3000)
-        return () => clearInterval(pollInterval)
-    }, [rebuildTaskId, showRebuildStatus])
+        }
+
+        pollRebuildStatus()
+        return () => {
+            cancelled = true
+            if (pollTimeout) clearTimeout(pollTimeout)
+        }
+    }, [rebuildTaskId, toast])
 
     const closePreview = () => {
         setPreviewState((prev) => ({
@@ -353,7 +644,7 @@ export default function KnowledgeBasePage() {
                                         Knowledge Base
                                     </h1>
                                     <p className="text-sm text-[#6d6680] mt-1 font-light tracking-wide">
-                                        Manage uploaded documents. Indexing and retrieval have been removed.
+                                        管理文档并维护云端知识索引。
                                     </p>
                                 </div>
                             </div>
@@ -365,7 +656,7 @@ export default function KnowledgeBasePage() {
                                     className="gap-2 bg-white/60 border-violet-200/50 text-[#5a4c73] hover:bg-white/80"
                                 >
                                     <RefreshCw className={`h-4 w-4 ${rebuilding ? 'animate-spin' : ''}`} />
-                                    Index Removed
+                                    {rebuilding ? '正在重建' : '重建索引'}
                                 </Button>
                             </div>
                         </div>
@@ -532,48 +823,16 @@ export default function KnowledgeBasePage() {
                         <DialogHeader>
                             <DialogTitle className="text-[#171421]">索引重建状态</DialogTitle>
                             <DialogDescription className="text-[#6d6680]">
-                                知识库索引与检索功能已移除
+                                云端知识服务状态不会影响文档浏览、上传或删除。
                             </DialogDescription>
                         </DialogHeader>
                         <div className="py-4">
-                            {rebuildStatus ? (
-                                <div className="space-y-3">
-                                    <div className="flex items-center gap-3">
-                                        {rebuildStatus.status === 'removed' ? (
-                                            <div className="h-8 w-8 rounded-full bg-amber-100 flex items-center justify-center">
-                                                <AlertTriangle className="h-5 w-5 text-amber-600" />
-                                            </div>
-                                        ) : rebuildStatus.status === 'completed' ? (
-                                            <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
-                                                <svg className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                                            </div>
-                                        ) : rebuildStatus.status === 'failed' ? (
-                                            <div className="h-8 w-8 rounded-full bg-rose-100 flex items-center justify-center">
-                                                <AlertTriangle className="h-5 w-5 text-rose-600" />
-                                            </div>
-                                        ) : (
-                                            <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
-                                        )}
-                                        <div>
-                                            <p className="font-medium text-[#171421]">
-                                                {rebuildStatus.status === 'disabled' ? '已停用' : rebuildStatus.status === 'completed' ? '已完成' : rebuildStatus.status === 'failed' ? '失败' : rebuildStatus.status === 'running' ? '进行中' : '等待中'}
-                                            </p>
-                                            {rebuildStatus.message && (
-                                                <p className="text-sm text-[#6d6680]">{rebuildStatus.message}</p>
-                                            )}
-                                        </div>
-                                    </div>
-                                    {rebuildStatus.error && (
-                                        <div className="rounded-lg border border-rose-200 bg-rose-50 text-rose-800 p-3 text-sm">
-                                            {rebuildStatus.error}
-                                        </div>
-                                    )}
-                                </div>
-                            ) : (
-                                <div className="flex items-center justify-center py-4">
-                                    <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
-                                </div>
-                            )}
+                            <RebuildStatusView
+                                state={rebuildStatus}
+                                isDesktop
+                                rebuilding={rebuilding}
+                                onRetry={handleRebuild}
+                            />
                         </div>
                     </DialogContent>
                 </Dialog>
@@ -601,7 +860,7 @@ export default function KnowledgeBasePage() {
                                     Knowledge Base
                                 </h1>
                                 <p className="text-sm text-white/60 mt-1 font-light tracking-wide">
-                                    Manage uploaded documents. Indexing and retrieval have been removed.
+                                    管理文档并维护云端知识索引。
                                 </p>
                             </div>
                         </div>
@@ -613,7 +872,7 @@ export default function KnowledgeBasePage() {
                                 className="gap-2 bg-white/5 border-white/10 text-white hover:bg-white/10 backdrop-blur-sm"
                             >
                                 <RefreshCw className={`h-4 w-4 ${rebuilding ? 'animate-spin' : ''}`} />
-                                Index Removed
+                                {rebuilding ? '正在重建' : '重建索引'}
                             </Button>
                         </div>
                     </div>
@@ -778,48 +1037,16 @@ export default function KnowledgeBasePage() {
                     <DialogHeader>
                         <DialogTitle>索引重建状态</DialogTitle>
                         <DialogDescription className="text-white/60">
-                            知识库索引与检索功能已移除
+                            云端知识服务状态不会影响文档浏览、上传或删除。
                         </DialogDescription>
                     </DialogHeader>
                     <div className="py-4">
-                        {rebuildStatus ? (
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-3">
-                                    {rebuildStatus.status === 'disabled' ? (
-                                        <div className="h-8 w-8 rounded-full bg-amber-500/20 flex items-center justify-center">
-                                            <AlertTriangle className="h-5 w-5 text-amber-300" />
-                                        </div>
-                                    ) : rebuildStatus.status === 'completed' ? (
-                                        <div className="h-8 w-8 rounded-full bg-green-500/20 flex items-center justify-center">
-                                            <svg className="h-5 w-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                                        </div>
-                                    ) : rebuildStatus.status === 'failed' ? (
-                                        <div className="h-8 w-8 rounded-full bg-red-500/20 flex items-center justify-center">
-                                            <AlertTriangle className="h-5 w-5 text-red-400" />
-                                        </div>
-                                    ) : (
-                                        <Loader2 className="h-8 w-8 animate-spin text-blue-300" />
-                                    )}
-                                    <div>
-                                        <p className="font-medium text-white">
-                                            {rebuildStatus.status === 'disabled' ? '已停用' : rebuildStatus.status === 'completed' ? '已完成' : rebuildStatus.status === 'failed' ? '失败' : rebuildStatus.status === 'running' ? '进行中' : '等待中'}
-                                        </p>
-                                        {rebuildStatus.message && (
-                                            <p className="text-sm text-white/60">{rebuildStatus.message}</p>
-                                        )}
-                                    </div>
-                                </div>
-                                {rebuildStatus.error && (
-                                    <div className="rounded-lg border border-red-500/30 bg-red-500/10 text-red-200 p-3 text-sm">
-                                        {rebuildStatus.error}
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="flex items-center justify-center py-4">
-                                <Loader2 className="h-6 w-6 animate-spin text-white/50" />
-                            </div>
-                        )}
+                        <RebuildStatusView
+                            state={rebuildStatus}
+                            isDesktop={false}
+                            rebuilding={rebuilding}
+                            onRetry={handleRebuild}
+                        />
                     </div>
                 </DialogContent>
             </Dialog>
