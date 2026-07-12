@@ -2,8 +2,6 @@
 API v1 路由聚合
 """
 
-import logging
-
 from fastapi import APIRouter
 from app.api.v1.endpoints import (
     admin,
@@ -16,13 +14,12 @@ from app.api.v1.endpoints import (
     evidence,
     feishu_webhook,
     health,
+    knowledge,
     knowledge_outputs,
     study,
     task_process,
     chat,
 )
-
-logger = logging.getLogger(__name__)
 
 api_router = APIRouter()
 
@@ -41,22 +38,7 @@ api_router.include_router(study.router, prefix="/study", tags=["学习兼容"])
 api_router.include_router(task_process.router, prefix="/task-processes", tags=["任务进程"])
 api_router.include_router(evidence.router, prefix="/task-processes", tags=["任务证据"])
 api_router.include_router(knowledge_outputs.router, prefix="/task-processes", tags=["知识产出"])
+api_router.include_router(knowledge.router, prefix="/knowledge", tags=["知识库管理"])
 
-# 知识库路由 — 可选依赖，导入失败时不阻断启动
-knowledge_available = False
-try:
-    from app.api.v1.endpoints import knowledge
-except ImportError as exc:
-    logger.warning(
-        "知识库模块依赖未安装，知识库路由已禁用。若要启用，请安装可选依赖。",
-        exc_info=True,
-    )
-except Exception as exc:
-    logger.error(
-        "导入知识库模块时发生意外错误，知识库路由已禁用: %s",
-        exc,
-        exc_info=True,
-    )
-else:
-    api_router.include_router(knowledge.router, prefix="/knowledge", tags=["知识库管理"])
-    knowledge_available = True
+# Optional provider failures are represented by structured endpoint responses.
+knowledge_available = True
