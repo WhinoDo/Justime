@@ -33,8 +33,9 @@ After building and testing, launch the native shell and verify:
 
 See [`docs/runbooks/macos-native-release-gates.md`](../../docs/runbooks/macos-native-release-gates.md) for the full release gate plan:
 
-- **Phase 1 (no secrets)** — local `swift build`, `swift test`, and manual smoke. These can run today.
-- **Phase 2 (credentialed)** — signing, notarization: scripts and CI job present (see below). Sparkle update feed: Pending.
+- **Phase 1 (no secrets)** — local `swift build`, `swift test`, and smoke gates. JUS-498 merge run `29196643876` passed `Swift Build & Test` and `Smoke Test`.
+- **Phase 2 (credentialed)** — blocked until the release owner configures and validates the required certificate and notarization secrets. Run `29196643876` failed closed at certificate import; it did not produce a production-signed or notarized artifact.
+- **Sparkle release gate** — update feed signing, hosting, and rollback behavior remain blocked pending release-owner configuration and validation.
 - **Fallback** — `apps/desktop` Electron remains the production path until all Phase 2 gates pass.
 
 ## URL Resolution
@@ -92,7 +93,9 @@ The `sign-and-notarize` job in `.github/workflows/macos-native.yml` runs on `mac
 - `APPLE_APP_SPECIFIC_PASSWORD` — app-specific password for notarytool
 - `APPLE_TEAM_ID` — 10-character Apple Developer Team ID
 
+Missing or empty secrets must fail closed. Successful non-credentialed build, test, or smoke jobs do not mean that a production-signed, notarized, or releasable DMG exists; use the linked release-gates runbook as the status source.
+
 ## Pending (Out of Scope)
 
-- Sparkle framework integration
+- Production Sparkle feed hosting, EdDSA public key/signatures, and rollback validation
 - Release-mode entitlements hardening
