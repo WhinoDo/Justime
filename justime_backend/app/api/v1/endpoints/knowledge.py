@@ -20,6 +20,8 @@ from app.services.upload_service import (
     chunked_upload_manager,
     generate_upload_id,
 )
+from app.services.knowledge_task_service import knowledge_task_service
+from app.services.rag_service import rag_service
 from app.core.validators import InputValidator
 from app.core.config import settings
 
@@ -34,6 +36,84 @@ TEXT_FILE_EXTENSIONS = {
 }
 DEFAULT_PREVIEW_MAX_CHARS = 20000
 MAX_PREVIEW_MAX_CHARS = 200000
+
+
+def _build_rag_state(
+    *,
+    mode: str,
+    provider: str,
+    status_value: str,
+    retryable: bool,
+    error_code: str | None,
+) -> Dict[str, Any]:
+    builder = getattr(rag_service, "build_state", None)
+    if callable(builder):
+        return builder(
+            mode=mode,
+            provider=provider,
+            status=status_value,
+            retryable=retryable,
+            error_code=error_code,
+        )
+    return {
+        "mode": mode,
+        "provider": provider,
+        "status": status_value,
+        "retryable": retryable,
+        "error_code": error_code,
+    }
+
+
+def _configured_provider_state() -> Dict[str, Any]:
+    getter = getattr(rag_service, "get_availability_state", None)
+    if callable(getter):
+        return getter()
+    return _build_rag_state(
+        mode="unavailable",
+        provider="none",
+        status_value="degraded",
+        retryable=False,
+        error_code="PROVIDER_NOT_CONFIGURED",
+    )
+
+
+def _pending_provider_state() -> Dict[str, Any]:
+    getter = getattr(rag_service, "pending_state", None)
+    if callable(getter):
+        return getter()
+    return _build_rag_state(
+        mode="cloud",
+        provider="notebooklm",
+        status_value="degraded",
+        retryable=False,
+        error_code=None,
+    )
+
+
+def _ready_provider_state() -> Dict[str, Any]:
+    getter = getattr(rag_service, "ready_state", None)
+    if callable(getter):
+        return getter()
+    return _build_rag_state(
+        mode="cloud",
+        provider="notebooklm",
+        status_value="ready",
+        retryable=False,
+        error_code=None,
+    )
+
+
+def _unavailable_provider_state() -> Dict[str, Any]:
+    getter = getattr(rag_service, "unavailable_state", None)
+    if callable(getter):
+        return getter()
+    return _build_rag_state(
+        mode="cloud",
+        provider="notebooklm",
+        status_value="unavailable",
+        retryable=True,
+        error_code="PROVIDER_UNAVAILABLE",
+    )
 
 
 def _resolve_safe_document_path(doc_path: str, docs_root: Path) -> Path:
@@ -253,12 +333,26 @@ async def delete_document(
 async def rebuild_index(
     current_user: CurrentUser
 ) -> Dict[str, Any]:
-    """Vector indexing has been removed; keep endpoint as a compatibility no-op."""
+    """Start a cloud RAG rebuild or return an explicit degraded state."""
+    availability = _configured_provider_state()
+    if availability["error_code"] is not None:
+        return {
+            "success": False,
+            "message": "云 RAG 服务未配置，未创建重建任务",
+            "task_id": None,
+            "task_status": None,
+            **availability,
+        }
+
+    user_id = str(current_user["_id"])
+    docs_dir = get_user_docs_dir(user_id)
+    task_id = await knowledge_task_service.start_rebuild_task(user_id, docs_dir)
     return {
-        "success": True,
-        "message": "知识库索引功能已移除，无需重建索引。",
-        "task_id": None,
-        "status": "removed",
+        "success": False,
+        "message": "云 RAG 重建任务已创建",
+        "task_id": task_id,
+        "task_status": "pending",
+        **_pending_provider_state(),
     }
 
 
@@ -267,16 +361,84 @@ async def get_rebuild_status(
     task_id: str,
     current_user: CurrentUser
 ) -> Dict[str, Any]:
-    """Return compatibility status for removed indexing tasks."""
+    """Return a structured cloud RAG rebuild state without raw errors."""
+    task_state = await knowledge_task_service.get_task_status(task_id)
+    if not task_state:
+        availability = _configured_provider_state()
+        if availability["error_code"] is None:
+            availability = _build_rag_state(
+                mode="cloud",
+                provider="notebooklm",
+                status_value="error",
+                retryable=False,
+                error_code="REBUILD_TASK_NOT_FOUND",
+            )
+        return {
+            "success": False,
+            "task_id": task_id,
+            "task_status": None,
+            "message": "未找到索引重建任务",
+            "created_at": None,
+            "started_at": None,
+            "completed_at": None,
+            "error": None,
+            **availability,
+        }
+
+    user_id = str(current_user["_id"])
+    if str(task_state.get("user_id", "")) != user_id:
+        return {
+            "success": False,
+            "task_id": task_id,
+            "task_status": None,
+            "message": "未找到索引重建任务",
+            "created_at": None,
+            "started_at": None,
+            "completed_at": None,
+            "error": None,
+            **_build_rag_state(
+                mode="cloud",
+                provider="notebooklm",
+                status_value="error",
+                retryable=False,
+                error_code="REBUILD_TASK_NOT_FOUND",
+            ),
+        }
+
+    raw_status = task_state.get("status")
+    if raw_status == "completed":
+        state = _ready_provider_state()
+        success = True
+        message = "云 RAG 索引重建已完成"
+    elif raw_status == "failed":
+        state = _unavailable_provider_state()
+        success = False
+        message = "云 RAG 索引重建失败，请稍后重试"
+    elif raw_status == "cancelled":
+        state = _build_rag_state(
+            mode="cloud",
+            provider="notebooklm",
+            status_value="error",
+            retryable=False,
+            error_code="REBUILD_CANCELLED",
+        )
+        success = False
+        message = "云 RAG 索引重建已取消"
+    else:
+        state = _pending_provider_state()
+        success = False
+        message = "云 RAG 索引重建进行中"
+
     return {
-        "success": True,
+        "success": success,
         "task_id": task_id,
-        "status": "removed",
-        "message": "知识库索引功能已移除。",
-        "created_at": None,
-        "started_at": None,
-        "completed_at": None,
+        "task_status": raw_status,
+        "message": message,
+        "created_at": task_state.get("created_at"),
+        "started_at": task_state.get("started_at"),
+        "completed_at": task_state.get("completed_at"),
         "error": None,
+        **state,
     }
 
 
