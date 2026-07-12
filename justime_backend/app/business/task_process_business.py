@@ -1,7 +1,9 @@
+import asyncio
 import hashlib
 import logging
 import math
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
@@ -37,7 +39,25 @@ from app.models.task_process import (
 )
 from app.services.knowledge_writer_service import knowledge_writer_service
 from app.services.markdown_export_service import markdown_export_service
+from app.services.rag_service import (
+    PROVIDER_NOT_CONFIGURED,
+    PROVIDER_UNAVAILABLE,
+    USER_CONTEXT_REQUIRED,
+    rag_service,
+)
 from app.services.task_agent_service import task_agent_service
+
+
+INDEXING_INTERNAL_ERROR = "INDEXING_INTERNAL_ERROR"
+_SANITIZED_INDEXING_ERROR_CODES = {
+    PROVIDER_NOT_CONFIGURED,
+    PROVIDER_UNAVAILABLE,
+    USER_CONTEXT_REQUIRED,
+}
+
+
+class KnowledgeOutputIndexConflict(ValueError):
+    """The output is not eligible for an indexing retry."""
 
 
 class TaskProcessBusiness:
@@ -127,6 +147,10 @@ class TaskProcessBusiness:
             source_evidence_ids=doc.get("source_evidence_ids", []),
             absolute_path=doc.get("absolute_path"),
             published_at=doc.get("published_at"),
+            indexing_status=doc.get("indexing_status", "not_requested"),
+            indexing_error_code=doc.get("indexing_error_code"),
+            indexing_retryable=bool(doc.get("indexing_retryable", False)),
+            indexed_at=doc.get("indexed_at"),
             word_count=int(doc.get("word_count", 0) or 0),
             version=int(doc.get("version", 1) or 1),
             previous_version_id=doc.get("previous_version_id"),
@@ -614,6 +638,10 @@ class TaskProcessBusiness:
                 "status": "draft",
                 "absolute_path": None,
                 "published_at": None,
+                "indexing_status": "not_requested",
+                "indexing_error_code": None,
+                "indexing_retryable": False,
+                "indexed_at": None,
                 "word_count": len(payload.markdown.split()),
                 "version": 1,
                 "previous_version_id": None,
@@ -702,7 +730,152 @@ class TaskProcessBusiness:
             },
             return_document=ReturnDocument.AFTER,
         )
-        return self._serialize_knowledge_output(saved)
+        indexing_attempt_id = str(ObjectId())
+        pending = await self._knowledge_collection().find_one_and_update(
+            {"_id": doc["_id"], "userId": user_id, "status": "published"},
+            {
+                "$set": {
+                    "indexing_status": "pending",
+                    "indexing_attempt_id": indexing_attempt_id,
+                    "indexing_error_code": None,
+                    "indexing_retryable": False,
+                    "indexed_at": None,
+                    "updatedAt": datetime.utcnow(),
+                }
+            },
+            return_document=ReturnDocument.AFTER,
+        )
+        return await self._index_published_output(user_id, pending or saved)
+
+    async def _validated_published_path(self, user_id: str, doc: Dict[str, Any]) -> Path:
+        config = await markdown_export_service.get_vault_config(user_id)
+        raw_path = doc.get("absolute_path")
+        if not config or not isinstance(raw_path, str) or not raw_path.strip():
+            raise KnowledgeOutputIndexConflict("知识产出没有有效的已发布文件")
+        try:
+            vault_root = Path(config.vault_root_path).expanduser().resolve(strict=True)
+            published_path = Path(raw_path).expanduser()
+            if not published_path.is_absolute():
+                raise ValueError("published path must be absolute")
+            published_path = published_path.resolve(strict=True)
+            published_path.relative_to(vault_root)
+            if not published_path.is_file():
+                raise ValueError("published path must be a file")
+        except (OSError, RuntimeError, TypeError, ValueError) as exc:
+            raise KnowledgeOutputIndexConflict("知识产出没有有效的已发布文件") from exc
+        return published_path
+
+    def _indexing_outcome(self, result: Dict[str, Any]) -> Dict[str, Any]:
+        if result.get("success") is True and result.get("status") == "ready":
+            return {
+                "indexing_status": "success",
+                "indexing_error_code": None,
+                "indexing_retryable": False,
+                "indexed_at": datetime.utcnow(),
+            }
+
+        error_code = result.get("error_code")
+        if error_code == PROVIDER_NOT_CONFIGURED:
+            return {
+                "indexing_status": "skipped",
+                "indexing_error_code": PROVIDER_NOT_CONFIGURED,
+                "indexing_retryable": False,
+                "indexed_at": None,
+            }
+        if error_code not in _SANITIZED_INDEXING_ERROR_CODES:
+            return {
+                "indexing_status": "failed",
+                "indexing_error_code": INDEXING_INTERNAL_ERROR,
+                "indexing_retryable": True,
+                "indexed_at": None,
+            }
+        return {
+            "indexing_status": "failed",
+            "indexing_error_code": error_code,
+            "indexing_retryable": bool(result.get("retryable", False)),
+            "indexed_at": None,
+        }
+
+    async def _index_published_output(
+        self,
+        user_id: str,
+        doc: Dict[str, Any],
+    ) -> KnowledgeOutputOut:
+        try:
+            published_path = await self._validated_published_path(user_id, doc)
+            result = await asyncio.to_thread(
+                rag_service.index_published_output,
+                user_id=user_id,
+                published_path=published_path,
+            )
+            outcome = self._indexing_outcome(result)
+        except Exception:
+            logger.warning("KnowledgeOutput incremental indexing failed")
+            outcome = {
+                "indexing_status": "failed",
+                "indexing_error_code": INDEXING_INTERNAL_ERROR,
+                "indexing_retryable": True,
+                "indexed_at": None,
+            }
+        outcome["updatedAt"] = datetime.utcnow()
+        indexing_attempt_id = doc.get("indexing_attempt_id")
+        saved = await self._knowledge_collection().find_one_and_update(
+            {
+                "_id": doc["_id"],
+                "userId": user_id,
+                "status": "published",
+                "indexing_status": "pending",
+                "indexing_attempt_id": indexing_attempt_id,
+            },
+            {"$set": {**outcome, "indexing_attempt_id": None}},
+            return_document=ReturnDocument.AFTER,
+        )
+        if saved:
+            return self._serialize_knowledge_output(saved)
+        current = await self._knowledge_collection().find_one(
+            {"_id": doc["_id"], "userId": user_id}
+        )
+        return self._serialize_knowledge_output(current or doc)
+
+    async def reindex_knowledge_output(self, user_id: str, output_id: str) -> Optional[KnowledgeOutputOut]:
+        doc = await self._knowledge_collection().find_one(
+            {"_id": self._ensure_object_id(output_id, "KnowledgeOutput ID"), "userId": user_id}
+        )
+        if not doc:
+            return None
+        if (
+            doc.get("status") != "published"
+            or doc.get("indexing_status", "not_requested") != "failed"
+            or doc.get("indexing_retryable") is not True
+        ):
+            raise KnowledgeOutputIndexConflict("当前知识产出不可重试索引")
+
+        await self._validated_published_path(user_id, doc)
+        indexing_attempt_id = str(ObjectId())
+        pending = await self._knowledge_collection().find_one_and_update(
+            {
+                "_id": doc["_id"],
+                "userId": user_id,
+                "status": "published",
+                "indexing_status": "failed",
+                "indexing_retryable": True,
+                "absolute_path": doc.get("absolute_path"),
+            },
+            {
+                "$set": {
+                    "indexing_status": "pending",
+                    "indexing_attempt_id": indexing_attempt_id,
+                    "indexing_error_code": None,
+                    "indexing_retryable": False,
+                    "indexed_at": None,
+                    "updatedAt": datetime.utcnow(),
+                }
+            },
+            return_document=ReturnDocument.AFTER,
+        )
+        if not pending:
+            raise KnowledgeOutputIndexConflict("当前知识产出不可重试索引")
+        return await self._index_published_output(user_id, pending)
 
     async def rollback_knowledge_output(self, user_id: str, output_id: str, version: int) -> Optional[KnowledgeOutputOut]:
         doc = await self._knowledge_collection().find_one({"_id": self._ensure_object_id(output_id, "KnowledgeOutput ID"), "userId": user_id})

@@ -195,6 +195,16 @@ async def _sync_sources_with_evidence(
     return sync_result, sources
 
 
+async def _upload_source_with_evidence(
+    provider: Any,
+    user_id: str,
+    published_path: Path,
+) -> tuple[Any, Any]:
+    upload_result = await provider.upload_source(user_id, published_path)
+    sources = await provider.list_sources(user_id)
+    return upload_result, sources
+
+
 def _all_sources_ready(sources: Any, expected_count: int) -> bool:
     return (
         isinstance(sources, list)
@@ -203,6 +213,20 @@ def _all_sources_ready(sources: Any, expected_count: int) -> bool:
             isinstance(source, dict) and source.get("is_ready") is True
             for source in sources
         )
+    )
+
+
+def _uploaded_source_ready(upload_result: Any, sources: Any) -> bool:
+    if not isinstance(upload_result, dict) or not isinstance(sources, list):
+        return False
+    source_id = str(upload_result.get("source_id") or "").strip()
+    if not source_id:
+        return False
+    return any(
+        isinstance(source, dict)
+        and source.get("source_id") == source_id
+        and source.get("is_ready") is True
+        for source in sources
     )
 
 
@@ -246,6 +270,59 @@ class RAGService:
     @staticmethod
     def unavailable_state() -> RAGAvailabilityState:
         return provider_unavailable_state()
+
+    def index_published_output(
+        self,
+        *,
+        user_id: str,
+        published_path: Path,
+    ) -> Dict[str, Any]:
+        """Index one validated published file for an explicit tenant."""
+        if not _notebooklm_available or _notebooklm_service is None:
+            return RAGResult({
+                "success": False,
+                "message": "增量索引跳过：云 RAG 服务未配置",
+                **provider_not_configured_state(),
+            })
+
+        target_user_id = str(user_id or "").strip()
+        if not target_user_id:
+            return RAGResult({
+                "success": False,
+                "message": "增量索引失败：需要用户上下文",
+                **user_context_required_state(),
+            })
+
+        try:
+            target_path = Path(published_path).expanduser().resolve(strict=True)
+            if not target_path.is_file():
+                raise OSError("published source is not a file")
+            upload_result, sources = _run_async(
+                _upload_source_with_evidence(
+                    _notebooklm_service,
+                    target_user_id,
+                    target_path,
+                ),
+                timeout=600,
+            )
+            if not _uploaded_source_ready(upload_result, sources):
+                return RAGResult({
+                    "success": False,
+                    "message": "增量索引失败：云 RAG 服务暂时不可用",
+                    **provider_unavailable_state(),
+                })
+            return RAGResult({
+                "success": True,
+                "message": "已完成增量索引",
+                **provider_ready_state(),
+            })
+        except Exception:
+            logger.warning("Cloud incremental indexing failed")
+            return RAGResult({
+                "success": False,
+                "message": "增量索引失败：云 RAG 服务暂时不可用",
+                **provider_unavailable_state(),
+            })
 
     def rebuild_index(
         self,
