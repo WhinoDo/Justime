@@ -13,7 +13,11 @@ docs/
 ├── architecture/                # 架构决策记录 (ADR)
 │   ├── legacy-module-inventory.md # 遗留模块盘点与兼容/废弃决策矩阵
 │   ├── 2026-06-26-macos-native-migration.md # macOS 原生迁移 ADR
-│   └── macos-native-api-contract.md # macOS 原生 API 契约
+│   ├── macos-native-api-contract.md # macOS 原生 API 契约
+│   └── task-data-lifecycle.md # TaskProcess 数据生命周期与所有权
+│
+├── runbooks/                   # 发布与运维门禁
+│   └── macos-native-release-gates.md # macOS 原生构建、签名、公证与更新门禁
 │
 ├── design/                      # 核心架构与功能设计方案
 │   ├── TRANSFORMATION_PLAN.md   # Postgraduate Study Assistant 转型计划与路线图
@@ -41,8 +45,17 @@ docs/
 
 ## 🧭 查找与维护建议
 
-- **想了解系统当前最新战略方向与架构决策**：优先查看 `docs/design/`。
-- **想了解架构决策记录（ADR）与遗留模块盘点**：查看 `docs/architecture/`。
+- **想了解产品方向与功能设计**：优先查看 `docs/design/`。
+- **想了解当前架构决策、数据生命周期与遗留模块边界**：查看 `docs/architecture/`。
+- **想执行构建、发布或运维门禁**：查看 `docs/runbooks/`。
 - **想跟进当前正在推进或已排期的开发/优化任务**：查看 `docs/plans/`。
 - **想追溯历史改造背景与某具体Bug的解决手段**：查看 `docs/archive/`。
 - **添加新文档规范**：请根据上述分类将新文档放入对应目录，并在本项目 `docs/README.md` 中补充索引链接。
+
+## 当前架构与运行手册
+
+- [遗留模块盘点与兼容/废弃决策](./architecture/legacy-module-inventory.md)
+- [macOS 原生迁移 ADR](./architecture/2026-06-26-macos-native-migration.md)
+- [macOS 原生 API 契约](./architecture/macos-native-api-contract.md)
+- [TaskProcess 数据生命周期](./architecture/task-data-lifecycle.md)
+- [macOS 原生发布门禁](./runbooks/macos-native-release-gates.md)

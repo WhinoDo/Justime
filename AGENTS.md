@@ -10,6 +10,8 @@
 |----|------|--------|------|
 | Web 前端 | `justime_agent/` | Next.js 14, React 18, Tailwind CSS, Radix UI | 3000 |
 | 后端 | `justime_backend/` | FastAPI, Python 3.10+, Pydantic v2, Motor (async MongoDB) | 8080 |
+| macOS 原生壳 | `apps/macos-native/` | SwiftUI/AppKit, WKWebView, SwiftPM | 加载 Web URL |
+| macOS fallback | `apps/desktop/` | Electron 31 | 加载 Web URL |
 
 **数据层**: MongoDB 7 (主数据库 `justime`) + Redis 7 (缓存/会话/SSE 断点续传)
 
@@ -108,12 +110,15 @@ justime/
 │   └── mongodb/              # MongoDB 部署配置
 │
 ├── apps/                     # ⭐ 应用壳
-│   └── desktop/              # ⭐ macOS 桌面端 (Electron 31, macOS)
+│   ├── macos-native/         # ⭐ 主 macOS 原生壳 (SwiftUI/AppKit + WKWebView)
+│   └── desktop/              # Electron 31 生产 fallback（原生发布门禁通过前保留）
 │
 ├── docs/                     # 设计文档与方案
-├── .github/workflows/        # CI/CD (ci.yml, deploy.yml)
+├── .github/workflows/        # CI/CD (ci.yml, deploy.yml, macos-native.yml)
 └── AGENTS.md                 # 本文档
 ```
+
+macOS 技术路线以 `apps/macos-native/` 的 SwiftUI/AppKit + WKWebView 壳为主。`apps/desktop/` Electron 壳继续作为受支持的生产 fallback，直到原生应用通过认证、SSE、任务工作台、签名/公证与自动更新门禁。Phase 1 不采用 Tauri；具体决策与发布状态以 macOS ADR 和 release-gates runbook 为准。
 
 ## 核心架构
 
@@ -226,6 +231,17 @@ cp .env.example .env.local
 npm run dev
 # 前端运行在 http://localhost:3000
 ```
+
+### 构建与测试 macOS 原生壳
+
+```bash
+cd apps/macos-native
+bash scripts/setup-sparkle.sh
+swift build
+swift test
+```
+
+需要 macOS 13+、Swift 5.9+（Xcode 15+）和网络访问；Sparkle 二进制依赖不会提交到仓库，fresh checkout 必须先运行 setup 脚本。这些命令只验证无凭据构建和测试门禁，不代表应用已经完成生产签名、公证或 Sparkle 发布配置。
 
 ### Docker Compose 一键启动
 
@@ -418,6 +434,9 @@ pytest tests/ -v --tb=short
 | API 端点 | `justime_agent/src/lib/api/endpoints.ts` |
 | API 代理 | `justime_agent/src/lib/api/proxy.ts` |
 | 认证 Hook | `justime_agent/src/hooks/useAuth.ts` |
+| macOS 原生 SwiftPM 配置 | `apps/macos-native/Package.swift` |
+| macOS 原生迁移 ADR | `docs/architecture/2026-06-26-macos-native-migration.md` |
+| macOS 原生发布门禁 | `docs/runbooks/macos-native-release-gates.md` |
 | Docker 部署 | `deployment/homelab/docker-compose.yml` |
 | CI 配置 | `.github/workflows/ci.yml` |
 
@@ -433,7 +452,7 @@ pytest tests/ -v --tb=short
 
 ## CI/CD
 
-- **CI** (`.github/workflows/ci.yml`): 推送到 main/master 时触发
+- **CI** (`.github/workflows/ci.yml`): 推送到或向 `main`、`master`、`dev` 提交 Pull Request 时触发
   - Code Quality: lint + typecheck (前端)
   - Frontend Tests: Jest + 覆盖率 + build 检查
   - Backend Tests: Pytest + MongoDB service
