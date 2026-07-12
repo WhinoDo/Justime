@@ -1,3 +1,14 @@
+"""Shared test fixtures.
+
+Integration tests use an isolated MongoDB database at
+``mongodb://localhost:27018/justime_test``. Start MongoDB 7 locally or run:
+
+``docker run --name justime-test-mongo --rm -d -p 127.0.0.1:27018:27017 mongo:7``
+
+The fixtures clear test collections, so never point this configuration at a
+shared or production database. All secrets below are test-only placeholders.
+"""
+
 import asyncio
 import os
 import pytest
