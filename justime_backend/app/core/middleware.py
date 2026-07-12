@@ -37,7 +37,8 @@ class SecurityHeadersMiddleware:
 
         async def send_wrapper(message):
             if message["type"] == "http.response.start":
-                headers = dict(message.get("headers", []))
+                headers = list(message.get("headers", []))
+                header_names = {name.lower() for name, _ in headers}
                 
                 security_headers = {
                     "x-content-type-options": "nosniff",
@@ -48,15 +49,16 @@ class SecurityHeadersMiddleware:
                     "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'none'",
                 }
                 
-                from app.core.config import settings
                 if not settings.DEBUG:
                     security_headers["strict-transport-security"] = "max-age=63072000; includeSubDomains; preload"
                 
                 for header_name, header_value in security_headers.items():
-                    if header_name.encode() not in headers:
-                        headers[header_name.encode()] = header_value.encode()
+                    encoded_name = header_name.encode()
+                    if encoded_name not in header_names:
+                        headers.append((encoded_name, header_value.encode()))
+                        header_names.add(encoded_name)
                 
-                message["headers"] = list(headers.items())
+                message["headers"] = headers
             
             await send(message)
 
