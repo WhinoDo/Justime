@@ -22,6 +22,17 @@ function getPlanSummary(aiPlan: TaskProcess['ai_plan']) {
   return typeof summary === 'string' && summary.trim() ? summary.trim() : null
 }
 
+function getSafeMaterialUrl(value?: string | null) {
+  if (!value) return null
+
+  try {
+    const url = new URL(value)
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.toString() : null
+  } catch {
+    return null
+  }
+}
+
 export function BeforeWorkspace({ task, onUpdatePreparationItems }: BeforeWorkspaceProps) {
   const [pendingItemId, setPendingItemId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -76,29 +87,32 @@ export function BeforeWorkspace({ task, onUpdatePreparationItems }: BeforeWorksp
         <div className="mt-3 space-y-2">
           {materials.length === 0 ? (
             <p className="text-sm text-white/45">暂无学习资料。</p>
-          ) : materials.map((material, index) => (
-            <article key={`${material.title}-${index}`} className="border-t border-white/10 pt-3 first:border-t-0 first:pt-0">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  {material.url ? (
-                    <a
-                      href={material.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex max-w-full items-center gap-1.5 text-sm font-medium text-sky-100 underline decoration-sky-200/30 underline-offset-4 hover:decoration-sky-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/70"
-                    >
-                      <span className="truncate">{material.title}</span>
-                      <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                    </a>
-                  ) : (
-                    <h4 className="text-sm font-medium text-white">{material.title}</h4>
-                  )}
-                  <p className="mt-1 text-sm leading-5 text-white/55">{material.summary}</p>
+          ) : materials.map((material, index) => {
+            const safeUrl = getSafeMaterialUrl(material.url)
+            return (
+              <article key={`${material.title}-${index}`} className="border-t border-white/10 pt-3 first:border-t-0 first:pt-0">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    {safeUrl ? (
+                      <a
+                        href={safeUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex max-w-full items-center gap-1.5 text-sm font-medium text-sky-100 underline decoration-sky-200/30 underline-offset-4 hover:decoration-sky-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/70"
+                      >
+                        <span className="truncate">{material.title}</span>
+                        <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                      </a>
+                    ) : (
+                      <h4 className="text-sm font-medium text-white">{material.title}</h4>
+                    )}
+                    <p className="mt-1 text-sm leading-5 text-white/55">{material.summary}</p>
+                  </div>
+                  <span className="shrink-0 text-xs text-white/35">{material.source}</span>
                 </div>
-                <span className="shrink-0 text-xs text-white/35">{material.source}</span>
-              </div>
-            </article>
-          ))}
+              </article>
+            )
+          })}
         </div>
       </section>
 

@@ -60,6 +60,59 @@ describe('BeforeWorkspace', () => {
     expect(checkboxes[1]).toHaveAccessibleName('准备回滚说明')
   })
 
+  it('links only materials with an explicit safe web scheme', () => {
+    render(
+      <BeforeWorkspace
+        task={{
+          ...task,
+          materials: [
+            {
+              title: '脚本资料',
+              url: 'javascript:alert(1)',
+              summary: '不应成为可点击链接。',
+              source: 'AI 生成',
+            },
+            {
+              title: '数据资料',
+              url: 'data:text/html,<script>alert(1)</script>',
+              summary: '数据 URL 不应成为可点击链接。',
+              source: 'AI 生成',
+            },
+            {
+              title: '相对路径资料',
+              url: '/security-guide',
+              summary: '相对 URL 不应成为可点击链接。',
+              source: '内部文档',
+            },
+            {
+              title: '无效资料',
+              url: 'not a valid URL',
+              summary: '无效 URL 不应成为可点击链接。',
+              source: '内部文档',
+            },
+            {
+              title: '安全资料',
+              url: 'https://example.com/security-guide',
+              summary: '应保留有效的 HTTPS 链接。',
+              source: '官方文档',
+            },
+          ],
+        }}
+        onUpdatePreparationItems={jest.fn()}
+      />,
+    )
+
+    for (const title of ['脚本资料', '数据资料', '相对路径资料', '无效资料']) {
+      expect(screen.getByText(title)).toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: title })).not.toBeInTheDocument()
+    }
+
+    const safeLink = screen.getByRole('link', { name: /安全资料/ })
+    expect(safeLink).toHaveAttribute('href', 'https://example.com/security-guide')
+    expect(safeLink).toHaveAttribute('rel', expect.stringContaining('noopener'))
+    expect(safeLink).toHaveAttribute('rel', expect.stringContaining('noreferrer'))
+  })
+
   it('sends the complete array with only the target done state changed', async () => {
     const user = userEvent.setup()
     const onUpdatePreparationItems = jest.fn().mockResolvedValue({ success: true })
