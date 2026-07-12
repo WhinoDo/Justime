@@ -8,9 +8,7 @@ struct NativeWebView: NSViewRepresentable {
     let sessionCookiePolicy: SessionCookiePolicy
     let loadStateViewModel: LoadStateViewModel
     @Binding var pendingNavigation: URL?
-    var openExternalURL: @MainActor (URL) -> Void = { url in
-        NSWorkspace.shared.open(url)
-    }
+    var openExternalURL: @MainActor (URL) -> Void
 
     init(
         url: URL,
@@ -27,8 +25,8 @@ struct NativeWebView: NSViewRepresentable {
         )
         self.loadStateViewModel = loadStateViewModel
         self._pendingNavigation = pendingNavigation
-        if let openExternalURL {
-            self.openExternalURL = openExternalURL
+        self.openExternalURL = openExternalURL ?? { url in
+            NSWorkspace.shared.open(url)
         }
     }
 
@@ -76,9 +74,10 @@ struct NativeWebView: NSViewRepresentable {
     @MainActor
     static func sessionStatus(
         policy: SessionCookiePolicy,
-        dataStore: WKWebsiteDataStore = .default()
+        dataStore: WKWebsiteDataStore? = nil
     ) async -> SessionStatus {
-        let cookies = await dataStore.httpCookieStore.allCookies()
+        let store = dataStore ?? .default()
+        let cookies = await store.httpCookieStore.allCookies()
         let metadata = cookies.map {
             CookieMetadata(
                 name: $0.name,
@@ -92,6 +91,7 @@ struct NativeWebView: NSViewRepresentable {
         return policy.evaluate(cookies: metadata)
     }
 
+    @MainActor
     final class Coordinator: NativeBridgeHandler, WKNavigationDelegate {
         private let policy: NavigationPolicy
         private let loadStateViewModel: LoadStateViewModel
