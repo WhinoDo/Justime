@@ -452,7 +452,7 @@ pytest tests/ -v --tb=short
 
 ## CI/CD
 
-- **CI** (`.github/workflows/ci.yml`): 推送到 main/master 时触发
+- **CI** (`.github/workflows/ci.yml`): 推送到或向 `main`、`master`、`dev` 提交 Pull Request 时触发
   - Code Quality: lint + typecheck (前端)
   - Frontend Tests: Jest + 覆盖率 + build 检查
   - Backend Tests: Pytest + MongoDB service

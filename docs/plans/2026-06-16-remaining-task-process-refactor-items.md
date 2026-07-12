@@ -47,7 +47,7 @@
 - `/study` 已改为读取 `task_processes`，但旧 `study` 模块代码仍大量存在。
 - `study` 相关旧页面 / 旧 hooks / 旧 API 还没有进入真正清理期。
 - `Phase 3: 移除 study 相关模型及废弃代码` 还没开始。
-- `study_reports`、`study_tools`、`study_agent_business` 等旧链路还没决定保留边界或迁移边界。
+- `study_tools.py` 与 `study_agent_business.py` 已从仓库移除；`services/agent_service.py` 中仍保留对 `study_tools.py` 的陈旧兼容导入和 no-op fallback，尚待清理。
 
 ## 5. Vault / Obsidian 深度互操作仍未完成
 - 用户自定义 Vault 路径的完整设置入口前端还没做。
