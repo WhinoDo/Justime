@@ -151,7 +151,8 @@ describe('ChatSidebar', () => {
     )
 
     const sessionButton = screen.getByText('Session 1').closest('button')
-    expect(sessionButton).toHaveClass('bg-purple-500/10')
+    expect(sessionButton).toHaveClass('bg-blue-500/20')
+    expect(sessionButton).toHaveClass('border-blue-400/30')
   })
 
   it('session list should have overflow-y-auto for local scroll', () => {
