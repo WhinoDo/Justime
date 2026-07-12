@@ -53,6 +53,7 @@ export const API_ENDPOINTS = {
 
   TASK_PROCESS: {
     BASE: '/api/task-processes',
+    LIST: (query: string) => `/api/task-processes${query ? `?${query}` : ''}`,
     DETAIL: (taskId: string) => `/api/task-processes/${taskId}`,
     AGENT: (taskId: string) => `/api/task-processes/${taskId}/agent`,
     EVIDENCE: (taskId: string) => `/api/task-processes/${taskId}/evidence`,
