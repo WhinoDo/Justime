@@ -39,6 +39,7 @@ class EvidenceBase(BaseModel):
     title: str = Field("", max_length=200)
     content: str = Field(..., min_length=1, max_length=50000)
     source: str = Field("", max_length=500)
+    source_id: Optional[str] = Field(None, max_length=200)
     milestone_id: Optional[str] = Field(None, max_length=50)
     metadata: Optional[Dict[str, Any]] = None
 
@@ -46,6 +47,16 @@ class EvidenceBase(BaseModel):
     @classmethod
     def validate_loose_text(cls, value: str) -> str:
         return (value or "").strip()
+
+    @field_validator("source_id", mode="before")
+    @classmethod
+    def validate_source_id(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            value = value.strip()
+            return value or None
+        return value
 
     @field_validator("content")
     @classmethod

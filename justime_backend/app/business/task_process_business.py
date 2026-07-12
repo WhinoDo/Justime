@@ -1,3 +1,4 @@
+import hashlib
 import logging
 import math
 from datetime import datetime
@@ -7,6 +8,7 @@ logger = logging.getLogger(__name__)
 
 from bson import ObjectId
 from pymongo import ReturnDocument
+from pymongo.errors import DuplicateKeyError
 
 from app.database import db
 from app.models.evidence import EvidenceCreate, EvidenceOut, EvidenceUpdate, TimeLogCreate
@@ -99,6 +101,7 @@ class TaskProcessBusiness:
             title=doc.get("title", ""),
             content=doc.get("content", ""),
             source=doc.get("source", ""),
+            source_id=doc.get("source_id"),
             milestone_id=doc.get("milestone_id"),
             metadata=doc.get("metadata"),
             ai_extracted=bool(doc.get("ai_extracted", False)),
@@ -331,7 +334,30 @@ class TaskProcessBusiness:
             updates["ai_last_assessment"] = assessment.model_dump(mode="json")
             updates["progress"] = assessment.progress
             updates["progress_source"] = "ai"
-        if suggestions:
+        if mode == "monitor" and assessment:
+            blockers = [item.model_dump(mode="json") for item in task.blockers]
+            known_descriptions = {item["description"].strip() for item in blockers}
+            identified_blocker = False
+            for description in assessment.blockers_identified:
+                normalized_description = description.strip()
+                if not normalized_description:
+                    continue
+                identified_blocker = True
+                if normalized_description in known_descriptions:
+                    continue
+                blocker = Blocker(
+                    id=f"blocker-{hashlib.sha256(normalized_description.encode('utf-8')).hexdigest()[:16]}",
+                    description=normalized_description,
+                )
+                blockers.append(blocker.model_dump(mode="json"))
+                known_descriptions.add(normalized_description)
+            if len(blockers) > len(task.blockers):
+                updates["blockers"] = blockers
+            if identified_blocker:
+                updates["status"] = "blocked"
+        if mode == "coach":
+            updates["ai_suggestions"] = [item.model_dump(mode="json") for item in suggestions]
+        elif suggestions:
             updates["ai_suggestions"] = [item.model_dump(mode="json") for item in suggestions]
 
         await self._task_collection().update_one(
@@ -415,6 +441,8 @@ class TaskProcessBusiness:
             raise ValueError("任务不存在")
         now = datetime.utcnow()
         doc = payload.model_dump()
+        if payload.source_id is None:
+            doc.pop("source_id", None)
         doc.update(
             {
                 "userId": user_id,
@@ -425,8 +453,28 @@ class TaskProcessBusiness:
                 "updatedAt": now,
             }
         )
-        result = await self._evidence_collection().insert_one(doc)
-        saved = await self._evidence_collection().find_one({"_id": result.inserted_id})
+        collection = self._evidence_collection()
+        if payload.source_id:
+            idempotency_filter = {
+                "userId": user_id,
+                "task_id": payload.task_id,
+                "type": payload.type,
+                "source_id": payload.source_id,
+            }
+            try:
+                saved = await collection.find_one_and_update(
+                    idempotency_filter,
+                    {"$setOnInsert": doc},
+                    upsert=True,
+                    return_document=ReturnDocument.AFTER,
+                )
+            except DuplicateKeyError:
+                saved = await collection.find_one(idempotency_filter)
+                if saved is None:
+                    raise
+        else:
+            result = await collection.insert_one(doc)
+            saved = await collection.find_one({"_id": result.inserted_id})
         evidence = self._serialize_evidence(saved)
         await self._recalculate_task_metrics(user_id, payload.task_id)
         return evidence
