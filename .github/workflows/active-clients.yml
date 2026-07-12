@@ -1,0 +1,90 @@
+name: Active Clients
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - 'apps/desktop/**'
+      - 'mobile/jushi_mobile/**'
+      - '.github/workflows/active-clients.yml'
+  pull_request:
+    branches: [dev]
+    paths:
+      - 'apps/desktop/**'
+      - 'mobile/jushi_mobile/**'
+      - '.github/workflows/active-clients.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  electron:
+    name: Electron
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/desktop
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Check main process syntax
+        run: node --check src/main.js
+
+      - name: Check preload syntax
+        run: node --check src/preload.js
+
+      - name: Check URL policy syntax
+        run: node --check src/url-policy.js
+
+  mobile:
+    name: Mobile
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: mobile/jushi_mobile
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: mobile/jushi_mobile/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run lint
+        run: npm run lint
+
+      - name: Run tests
+        env:
+          TZ: Asia/Shanghai
+        run: npm test -- --runInBand
+
+      - name: Run type check
+        run: npx tsc --noEmit
