@@ -1,5 +1,6 @@
 """Task agent service for TaskProcess workflows with active LLM routing."""
 
+import hashlib
 import re
 import uuid
 import json
@@ -7,7 +8,14 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from app.models.task_process import AIAssessment, AISuggestion, Milestone, TaskProcessOut
+from app.models.task_process import (
+    AIAssessment,
+    AISuggestion,
+    LearningMaterial,
+    Milestone,
+    PreparationItem,
+    TaskProcessOut,
+)
 from app.models.evidence import EvidenceOut
 from app.services.user_service import UserService
 from app.services.model_router_service import model_router_service
@@ -51,6 +59,66 @@ class TaskAgentService:
             )
         return milestones
 
+    def _preparation_id(self, task_title: str, item_title: str, index: int) -> str:
+        digest = hashlib.sha256(f"{task_title}\0{item_title}\0{index}".encode("utf-8")).hexdigest()[:12]
+        return f"prep-{index + 1}-{digest}"
+
+    def _build_preparation_fallback(self, task: TaskProcessOut) -> List[PreparationItem]:
+        title = f"确认《{task.title}》的目标、范围与开始条件"[:200]
+        return [
+            PreparationItem(
+                id=self._preparation_id(task.title, title, 0),
+                title=title,
+                done=False,
+                order=0,
+            )
+        ]
+
+    def _normalize_materials(self, raw_materials: Any) -> List[LearningMaterial]:
+        if not isinstance(raw_materials, list):
+            return []
+
+        materials: List[LearningMaterial] = []
+        for item in raw_materials:
+            if not isinstance(item, dict):
+                continue
+            try:
+                materials.append(
+                    LearningMaterial(
+                        title=str(item.get("title") or "")[:200],
+                        url=str(item["url"])[:2000] if item.get("url") else None,
+                        summary=str(item.get("summary") or "")[:2000],
+                        source=str(item.get("source") or "")[:200],
+                    )
+                )
+            except (TypeError, ValueError):
+                continue
+        return materials
+
+    def _normalize_preparation_items(self, task: TaskProcessOut, raw_items: Any) -> List[PreparationItem]:
+        if not isinstance(raw_items, list):
+            return self._build_preparation_fallback(task)
+
+        preparation_items: List[PreparationItem] = []
+        for item in raw_items:
+            if not isinstance(item, dict):
+                continue
+            title = str(item.get("title") or "")[:200]
+            index = len(preparation_items)
+            try:
+                preparation_items.append(
+                    PreparationItem(
+                        id=self._preparation_id(task.title, title, index),
+                        title=title,
+                        done=item.get("done", False),
+                        order=index,
+                    )
+                )
+            except (TypeError, ValueError):
+                continue
+
+        return preparation_items or self._build_preparation_fallback(task)
+
     def _summarize_evidence_fallback(self, evidences: List[EvidenceOut]) -> Dict[str, Any]:
         total_hours = 0.0
         blocker_signals: List[str] = []
@@ -80,6 +148,7 @@ class TaskAgentService:
         """Deterministic fallback implementation."""
         if mode == "plan":
             milestones = self._build_milestones_fallback(task, user_input)
+            preparation_items = self._build_preparation_fallback(task)
             suggestions = [
                 AISuggestion(
                     id=f"sug-{uuid.uuid4().hex[:8]}",
@@ -93,6 +162,8 @@ class TaskAgentService:
                     "milestones": [item.model_dump(mode="json") for item in milestones],
                 },
                 "milestones": milestones,
+                "materials": [],
+                "preparation_items": preparation_items,
                 "suggestions": suggestions,
             }
 
@@ -200,6 +271,20 @@ class TaskAgentService:
                     "    {\n"
                     '      "title": "里程碑标题",\n'
                     '      "description": "里程碑的具体执行步骤或验证标准"\n'
+                    "    }\n"
+                    "  ],\n"
+                    '  "materials": [\n'
+                    "    {\n"
+                    '      "title": "资料标题",\n'
+                    '      "url": "可选的资料链接",\n'
+                    '      "summary": "资料摘要",\n'
+                    '      "source": "资料来源"\n'
+                    "    }\n"
+                    "  ],\n"
+                    '  "preparation_items": [\n'
+                    "    {\n"
+                    '      "title": "开始任务前需要完成的准备事项",\n'
+                    '      "done": false\n'
                     "    }\n"
                     "  ],\n"
                     '  "suggestions": [\n'
@@ -331,6 +416,8 @@ class TaskAgentService:
                             status="pending" if idx > 0 else "active",
                         )
                     )
+                materials = self._normalize_materials(parsed.get("materials"))
+                preparation_items = self._normalize_preparation_items(task, parsed.get("preparation_items"))
                 suggestions = [
                     AISuggestion(
                         id=f"sug-{uuid.uuid4().hex[:8]}",
@@ -342,6 +429,8 @@ class TaskAgentService:
                 return {
                     "plan": parsed.get("plan") or {"summary": f"已为任务《{task.title}》生成 {len(milestones)} 个里程碑。"},
                     "milestones": milestones,
+                    "materials": materials,
+                    "preparation_items": preparation_items,
                     "suggestions": suggestions,
                 }
 

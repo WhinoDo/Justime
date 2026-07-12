@@ -71,6 +71,48 @@ class Milestone(BaseModel):
         return value
 
 
+class LearningMaterial(BaseModel):
+    title: str = Field(..., min_length=1, max_length=200)
+    url: Optional[str] = Field(None, max_length=2000)
+    summary: str = Field(..., min_length=1, max_length=2000)
+    source: str = Field(..., min_length=1, max_length=200)
+
+    @field_validator("title", "summary", "source")
+    @classmethod
+    def validate_required_text(cls, value: str) -> str:
+        value = (value or "").strip()
+        if not value:
+            raise ValueError("学习资料字段不能为空")
+        return value
+
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        return value.strip() or None
+
+
+class PreparationItem(BaseModel):
+    id: str = Field(..., max_length=50)
+    title: str = Field(..., min_length=1, max_length=200)
+    done: bool = False
+    order: int = Field(0, ge=0)
+
+    @field_validator("id")
+    @classmethod
+    def validate_id(cls, value: str) -> str:
+        return _validate_loose_id(value, "准备项ID")
+
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, value: str) -> str:
+        value = (value or "").strip()
+        if not value:
+            raise ValueError("准备项标题不能为空")
+        return value
+
+
 class Blocker(BaseModel):
     id: str = Field(..., max_length=50)
     description: str = Field(..., min_length=1, max_length=2000)
@@ -125,6 +167,8 @@ class TaskProcessBase(BaseModel):
     priority: TaskPriority = "medium"
     estimated_hours: Optional[float] = Field(None, ge=0.0, le=10000)
     deadline: Optional[datetime] = None
+    materials: List[LearningMaterial] = Field(default_factory=list)
+    preparation_items: List[PreparationItem] = Field(default_factory=list)
 
     @field_validator("title", "goal")
     @classmethod
@@ -166,6 +210,8 @@ class TaskProcessUpdate(BaseModel):
     progress: Optional[float] = Field(None, ge=0.0, le=1.0)
     estimated_hours: Optional[float] = Field(None, ge=0.0, le=10000)
     deadline: Optional[datetime] = None
+    materials: List[LearningMaterial] = Field(default_factory=list)
+    preparation_items: List[PreparationItem] = Field(default_factory=list)
 
     @field_validator("title", "goal", "description")
     @classmethod
