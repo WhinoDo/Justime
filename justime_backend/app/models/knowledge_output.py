@@ -132,6 +132,12 @@ class KnowledgeOutputOut(KnowledgeOutputBase):
     source_evidence_ids: List[str] = Field(default_factory=list)
     absolute_path: Optional[str] = None
     published_at: Optional[datetime] = None
+    indexing_status: Literal[
+        "not_requested", "pending", "success", "failed", "skipped"
+    ] = "not_requested"
+    indexing_error_code: Optional[str] = None
+    indexing_retryable: bool = False
+    indexed_at: Optional[datetime] = None
     word_count: int = 0
     version: int = 1
     previous_version_id: Optional[str] = None

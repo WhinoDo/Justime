@@ -3,7 +3,10 @@
 from fastapi import APIRouter, HTTPException, status
 
 from app.api.deps import CurrentUser
-from app.business.task_process_business import _task_process_business
+from app.business.task_process_business import (
+    KnowledgeOutputIndexConflict,
+    _task_process_business,
+)
 from app.models.knowledge_output import (
     GenerateKnowledgeRequest,
     KnowledgeOutputCreate,
@@ -69,6 +72,27 @@ async def publish_knowledge_output(output_id: str, current_user: CurrentUser):
         item = await _task_process_business.publish_knowledge_output(str(current_user["_id"]), output_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if not item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="知识产出不存在")
+    return {"success": True, "data": {"knowledge_output": item}}
+
+
+@router.post("/knowledge-outputs/{output_id}/reindex", summary="重试知识产出 RAG 索引")
+async def reindex_knowledge_output(output_id: str, current_user: CurrentUser):
+    try:
+        item = await _task_process_business.reindex_knowledge_output(
+            str(current_user["_id"]), output_id
+        )
+    except KnowledgeOutputIndexConflict as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="知识产出不存在")
     return {"success": True, "data": {"knowledge_output": item}}
