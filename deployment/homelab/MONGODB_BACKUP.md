@@ -55,3 +55,41 @@ docker compose \
 ```
 
 Do not delete the source database as part of backup verification. Restore procedures must use a separate target and are outside this pre-deploy gate.
+
+## Manual database restore
+
+Application image rollback does not restore MongoDB. A database restore is a separate destructive operation and requires all of the following before an operator proceeds:
+
+1. An explicit approval recorded in the deployment incident or change ticket.
+2. The exact backup archive and matching `.sha256` manifest selected by timestamp and deploy SHA.
+3. A verified checksum and a successful `mongorestore --dryRun` against the archive.
+4. A maintenance window with application writes stopped and a new safety backup of the current database retained.
+
+Verify the approved artifact first:
+
+```bash
+cd /var/backups/justime/mongodb
+sha256sum --check <archive-name>.sha256
+```
+
+After approval, stop the application services while leaving MongoDB running:
+
+```bash
+docker compose \
+  --env-file deployment/homelab/.env \
+  -f deployment/homelab/docker-compose.yml \
+  stop frontend backend
+```
+
+Repeat the documented dry run, then perform the approved restore manually. `--drop` replaces collections present in the archive and is destructive:
+
+```bash
+docker compose \
+  --env-file deployment/homelab/.env \
+  -f deployment/homelab/docker-compose.yml \
+  exec -T mongodb \
+  sh -ec 'exec mongorestore --archive --gzip --drop --username "${MONGO_INITDB_ROOT_USERNAME:-root}" --password "${MONGO_INITDB_ROOT_PASSWORD:?MONGO_INITDB_ROOT_PASSWORD is required}" --authenticationDatabase admin' \
+  < /var/backups/justime/mongodb/<archive-name>
+```
+
+Restart the application and run the normal compose readiness and business-smoke gates. No deployment or rollback script invokes `mongorestore`; the approved operator owns this procedure and its recovery decision.
