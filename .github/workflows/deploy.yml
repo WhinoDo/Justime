@@ -105,10 +105,22 @@ jobs:
           username: ${{ secrets.STAGING_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
           script: |
+            set -eu
             cd /opt/justime
             git pull origin main
             docker compose --env-file deployment/homelab/.env -f deployment/homelab/docker-compose.yml build
-            docker compose --env-file deployment/homelab/.env -f deployment/homelab/docker-compose.yml up -d
+            if ! docker compose --env-file deployment/homelab/.env -f deployment/homelab/docker-compose.yml up -d --wait --wait-timeout 180; then
+              docker compose --env-file deployment/homelab/.env -f deployment/homelab/docker-compose.yml ps || true
+              docker compose --env-file deployment/homelab/.env -f deployment/homelab/docker-compose.yml logs --no-color --tail=200 || true
+              exit 1
+            fi
+            CADDY_HTTP_PORT="$(awk -F= '/^CADDY_HTTP_PORT=/{print $2}' deployment/homelab/.env | tail -n1)"
+            CADDY_HTTP_PORT="${CADDY_HTTP_PORT:-8088}"
+            if ! BASE_URL="http://127.0.0.1:${CADDY_HTTP_PORT}" bash deployment/homelab/scripts/business-smoke.sh; then
+              docker compose --env-file deployment/homelab/.env -f deployment/homelab/docker-compose.yml ps || true
+              docker compose --env-file deployment/homelab/.env -f deployment/homelab/docker-compose.yml logs --no-color --tail=200 || true
+              exit 1
+            fi
             docker system prune -f
 
   deploy-production:
@@ -131,11 +143,23 @@ jobs:
           username: ${{ secrets.PRODUCTION_USER }}
           key: ${{ secrets.PRODUCTION_SSH_KEY }}
           script: |
+            set -eu
             cd /opt/justime
             git fetch --tags
             git checkout ${{ github.ref_name }}
             docker compose --env-file deployment/homelab/.env -f deployment/homelab/docker-compose.yml build
-            docker compose --env-file deployment/homelab/.env -f deployment/homelab/docker-compose.yml up -d
+            if ! docker compose --env-file deployment/homelab/.env -f deployment/homelab/docker-compose.yml up -d --wait --wait-timeout 180; then
+              docker compose --env-file deployment/homelab/.env -f deployment/homelab/docker-compose.yml ps || true
+              docker compose --env-file deployment/homelab/.env -f deployment/homelab/docker-compose.yml logs --no-color --tail=200 || true
+              exit 1
+            fi
+            CADDY_HTTP_PORT="$(awk -F= '/^CADDY_HTTP_PORT=/{print $2}' deployment/homelab/.env | tail -n1)"
+            CADDY_HTTP_PORT="${CADDY_HTTP_PORT:-8088}"
+            if ! BASE_URL="http://127.0.0.1:${CADDY_HTTP_PORT}" bash deployment/homelab/scripts/business-smoke.sh; then
+              docker compose --env-file deployment/homelab/.env -f deployment/homelab/docker-compose.yml ps || true
+              docker compose --env-file deployment/homelab/.env -f deployment/homelab/docker-compose.yml logs --no-color --tail=200 || true
+              exit 1
+            fi
             docker system prune -f
             
             # Create release marker
