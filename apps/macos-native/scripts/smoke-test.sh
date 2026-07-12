@@ -22,6 +22,9 @@ else
     fail "swift build -c release"
 fi
 
+RELEASE_BIN_DIR="$(cd "$APP_DIR" && swift build -c release --show-bin-path)"
+BINARY_PATH="$RELEASE_BIN_DIR/$APP_NAME"
+
 # Gate 2: Run all tests
 echo ""
 echo "[Gate 2] Unit + integration tests"
@@ -42,8 +45,7 @@ fi
 echo ""
 echo "[Gate 3] GUI smoke test"
 if [ -n "${DISPLAY:-}" ] || [ "$(uname)" = "Darwin" ]; then
-    BINARY_PATH=$(find "$APP_DIR/.build/release" -name "$APP_NAME" -type f 2>/dev/null | head -1)
-    if [ -n "$BINARY_PATH" ]; then
+    if [ -x "$BINARY_PATH" ]; then
         "$BINARY_PATH" &
         APP_PID=$!
         sleep 5
@@ -66,8 +68,7 @@ fi
 echo ""
 echo "[Gate 4] Code signing verification"
 if [ -f "$SCRIPT_DIR/codesign.sh" ]; then
-    BINARY_PATH=$(find "$APP_DIR/.build/release" -name "$APP_NAME" -type f 2>/dev/null | head -1)
-    if [ -n "$BINARY_PATH" ]; then
+    if [ -x "$BINARY_PATH" ]; then
         if codesign --verify --deep --strict "$BINARY_PATH" 2>&1; then
             pass "codesign --verify"
         else
