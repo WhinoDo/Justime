@@ -108,6 +108,7 @@ jobs:
             set -eu
             cd /opt/justime
             git pull origin main
+            JUSTIME_DEPLOY_SHA="$(git rev-parse HEAD)" bash deployment/homelab/scripts/backup-mongodb.sh
             docker compose --env-file deployment/homelab/.env -f deployment/homelab/docker-compose.yml build
             if ! docker compose --env-file deployment/homelab/.env -f deployment/homelab/docker-compose.yml up -d --wait --wait-timeout 180; then
               docker compose --env-file deployment/homelab/.env -f deployment/homelab/docker-compose.yml ps || true
@@ -147,6 +148,7 @@ jobs:
             cd /opt/justime
             git fetch --tags
             git checkout ${{ github.ref_name }}
+            JUSTIME_DEPLOY_SHA="$(git rev-parse HEAD)" bash deployment/homelab/scripts/backup-mongodb.sh
             docker compose --env-file deployment/homelab/.env -f deployment/homelab/docker-compose.yml build
             if ! docker compose --env-file deployment/homelab/.env -f deployment/homelab/docker-compose.yml up -d --wait --wait-timeout 180; then
               docker compose --env-file deployment/homelab/.env -f deployment/homelab/docker-compose.yml ps || true
