@@ -3,7 +3,7 @@ import logging
 import json
 from datetime import datetime, timezone
 from time import perf_counter
-from typing import Dict, Any, List, Optional, AsyncGenerator
+from typing import Dict, Any, List, Optional, AsyncGenerator, Set
 
 from fastapi import HTTPException, status
 
@@ -19,7 +19,9 @@ from app.services.llm_service import llm_service, STREAM_READ_TIMEOUT, STREAM_TO
 from app.services.sse_stream_service import (
     sse_stream_service,
     SSEStreamContext,
-    SSEEventID,
+    SSEEventRecord,
+    SSEStreamError,
+    SSE_PRODUCER_HEARTBEAT_INTERVAL,
 )
 from app.core.config import settings
 
@@ -36,6 +38,8 @@ logging.basicConfig(
 
 
 class ChatBusiness:
+    _producer_tasks: Set[asyncio.Task] = set()
+
     async def create_session(self, user_id: str, title: str) -> str:
         return await chat_persistence.create_session(user_id, title)
 
@@ -649,77 +653,33 @@ class ChatBusiness:
         user_id: str,
         last_event_id: str = "",
     ) -> AsyncGenerator[str, None]:
-        """
-        流式处理聊天请求，逐token推送响应
+        """Stream persisted SSE records, resuming strictly after the supplied ID."""
+        if last_event_id:
+            resume = await sse_stream_service.validate_resume(
+                last_event_id,
+                user_id,
+                request.sessionId,
+            )
+            if resume.error_code or resume.context is None:
+                yield self._format_sse_event(
+                    "error",
+                    self._stream_error_payload(resume.error_code or "stream_expired"),
+                )
+                return
 
-        SSE事件格式：
-        - event: token\ndata: {"content": "..."}\nid: {sessionId}:{messageId}:{tokenIndex}\n\n
-        - event: metadata\ndata: {"sessionId": "...", "messageId": "..."}\n\n
-        - event: usage\ndata: {"promptTokens": ..., "completionTokens": ...}\n\n
-        - event: done\ndata: {}\n\n
-        - event: error\ndata: {"message": "..."}\n\n
+            async for event in self._subscribe_to_stream(
+                resume.context.stream_id,
+                resume.after_seq,
+            ):
+                yield event
+            return
 
-        断点续传支持：
-        - 通过 Last-Event-ID 请求头传递上次接收到的事件 ID
-        - 服务端从 Redis 恢复流上下文，从断点继续推送
-        - 流上下文存储在 Redis，TTL 5分钟
-
-        包含细粒度异常处理和资源清理
-        """
         started_at = datetime.now(timezone.utc)
         session_id = request.sessionId
-        accumulated_content = ""
-        usage_stats = {
-            "promptTokens": 0,
-            "completionTokens": 0,
-            "totalTokens": 0,
-        }
-
-        # 用于断点续传的消息 ID
-        message_id = None
-        token_index = 0
-
-        # 获取用户LLM配置
-        config_dict = None
-        runtime_config = None
-        llm_config = None
-
-        # 断点续传：检查是否可以恢复
-        resume_context = None
-        if last_event_id:
-            resume_context = await sse_stream_service.can_resume(last_event_id, user_id)
-            if resume_context:
-                session_id = resume_context.session_id
-                message_id = resume_context.message_id
-                accumulated_content = resume_context.accumulated_content
-                token_index = resume_context.token_index
-                logger.info(
-                    f"Resuming stream: session={session_id}, message={message_id}, "
-                    f"token_index={token_index}, accumulated={len(accumulated_content)} chars"
-                )
-
         try:
-            # 1. 初始化会话
             if not session_id:
-                title = request.message[:20]
-                session_id = await self.create_session(user_id, title)
+                session_id = await self.create_session(user_id, request.message[:20])
 
-            # 保存用户消息（仅在非断点续传时）
-            if not resume_context:
-                try:
-                    await self.save_message(session_id, "user", request.message, taskId=request.taskId)
-                    await self._sync_task_evidence_from_chat(
-                        user_id=user_id,
-                        task_id=request.taskId,
-                        session_id=session_id,
-                        role="user",
-                        content=request.message,
-                    )
-                except Exception as e:
-                    logger.error(f"Failed to save user message: {e}")
-                    # 继续处理，不中断流
-
-            # 2. 获取LLM配置
             config_dict, system_configs, active_id = await asyncio.gather(
                 self._get_user_llm_config(user_id),
                 UserService.get_available_models_for_user(user_id),
@@ -728,10 +688,17 @@ class ChatBusiness:
             runtime_configs = chat_router.build_runtime_model_candidates(system_configs, active_id, config_dict)
 
             if not runtime_configs:
-                yield self._format_sse_event("error", {"message": "平台尚未配置可用的 AI 模型，请联系管理员添加"})
+                yield self._format_sse_event(
+                    "error",
+                    {
+                        "code": "model_unavailable",
+                        "message": "平台尚未配置可用的 AI 模型，请联系管理员添加",
+                        "canResume": False,
+                    },
+                )
                 return
 
-            # 选择主模型
+            runtime_config = None
             if request.runtimeModelId:
                 requested_model = str(request.runtimeModelId).strip()
                 runtime_config = next(
@@ -744,72 +711,127 @@ class ChatBusiness:
                     runtime_configs[0]
                 )
 
-            # 构建LLM配置
             llm_config = chat_router.runtime_to_llm_config(
                 runtime_config,
                 timeout_override=STREAM_TOTAL_TIMEOUT
             )
 
-            # 3. 构建对话上下文
-            context_window = 8
-            recent_context = await chat_persistence.build_recent_context(session_id, context_window)
+            recent_context = await chat_persistence.build_recent_context(session_id, 8)
+            await self.save_message(session_id, "user", request.message, taskId=request.taskId)
+            await self._sync_task_evidence_from_chat(
+                user_id=user_id,
+                task_id=request.taskId,
+                session_id=session_id,
+                role="user",
+                content=request.message,
+            )
 
-            messages = []
-            # 添加历史上下文
-            for ctx in recent_context:
-                if ctx.get("role") == "user":
-                    messages.append({"role": "user", "content": ctx.get("content", "")})
-                elif ctx.get("role") == "assistant":
-                    messages.append({"role": "assistant", "content": ctx.get("content", "")})
-
-            # 添加当前消息
+            messages: List[Dict[str, str]] = []
+            if recent_context:
+                messages.append({"role": "system", "content": f"Recent conversation:\n{recent_context}"})
             messages.append({"role": "user", "content": request.message})
 
-            # 生成消息 ID（用于断点续传）
-            if not message_id:
-                from bson import ObjectId
-                message_id = str(ObjectId())
-
-            # 4. 发送会话元数据
-            yield self._format_sse_event("metadata", {
-                "sessionId": session_id,
-                "messageId": message_id,
-                "model": llm_config.model_id,
-                "resumed": resume_context is not None,
-                "resumedTokenIndex": token_index if resume_context else 0,
-            })
-
-            # 断点续传：发送已累积的内容
-            if resume_context and accumulated_content:
-                # 将已累积的内容分批发送，模拟流式效果
-                # 每次发送约 20 个字符，避免一次性发送过多
-                chunk_size = 20
-                for i in range(0, len(accumulated_content), chunk_size):
-                    chunk = accumulated_content[i:i + chunk_size]
-                    event_id = sse_stream_service.build_event_id(
-                        session_id, message_id, token_index
-                    )
-                    yield self._format_sse_event("token", {"content": chunk}, event_id)
-                    token_index += 1
-
-                logger.info(f"Sent {token_index} resumed tokens")
-
-            # 5. 保存初始流上下文到 Redis
+            from bson import ObjectId
+            stream_id = str(ObjectId())
             stream_context = SSEStreamContext(
+                stream_id=stream_id,
                 session_id=session_id,
-                message_id=message_id,
+                message_id=stream_id,
                 user_id=user_id,
                 model_id=llm_config.model_id,
                 messages=messages,
-                accumulated_content=accumulated_content,
-                token_index=token_index,
                 created_at=started_at.isoformat(),
-                updated_at=datetime.now(timezone.utc).isoformat(),
             )
-            await sse_stream_service.save_context(stream_context)
+            if not await sse_stream_service.create_stream(stream_context):
+                yield self._format_sse_event(
+                    "error",
+                    self._stream_error_payload("stream_storage_unavailable"),
+                )
+                return
 
-            # 6. 流式调用LLM
-            chunk_count = 0
+            lease_token = await sse_stream_service.acquire_producer_lease(stream_id)
+            if not lease_token:
+                await sse_stream_service.append_event(
+                    stream_id,
+                    "error",
+                    self._stream_error_payload("producer_unavailable"),
+                )
+            else:
+                await sse_stream_service.append_event(
+                    stream_id,
+                    "metadata",
+                    {
+                        "sessionId": session_id,
+                        "messageId": stream_id,
+                        "model": llm_config.model_id,
+                        "resumed": False,
+                        "resumedTokenIndex": 0,
+                    },
+                )
+                self._start_stream_producer(
+                    request=request,
+                    user_id=user_id,
+                    session_id=session_id,
+                    stream_id=stream_id,
+                    messages=messages,
+                    runtime_config=runtime_config,
+                    llm_config=llm_config,
+                    lease_token=lease_token,
+                    started_at=started_at,
+                )
+
+            async for event in self._subscribe_to_stream(stream_id, 0):
+                yield event
+        except SSEStreamError as exc:
+            yield self._format_sse_event("error", self._stream_error_payload(exc.code))
+        except Exception as exc:
+            logger.error("Failed to initialize SSE stream: %s", exc, exc_info=True)
+            yield self._format_sse_event(
+                "error",
+                self._stream_error_payload("stream_initialization_failed"),
+            )
+
+    def _start_stream_producer(
+        self,
+        **kwargs: Any,
+    ) -> None:
+        task = asyncio.create_task(self._run_stream_producer(**kwargs))
+        self._producer_tasks.add(task)
+        task.add_done_callback(self._producer_tasks.discard)
+
+    async def _subscribe_to_stream(
+        self,
+        stream_id: str,
+        after_seq: int,
+    ) -> AsyncGenerator[str, None]:
+        try:
+            async for record in sse_stream_service.subscribe(stream_id, after_seq):
+                yield self._format_persisted_sse_event(record)
+        except SSEStreamError as exc:
+            yield self._format_sse_event("error", self._stream_error_payload(exc.code))
+
+    async def _run_stream_producer(
+        self,
+        *,
+        request: ChatStreamRequest,
+        user_id: str,
+        session_id: str,
+        stream_id: str,
+        messages: List[Dict[str, str]],
+        runtime_config: Dict[str, Any],
+        llm_config: Any,
+        lease_token: str,
+        started_at: datetime,
+    ) -> None:
+        accumulated_content = ""
+        token_count = 0
+        usage_stats = {"promptTokens": 0, "completionTokens": 0, "totalTokens": 0}
+        lease_lost = asyncio.Event()
+        heartbeat_task = asyncio.create_task(
+            self._heartbeat_stream_producer(stream_id, lease_token, lease_lost)
+        )
+
+        try:
             async for chunk in llm_service.chat_completion_stream(
                 messages=messages,
                 model=llm_config.model_id,
@@ -819,60 +841,40 @@ class ChatBusiness:
                 read_timeout=STREAM_READ_TIMEOUT,
                 total_timeout=STREAM_TOTAL_TIMEOUT,
             ):
-                chunk_count += 1
+                if lease_lost.is_set():
+                    raise SSEStreamError("producer_lease_lost")
 
-                # 解析chunk内容
                 content_delta = self._extract_stream_content(chunk)
                 if content_delta:
-                    accumulated_content += content_delta
-                    token_index += 1
-
-                    # 构建事件 ID
-                    event_id = sse_stream_service.build_event_id(
-                        session_id, message_id, token_index
+                    await sse_stream_service.append_event(
+                        stream_id,
+                        "token",
+                        {"content": content_delta},
                     )
+                    accumulated_content += content_delta
+                    token_count += 1
 
-                    yield self._format_sse_event("token", {"content": content_delta}, event_id)
-
-                    # 定期更新流上下文（每 50 个 token 更新一次）
-                    if token_index % 50 == 0:
-                        await sse_stream_service.update_accumulated_content(
-                            session_id, message_id,
-                            accumulated_content, token_index
-                        )
-
-                # 提取usage信息
                 usage = self._extract_stream_usage(chunk)
                 if usage:
                     usage_stats = usage
 
-            logger.info(f"Stream completed: {chunk_count} chunks, {len(accumulated_content)} chars, {token_index} tokens")
+            if lease_lost.is_set():
+                raise SSEStreamError("producer_lease_lost")
 
-            # 7. 保存AI消息
-            ai_message_id = None
-            try:
-                ai_message_id = await self.save_message(session_id, "ai", accumulated_content, taskId=request.taskId)
-                await self._sync_task_evidence_from_chat(
-                    user_id=user_id,
-                    task_id=request.taskId,
-                    session_id=session_id,
-                    role="ai",
-                    content=accumulated_content,
-                )
-            except Exception as e:
-                logger.error(f"Failed to save AI message: {e}")
+            ai_message_id = await self.save_message(
+                session_id,
+                "ai",
+                accumulated_content,
+                taskId=request.taskId,
+            )
+            await self._sync_task_evidence_from_chat(
+                user_id=user_id,
+                task_id=request.taskId,
+                session_id=session_id,
+                role="ai",
+                content=accumulated_content,
+            )
 
-            # 8. 最终更新流上下文，确保断点续传数据完整
-            if session_id and message_id:
-                await sse_stream_service.update_accumulated_content(
-                    session_id, message_id,
-                    accumulated_content, token_index
-                )
-
-            # 9. 删除流上下文（流已完成）
-            await sse_stream_service.delete_context(session_id, message_id)
-
-            # 10. 记录使用量
             try:
                 await self._record_usage_event(
                     user_id=user_id,
@@ -885,46 +887,80 @@ class ChatBusiness:
                     usage=usage_stats,
                     message_id=ai_message_id,
                 )
-            except Exception as e:
-                logger.warning(f"Failed to record usage event: {e}")
+            except Exception as exc:
+                logger.warning("Failed to record stream usage: %s", exc)
 
-            # 11. 发送usage事件
-            yield self._format_sse_event("usage", usage_stats)
+            await sse_stream_service.append_event(stream_id, "usage", usage_stats)
+            await sse_stream_service.append_event(
+                stream_id,
+                "done",
+                {
+                    "messageId": ai_message_id,
+                    "totalMs": int((datetime.now(timezone.utc) - started_at).total_seconds() * 1000),
+                    "totalTokens": token_count,
+                },
+            )
+        except asyncio.TimeoutError:
+            await self._append_stream_error(stream_id, "stream_timeout")
+        except SSEStreamError as exc:
+            if exc.code != "producer_lease_lost":
+                logger.warning("SSE producer storage failure for %s: %s", stream_id, exc.code)
+        except Exception as exc:
+            logger.error("SSE provider failed for %s: %s", stream_id, exc, exc_info=True)
+            await self._append_stream_error(stream_id, "provider_stream_failed")
+        finally:
+            heartbeat_task.cancel()
+            try:
+                await heartbeat_task
+            except asyncio.CancelledError:
+                pass
+            await sse_stream_service.release_producer_lease(stream_id, lease_token)
 
-            # 12. 发送完成事件
-            yield self._format_sse_event("done", {
-                "messageId": ai_message_id,
-                "totalMs": int((datetime.now(timezone.utc) - started_at).total_seconds() * 1000),
-                "totalTokens": token_index,
-            })
+    async def _heartbeat_stream_producer(
+        self,
+        stream_id: str,
+        lease_token: str,
+        lease_lost: asyncio.Event,
+    ) -> None:
+        while True:
+            await asyncio.sleep(SSE_PRODUCER_HEARTBEAT_INTERVAL)
+            if not await sse_stream_service.heartbeat_producer_lease(stream_id, lease_token):
+                lease_lost.set()
+                return
 
-        except asyncio.TimeoutError as e:
-            logger.error(f"Stream timeout: {e}")
-            # 更新流上下文（保留已累积的内容，供后续恢复）
-            if session_id and message_id:
-                await sse_stream_service.update_accumulated_content(
-                    session_id, message_id,
-                    accumulated_content, token_index
-                )
-            yield self._format_sse_event("error", {"message": f"响应超时: {str(e)}", "canResume": True})
+    async def _append_stream_error(self, stream_id: str, code: str) -> None:
+        try:
+            await sse_stream_service.append_event(
+                stream_id,
+                "error",
+                self._stream_error_payload(code),
+            )
+        except SSEStreamError as exc:
+            logger.warning("Unable to persist terminal SSE error for %s: %s", stream_id, exc.code)
 
-        except HTTPException as e:
-            logger.error(f"Stream HTTP error: {e.detail}")
-            yield self._format_sse_event("error", {"message": e.detail})
+    @staticmethod
+    def _format_persisted_sse_event(record: SSEEventRecord) -> str:
+        return ChatBusiness._format_sse_event(record.event, record.data, record.id)
 
-        except ValueError as e:
-            logger.error(f"Stream config error: {e}")
-            yield self._format_sse_event("error", {"message": f"配置错误: {str(e)}"})
-
-        except Exception as e:
-            logger.error(f"Stream unexpected error: {e}", exc_info=True)
-            # 更新流上下文（保留已累积的内容，供后续恢复）
-            if session_id and message_id:
-                await sse_stream_service.update_accumulated_content(
-                    session_id, message_id,
-                    accumulated_content, token_index
-                )
-            yield self._format_sse_event("error", {"message": f"处理请求时发生错误: {str(e)}", "canResume": True})
+    @staticmethod
+    def _stream_error_payload(code: str) -> Dict[str, Any]:
+        messages = {
+            "invalid_last_event_id": "断点标识无效，请重新发送消息",
+            "stream_expired": "断点记录已过期，请重新发送消息",
+            "foreign_stream": "无权恢复该响应流",
+            "event_log_compacted": "断点记录已被清理，请重新发送消息",
+            "stream_storage_unavailable": "响应续传服务暂不可用，请稍后重试",
+            "producer_unavailable": "响应生成已中断，请重新发送消息",
+            "producer_lease_lost": "响应生成协调已中断，请重新发送消息",
+            "stream_timeout": "响应超时，请重新发送消息",
+            "provider_stream_failed": "模型响应失败，请稍后重试",
+            "stream_initialization_failed": "无法启动响应流，请稍后重试",
+        }
+        return {
+            "code": code,
+            "message": messages.get(code, "响应流发生错误，请重新发送消息"),
+            "canResume": False,
+        }
 
     @staticmethod
     def _format_sse_event(

@@ -1,399 +1,437 @@
-"""
-SSE 流式上下文服务
-支持 Last-Event-ID 断点续传，用于移动端网络切换场景
-"""
+"""Redis-backed SSE event log and producer single-flight coordination."""
 
+import asyncio
+import json
 import logging
+import re
+import secrets
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional, List
-from dataclasses import dataclass, asdict
+from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from app.core.redis_client import RedisClient
 from app.database import db
 
 logger = logging.getLogger(__name__)
 
-# Redis 键前缀
 SSE_STREAM_KEY_PREFIX = "sse:stream:"
-# 流上下文 TTL（秒）- 5 分钟
+SSE_PRODUCER_KEY_PREFIX = "sse:producer:"
 SSE_STREAM_TTL = 300
-# 事件 ID 格式：{sessionId}:{messageId}:{tokenIndex}
+SSE_PRODUCER_LEASE_TTL = 15
+SSE_PRODUCER_HEARTBEAT_INTERVAL = 5.0
+SSE_SUBSCRIBER_POLL_INTERVAL = 0.05
 
-_UPDATE_ACCUMULATED_LUA = """
+_STREAM_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
+
+_APPEND_EVENT_LUA = """
 local key = KEYS[1]
-local data = redis.call('GET', key)
-if not data then
+local raw = redis.call('GET', key)
+if not raw then
+    return '__MISSING__'
+end
+
+local stream = cjson.decode(raw)
+if stream['status'] == 'completed' or stream['status'] == 'error' then
+    return '__TERMINAL__'
+end
+
+local seq = tonumber(stream['last_seq'] or 0) + 1
+local event_id = stream['stream_id'] .. ':' .. tostring(seq)
+local event_data = cjson.decode(ARGV[2])
+local record = {
+    seq = seq,
+    id = event_id,
+    event = ARGV[1],
+    data = event_data
+}
+
+stream['events'][#stream['events'] + 1] = record
+stream['last_seq'] = seq
+stream['updated_at'] = ARGV[3]
+
+if ARGV[1] == 'token' and type(event_data) == 'table' and event_data['content'] then
+    stream['accumulated_content'] = (stream['accumulated_content'] or '') .. event_data['content']
+end
+
+if ARGV[1] == 'done' then
+    stream['status'] = 'completed'
+elseif ARGV[1] == 'error' then
+    stream['status'] = 'error'
+end
+
+redis.call('SET', key, cjson.encode(stream), 'EX', tonumber(ARGV[4]))
+return cjson.encode(record)
+"""
+
+_HEARTBEAT_LEASE_LUA = """
+if redis.call('GET', KEYS[1]) ~= ARGV[1] then
     return 0
 end
-local obj = cjson.decode(data)
-obj['accumulated_content'] = ARGV[1]
-obj['token_index'] = tonumber(ARGV[2])
-obj['updated_at'] = ARGV[3]
-local new_data = cjson.encode(obj)
-redis.call('SET', key, new_data, 'EX', tonumber(ARGV[4]))
+redis.call('EXPIRE', KEYS[1], tonumber(ARGV[2]))
+if redis.call('EXISTS', KEYS[2]) == 1 then
+    redis.call('EXPIRE', KEYS[2], tonumber(ARGV[3]))
+end
 return 1
 """
 
+_RELEASE_LEASE_LUA = """
+if redis.call('GET', KEYS[1]) == ARGV[1] then
+    return redis.call('DEL', KEYS[1])
+end
+return 0
+"""
 
-@dataclass
+
+class SSEStreamError(Exception):
+    """Sanitized stream error suitable for an SSE error code."""
+
+    def __init__(self, code: str):
+        super().__init__(code)
+        self.code = code
+
+
+@dataclass(frozen=True)
 class SSEEventID:
-    """SSE 事件 ID 结构"""
-    session_id: str
-    message_id: str
-    token_index: int
+    """Identity of one persisted event: ``<stream_id>:<sequence>``."""
+
+    stream_id: str
+    sequence: int
 
     def __str__(self) -> str:
-        """格式化为字符串：{sessionId}:{messageId}:{tokenIndex}"""
-        return f"{self.session_id}:{self.message_id}:{self.token_index}"
+        return f"{self.stream_id}:{self.sequence}"
 
     @classmethod
-    def parse(cls, event_id_str: str) -> Optional['SSEEventID']:
-        """
-        解析事件 ID 字符串
-
-        格式：{sessionId}:{messageId}:{tokenIndex}
-
-        Args:
-            event_id_str: 事件 ID 字符串
-
-        Returns:
-            解析成功返回 SSEEventID，失败返回 None
-        """
-        if not event_id_str:
+    def parse(cls, event_id_str: str) -> Optional["SSEEventID"]:
+        if not event_id_str or ":" not in event_id_str:
             return None
 
-        parts = event_id_str.split(':')
-        if len(parts) != 3:
-            logger.warning(f"Invalid event ID format: {event_id_str}")
+        stream_id, raw_sequence = event_id_str.rsplit(":", 1)
+        if not _STREAM_ID_PATTERN.fullmatch(stream_id):
             return None
 
         try:
-            token_index = int(parts[2])
-            return cls(
-                session_id=parts[0],
-                message_id=parts[1],
-                token_index=token_index
-            )
+            sequence = int(raw_sequence)
         except ValueError:
-            logger.warning(f"Invalid token index in event ID: {event_id_str}")
             return None
+
+        if sequence < 0:
+            return None
+        return cls(stream_id=stream_id, sequence=sequence)
+
+
+@dataclass(frozen=True)
+class SSEEventRecord:
+    seq: int
+    id: str
+    event: str
+    data: Dict[str, Any]
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "SSEEventRecord":
+        return cls(
+            seq=int(data["seq"]),
+            id=str(data["id"]),
+            event=str(data["event"]),
+            data=dict(data.get("data") or {}),
+        )
 
 
 @dataclass
 class SSEStreamContext:
-    """SSE 流上下文"""
+    stream_id: str
     session_id: str
     message_id: str
     user_id: str
-    model_id: str
-    messages: List[Dict[str, str]]  # 对话上下文
-    accumulated_content: str  # 已累积的内容
-    token_index: int  # 当前 token 索引
-    created_at: str  # 创建时间
-    updated_at: str  # 更新时间
+    model_id: str = ""
+    messages: List[Dict[str, str]] = field(default_factory=list)
+    accumulated_content: str = ""
+    first_seq: int = 1
+    last_seq: int = 0
+    status: str = "active"
+    events: List[Dict[str, Any]] = field(default_factory=list)
+    created_at: str = ""
+    updated_at: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
-        """转换为字典"""
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'SSEStreamContext':
-        """
-        从字典创建流上下文，带完整性校验
-
-        校验必要字段 user_id, accumulated_content, token_index 是否存在且类型正确。
-        缺少必要字段或类型不匹配时抛出 ValueError。
-
-        Args:
-            data: 字典数据（通常来自 Redis 反序列化）
-
-        Returns:
-            SSEStreamContext 实例
-
-        Raises:
-            ValueError: 必要字段缺失或类型不合法
-        """
+    def from_dict(cls, data: Dict[str, Any]) -> "SSEStreamContext":
         if not isinstance(data, dict):
-            raise ValueError(f"流上下文数据类型错误，期望 dict，实际为 {type(data).__name__}")
+            raise ValueError("stream context must be an object")
 
-        required_fields = {
-            "session_id": str,
-            "message_id": str,
-            "user_id": str,
-            "accumulated_content": str,
-            "token_index": int,
-        }
+        required_fields = ("stream_id", "session_id", "message_id", "user_id")
+        for field_name in required_fields:
+            if not isinstance(data.get(field_name), str) or not data[field_name]:
+                raise ValueError(f"invalid stream context field: {field_name}")
 
-        for field_name, expected_type in required_fields.items():
-            value = data.get(field_name)
-            if value is None:
-                raise ValueError(f"流上下文缺少必要字段: {field_name}")
-            if not isinstance(value, expected_type):
-                raise ValueError(
-                    f"流上下文字段 {field_name} 类型错误，"
-                    f"期望 {expected_type.__name__}，实际为 {type(value).__name__}"
-                )
+        events = data.get("events", [])
+        if not isinstance(events, list):
+            raise ValueError("invalid stream event log")
 
         return cls(
+            stream_id=data["stream_id"],
             session_id=data["session_id"],
             message_id=data["message_id"],
             user_id=data["user_id"],
-            model_id=data.get("model_id", ""),
-            messages=data.get("messages", []),
-            accumulated_content=data["accumulated_content"],
-            token_index=data["token_index"],
-            created_at=data.get("created_at", ""),
-            updated_at=data.get("updated_at", ""),
+            model_id=str(data.get("model_id") or ""),
+            messages=list(data.get("messages") or []),
+            accumulated_content=str(data.get("accumulated_content") or ""),
+            first_seq=int(data.get("first_seq", 1)),
+            last_seq=int(data.get("last_seq", 0)),
+            status=str(data.get("status") or "active"),
+            events=events,
+            created_at=str(data.get("created_at") or ""),
+            updated_at=str(data.get("updated_at") or ""),
         )
+
+
+@dataclass(frozen=True)
+class SSEResumeResult:
+    context: Optional[SSEStreamContext]
+    after_seq: int = 0
+    error_code: Optional[str] = None
 
 
 class SSEStreamService:
-    """SSE 流上下文服务"""
+    """Append-only SSE storage with exact suffix replay and producer leases."""
 
     @staticmethod
-    def _get_redis_key(session_id: str, message_id: str) -> str:
-        """生成 Redis 键"""
-        return f"{SSE_STREAM_KEY_PREFIX}{session_id}:{message_id}"
+    def _stream_key(stream_id: str) -> str:
+        return f"{SSE_STREAM_KEY_PREFIX}{stream_id}"
 
     @staticmethod
-    async def save_context(context: SSEStreamContext) -> bool:
-        """
-        保存流上下文到 Redis
-
-        Args:
-            context: 流上下文
-
-        Returns:
-            保存成功返回 True
-        """
-        if not RedisClient.is_enabled():
-            logger.debug("Redis not enabled, skip saving stream context")
-            return False
-
-        key = SSEStreamService._get_redis_key(context.session_id, context.message_id)
-
-        # 更新时间戳
-        context.updated_at = datetime.now(timezone.utc).isoformat()
-
-        try:
-            await RedisClient.set_json(
-                key,
-                context.to_dict(),
-                ex=SSE_STREAM_TTL
-            )
-            logger.debug(f"Saved stream context: {key}")
-            return True
-        except Exception as e:
-            logger.warning(f"Failed to save stream context: {e}")
-            return False
-
-    @staticmethod
-    async def load_context(session_id: str, message_id: str) -> Optional[SSEStreamContext]:
-        """
-        从 Redis 加载流上下文
-
-        Args:
-            session_id: 会话 ID
-            message_id: 消息 ID
-
-        Returns:
-            流上下文，不存在或反序列化失败返回 None
-        """
-        if not RedisClient.is_enabled():
-            return None
-
-        key = SSEStreamService._get_redis_key(session_id, message_id)
-
-        try:
-            data = await RedisClient.get_json(key)
-            if data is None:
-                return None
-
-            # 使用带校验的反序列化
-            try:
-                return SSEStreamContext.from_dict(data)
-            except ValueError as e:
-                logger.warning(f"流上下文数据校验失败: {e}")
-                # 删除无效数据，避免后续重试
-                await RedisClient.delete(key)
-                return None
-        except Exception as e:
-            logger.warning(f"Failed to load stream context: {e}")
-            return None
-
-    @staticmethod
-    async def delete_context(session_id: str, message_id: str) -> bool:
-        """
-        删除流上下文
-
-        Args:
-            session_id: 会话 ID
-            message_id: 消息 ID
-
-        Returns:
-            删除成功返回 True
-        """
-        if not RedisClient.is_enabled():
-            return True
-
-        key = SSEStreamService._get_redis_key(session_id, message_id)
-
-        try:
-            await RedisClient.delete(key)
-            logger.debug(f"Deleted stream context: {key}")
-            return True
-        except Exception as e:
-            logger.warning(f"Failed to delete stream context: {e}")
-            return False
-
-    @staticmethod
-    async def update_accumulated_content(
-        session_id: str,
-        message_id: str,
-        content: str,
-        token_index: int
-    ) -> bool:
-        """
-        更新累积内容和 token 索引
-
-        使用 Lua 脚本在 Redis 内直接修改 JSON 字段，避免完整的
-        读取-反序列化-修改-序列化-写入 循环。单次 Redis 调用完成更新。
-
-        Args:
-            session_id: 会话 ID
-            message_id: 消息 ID
-            content: 累积内容
-            token_index: 当前 token 索引
-
-        Returns:
-            更新成功返回 True
-        """
-        if not RedisClient.is_enabled():
-            logger.debug("Redis not enabled, skip updating accumulated content")
-            return False
-
-        key = SSEStreamService._get_redis_key(session_id, message_id)
-        client = RedisClient.get_client()
-        if client is None:
-            return False
-
-        try:
-            result = await client.eval(
-                _UPDATE_ACCUMULATED_LUA,
-                1,
-                key,
-                content,
-                str(token_index),
-                datetime.now(timezone.utc).isoformat(),
-                str(SSE_STREAM_TTL),
-            )
-            return result == 1
-        except Exception as e:
-            logger.warning(f"Failed to update accumulated content via Lua: {e}")
-            return False
+    def _producer_key(stream_id: str) -> str:
+        return f"{SSE_PRODUCER_KEY_PREFIX}{stream_id}"
 
     @staticmethod
     def parse_last_event_id(last_event_id: str) -> Optional[SSEEventID]:
-        """
-        解析 Last-Event-ID 请求头
-
-        Args:
-            last_event_id: Last-Event-ID 头值
-
-        Returns:
-            解析成功返回 SSEEventID，失败返回 None
-        """
         return SSEEventID.parse(last_event_id)
 
     @staticmethod
-    def build_event_id(session_id: str, message_id: str, token_index: int) -> str:
-        """
-        构建事件 ID
-
-        Args:
-            session_id: 会话 ID
-            message_id: 消息 ID
-            token_index: token 索引
-
-        Returns:
-            事件 ID 字符串
-        """
-        return f"{session_id}:{message_id}:{token_index}"
+    def build_event_id(stream_id: str, sequence: int) -> str:
+        return str(SSEEventID(stream_id=stream_id, sequence=sequence))
 
     @staticmethod
-    async def can_resume(last_event_id: str, user_id: str) -> Optional[SSEStreamContext]:
-        """
-        检查是否可以恢复流
+    async def create_stream(context: SSEStreamContext) -> bool:
+        if not RedisClient.is_enabled():
+            return False
+        if not _STREAM_ID_PATTERN.fullmatch(context.stream_id):
+            raise ValueError("invalid stream id")
 
-        验证流程：
-        1. 解析 Last-Event-ID
-        2. 从 Redis 加载流上下文
-        3. 验证上下文中的 user_id 与请求用户一致
-        4. 验证 session 归属当前用户（MongoDB 校验）
-        5. 验证 token 索引一致性
-
-        Args:
-            last_event_id: Last-Event-ID 头值
-            user_id: 当前用户 ID
-
-        Returns:
-            可以恢复时返回流上下文，否则返回 None
-        """
-        event_id = SSEStreamService.parse_last_event_id(last_event_id)
-        if event_id is None:
-            return None
-
-        context = await SSEStreamService.load_context(
-            event_id.session_id,
-            event_id.message_id
+        now = datetime.now(timezone.utc).isoformat()
+        context.created_at = context.created_at or now
+        context.updated_at = now
+        payload = json.dumps(context.to_dict(), ensure_ascii=False, default=str)
+        return bool(
+            await RedisClient.set(
+                SSEStreamService._stream_key(context.stream_id),
+                payload,
+                ex=SSE_STREAM_TTL,
+                nx=True,
+            )
         )
 
-        if context is None:
-            logger.info(f"Stream context not found for resume: {last_event_id}")
+    @staticmethod
+    async def load_stream(stream_id: str) -> Optional[SSEStreamContext]:
+        if not RedisClient.is_enabled():
             return None
 
-        # 验证上下文中的 user_id 与请求用户一致
-        if context.user_id != user_id:
-            logger.warning(
-                f"User mismatch for stream resume: "
-                f"context.user_id={context.user_id}, request.user_id={user_id}"
+        data = await RedisClient.get_json(SSEStreamService._stream_key(stream_id))
+        if data is None:
+            return None
+        try:
+            return SSEStreamContext.from_dict(data)
+        except (TypeError, ValueError) as exc:
+            logger.warning("Invalid SSE stream context for %s: %s", stream_id, exc)
+            return None
+
+    @staticmethod
+    def _decode_redis_result(value: Any) -> Any:
+        return value.decode("utf-8") if isinstance(value, bytes) else value
+
+    @staticmethod
+    async def append_event(
+        stream_id: str,
+        event: str,
+        data: Dict[str, Any],
+    ) -> SSEEventRecord:
+        client = RedisClient.get_client()
+        if client is None:
+            raise SSEStreamError("stream_storage_unavailable")
+
+        try:
+            raw_record = await client.eval(
+                _APPEND_EVENT_LUA,
+                1,
+                SSEStreamService._stream_key(stream_id),
+                event,
+                json.dumps(data, ensure_ascii=False, default=str),
+                datetime.now(timezone.utc).isoformat(),
+                str(SSE_STREAM_TTL),
             )
-            return None
+        except Exception as exc:
+            logger.warning("Failed to append SSE event for %s: %s", stream_id, exc)
+            raise SSEStreamError("stream_storage_unavailable") from exc
 
-        # 验证 session 归属当前用户（MongoDB 校验）
+        raw_record = SSEStreamService._decode_redis_result(raw_record)
+        if raw_record == "__MISSING__":
+            raise SSEStreamError("stream_expired")
+        if raw_record == "__TERMINAL__":
+            raise SSEStreamError("stream_already_terminal")
+        return SSEEventRecord.from_dict(json.loads(raw_record))
+
+    @staticmethod
+    async def acquire_producer_lease(stream_id: str) -> Optional[str]:
+        if not RedisClient.is_enabled():
+            return None
+        token = secrets.token_hex(16)
+        acquired = await RedisClient.set(
+            SSEStreamService._producer_key(stream_id),
+            token,
+            ex=SSE_PRODUCER_LEASE_TTL,
+            nx=True,
+        )
+        return token if acquired else None
+
+    @staticmethod
+    async def heartbeat_producer_lease(stream_id: str, token: str) -> bool:
+        client = RedisClient.get_client()
+        if client is None:
+            return False
+        try:
+            result = await client.eval(
+                _HEARTBEAT_LEASE_LUA,
+                2,
+                SSEStreamService._producer_key(stream_id),
+                SSEStreamService._stream_key(stream_id),
+                token,
+                str(SSE_PRODUCER_LEASE_TTL),
+                str(SSE_STREAM_TTL),
+            )
+            return int(SSEStreamService._decode_redis_result(result) or 0) == 1
+        except Exception as exc:
+            logger.warning("Failed to heartbeat SSE producer lease for %s: %s", stream_id, exc)
+            return False
+
+    @staticmethod
+    async def release_producer_lease(stream_id: str, token: str) -> bool:
+        client = RedisClient.get_client()
+        if client is None:
+            return False
+        try:
+            result = await client.eval(
+                _RELEASE_LEASE_LUA,
+                1,
+                SSEStreamService._producer_key(stream_id),
+                token,
+            )
+            return int(SSEStreamService._decode_redis_result(result) or 0) == 1
+        except Exception as exc:
+            logger.warning("Failed to release SSE producer lease for %s: %s", stream_id, exc)
+            return False
+
+    @staticmethod
+    async def producer_is_active(stream_id: str) -> bool:
+        return bool(await RedisClient.exists(SSEStreamService._producer_key(stream_id)))
+
+    @staticmethod
+    async def _session_belongs_to_user(session_id: str, user_id: str) -> bool:
         try:
             from bson import ObjectId
+
             session = await db.db["chat_sessions"].find_one(
-                {"_id": ObjectId(event_id.session_id), "userId": user_id},
+                {"_id": ObjectId(session_id), "userId": user_id},
                 {"_id": 1},
             )
-            if not session:
-                logger.warning(
-                    f"Session ownership verification failed for stream resume: "
-                    f"session_id={event_id.session_id}, user_id={user_id}"
-                )
-                return None
-        except Exception as e:
-            logger.warning(f"Session ownership check error during stream resume: {e}")
-            return None
+            return session is not None
+        except Exception as exc:
+            logger.warning("SSE session ownership verification failed: %s", exc)
+            return False
 
-        # 验证 token 索引
-        if context.token_index != event_id.token_index:
-            logger.warning(
-                f"Token index mismatch for stream resume: "
-                f"context.token_index={context.token_index}, event_id.token_index={event_id.token_index}"
-            )
-            # 使用较小值，避免重复发送
-            if event_id.token_index < context.token_index:
-                context.token_index = event_id.token_index
-            # 如果请求的索引大于实际值，使用实际值
+    @staticmethod
+    async def validate_resume(
+        last_event_id: str,
+        user_id: str,
+        expected_session_id: Optional[str] = None,
+    ) -> SSEResumeResult:
+        parsed = SSEEventID.parse(last_event_id)
+        if parsed is None:
+            return SSEResumeResult(context=None, error_code="invalid_last_event_id")
 
-        logger.info(
-            f"Stream resume possible: session={context.session_id}, "
-            f"message={context.message_id}, token_index={context.token_index}, "
-            f"accumulated={len(context.accumulated_content)} chars"
-        )
-        return context
+        if not RedisClient.is_enabled():
+            return SSEResumeResult(context=None, error_code="stream_storage_unavailable")
+
+        context = await SSEStreamService.load_stream(parsed.stream_id)
+        if context is None:
+            return SSEResumeResult(context=None, error_code="stream_expired")
+
+        if context.user_id != user_id:
+            return SSEResumeResult(context=None, error_code="foreign_stream")
+        if expected_session_id and context.session_id != expected_session_id:
+            return SSEResumeResult(context=None, error_code="foreign_stream")
+        if not await SSEStreamService._session_belongs_to_user(context.session_id, user_id):
+            return SSEResumeResult(context=None, error_code="foreign_stream")
+
+        if parsed.sequence < context.first_seq - 1:
+            return SSEResumeResult(context=None, error_code="event_log_compacted")
+        if parsed.sequence > context.last_seq:
+            return SSEResumeResult(context=None, error_code="invalid_last_event_id")
+
+        return SSEResumeResult(context=context, after_seq=parsed.sequence)
+
+    @staticmethod
+    async def subscribe(
+        stream_id: str,
+        after_seq: int,
+    ) -> AsyncGenerator[SSEEventRecord, None]:
+        """Yield only persisted records strictly after ``after_seq``."""
+
+        cursor = after_seq
+        missing_lease_checks = 0
+        while True:
+            if not RedisClient.is_enabled():
+                raise SSEStreamError("stream_storage_unavailable")
+            context = await SSEStreamService.load_stream(stream_id)
+            if context is None:
+                raise SSEStreamError("stream_expired")
+
+            records = [
+                SSEEventRecord.from_dict(record)
+                for record in context.events
+                if int(record.get("seq", 0)) > cursor
+            ]
+            records.sort(key=lambda record: record.seq)
+            for record in records:
+                if record.seq <= cursor:
+                    continue
+                cursor = record.seq
+                yield record
+
+            if context.status in {"completed", "error"} and cursor >= context.last_seq:
+                return
+
+            if not await SSEStreamService.producer_is_active(stream_id):
+                missing_lease_checks += 1
+                if missing_lease_checks >= 2:
+                    try:
+                        await SSEStreamService.append_event(
+                            stream_id,
+                            "error",
+                            {
+                                "code": "producer_unavailable",
+                                "message": "响应生成已中断，请重新发送消息",
+                                "canResume": False,
+                            },
+                        )
+                    except SSEStreamError as exc:
+                        if exc.code not in {"stream_already_terminal"}:
+                            raise
+                    missing_lease_checks = 0
+            else:
+                missing_lease_checks = 0
+
+            await asyncio.sleep(SSE_SUBSCRIBER_POLL_INTERVAL)
 
 
 sse_stream_service = SSEStreamService()
