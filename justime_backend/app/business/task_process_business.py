@@ -1,3 +1,4 @@
+import hashlib
 import logging
 import math
 from datetime import datetime
@@ -99,6 +100,7 @@ class TaskProcessBusiness:
             title=doc.get("title", ""),
             content=doc.get("content", ""),
             source=doc.get("source", ""),
+            source_id=doc.get("source_id"),
             milestone_id=doc.get("milestone_id"),
             metadata=doc.get("metadata"),
             ai_extracted=bool(doc.get("ai_extracted", False)),
@@ -331,7 +333,30 @@ class TaskProcessBusiness:
             updates["ai_last_assessment"] = assessment.model_dump(mode="json")
             updates["progress"] = assessment.progress
             updates["progress_source"] = "ai"
-        if suggestions:
+        if mode == "monitor" and assessment:
+            blockers = [item.model_dump(mode="json") for item in task.blockers]
+            known_descriptions = {item["description"].strip() for item in blockers}
+            identified_blocker = False
+            for description in assessment.blockers_identified:
+                normalized_description = description.strip()
+                if not normalized_description:
+                    continue
+                identified_blocker = True
+                if normalized_description in known_descriptions:
+                    continue
+                blocker = Blocker(
+                    id=f"blocker-{hashlib.sha256(normalized_description.encode('utf-8')).hexdigest()[:16]}",
+                    description=normalized_description,
+                )
+                blockers.append(blocker.model_dump(mode="json"))
+                known_descriptions.add(normalized_description)
+            if len(blockers) > len(task.blockers):
+                updates["blockers"] = blockers
+            if identified_blocker:
+                updates["status"] = "blocked"
+        if mode == "coach":
+            updates["ai_suggestions"] = [item.model_dump(mode="json") for item in suggestions]
+        elif suggestions:
             updates["ai_suggestions"] = [item.model_dump(mode="json") for item in suggestions]
 
         await self._task_collection().update_one(
@@ -413,6 +438,17 @@ class TaskProcessBusiness:
         task = await self.get_task_process(user_id, payload.task_id)
         if not task:
             raise ValueError("任务不存在")
+        if payload.source_id:
+            existing = await self._evidence_collection().find_one(
+                {
+                    "task_id": payload.task_id,
+                    "type": payload.type,
+                    "source_id": payload.source_id,
+                    "userId": user_id,
+                }
+            )
+            if existing:
+                return self._serialize_evidence(existing)
         now = datetime.utcnow()
         doc = payload.model_dump()
         doc.update(
