@@ -13,7 +13,8 @@ docs/
 ├── architecture/                # 架构决策记录 (ADR)
 │   ├── legacy-module-inventory.md # 遗留模块盘点与兼容/废弃决策矩阵
 │   ├── 2026-06-26-macos-native-migration.md # macOS 原生迁移 ADR
-│   └── macos-native-api-contract.md # macOS 原生 API 契约
+│   ├── macos-native-api-contract.md # macOS 原生 API 契约
+│   └── markdown-vault-transport.md # Markdown Vault 本地/远程传输与安全契约
 │
 ├── design/                      # 核心架构与功能设计方案
 │   ├── TRANSFORMATION_PLAN.md   # Postgraduate Study Assistant 转型计划与路线图
