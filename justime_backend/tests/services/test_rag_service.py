@@ -73,6 +73,9 @@ class ReadyProvider:
     async def sync_all_sources(self, user_id, docs_dir):
         return "已同步 1 个文件到 NotebookLM"
 
+    async def list_sources(self, user_id):
+        return [{"source_id": "source-1", "is_ready": True}]
+
 
 class FailingProvider:
     async def ask(self, user_id, question):
@@ -91,18 +94,29 @@ class LegacyErrorProvider:
 
 
 class RecordingSyncProvider:
-    def __init__(self, synced_count):
+    def __init__(self, synced_count, *, ready_count=None, all_ready=True):
         self.synced_count = synced_count
+        self.ready_count = synced_count if ready_count is None else ready_count
+        self.all_ready = all_ready
         self.calls = []
 
     async def sync_all_sources(self, user_id, docs_dir):
         self.calls.append((user_id, docs_dir))
         return f"已同步 {self.synced_count} 个文件到 NotebookLM"
 
+    async def list_sources(self, user_id):
+        return [
+            {"source_id": f"source-{index}", "is_ready": self.all_ready}
+            for index in range(self.ready_count)
+        ]
+
 
 class MalformedSyncProvider:
     async def sync_all_sources(self, user_id, docs_dir):
         return {"synced": 1}
+
+    async def list_sources(self, user_id):
+        return [{"source_id": "source-1", "is_ready": True}]
 
 
 def assert_state(result, expected):
@@ -317,6 +331,25 @@ def test_partial_provider_sync_cannot_claim_ready(tmp_path):
     (user_docs_dir / "second.md").write_text("second")
     (user_docs_dir / ".ignored").write_text("ignored")
     provider = RecordingSyncProvider(synced_count=1)
+    module = load_rag_module(
+        enabled=True,
+        provider=provider,
+        docs_root=tmp_path,
+    )
+
+    result = module.RAGService().rebuild_index(user_docs_dir)
+
+    assert result["success"] is False
+    assert result["status"] == "unavailable"
+    assert result["retryable"] is True
+    assert result["error_code"] == "PROVIDER_UNAVAILABLE"
+
+
+def test_not_ready_provider_source_cannot_claim_ready(tmp_path):
+    user_docs_dir = tmp_path / "user-1"
+    user_docs_dir.mkdir()
+    (user_docs_dir / "guide.md").write_text("guide")
+    provider = RecordingSyncProvider(synced_count=1, all_ready=False)
     module = load_rag_module(
         enabled=True,
         provider=provider,

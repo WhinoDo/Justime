@@ -185,6 +185,27 @@ def _complete_sync_count(result: Any, expected_count: int) -> Optional[int]:
     return synced_count if synced_count == expected_count else None
 
 
+async def _sync_sources_with_evidence(
+    provider: Any,
+    user_id: str,
+    docs_dir: Path,
+) -> tuple[Any, Any]:
+    sync_result = await provider.sync_all_sources(user_id, docs_dir)
+    sources = await provider.list_sources(user_id)
+    return sync_result, sources
+
+
+def _all_sources_ready(sources: Any, expected_count: int) -> bool:
+    return (
+        isinstance(sources, list)
+        and len(sources) == expected_count
+        and all(
+            isinstance(source, dict) and source.get("is_ready") is True
+            for source in sources
+        )
+    )
+
+
 class RAGService:
     """云 RAG 服务 — 保持对外方法签名向后兼容。"""
 
@@ -272,15 +293,19 @@ class RAGService:
                 })
 
             expected_count = _eligible_source_count(resolved_target_docs_dir)
-            result = _run_async(
-                _notebooklm_service.sync_all_sources(
+            result, sources = _run_async(
+                _sync_sources_with_evidence(
+                    _notebooklm_service,
                     target_user_id,
                     resolved_target_docs_dir,
                 ),
                 timeout=600,
             )
             synced_count = _complete_sync_count(result, expected_count)
-            if synced_count is None:
+            if synced_count is None or not _all_sources_ready(
+                sources,
+                expected_count,
+            ):
                 return RAGResult({
                     "success": False,
                     "message": "重建索引失败：云 RAG 服务暂时不可用",
