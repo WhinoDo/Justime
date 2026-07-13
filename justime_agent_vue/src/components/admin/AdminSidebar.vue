@@ -86,7 +86,7 @@ const userInitial = computed(() => {
       <!-- Logo -->
       <div class="h-16 flex items-center px-6 border-b border-gray-200">
         <span class="text-xl font-bold text-purple-700">
-          矩时管理后台
+          Justime 管理后台
         </span>
         <button
           class="ml-auto lg:hidden text-gray-400 hover:text-gray-600 transition-colors"
