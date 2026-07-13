@@ -377,6 +377,33 @@ def test_deterministic_json_is_stable_across_metadata_order():
 
 
 @pytest.mark.parametrize(
+    ("value", "canonical_value"),
+    [
+        (float("nan"), "NaN"),
+        (float("inf"), "Infinity"),
+        (float("-inf"), "-Infinity"),
+    ],
+)
+def test_non_finite_bson_doubles_emit_strict_canonical_json(value, canonical_value):
+    normalized = migration._normalize_index(
+        "users",
+        {
+            "name": "score_lookup",
+            "key": OrderedDict([("score", value)]),
+            "partialFilterExpression": {"score": {"$gt": value}},
+        },
+    )
+    output = io.StringIO()
+
+    migration._write_json(output, normalized)
+
+    parsed = json.loads(output.getvalue(), parse_constant=lambda token: pytest.fail(token))
+    expected = {"$numberDouble": canonical_value}
+    assert parsed["keys"][0]["value"] == expected
+    assert parsed["partialFilterExpression"]["score"]["$gt"] == expected
+
+
+@pytest.mark.parametrize(
     "command_response",
     [
         {},
@@ -527,10 +554,41 @@ def test_cli_help_succeeds_without_credentials(arguments):
     assert "--uri" not in completed.stdout
 
 
+@pytest.mark.parametrize("uri_argument", ["separate", "equals"])
+def test_rejected_cli_uri_never_echoes_credential_bearing_value(uri_argument):
+    script = (
+        Path(__file__).resolve().parents[1]
+        / "scripts"
+        / "mongodb_database_name_migration.py"
+    )
+    uri = "mongodb://operator:cli-secret@example.invalid/admin?authSource=private"
+    arguments = (
+        ["discover", "--uri", uri]
+        if uri_argument == "separate"
+        else ["discover", f"--uri={uri}"]
+    )
+
+    completed = subprocess.run(
+        [sys.executable, str(script), *arguments],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 2
+    assert completed.stdout == ""
+    assert uri not in completed.stderr
+    assert "cli-secret" not in completed.stderr
+    assert "authSource" not in completed.stderr
+    error = json.loads(completed.stderr)
+    assert error["mutation_allowed"] is False
+    assert error["error"]["code"] == "invalid_arguments"
+
+
 def test_cli_exposes_only_discover_and_no_mutation_subcommand():
     parser = migration.build_parser()
 
-    with pytest.raises(SystemExit):
+    with pytest.raises(migration.CLIUsageError):
         parser.parse_args(["copy"])
-    with pytest.raises(SystemExit):
+    with pytest.raises(migration.CLIUsageError):
         parser.parse_args(["restore"])

@@ -6,12 +6,13 @@ import argparse
 import asyncio
 import inspect
 import json
+import math
 import os
 import sys
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import Any, Callable, TextIO
+from typing import Any, Callable, NoReturn, TextIO
 
 from bson import json_util
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -38,6 +39,17 @@ CRITICAL_COLLECTIONS = (
 
 class DiscoveryError(RuntimeError):
     """A sanitized discovery failure suitable for operator output."""
+
+
+class CLIUsageError(RuntimeError):
+    """A command-line parse failure whose original message may contain secrets."""
+
+
+class SecretSafeArgumentParser(argparse.ArgumentParser):
+    """Prevent argparse from echoing rejected credential-bearing values."""
+
+    def error(self, _message: str) -> NoReturn:
+        raise CLIUsageError
 
 
 @dataclass(frozen=True)
@@ -182,8 +194,14 @@ def classify_databases(
 
 
 def _normalized_json_value(value: Any) -> Any:
-    if value is None or isinstance(value, (bool, int, float, str)):
+    if value is None or isinstance(value, (bool, int, str)):
         return value
+    if isinstance(value, float):
+        if math.isfinite(value):
+            return value
+        return json.loads(
+            json_util.dumps(value, json_options=json_util.CANONICAL_JSON_OPTIONS)
+        )
     if isinstance(value, (datetime, date)):
         return value.isoformat()
     if isinstance(value, Mapping):
@@ -463,7 +481,7 @@ async def discover_from_environment(
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
+    parser = SecretSafeArgumentParser(
         description="Read-only MongoDB database-name migration discovery.",
         epilog=(
             f"The operator credential is read only from {OPERATOR_URI_ENV}; "
@@ -483,7 +501,13 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _write_json(stream: TextIO, value: Mapping[str, Any]) -> None:
-    json.dump(value, stream, sort_keys=True, separators=(",", ":"))
+    json.dump(
+        value,
+        stream,
+        allow_nan=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
     stream.write("\n")
 
 
@@ -495,7 +519,22 @@ def run_cli(
     stdout: TextIO = sys.stdout,
     stderr: TextIO = sys.stderr,
 ) -> int:
-    args = build_parser().parse_args(argv)
+    try:
+        args = build_parser().parse_args(argv)
+    except CLIUsageError:
+        _write_json(
+            stderr,
+            {
+                "schema_version": SCHEMA_VERSION,
+                "mutation_allowed": False,
+                "error": {
+                    "code": "invalid_arguments",
+                    "message": "Invalid command-line arguments. Use --help for syntax.",
+                },
+            },
+        )
+        return 2
+
     if args.command != "discover":
         raise AssertionError(f"Unsupported command: {args.command}")
 
