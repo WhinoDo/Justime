@@ -1,11 +1,11 @@
-# 飞书集成后端服务
+# Justime Backend
 
-基于FastAPI的飞书集成后端服务，提供飞书OAuth认证、日历管理等功能。
+Justime 后端基于 FastAPI，提供认证、聊天、日历管理等 API，并支持飞书 OAuth、日历等集成能力。
 
 ## 项目结构
 
 ```
-feishu-backend/
+justime_backend/
 ├── app/                    # 应用主目录
 │   ├── __init__.py
 │   ├── main.py            # 应用入口

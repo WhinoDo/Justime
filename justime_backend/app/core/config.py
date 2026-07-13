@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     """应用配置类"""
     
     # 项目信息
-    PROJECT_NAME: str = "飞书集成后端服务"
+    PROJECT_NAME: str = "Justime Backend API"
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
     

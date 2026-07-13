@@ -29,7 +29,14 @@ async def test_smtp_message_uses_configured_ttl(monkeypatch):
     )
 
     assert delivered is True
-    html = sent["message"].get_payload()[0].get_payload(decode=True).decode("utf-8")
+    message = sent["message"]
+    html = message.get_payload()[0].get_payload(decode=True).decode("utf-8")
+    legacy_brand = "\u805a\u52bf"
+    assert message["Subject"] == "【Justime】密码重置"
+    assert "<h1>Justime</h1>" in html
+    assert "© Justime - 您的智能助手" in html
+    assert legacy_brand not in message["Subject"]
+    assert legacy_brand not in html
     assert "37 分钟后失效" in html
     assert "1 小时后失效" not in html
 
