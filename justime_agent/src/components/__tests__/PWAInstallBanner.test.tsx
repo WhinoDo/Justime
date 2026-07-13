@@ -26,7 +26,7 @@ describe('PWAInstallBanner', () => {
 
     render(<PWAInstallBanner />)
 
-    expect(screen.getByText('安装矩时应用')).toBeInTheDocument()
+    expect(screen.getByText('安装 Justime 应用')).toBeInTheDocument()
   })
 
   it('does not render install banner inside desktop runtime', () => {
@@ -40,6 +40,6 @@ describe('PWAInstallBanner', () => {
 
     render(<PWAInstallBanner />)
 
-    expect(screen.queryByText('安装矩时应用')).not.toBeInTheDocument()
+    expect(screen.queryByText('安装 Justime 应用')).not.toBeInTheDocument()
   })
 })

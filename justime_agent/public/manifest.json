@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "矩时 - 焦虑缓解与任务规划助手",
-  "short_name": "矩时",
+  "name": "Justime - 焦虑缓解与任务规划助手",
+  "short_name": "Justime",
   "description": "专为大学生设计的情绪-任务双驱动智能助手，基于情绪状态提供个性化任务拆解和心理支持",
   "start_url": "/",
   "scope": "/",
@@ -67,14 +67,14 @@
       "sizes": "1920x1080",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "矩时桌面端"
+      "label": "Justime桌面端"
     },
     {
       "src": "/screenshots/mobile-narrow.png",
       "sizes": "1080x1920",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "矩时移动端"
+      "label": "Justime移动端"
     }
   ],
   "shortcuts": [

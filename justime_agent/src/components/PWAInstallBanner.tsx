@@ -39,7 +39,7 @@ export function PWAInstallBanner() {
           <div className="flex-1">
             <h3 className="font-semibold">新版本可用</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              矩时有新版本，点击刷新以获取最新功能和修复
+              Justime 有新版本，点击刷新以获取最新功能和修复
             </p>
           </div>
           <button
@@ -69,7 +69,7 @@ export function PWAInstallBanner() {
       <div className="fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-md rounded-lg border bg-background p-4 shadow-lg">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
-            <h3 className="font-semibold">安装矩时应用</h3>
+            <h3 className="font-semibold">安装 Justime 应用</h3>
             <p className="mt-1 text-sm text-muted-foreground">
               安装到主屏幕，获得更好的体验和离线支持
             </p>
@@ -96,7 +96,7 @@ export function PWAInstallBanner() {
       <div className="fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-md rounded-lg border bg-background p-4 shadow-lg">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
-            <h3 className="font-semibold">安装矩时到 Dock</h3>
+            <h3 className="font-semibold">安装 Justime 到 Dock</h3>
             <p className="mt-1 text-sm text-muted-foreground">
               Safari 浏览器需要手动添加到 Dock
             </p>
@@ -130,7 +130,7 @@ export function PWAInstallBanner() {
               3
             </span>
             <span>
-              确认后即可从 Dock 快速启动矩时
+              确认后即可从 Dock 快速启动 Justime
             </span>
           </li>
         </ol>
