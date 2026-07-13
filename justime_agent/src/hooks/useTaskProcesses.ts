@@ -249,6 +249,7 @@ export function useTaskProcessDetail(taskId: string, enabled = true) {
   const [outputs, setOutputs] = useState<KnowledgeOutput[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const milestoneMutationQueueRef = useRef<Promise<void>>(Promise.resolve())
 
   const refresh = useCallback(async () => {
     if (!enabled || !taskId) return
@@ -303,21 +304,26 @@ export function useTaskProcessDetail(taskId: string, enabled = true) {
     return result
   }, [taskId])
 
-  const updateMilestoneStatus = useCallback(async (
+  const updateMilestoneStatus = useCallback((
     milestoneId: string,
     status: TaskProcess['milestones'][number]['status'],
   ) => {
-    const result = await requestJson<{ task: TaskProcess }>(
-      API_ENDPOINTS.TASK_PROCESS.MILESTONE(taskId, milestoneId),
-      {
-        method: 'PATCH',
-        body: JSON.stringify({ status }),
-      },
-    )
-    if (result.success && result.data?.task) {
-      setTask(result.data.task)
-    }
-    return result
+    const mutation = milestoneMutationQueueRef.current.then(async () => {
+      const result = await requestJson<{ task: TaskProcess }>(
+        API_ENDPOINTS.TASK_PROCESS.MILESTONE(taskId, milestoneId),
+        {
+          method: 'PATCH',
+          body: JSON.stringify({ status }),
+        },
+      )
+      if (result.success && result.data?.task) {
+        setTask(result.data.task)
+      }
+      return result
+    })
+
+    milestoneMutationQueueRef.current = mutation.then(() => undefined, () => undefined)
+    return mutation
   }, [taskId])
 
   const createEvidence = useCallback(async (payload: EvidenceCreatePayload) => {

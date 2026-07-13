@@ -291,6 +291,78 @@ describe('useTaskProcessDetail preparation updates', () => {
     }))
   })
 
+  it('serializes different milestone updates so a later full-task snapshot cannot be overwritten', async () => {
+    const firstUpdatedTask: TaskProcess = {
+      ...task,
+      milestones: task.milestones.map((milestone) => (
+        milestone.id === 'mile-1' ? { ...milestone, status: 'completed' } : milestone
+      )),
+    }
+    const bothUpdatedTask: TaskProcess = {
+      ...firstUpdatedTask,
+      milestones: firstUpdatedTask.milestones.map((milestone) => (
+        milestone.id === 'mile-2' ? { ...milestone, status: 'skipped' } : milestone
+      )),
+    }
+    let resolveFirstUpdate: ((response: Response) => void) | undefined
+    const secondResponse = Promise.resolve({
+      ok: true,
+      json: async () => ({ success: true, data: { task: bothUpdatedTask } }),
+    } as Response)
+
+    fetchMock.mockImplementation((input: RequestInfo, init?: RequestInit) => {
+      if (String(input) === '/api/task-processes/task-1/milestones/mile-1' && init?.method === 'PATCH') {
+        return new Promise<Response>((resolve) => {
+          resolveFirstUpdate = resolve
+        })
+      }
+      if (String(input) === '/api/task-processes/task-1/milestones/mile-2' && init?.method === 'PATCH') {
+        return secondResponse
+      }
+      if (String(input).includes('/evidence')) {
+        return Promise.resolve({ ok: true, json: async () => ({ success: true, data: { items: [] } }) })
+      }
+      if (String(input).includes('/knowledge-outputs')) {
+        return Promise.resolve({ ok: true, json: async () => ({ success: true, data: { items: [] } }) })
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ success: true, data: { task } }) })
+    })
+
+    const { result } = renderHook(() => useTaskProcessDetail('task-1'))
+    await waitFor(() => expect(result.current.task).toEqual(task))
+
+    let firstUpdate!: ReturnType<typeof result.current.updateMilestoneStatus>
+    let secondUpdate!: ReturnType<typeof result.current.updateMilestoneStatus>
+    act(() => {
+      firstUpdate = result.current.updateMilestoneStatus('mile-1', 'completed')
+      secondUpdate = result.current.updateMilestoneStatus('mile-2', 'skipped')
+    })
+
+    await waitFor(() => expect(resolveFirstUpdate).toBeDefined())
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      '/api/task-processes/task-1/milestones/mile-2',
+      expect.objectContaining({ method: 'PATCH' }),
+    )
+
+    await act(async () => {
+      resolveFirstUpdate?.({
+        ok: true,
+        json: async () => ({ success: true, data: { task: firstUpdatedTask } }),
+      } as Response)
+      await firstUpdate
+      await secondUpdate
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/task-processes/task-1/milestones/mile-2', expect.objectContaining({
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'skipped' }),
+    }))
+    expect(result.current.task?.milestones).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'mile-1', status: 'completed' }),
+      expect.objectContaining({ id: 'mile-2', status: 'skipped' }),
+    ]))
+  })
+
   it('renders the status and completed_at returned by the milestone PATCH', async () => {
     const user = userEvent.setup()
     const completedAt = '2026-07-13T08:30:00Z'
