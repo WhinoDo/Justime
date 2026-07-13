@@ -85,9 +85,23 @@ def _remove_path(path: Path) -> None:
         log("Failed to remove a partial artifact from this backup run", "WARNING")
 
 
-def _cleanup_partial_backup(backup_path: Path, archive_path: Path) -> None:
-    _remove_path(backup_path)
-    _remove_path(archive_path)
+def _cleanup_partial_backup(*paths: Path) -> None:
+    for path in paths:
+        _remove_path(path)
+
+
+def _prepare_private_directory(path: Path, *, exist_ok: bool) -> None:
+    """Create a directory that only its owner can traverse on POSIX."""
+    path.mkdir(parents=True, exist_ok=exist_ok, mode=0o700)
+    if path.is_symlink() or not path.is_dir():
+        raise OSError("backup artifact directory is not a regular directory")
+    if os.name == "posix":
+        path.chmod(0o700)
+
+
+def _set_private_file_permissions(path: Path) -> None:
+    if os.name == "posix":
+        path.chmod(0o600)
 
 
 def backup_mongodb() -> bool:
@@ -101,8 +115,12 @@ def backup_mongodb() -> bool:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     backup_path = BACKUP_DIR / f"mongodb_{timestamp}"
     archive_path = Path(f"{backup_path}.tar.gz")
+    partial_archive_base = BACKUP_DIR / f".mongodb_{timestamp}.partial"
+    partial_archive_path = Path(f"{partial_archive_base}.tar.gz")
     claim_path = BACKUP_DIR / f".mongodb_{timestamp}.lock"
     claim_acquired = False
+    archive_published = False
+    previous_umask: Optional[int] = None
     command = [
         "mongodump",
         f"--config={config_path}",
@@ -112,7 +130,10 @@ def backup_mongodb() -> bool:
     ]
 
     try:
-        BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+        if os.name == "posix":
+            previous_umask = os.umask(0o077)
+
+        _prepare_private_directory(BACKUP_DIR, exist_ok=True)
         try:
             claim_path.touch(mode=0o600, exist_ok=False)
         except FileExistsError:
@@ -122,7 +143,7 @@ def backup_mongodb() -> bool:
 
         if any(
             path.exists() or path.is_symlink()
-            for path in (backup_path, archive_path)
+            for path in (backup_path, archive_path, partial_archive_path)
         ):
             log(
                 "Backup output already exists for this timestamp; refusing to overwrite it",
@@ -130,6 +151,7 @@ def backup_mongodb() -> bool:
             )
             return False
 
+        _prepare_private_directory(backup_path, exist_ok=False)
         log("Starting MongoDB backup with an explicitly selected database")
         log(f"Backup path: {backup_path}")
 
@@ -140,11 +162,27 @@ def backup_mongodb() -> bool:
             check=False,
         )
         if result.returncode != 0:
-            _cleanup_partial_backup(backup_path, archive_path)
+            _cleanup_partial_backup(
+                backup_path,
+                partial_archive_path,
+            )
             log(f"mongodump failed with exit code {result.returncode}", "ERROR")
             return False
 
-        shutil.make_archive(str(backup_path), "gztar", root_dir=backup_path)
+        created_archive = Path(
+            shutil.make_archive(
+                str(partial_archive_base),
+                "gztar",
+                root_dir=backup_path,
+            )
+        )
+        if created_archive != partial_archive_path:
+            raise OSError("archive tool returned an unexpected output path")
+        _set_private_file_permissions(partial_archive_path)
+        os.link(partial_archive_path, archive_path)
+        archive_published = True
+        partial_archive_path.unlink()
+        _set_private_file_permissions(archive_path)
         shutil.rmtree(backup_path)
 
         size_mb = archive_path.stat().st_size / (1024 * 1024)
@@ -152,17 +190,29 @@ def backup_mongodb() -> bool:
         return True
     except FileNotFoundError:
         if claim_acquired:
-            _cleanup_partial_backup(backup_path, archive_path)
+            _cleanup_partial_backup(
+                backup_path,
+                partial_archive_path,
+            )
+            if archive_published:
+                _remove_path(archive_path)
         log("mongodump is not installed or is not available on PATH", "ERROR")
         return False
     except Exception:
         if claim_acquired:
-            _cleanup_partial_backup(backup_path, archive_path)
+            _cleanup_partial_backup(
+                backup_path,
+                partial_archive_path,
+            )
+            if archive_published:
+                _remove_path(archive_path)
         log("MongoDB backup failed; partial output from this run was removed", "ERROR")
         return False
     finally:
         if claim_acquired:
             _remove_path(claim_path)
+        if previous_umask is not None:
+            os.umask(previous_umask)
 
 
 def cleanup_old_backups(now: Optional[datetime] = None) -> None:

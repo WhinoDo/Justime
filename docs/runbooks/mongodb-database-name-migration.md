@@ -24,9 +24,13 @@ MONGODB_DB_NAME=justime
 - Keep exactly one writable database. Application dual-write is unsupported.
 - Treat insufficient discovery permission as an unknown state and stop.
 - Stop if both databases are nonempty. Do not merge, overwrite, or choose one.
+- Fence and prove all writers stopped before creating the production migration
+  backup. A pre-fence dump is never a production copy source.
 - Do not put a password, credential-bearing URI, username, or `authSource` in a
   `mongodump` or `mongorestore` command line. Use a protected MongoDB Database
   Tools config file.
+- Keep dump, archive, digest, and extracted files owner-only on approved
+  encrypted-at-rest storage. File mode is not a substitute for encryption.
 - Do not run `--drop` unless discovery proves the canonical target has zero
   documents and the change record names the exact empty target.
 - Do not drop `justime-agent` as part of migration or automatic retention.
@@ -43,6 +47,8 @@ Record the following before discovery:
 - MongoDB Database Tools version;
 - redacted environment checksum;
 - backup location and free-space evidence;
+- encryption policy or encrypted-volume identifier and an out-of-band key
+  reference, never the key itself;
 - source `justime-agent` and target `justime` names;
 - planned observation end, at least seven full days after cutover.
 
@@ -76,6 +82,24 @@ export MONGODB_TOOLS_CONFIG=/secure/path/mongodb-tools.yml
 
 The script never reads or parses that file. It only passes the path as
 `mongodump --config=<path>`.
+
+The generic script sets a private POSIX umask, hardens its `backups/` directory
+and timestamped dump directory to mode `0700`, publishes the final archive with
+mode `0600`, and restores the caller's prior umask. It does not itself encrypt
+the archive. Therefore the repository `backups/` path must be backed by an
+approved encrypted-at-rest filesystem before production use. Homelab operators
+must likewise prove that `MONGODB_BACKUP_DIR` is encrypted at rest.
+
+If policy uses approved artifact encryption instead of volume encryption, all
+plaintext staging and extraction must still occur on approved encrypted
+temporary storage, the retained artifact must be encrypted before it leaves
+that storage, and decryption keys must be supplied out of band. `FENCED_BACKUP`
+always identifies the plaintext post-fence archive that `tar` or
+`mongorestore` will consume; keep it owner-only on encrypted temporary storage
+through rehearsal and production restore. An encrypted retained copy is a
+separate artifact and does not replace the plaintext identity. Record only the
+encryption policy and key reference in the change record. Stop if encryption at
+rest cannot be proved.
 
 ## 3. Run read-only discovery
 
@@ -116,58 +140,160 @@ the exact next permitted action.
 | --- | --- |
 | Neither database present | New deployment: initialize and authorize only `justime`; do not create or consult legacy. |
 | Legacy only, empty | Initialize canonical, validate it as empty, and retain empty legacy through observation; no document copy. |
-| Legacy only, nonempty | Run the full backup, fence, copy, validation, cutover, and observation sequence below. |
+| Legacy only, nonempty | Fence writers, create the final post-fence backup, rehearse that exact artifact, then copy, validate, cut over, and observe as described below. |
 | Canonical only, empty | Treat canonical as the initialized target; start only after credential and index checks. |
 | Canonical only, nonempty | Keep canonical authoritative; verify configuration and do not perform a name migration. |
 | Both present, both empty | Select canonical, validate empty objects, retain legacy through observation, and do not merge. |
-| Legacy nonempty, canonical empty | Run the full sequence below; `--drop` is allowed only after the empty target is named and reconfirmed. |
+| Legacy nonempty, canonical empty | Fence writers, create and rehearse the final post-fence backup, then copy and validate; `--drop` is allowed only after the empty target is named and reconfirmed. |
 | Legacy empty, canonical nonempty | Keep canonical authoritative, verify access, and retain legacy through observation; no copy. |
 | Both nonempty (`both-nonempty`) | **STOP.** Disable writers, preserve both reports and databases, and open a separate human reconciliation issue. |
 
 The rest of this runbook applies only to `legacy-only` with data or `legacy
 nonempty + canonical empty`.
 
-## 4. Create and verify the migration backup
+## 4. Qualify tools before the maintenance window
 
-Keep the application explicitly on legacy before the maintenance window:
+Before disabling traffic, verify the selected backup entry point, encrypted
+storage, free space, and installed Database Tools without creating the
+production migration artifact:
 
 ```bash
+mongodump --version
+mongorestore --version
+mongodump --help
+mongorestore --help
+```
+
+An optional pre-window dump may qualify tooling and rehearse operator commands,
+but label it `REHEARSAL_ONLY_PRE_FENCE`, keep it owner-only and encrypted at
+rest, and use only a disposable rehearsal database. It must never be assigned to
+`FENCED_BACKUP_TAR_GZ` or `FENCED_BACKUP_ARCHIVE_GZ`, restored into `justime`, or
+cited as the production migration backup. It does not satisfy the exact fenced
+artifact rehearsal below.
+
+## 5. Fence and prove all writes stopped
+
+1. Disable user traffic and pause scheduled backup execution.
+2. Stop every backend, worker, administrative script, scheduled job,
+   maintenance container, and old or new blue-green generation with
+   write-capable credentials.
+3. Capture service-manager or orchestrator evidence that every inventoried
+   writer is stopped and that no automatic restart remains enabled during the
+   window.
+4. Start an approved database command/audit telemetry interval that can detect
+   inserts, updates, replacements, deletes, bulk writes, `findAndModify`, and DDL
+   against both database names. A point-in-time process snapshot alone is not
+   sufficient.
+5. Run read-only discovery twice across the approved quiet interval and save
+   both fenced reports. Confirm the selected decision-table state remains safe.
+6. Require both zero database-side write events during the interval and stopped
+   process evidence. Any event, missing telemetry, or restarted process means
+   the fence is unproved; find the writer and restart the entire fence gate.
+7. Compare the initial and fenced exact counts as supplemental evidence. Count
+   equality is not proof of a fence because an in-place update can preserve all
+   counts.
+8. Keep writers stopped until copy validation and smoke tests finish.
+
+Stopping only the Web frontend is insufficient. Do not create the production
+migration backup until this gate is complete.
+
+## 6. Create and identify the final fenced backup
+
+With the proved fence still active, run exactly the backup entry point selected
+in section 2. Other deployments using the generic script run:
+
+```bash
+umask 077
 export MONGODB_DB_NAME=justime-agent
 export MONGODB_TOOLS_CONFIG=/secure/path/mongodb-tools.yml
 python3 scripts/cron/backup_db.py
+export FENCED_BACKUP_TAR_GZ=/absolute/encrypted/path/mongodb_<timestamp>.tar.gz
+unset FENCED_BACKUP_ARCHIVE_GZ
+export FENCED_BACKUP="$FENCED_BACKUP_TAR_GZ"
 ```
 
-The expected `mongodump` argv contains only the config path, explicit database
-name, timestamped output path, and `--quiet`. A nonzero exit or missing config
-is a failed gate. The script removes this run's partial directory/archive and
-does not prune historical valid backups after a failure. If another invocation
-owns the same second-resolution timestamp, or either timestamped artifact
-already exists, the script fails without running `mongodump` or changing the
-existing artifact.
+Homelab runs its documented backup entry point only after the same fence, sets
+`FENCED_BACKUP_ARCHIVE_GZ` to the exact `BACKUP_ARTIFACT` it printed, unsets
+`FENCED_BACKUP_TAR_GZ`, and sets `FENCED_BACKUP` to that archive. Do not run both
+entry points.
 
-Identify the newly produced archive, move or copy it to protected storage that
-is exempt from routine seven-day pruning, then create and verify a digest:
+The generic script's expected `mongodump` argv contains only the config path,
+explicit database name, timestamped output path, and `--quiet`. A nonzero exit or
+missing config is a failed gate. The script removes this run's partial artifacts
+and does not prune historical valid backups after a failure. A timestamp claim
+or output collision fails without overwriting the existing artifact.
+
+The selected variable must name the newly completed post-fence artifact. Never
+assign a pre-fence or tooling-rehearsal archive. Under a volume-encryption
+policy, if routine retention could prune the artifact, make a byte-for-byte copy
+into retention-exempt encrypted storage, verify that its SHA-256 is unchanged,
+and reset the variables to that retained plaintext copy before continuing. Under
+an artifact-encryption policy, keep the selected plaintext working archive on
+encrypted temporary storage and create the separate retained copy as described
+below.
+
+Create and verify a digest from the directory containing the exact artifact:
 
 ```bash
-sha256sum backups/mongodb_<timestamp>.tar.gz \
-  > backups/mongodb_<timestamp>.tar.gz.sha256
-sha256sum --check backups/mongodb_<timestamp>.tar.gz.sha256
-mongodump --version
+test -f "$FENCED_BACKUP"
+FENCED_BACKUP_DIR="$(dirname "$FENCED_BACKUP")"
+FENCED_BACKUP_NAME="$(basename "$FENCED_BACKUP")"
+(
+  cd "$FENCED_BACKUP_DIR"
+  sha256sum "$FENCED_BACKUP_NAME" > "$FENCED_BACKUP_NAME.sha256"
+  chmod 600 "$FENCED_BACKUP_NAME.sha256"
+  sha256sum --check "$FENCED_BACKUP_NAME.sha256"
+)
 ```
 
-On macOS, use `shasum -a 256` to create the digest and
-`shasum -a 256 -c` to verify it. Record archive size, digest, tool version,
-source database, command exit status, and completion time.
-
-Before the first production migration, and after a material Database Tools
-version change, perform a restore rehearsal into an isolated disposable
-database. Extract the tar archive in protected temporary storage; the extracted
-directory contains the `justime-agent/` dump directory. Restore that directory
-with the protected config and namespace remapping:
+On macOS, use `shasum -a 256` and `shasum -a 256 -c` in the same subshell.
+Verify owner-only modes. Linux operators expect directory `700`, archive `600`,
+and digest `600`:
 
 ```bash
+stat -c '%a %n' \
+  "$FENCED_BACKUP_DIR" "$FENCED_BACKUP" "${FENCED_BACKUP}.sha256"
+```
+
+On macOS:
+
+```bash
+stat -f '%Lp %N' \
+  "$FENCED_BACKUP_DIR" "$FENCED_BACKUP" "${FENCED_BACKUP}.sha256"
+```
+
+Record archive format, exact absolute path, size, SHA-256, tool version, source
+database, command exit status, completion time, modes, encrypted-storage policy
+or volume identifier, and out-of-band key reference. A file mode alone does not
+prove encryption at rest.
+
+If artifact encryption is the approved retention policy, create the encrypted
+retained copy only after recording the plaintext SHA-256 above. Record the
+encrypted artifact's absolute path, encryption policy, retention policy, and
+out-of-band key reference. Keep the plaintext `FENCED_BACKUP` on encrypted
+owner-only temporary storage until both restores complete. Any decrypted
+working copy created for rehearsal or production restore must also be on that
+class of storage, must be mode `0600`, and must match the recorded plaintext
+SHA-256 before use. A digest of the encrypted container alone does not prove
+that the restored plaintext is the fenced artifact.
+
+## 7. Rehearse the exact fenced artifact
+
+Every production database-name migration must rehearse the exact post-fence
+artifact selected above while the fence remains active. Re-run its SHA-256 check
+immediately before rehearsal. Use an approved, unique disposable database name
+and confirm the installed `mongorestore --help` matches the command. If the
+working archive was recreated by decrypting the retained copy, verify its
+plaintext SHA-256 against the original fenced digest before continuing.
+
+For the generic tar archive, extract only on approved encrypted temporary
+storage and remove group/other access after extraction:
+
+```bash
+umask 077
 mkdir -m 700 "$REHEARSAL_DIR"
-tar -xzf "$BACKUP_TAR_GZ" -C "$REHEARSAL_DIR"
+tar -xzf "$FENCED_BACKUP_TAR_GZ" -C "$REHEARSAL_DIR"
+chmod -R go-rwx "$REHEARSAL_DIR"
 mongorestore \
   --config="$MONGODB_TOOLS_CONFIG" \
   --dir="$REHEARSAL_DIR" \
@@ -176,25 +302,25 @@ mongorestore \
   --nsTo='justime-rehearsal.*'
 ```
 
-Use an approved, unique rehearsal database name and confirm these options
-against the installed `mongorestore --help`. Validate the same collection
-metadata, indexes, exact counts, and content checks required below. Remove the
-rehearsal database only under its own approved cleanup step. A dump without a
-verified digest and successful rehearsal is not a completed backup gate.
+For the selected direct archive, use the exact
+`FENCED_BACKUP_ARCHIVE_GZ` instead:
 
-## 5. Fence all writes
+```bash
+mongorestore \
+  --config="$MONGODB_TOOLS_CONFIG" \
+  --archive="$FENCED_BACKUP_ARCHIVE_GZ" \
+  --gzip \
+  --nsFrom='justime-agent.*' \
+  --nsTo='justime-rehearsal.*'
+```
 
-1. Disable user traffic.
-2. Stop every application and job with write-capable credentials.
-3. Confirm no old or new blue-green generation remains write-capable.
-4. Run read-only discovery again and save a fenced report.
-5. Compare initial and fenced exact counts. Any change means a writer remains;
-   find it, restart discovery, and do not copy.
-6. Keep writers stopped until copy validation and smoke tests finish.
+Validate the same collection metadata, indexes, exact counts, and deterministic
+content checks required below. Remove the rehearsal database only under its own
+approved cleanup step, and securely remove the extracted plaintext when no
+longer needed. A dump without a verified digest and successful exact-artifact
+rehearsal is not a completed backup gate.
 
-Stopping only the Web frontend is insufficient.
-
-## 6. Prepare canonical authentication
+## 8. Prepare canonical authentication
 
 For the current database-scoped topology, an administrator authenticates via
 `admin`, creates or verifies `justime_app` in the `justime` authentication
@@ -214,27 +340,34 @@ intentionally uses an `admin`-scoped application identity, keep
 `authSource=admin` and prove that identity has `readWrite` only where required,
 including `justime`.
 
-## 7. Copy the fenced snapshot
+## 9. Copy the exact fenced snapshot
 
-If the approved source is a direct `mongodump --archive --gzip` artifact, use the
-protected config and namespace remapping equivalent to:
+Re-run the exact fenced artifact's SHA-256 check immediately before the
+production restore. A pre-fence or differently digested artifact is forbidden.
+If the working archive was recreated by decrypting the retained copy, keep it
+owner-only on encrypted temporary storage and verify its plaintext SHA-256
+against the original fenced digest; the encrypted container's digest is not a
+substitute.
+If `FENCED_BACKUP_ARCHIVE_GZ` is selected, use:
 
 ```bash
 mongorestore \
   --config="$MONGODB_TOOLS_CONFIG" \
-  --archive="$BACKUP_ARCHIVE" \
+  --archive="$FENCED_BACKUP_ARCHIVE_GZ" \
   --gzip \
   --nsFrom='justime-agent.*' \
   --nsTo='justime.*' \
   --drop
 ```
 
-When the generic cron tar archive is the approved source, use its actual
-directory-dump format instead:
+If `FENCED_BACKUP_TAR_GZ` is selected, use its directory-dump format and
+owner-only encrypted extraction storage:
 
 ```bash
+umask 077
 mkdir -m 700 "$RESTORE_DIR"
-tar -xzf "$BACKUP_TAR_GZ" -C "$RESTORE_DIR"
+tar -xzf "$FENCED_BACKUP_TAR_GZ" -C "$RESTORE_DIR"
+chmod -R go-rwx "$RESTORE_DIR"
 mongorestore \
   --config="$MONGODB_TOOLS_CONFIG" \
   --dir="$RESTORE_DIR" \
@@ -246,8 +379,9 @@ mongorestore \
 
 Confirm the exact command against the installed `mongorestore --help` and
 record it in the change ticket before execution. The protected extraction
-directory must be removed after successful validation or retained under the
-same restricted access as the migration evidence.
+directory must be securely removed after successful validation or retained on
+the same encrypted-at-rest storage with the same owner-only access as the
+migration evidence.
 
 `--drop` is forbidden unless the fenced discovery report proves canonical has
 zero documents and the operator names `justime` as the exact target. Never use
@@ -255,7 +389,7 @@ it against a nonempty canonical database. Copy every application collection,
 view, option, and index; do not copy MongoDB user metadata, transform IDs,
 deduplicate, or merge collections.
 
-## 8. Validate before startup
+## 10. Validate before startup
 
 Re-run read-only discovery and compare source and target. All gates must pass:
 
@@ -274,7 +408,7 @@ Sampling alone is not acceptance. Any mismatch keeps writers stopped. Correct
 the copy procedure or restore again from the fenced backup; do not start the
 application to repair indexes or obscure evidence.
 
-## 9. Single-writer cutover and smoke
+## 11. Single-writer cutover and smoke
 
 Save the rollback environment securely, then configure every process in the
 one selected generation:
@@ -301,7 +435,7 @@ portion after verifying its cleanup behavior. It does not replace database
 count, index, credential, or write-target validation. Restore user traffic only
 after every gate passes.
 
-## 10. Observation
+## 12. Observation
 
 Observe for at least seven full days and until the approved change window ends:
 
@@ -316,7 +450,7 @@ Observe for at least seven full days and until the approved change window ends:
 
 Observation expiry never authorizes automatic deletion.
 
-## 11. Rollback
+## 13. Rollback
 
 Rollback evaluation begins for target auth failure, metadata/count/index/content
 mismatch, missing critical data, failed smoke, any legacy write, threshold
@@ -350,7 +484,7 @@ metadata, count, index, content, and credential gates before restarting one
 writer. If complete delta evidence is unavailable, remain in maintenance and
 make any data-loss decision explicit.
 
-## 12. Retirement
+## 14. Retirement
 
 Retirement is a separate approved change after observation. It requires:
 
@@ -366,7 +500,7 @@ Retirement is a separate approved change after observation. It requires:
 This migration does not drop `justime-agent`. Do not automate retirement based
 on elapsed time.
 
-## 13. Mixed versions and blue-green deployments
+## 15. Mixed versions and blue-green deployments
 
 - Before migration, every version explicitly writes only `justime-agent`.
 - During fence/copy, no version writes either database.
@@ -376,14 +510,20 @@ on elapsed time.
 - Old versions are allowed only if they honor the explicit selected database.
 - Scheduled jobs, admin scripts, and maintenance containers count as versions.
 
-## 14. Required evidence
+## 16. Required evidence
 
 Attach or link the following to the change record:
 
 - initial, fenced, and post-copy discovery JSON;
 - selected decision-table row and `mutation_allowed=false` proof;
-- backup path, size, SHA-256, tool version, and restore-rehearsal result;
-- writer inventory and fence evidence;
+- exact post-fence archive path and format, size, SHA-256, modes, tool version,
+  and exact-artifact restore-rehearsal result;
+- encrypted-at-rest policy or volume evidence and out-of-band key reference;
+  when artifact encryption is used, include the encrypted retained-copy path
+  and proof that each decrypted working copy matched the original plaintext
+  fenced SHA-256;
+- writer inventory, stopped-process evidence, database-side quiet telemetry, and
+  both fenced discovery reports;
 - source/target collection, option, exact-count, index, and content comparison;
 - `justime_app` authentication database and least-privilege role evidence;
 - exact copy command and target-empty confirmation;

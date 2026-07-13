@@ -2,6 +2,7 @@
 
 import importlib.util
 import os
+import stat
 from datetime import datetime
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
@@ -10,6 +11,10 @@ import pytest
 
 
 SCRIPT_PATH = Path(__file__).parents[2] / "scripts" / "cron" / "backup_db.py"
+
+
+def stat_mode(path: Path) -> int:
+    return stat.S_IMODE(path.stat().st_mode)
 
 
 @pytest.fixture
@@ -154,7 +159,8 @@ def test_success_uses_only_safe_mongodump_arguments_and_compresses(
     def fake_run(command: list[str], **kwargs: object) -> SimpleNamespace:
         observed_commands.append(command)
         output_argument = next(arg for arg in command if arg.startswith("--out="))
-        Path(output_argument.removeprefix("--out=")).mkdir(parents=True)
+        output_path = Path(output_argument.removeprefix("--out="))
+        assert output_path.is_dir()
         return SimpleNamespace(returncode=0, stdout="", stderr="")
 
     monkeypatch.setattr(backup_module.subprocess, "run", fake_run)
@@ -186,6 +192,45 @@ def test_success_uses_only_safe_mongodump_arguments_and_compresses(
     assert Path(f"{output_path}.tar.gz").is_file()
 
 
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission contract")
+def test_backup_artifacts_are_owner_only_and_umask_is_restored(
+    backup_module: ModuleType,
+    secure_config: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("MONGODB_DB_NAME", "justime-agent")
+    monkeypatch.setenv("MONGODB_TOOLS_CONFIG", str(secure_config))
+    backup_module.BACKUP_DIR.mkdir(parents=True, mode=0o777)
+    backup_module.BACKUP_DIR.chmod(0o777)
+    observed_backup_path: list[Path] = []
+
+    def fake_run(command: list[str], **kwargs: object) -> SimpleNamespace:
+        output_argument = next(arg for arg in command if arg.startswith("--out="))
+        output_path = Path(output_argument.removeprefix("--out="))
+        observed_backup_path.append(output_path)
+        assert stat_mode(backup_module.BACKUP_DIR) == 0o700
+        assert stat_mode(output_path) == 0o700
+        dump_file = output_path / "collection.bson"
+        dump_file.write_bytes(b"dump")
+        assert stat_mode(dump_file) == 0o600
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(backup_module.subprocess, "run", fake_run)
+    original_umask = os.umask(0o022)
+    try:
+        assert backup_module.backup_mongodb() is True
+        current_umask = os.umask(0o022)
+        os.umask(current_umask)
+
+        assert current_umask == 0o022
+        assert stat_mode(backup_module.BACKUP_DIR) == 0o700
+        archive_path = Path(f"{observed_backup_path[0]}.tar.gz")
+        assert stat_mode(archive_path) == 0o600
+        assert not list(backup_module.BACKUP_DIR.glob(".*.partial.tar.gz"))
+    finally:
+        os.umask(original_umask)
+
+
 def test_subprocess_failure_removes_only_current_partial_output_and_redacts_logs(
     backup_module: ModuleType,
     secure_config: Path,
@@ -203,10 +248,8 @@ def test_subprocess_failure_removes_only_current_partial_output_and_redacts_logs
     def fake_run(command: list[str], **kwargs: object) -> SimpleNamespace:
         output_argument = next(arg for arg in command if arg.startswith("--out="))
         output_path = Path(output_argument.removeprefix("--out="))
-        output_path.mkdir(parents=True)
-        archive_path = Path(f"{output_path}.tar.gz")
-        archive_path.write_text("partial", encoding="utf-8")
-        partial_paths.extend([output_path, archive_path])
+        assert output_path.is_dir()
+        partial_paths.append(output_path)
         return SimpleNamespace(returncode=9, stdout=secret, stderr=secret)
 
     monkeypatch.setattr(backup_module.subprocess, "run", fake_run)
@@ -291,6 +334,42 @@ def test_existing_timestamp_claim_is_not_removed(
     assert claim_path.read_text(encoding="utf-8") == "owned by another invocation"
 
 
+def test_archive_publication_refuses_late_collision_and_preserves_it(
+    backup_module: ModuleType,
+    secure_config: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("MONGODB_DB_NAME", "justime-agent")
+    monkeypatch.setenv("MONGODB_TOOLS_CONFIG", str(secure_config))
+    observed_archive_path: list[Path] = []
+
+    def fake_run(command: list[str], **kwargs: object) -> SimpleNamespace:
+        output_argument = next(arg for arg in command if arg.startswith("--out="))
+        assert Path(output_argument.removeprefix("--out=")).is_dir()
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    real_make_archive = backup_module.shutil.make_archive
+
+    def colliding_archive(base_name: str, *args: object, **kwargs: object) -> str:
+        created_path = real_make_archive(base_name, *args, **kwargs)
+        partial_archive_path = Path(created_path)
+        timestamp = partial_archive_path.name.removeprefix(".mongodb_").removesuffix(
+            ".partial.tar.gz"
+        )
+        archive_path = backup_module.BACKUP_DIR / f"mongodb_{timestamp}.tar.gz"
+        archive_path.write_bytes(b"created by another process")
+        observed_archive_path.append(archive_path)
+        return created_path
+
+    monkeypatch.setattr(backup_module.subprocess, "run", fake_run)
+    monkeypatch.setattr(backup_module.shutil, "make_archive", colliding_archive)
+
+    assert backup_module.backup_mongodb() is False
+    assert observed_archive_path[0].read_bytes() == b"created by another process"
+    assert not list(backup_module.BACKUP_DIR.glob(".*.partial.tar.gz"))
+    assert not any(path.is_dir() for path in backup_module.BACKUP_DIR.glob("mongodb_*"))
+
+
 def test_exception_message_is_not_logged_and_partial_archive_is_removed(
     backup_module: ModuleType,
     secure_config: Path,
@@ -305,7 +384,7 @@ def test_exception_message_is_not_logged_and_partial_archive_is_removed(
     def fake_run(command: list[str], **kwargs: object) -> SimpleNamespace:
         output_argument = next(arg for arg in command if arg.startswith("--out="))
         output_path = Path(output_argument.removeprefix("--out="))
-        output_path.mkdir(parents=True)
+        assert output_path.is_dir()
         partial_paths.append(output_path)
         return SimpleNamespace(returncode=0, stdout="", stderr="")
 

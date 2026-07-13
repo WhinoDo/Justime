@@ -135,6 +135,8 @@ docker compose down
 # 数据备份与数据库名迁移
 # Homelab 使用 deployment/homelab/scripts/backup-mongodb.sh；其他部署可使用
 # scripts/cron/backup_db.py。每个部署只选择一个入口，并遵循统一运行手册。
+# 生产备份必须在加密静态存储上创建并保持 owner-only 权限；迁移生产副本
+# 必须在所有写入进程停机且停写证据稳定后创建，禁止使用停写前归档。
 # 详见 docs/runbooks/mongodb-database-name-migration.md
 ```
 
