@@ -146,20 +146,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.lock
       
-      # Required GitHub Secrets for CI tests:
-      # - TEST_JWT_SECRET: Test JWT secret key (at least 32 characters)
-      # - TEST_JWT_REFRESH_SECRET: Test JWT refresh secret key (at least 32 characters)
-      # - TEST_JWT_PASSWORD_RESET_SECRET: Test password reset secret key (at least 32 characters)
-      # - TEST_ENCRYPTION_SECRET: Test encryption secret key (at least 32 characters)
-      # - TEST_CSRF_SECRET: Test CSRF secret key (at least 32 characters)
-      # Configure these in: Settings → Secrets and variables → Actions → New repository secret
       - name: Run tests with coverage
         env:
-          JWT_SECRET: ${{ secrets.TEST_JWT_SECRET }}
-          JWT_REFRESH_SECRET: ${{ secrets.TEST_JWT_REFRESH_SECRET }}
-          JWT_PASSWORD_RESET_SECRET: ${{ secrets.TEST_JWT_PASSWORD_RESET_SECRET }}
-          ENCRYPTION_SECRET: ${{ secrets.TEST_ENCRYPTION_SECRET }}
-          CSRF_SECRET: ${{ secrets.TEST_CSRF_SECRET }}
+          # Deterministic CI-only placeholders; never use in production.
+          JWT_SECRET: test-jwt-secret-key-at-least-32-characters-long!
+          JWT_REFRESH_SECRET: test-refresh-secret-key-at-least-32-characters-long!
+          JWT_PASSWORD_RESET_SECRET: test-password-reset-secret-key-at-least-32-characters-long!
+          ENCRYPTION_SECRET: test-encryption-secret-key-at-least-32-characters-long!
+          CSRF_SECRET: test-csrf-secret-key-at-least-32-characters-long!
           DEBUG: "true"
           MONGODB_URI: mongodb://localhost:27017/justime_test
           MONGODB_DB_NAME: justime_test
