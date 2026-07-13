@@ -5,8 +5,27 @@ import threading
 import types
 from pathlib import Path
 
+import pytest
+
 RAG_SERVICE_PATH = (
     Path(__file__).resolve().parents[2] / "app" / "services" / "rag_service.py"
+)
+
+_MISSING = object()
+_FAKE_MODULE_NAMES = (
+    "app",
+    "app.services",
+    "app.core",
+    "app.services.knowledge_paths",
+    "app.core.config",
+    "app.services.notebooklm_service",
+)
+_PARENT_PACKAGE_ATTRIBUTES = (
+    ("app", "services"),
+    ("app", "core"),
+    ("app.services", "knowledge_paths"),
+    ("app.core", "config"),
+    ("app.services", "notebooklm_service"),
 )
 
 
@@ -17,50 +36,151 @@ def load_rag_module(
     user_id="user-1",
     docs_root=Path("/tmp/docs"),
 ):
-    app_module = types.ModuleType("app")
-    app_module.__path__ = []
-    services_module = types.ModuleType("app.services")
-    services_module.__path__ = []
-    core_module = types.ModuleType("app.core")
-    core_module.__path__ = []
+    previous_modules = {
+        name: sys.modules.get(name, _MISSING) for name in _FAKE_MODULE_NAMES
+    }
+    previous_attributes = []
+    for parent_name, attribute_name in _PARENT_PACKAGE_ATTRIBUTES:
+        parent_module = previous_modules[parent_name]
+        if parent_module is not _MISSING:
+            previous_attributes.append(
+                (
+                    parent_module,
+                    attribute_name,
+                    parent_module.__dict__.get(attribute_name, _MISSING),
+                )
+            )
 
-    paths_module = types.ModuleType("app.services.knowledge_paths")
-    paths_module.DOCS_DIR = docs_root
-    paths_module.SUPPORTED_DOC_EXTENSIONS = [".md"]
-    paths_module._ensure_directory = lambda path: path
-    paths_module.get_user_docs_dir = lambda current_user: docs_root / current_user
-    context = threading.local()
-    context.user_id = user_id
-    paths_module.set_current_user_context = lambda value: setattr(
-        context, "user_id", value
+    try:
+        app_module = types.ModuleType("app")
+        app_module.__path__ = []
+        services_module = types.ModuleType("app.services")
+        services_module.__path__ = []
+        core_module = types.ModuleType("app.core")
+        core_module.__path__ = []
+
+        paths_module = types.ModuleType("app.services.knowledge_paths")
+        paths_module.DOCS_DIR = docs_root
+        paths_module.SUPPORTED_DOC_EXTENSIONS = [".md"]
+        paths_module._ensure_directory = lambda path: path
+        paths_module.get_user_docs_dir = lambda current_user: docs_root / current_user
+        context = threading.local()
+        context.user_id = user_id
+        paths_module.set_current_user_context = lambda value: setattr(
+            context, "user_id", value
+        )
+        paths_module.clear_current_user_context = lambda: setattr(
+            context, "user_id", None
+        )
+        paths_module.get_current_user_context = lambda: getattr(
+            context, "user_id", None
+        )
+
+        config_module = types.ModuleType("app.core.config")
+        config_module.settings = types.SimpleNamespace(NOTEBOOKLM_ENABLED=enabled)
+
+        app_module.services = services_module
+        app_module.core = core_module
+        services_module.knowledge_paths = paths_module
+        core_module.config = config_module
+
+        sys.modules["app"] = app_module
+        sys.modules["app.services"] = services_module
+        sys.modules["app.core"] = core_module
+        sys.modules["app.services.knowledge_paths"] = paths_module
+        sys.modules["app.core.config"] = config_module
+
+        notebooklm_module_name = "app.services.notebooklm_service"
+        if provider is None:
+            sys.modules.pop(notebooklm_module_name, None)
+        else:
+            notebooklm_module = types.ModuleType(notebooklm_module_name)
+            notebooklm_module.notebooklm_service = provider
+            services_module.notebooklm_service = notebooklm_module
+            sys.modules[notebooklm_module_name] = notebooklm_module
+
+        module_name = f"rag_service_under_test_{enabled}_{id(provider)}_{user_id}"
+        spec = importlib.util.spec_from_file_location(module_name, RAG_SERVICE_PATH)
+        module = importlib.util.module_from_spec(spec)
+        assert spec and spec.loader
+        spec.loader.exec_module(module)
+        module.test_paths = paths_module
+        return module
+    finally:
+        for parent_module, attribute_name, previous_value in previous_attributes:
+            if previous_value is _MISSING:
+                parent_module.__dict__.pop(attribute_name, None)
+            else:
+                parent_module.__dict__[attribute_name] = previous_value
+
+        for name, previous_module in previous_modules.items():
+            if previous_module is _MISSING:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = previous_module
+
+
+def test_load_rag_module_restores_preexisting_modules_and_attributes(monkeypatch):
+    previous_modules = {
+        name: types.ModuleType(name) for name in _FAKE_MODULE_NAMES
+    }
+    previous_attributes = {}
+    for name, module in previous_modules.items():
+        monkeypatch.setitem(sys.modules, name, module)
+    for index, (parent_name, attribute_name) in enumerate(
+        _PARENT_PACKAGE_ATTRIBUTES
+    ):
+        previous_value = object() if index % 2 else _MISSING
+        if previous_value is not _MISSING:
+            previous_modules[parent_name].__dict__[attribute_name] = previous_value
+        previous_attributes[(parent_name, attribute_name)] = previous_value
+
+    load_rag_module(provider=object())
+
+    for name, previous_module in previous_modules.items():
+        assert sys.modules[name] is previous_module
+    for key, previous_value in previous_attributes.items():
+        parent_name, attribute_name = key
+        if previous_value is _MISSING:
+            assert attribute_name not in previous_modules[parent_name].__dict__
+        else:
+            assert previous_modules[parent_name].__dict__[attribute_name] is previous_value
+
+
+def test_load_rag_module_removes_modules_that_were_absent(monkeypatch):
+    for name in _FAKE_MODULE_NAMES:
+        monkeypatch.delitem(sys.modules, name, raising=False)
+
+    load_rag_module(provider=object())
+
+    for name in _FAKE_MODULE_NAMES:
+        assert name not in sys.modules
+
+
+def test_load_rag_module_restores_state_when_module_execution_raises(
+    monkeypatch, tmp_path
+):
+    previous_modules = {
+        name: types.ModuleType(name) for name in _FAKE_MODULE_NAMES
+    }
+    for name, module in previous_modules.items():
+        monkeypatch.setitem(sys.modules, name, module)
+    for parent_name, attribute_name in _PARENT_PACKAGE_ATTRIBUTES:
+        previous_modules[parent_name].__dict__.pop(attribute_name, None)
+
+    failing_module_path = tmp_path / "failing_rag_service.py"
+    failing_module_path.write_text("raise RuntimeError('forced load failure')\n")
+    monkeypatch.setitem(
+        load_rag_module.__globals__, "RAG_SERVICE_PATH", failing_module_path
     )
-    paths_module.clear_current_user_context = lambda: setattr(context, "user_id", None)
-    paths_module.get_current_user_context = lambda: getattr(context, "user_id", None)
 
-    config_module = types.ModuleType("app.core.config")
-    config_module.settings = types.SimpleNamespace(NOTEBOOKLM_ENABLED=enabled)
+    with pytest.raises(RuntimeError, match="forced load failure"):
+        load_rag_module(provider=object())
 
-    sys.modules["app"] = app_module
-    sys.modules["app.services"] = services_module
-    sys.modules["app.core"] = core_module
-    sys.modules["app.services.knowledge_paths"] = paths_module
-    sys.modules["app.core.config"] = config_module
-
-    notebooklm_module_name = "app.services.notebooklm_service"
-    if provider is None:
-        sys.modules.pop(notebooklm_module_name, None)
-    else:
-        notebooklm_module = types.ModuleType(notebooklm_module_name)
-        notebooklm_module.notebooklm_service = provider
-        sys.modules[notebooklm_module_name] = notebooklm_module
-
-    module_name = f"rag_service_under_test_{enabled}_{id(provider)}_{user_id}"
-    spec = importlib.util.spec_from_file_location(module_name, RAG_SERVICE_PATH)
-    module = importlib.util.module_from_spec(spec)
-    assert spec and spec.loader
-    spec.loader.exec_module(module)
-    module.test_paths = paths_module
-    return module
+    for name, previous_module in previous_modules.items():
+        assert sys.modules[name] is previous_module
+    for parent_name, attribute_name in _PARENT_PACKAGE_ATTRIBUTES:
+        assert attribute_name not in previous_modules[parent_name].__dict__
 
 
 class ReadyProvider:
