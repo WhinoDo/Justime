@@ -1,8 +1,8 @@
 <!--
   Sync Impact Report
   ==================
-  Version change: (none) → 1.0.0
-  Modified principles: N/A (initial ratification)
+  Version change: 1.0.0 → 1.0.1
+  Modified principles: N/A (product branding normalization only)
   Added sections:
     - Core Principles (6 principles)
     - Security & Confidentiality Requirements
@@ -16,7 +16,7 @@
   Follow-up TODOs: none
 -->
 
-# Justime (矩时) Constitution
+# Justime Constitution
 
 ## Core Principles
 
@@ -132,4 +132,4 @@ these principles.
 Violations MUST be resolved before merging. Complexity that violates a
 principle MUST be justified in the plan's Complexity Tracking table.
 
-**Version**: 1.0.0 | **Ratified**: 2026-06-12 | **Last Amended**: 2026-06-12
+**Version**: 1.0.1 | **Ratified**: 2026-06-12 | **Last Amended**: 2026-07-13
