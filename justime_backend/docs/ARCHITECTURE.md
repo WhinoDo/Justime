@@ -30,7 +30,7 @@ feishu-backend/
 │   └── models/                   # 数据模型层
 │       ├── __init__.py
 │       └── feishu.py             # 飞书相关数据模型
-├── requirements.txt              # 依赖包
+├── requirements.lock             # 生产依赖锁
 ├── start.py                     # 启动脚本
 └── README.md                    # 项目说明
 ```

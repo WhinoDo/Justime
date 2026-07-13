@@ -19,7 +19,7 @@ is_listening() {
 start_backend() {
   if [[ ! -x "$BACKEND_PY" ]]; then
     echo "ERROR: backend runtime not found: $BACKEND_PY"
-    echo "Run: cd $BACKEND_DIR && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt"
+    echo "Run: cd $BACKEND_DIR && python3 -m venv .venv && .venv/bin/pip install -r requirements.lock"
     exit 1
   fi
 

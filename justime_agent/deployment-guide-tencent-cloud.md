@@ -118,7 +118,7 @@ openssl rand -hex 32
 cd /opt/justime/justime_backend
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements.lock
 deactivate
 ```
 

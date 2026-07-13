@@ -78,7 +78,7 @@ Justime 以「任务进程」为一等公民，所有能力围绕任务的完整
 cd justime_backend
 python -m venv venv
 source venv/bin/activate   # Windows: venv\Scripts\activate
-pip install -r requirements.txt
+pip install -r requirements.lock
 python start.py
 ```
 *   后端运行地址: `http://127.0.0.1:8080`

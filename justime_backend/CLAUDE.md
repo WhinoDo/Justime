@@ -11,7 +11,7 @@ Run these commands inside the `justime_backend/` directory:
 - **Activate Virtual Environment**:
   - MacOS/Linux: `source .venv/bin/activate`
   - Windows: `.venv\Scripts\activate`
-- **Install Dependencies**: `pip install -r requirements.txt`
+- **Install Dependencies**: `pip install -r requirements.lock`
 - **Start FastAPI Server**: `python start.py` (runs on `http://127.0.0.1:8080` with reload enabled)
 - **Run All Tests**: `pytest tests/ -v --tb=short`
 - **Run Specific Test File**: `pytest tests/test_sse.py -v --tb=short`

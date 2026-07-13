@@ -158,7 +158,7 @@ docker cp justime-mongodb:/data/backup.archive ./backup-$(date +%Y%m%d).archive
    cd justime_backend
    python3 -m venv .venv
    source .venv/bin/activate
-   pip install -r requirements.txt
+   pip install -r requirements.lock
    ```
 
 3. **配置环境变量**
