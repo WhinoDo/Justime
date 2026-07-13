@@ -42,10 +42,14 @@ infrastructure/data/db/*
 !infrastructure/data/db/.gitkeep
 deployment/allinone/data/
 deployment/homelab/data/
+justime_backend/app/data/storage/*
+justime_backend/app/data/documents/*
+!justime_backend/app/data/documents/README.md
 justime_backend/app/data/documents/book-analysis/
 
 # Local runtime logs
 logs/
+justime_backend/nohup.out
 
 # Mobile / native build artifacts
 justime_agent/android/
@@ -70,4 +74,3 @@ architecture_workbench/
 
 # Personal study/interview notes
 personal/
-
