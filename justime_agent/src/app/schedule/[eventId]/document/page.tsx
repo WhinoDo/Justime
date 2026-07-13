@@ -25,7 +25,7 @@ interface EventData {
 }
 
 export default function DocumentPage() {
-    const { eventId } = useParams()
+    const { eventId } = useParams<{ eventId: string }>()
     const { user, isLoading: authLoading } = useAuth()
     const router = useRouter()
 
@@ -61,7 +61,7 @@ export default function DocumentPage() {
                 setEvent(targetEvent)
 
                 // 2. 获取文档内容
-                const docRes = await fetch(API_ENDPOINTS.DOCUMENTS.BY_EVENT(Array.isArray(eventId) ? eventId[0] : eventId))
+                const docRes = await fetch(API_ENDPOINTS.DOCUMENTS.BY_EVENT(eventId))
                 const docData = await docRes.json()
 
                 if (docData.success && docData.data.document) {
@@ -116,7 +116,7 @@ export default function DocumentPage() {
         <JustimePageShell fullHeight blur="lg" opacity={0.35} contentClassName="h-full p-3 md:p-4">
             <JustimeGlassPanel className="flex h-full flex-col overflow-hidden rounded-[32px] bg-muted/40">
                 <DocumentEditor
-                    eventId={eventId as string}
+                    eventId={eventId}
                     initialContent={content}
                     eventName={event?.title || '工作文档'}
                 />

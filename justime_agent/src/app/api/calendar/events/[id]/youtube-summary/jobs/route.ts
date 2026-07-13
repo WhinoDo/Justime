@@ -3,10 +3,11 @@ import { proxyWithAuth } from '@/lib/api/proxy'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   const body = await request.json().catch(() => ({}))
-  return proxyWithAuth(request, `/calendar/events/${params.id}/youtube-summary/jobs`, {
+  return proxyWithAuth(request, `/calendar/events/${id}/youtube-summary/jobs`, {
     method: 'POST',
     body: body || {},
     successMessage: '创建 YouTube 解析任务成功',

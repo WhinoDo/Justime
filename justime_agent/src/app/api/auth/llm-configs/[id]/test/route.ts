@@ -7,9 +7,10 @@ import { proxyWithAuth } from '@/lib/api/proxy'
  */
 export async function POST(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
-    return proxyWithAuth(request, `/auth/llm-configs/${params.id}/test`, {
+    const { id } = await params
+    return proxyWithAuth(request, `/auth/llm-configs/${id}/test`, {
         method: 'POST',
         successMessage: '测试配置成功',
         errorMessage: '测试配置失败',

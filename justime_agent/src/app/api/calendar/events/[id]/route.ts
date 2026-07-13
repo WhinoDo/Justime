@@ -10,16 +10,18 @@ import { proxyToBackend, createErrorResponse } from '@/lib/api/proxy'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  return proxyToBackend(request, `/calendar/events/${params.id}`)
+  const { id } = await params
+  return proxyToBackend(request, `/calendar/events/${id}`)
 }
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const body = await request.json()
     const payload = { ...body }
     delete payload.userId
@@ -33,7 +35,7 @@ export async function PUT(
       }
     }
 
-    return proxyToBackend(request, `/calendar/events/${params.id}`, {
+    return proxyToBackend(request, `/calendar/events/${id}`, {
       method: 'PUT',
       body: payload,
     })
@@ -48,9 +50,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  return proxyToBackend(request, `/calendar/events/${params.id}`, {
+  const { id } = await params
+  return proxyToBackend(request, `/calendar/events/${id}`, {
     method: 'DELETE',
   })
 }

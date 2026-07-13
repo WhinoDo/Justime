@@ -39,7 +39,9 @@ describe('/api/knowledge/[...path] JSON passthrough', () => {
     mockProxyToBackend.mockResolvedValue(structuredResponse)
     const route = await import('../route')
 
-    const response = await route[method](request, { params: { path: [...path] } })
+    const response = await route[method](request, {
+      params: Promise.resolve({ path: [...path] }),
+    })
 
     expect(mockProxyToBackend).toHaveBeenCalledWith(request, endpoint)
     expect(response).toBe(structuredResponse)

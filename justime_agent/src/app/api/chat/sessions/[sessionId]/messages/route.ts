@@ -3,8 +3,8 @@ import { proxyToBackend } from '@/lib/api/proxy';
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: { sessionId: string } }
+    { params }: { params: Promise<{ sessionId: string }> }
 ) {
-    const sessionId = params.sessionId;
+    const { sessionId } = await params;
     return proxyToBackend(request, `/chat/sessions/${sessionId}/messages`);
 }

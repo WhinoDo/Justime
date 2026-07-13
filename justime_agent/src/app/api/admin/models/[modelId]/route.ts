@@ -3,10 +3,11 @@ import { proxyWithAuth } from '@/lib/api/proxy'
 
 export async function PUT(
     request: NextRequest,
-    { params }: { params: { modelId: string } }
+    { params }: { params: Promise<{ modelId: string }> }
 ) {
+    const { modelId } = await params
     const body = await request.json()
-    return proxyWithAuth(request, `/admin/models/${params.modelId}`, {
+    return proxyWithAuth(request, `/admin/models/${modelId}`, {
         method: 'PUT',
         body,
         successMessage: '更新系统模型成功',
@@ -17,9 +18,10 @@ export async function PUT(
 
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { modelId: string } }
+    { params }: { params: Promise<{ modelId: string }> }
 ) {
-    return proxyWithAuth(request, `/admin/models/${params.modelId}`, {
+    const { modelId } = await params
+    return proxyWithAuth(request, `/admin/models/${modelId}`, {
         method: 'DELETE',
         successMessage: '删除系统模型成功',
         errorMessage: '删除系统模型失败',
