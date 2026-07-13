@@ -8,7 +8,7 @@ jest.mock('@/components/ui/JustimeBackground', () => ({
 
 describe('JustimePageShell', () => {
   describe('fullHeight viewport contract', () => {
-    it('applies jushi-app class when fullHeight is true', () => {
+    it('applies justime-app class when fullHeight is true', () => {
       const { container } = render(
         <JustimePageShell fullHeight>
           <p>content</p>
@@ -16,7 +16,7 @@ describe('JustimePageShell', () => {
       )
 
       const outer = container.firstElementChild as HTMLElement
-      expect(outer.className).toContain('jushi-app')
+      expect(outer.className).toContain('justime-app')
       expect(outer.className).not.toContain('h-screen')
     })
 
@@ -42,7 +42,7 @@ describe('JustimePageShell', () => {
 
       const outer = container.firstElementChild as HTMLElement
       expect(outer.className).toContain('min-h-screen')
-      expect(outer.className).not.toContain('jushi-app')
+      expect(outer.className).not.toContain('justime-app')
     })
 
     it('preserves min-h-screen on content wrapper when fullHeight is false', () => {
