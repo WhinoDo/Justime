@@ -51,12 +51,6 @@ const trendData = computed((): TrendPoint[] => {
   return rows
 })
 
-const formatTokens = (value: number): string => {
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`
-  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`
-  return `${value}`
-}
-
 const maxTokens = computed(() => Math.max(...trendData.value.map(d => d.tokens)))
 const maxUsers = computed(() => Math.max(...trendData.value.map(d => Math.max(d.newUsers, d.activeUsers))))
 </script>

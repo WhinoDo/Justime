@@ -4,8 +4,7 @@ import type { AdminModel, AdminApiKey } from '@/types/admin'
 import {
   Plus,
   Trash2,
-  Edit2,
-  Zap
+  Edit2
 } from 'lucide-vue-next'
 
 interface Props {

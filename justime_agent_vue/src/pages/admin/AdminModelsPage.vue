@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useAdminStore } from '@/stores/admin'
 import ModelConfigTable from '@/components/admin/ModelConfigTable.vue'
-import type { AdminModel, ModelFormData, AdminApiKey } from '@/types/admin'
+import type { AdminModel, ModelFormData } from '@/types/admin'
 
 const adminStore = useAdminStore()
 
