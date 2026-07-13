@@ -44,11 +44,11 @@ describe('DashboardPage desktop app-frame layout', () => {
     jest.clearAllMocks()
   })
 
-  it('uses jushi-app full-height shell for authenticated desktop path', () => {
+  it('uses justime-app full-height shell for authenticated desktop path', () => {
     setupDesktopAuthenticated()
     const { container } = render(<DashboardPage />)
 
-    const shell = container.querySelector('.jushi-app')
+    const shell = container.querySelector('.justime-app')
     expect(shell).toBeTruthy()
   })
 
@@ -87,7 +87,7 @@ describe('DashboardPage desktop app-frame layout', () => {
 
     const { container } = render(<DashboardPage />)
 
-    const shell = container.querySelector('.jushi-app')
+    const shell = container.querySelector('.justime-app')
     expect(shell).toBeTruthy()
   })
 })

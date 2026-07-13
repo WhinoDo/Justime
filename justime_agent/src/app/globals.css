@@ -433,7 +433,7 @@
 /* Viewport height contract for desktop / WKWebView */
 @layer utilities {
   /* Locked to the visible app window; no document-level scroll. */
-  .jushi-app {
+  .justime-app {
     height: 100vh;
     height: 100dvh;
     overflow: hidden;
