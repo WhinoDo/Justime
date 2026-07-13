@@ -1,5 +1,11 @@
 import { TaskPlanner, TaskItem } from '../task-planner'
 
+const legacyBrandNames = [
+  ['矩', '时'].join(''),
+  ['聚', '时'].join(''),
+  ['ju', 'shi'].join(''),
+]
+
 describe('TaskPlanner', () => {
   describe('analyzeMessage', () => {
     it('应该检测包含计划关键词的消息', () => {
@@ -28,10 +34,13 @@ describe('TaskPlanner', () => {
   })
 
   describe('generateTaskPrompt', () => {
-    it('应该生成包含用户消息的提示词', () => {
+    it('应该生成包含用户消息和 Justime 品牌的提示词', () => {
       const prompt = TaskPlanner.generateTaskPrompt('帮我规划明天的学习')
       expect(prompt).toContain('帮我规划明天的学习')
-      expect(prompt).toContain('矩时')
+      expect(prompt).toContain('你是「Justime」')
+      legacyBrandNames.forEach((brandName) => {
+        expect(prompt.toLowerCase()).not.toContain(brandName.toLowerCase())
+      })
     })
 
     it('应该包含时间上下文', () => {

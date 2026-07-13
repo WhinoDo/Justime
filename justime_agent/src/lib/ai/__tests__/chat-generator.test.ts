@@ -1,6 +1,11 @@
 import { ChatGenerator } from '../chat-generator'
 
 const originalEnv = process.env
+const legacyBrandNames = [
+  ['矩', '时'].join(''),
+  ['聚', '时'].join(''),
+  ['ju', 'shi'].join(''),
+]
 
 describe('ChatGenerator', () => {
   beforeEach(() => {
@@ -71,6 +76,22 @@ describe('ChatGenerator', () => {
       const result = await generator.generateResponse('明天有什么安排', 5, [], undefined, '当前时间: 2025-01-01 10:00')
 
       expect(result.response).toBeDefined()
+    })
+  })
+
+  describe('system prompt', () => {
+    it('应该使用 Justime 品牌且不包含旧品牌', () => {
+      const generator = new ChatGenerator()
+      const promptBuilder = generator as unknown as {
+        buildEnhancedSystemPrompt: (emotionScore: number, emotionTags: string[]) => string
+      }
+
+      const prompt = promptBuilder.buildEnhancedSystemPrompt(5, ['平静'])
+
+      expect(prompt).toContain('你是「Justime」')
+      legacyBrandNames.forEach((brandName) => {
+        expect(prompt.toLowerCase()).not.toContain(brandName.toLowerCase())
+      })
     })
   })
 })
