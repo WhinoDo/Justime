@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-聚石 (Justime) 飞书集成 CLI 助手小工具
+Justime 飞书集成 CLI 助手小工具
 提供飞书授权自检、日历列表获取、专属日历初始化及存量日程单向导出同步等功能。
 """
 
@@ -82,13 +82,13 @@ async def list_calendars():
 
 
 async def init_calendar():
-    """初始化并为聚石创建专属飞书日历"""
+    """初始化并为 Justime 创建专属飞书日历"""
     is_ok = await check_auth()
     if not is_ok:
         return
         
-    cal_name = "聚石 (Justime) 智能日程表"
-    cal_desc = "用于同步并管理聚石 (Justime) AI 平台中的全部智能日程和会议纪要"
+    cal_name = "Justime 智能日程表"
+    cal_desc = "用于同步并管理 Justime AI 平台中的全部智能日程和会议纪要"
     
     print(f"\n[*] 正在准备在飞书上创建专属日历: 「{cal_name}」...")
     confirm = input("    确认创建吗？(y/N): ").strip().lower()
@@ -215,7 +215,7 @@ def main():
     subparsers.add_parser("list-calendars", help="列出当前飞书账号下的全部日历列表及 ID")
     
     # init-calendar
-    subparsers.add_parser("init-calendar", help="快捷自动在飞书上创建 聚石(Justime) 专属日历")
+    subparsers.add_parser("init-calendar", help="快捷自动在飞书上创建 Justime 专属日历")
     
     # sync-local-to-feishu
     subparsers.add_parser("sync-local-to-feishu", help="一键单向同步导出本地存量 MongoDB 日程至飞书日历并自动转化重组")
