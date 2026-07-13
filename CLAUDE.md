@@ -1,6 +1,6 @@
-# Justime Agent (矩时) - Root CLAUDE.md
+# Justime Agent - Root CLAUDE.md
 
-Welcome to **Justime (矩时)**, an AI-powered personal assistant platform integrating chat, calendar, knowledge base, and book analysis. This repository is structured as a multi-module workspace.
+Welcome to **Justime**, an AI-powered personal assistant platform integrating chat, calendar, knowledge base, and book analysis. This repository is structured as a multi-module workspace.
 
 > [!NOTE]
 > This root file guides global coordination and directory routing. For module-specific commands and code style, please consult the respective child `CLAUDE.md` files:
