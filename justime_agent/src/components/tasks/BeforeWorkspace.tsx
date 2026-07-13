@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { createContext, useContext, useMemo, useRef, useState } from 'react'
 import { BookOpen, CheckCircle2, CircleDot, ExternalLink, ListChecks, Loader2, Sparkles } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { PreparationItem, TaskProcess } from '@/types/taskProcess'
@@ -14,6 +14,33 @@ interface UpdateResult {
 interface BeforeWorkspaceProps {
   task: TaskProcess
   onUpdatePreparationItems: (items: PreparationItem[]) => Promise<UpdateResult>
+  onUpdateMilestoneStatus?: UpdateMilestoneStatus
+}
+
+type MilestoneStatus = TaskProcess['milestones'][number]['status']
+type UpdateMilestoneStatus = (milestoneId: string, status: MilestoneStatus) => Promise<UpdateResult>
+
+const MILESTONE_STATUS_OPTIONS: Array<{ value: MilestoneStatus; label: string }> = [
+  { value: 'pending', label: '待开始' },
+  { value: 'active', label: '进行中' },
+  { value: 'completed', label: '已完成' },
+  { value: 'skipped', label: '已跳过' },
+]
+
+const MilestoneStatusContext = createContext<UpdateMilestoneStatus | null>(null)
+
+export function BeforeWorkspaceMilestoneProvider({
+  children,
+  onUpdateMilestoneStatus,
+}: {
+  children: React.ReactNode
+  onUpdateMilestoneStatus: UpdateMilestoneStatus
+}) {
+  return (
+    <MilestoneStatusContext.Provider value={onUpdateMilestoneStatus}>
+      {children}
+    </MilestoneStatusContext.Provider>
+  )
 }
 
 function getPlanSummary(aiPlan: TaskProcess['ai_plan']) {
@@ -33,9 +60,18 @@ function getSafeMaterialUrl(value?: string | null) {
   }
 }
 
-export function BeforeWorkspace({ task, onUpdatePreparationItems }: BeforeWorkspaceProps) {
+export function BeforeWorkspace({
+  task,
+  onUpdatePreparationItems,
+  onUpdateMilestoneStatus: onUpdateMilestoneStatusProp,
+}: BeforeWorkspaceProps) {
   const [pendingItemId, setPendingItemId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [pendingMilestoneIds, setPendingMilestoneIds] = useState<string[]>([])
+  const [milestoneErrors, setMilestoneErrors] = useState<Record<string, string>>({})
+  const pendingMilestoneIdsRef = useRef(new Set<string>())
+  const contextUpdateMilestoneStatus = useContext(MilestoneStatusContext)
+  const onUpdateMilestoneStatus = onUpdateMilestoneStatusProp || contextUpdateMilestoneStatus
   const planSummary = getPlanSummary(task.ai_plan)
   const materials = task.materials || []
   const sourcePreparationItems = task.preparation_items || []
@@ -63,6 +99,39 @@ export function BeforeWorkspace({ task, onUpdatePreparationItems }: BeforeWorksp
       setError(updateError instanceof Error ? updateError.message : '准备项更新失败，请稍后重试。')
     } finally {
       setPendingItemId(null)
+    }
+  }
+
+  const handleMilestoneStatusChange = async (milestoneId: string, status: MilestoneStatus) => {
+    const milestone = task.milestones.find((item) => item.id === milestoneId)
+    if (!onUpdateMilestoneStatus || !milestone || milestone.status === status || pendingMilestoneIdsRef.current.has(milestoneId)) {
+      return
+    }
+
+    pendingMilestoneIdsRef.current.add(milestoneId)
+    setPendingMilestoneIds((current) => [...current, milestoneId])
+    setMilestoneErrors((current) => {
+      const next = { ...current }
+      delete next[milestoneId]
+      return next
+    })
+
+    try {
+      const result = await onUpdateMilestoneStatus(milestoneId, status)
+      if (!result.success) {
+        setMilestoneErrors((current) => ({
+          ...current,
+          [milestoneId]: result.error || '里程碑更新失败，请稍后重试。',
+        }))
+      }
+    } catch (updateError) {
+      setMilestoneErrors((current) => ({
+        ...current,
+        [milestoneId]: updateError instanceof Error ? updateError.message : '里程碑更新失败，请稍后重试。',
+      }))
+    } finally {
+      pendingMilestoneIdsRef.current.delete(milestoneId)
+      setPendingMilestoneIds((current) => current.filter((id) => id !== milestoneId))
     }
   }
 
@@ -165,18 +234,47 @@ export function BeforeWorkspace({ task, onUpdatePreparationItems }: BeforeWorksp
         <div className="mt-3 space-y-3">
           {milestones.length === 0 ? (
             <p className="text-sm text-white/45">暂无里程碑。</p>
-          ) : milestones.map((milestone) => (
-            <article key={milestone.id} className="border-l border-violet-200/25 pl-3">
-              <div className="flex items-start justify-between gap-3">
-                <h4 className="text-sm font-medium text-white">{milestone.title}</h4>
-                <span className="inline-flex shrink-0 items-center gap-1 text-xs text-violet-100/60">
-                  {milestone.status === 'completed' ? <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> : null}
-                  {milestone.status}
-                </span>
-              </div>
-              {milestone.description ? <p className="mt-1 text-sm leading-5 text-white/50">{milestone.description}</p> : null}
-            </article>
-          ))}
+          ) : milestones.map((milestone) => {
+            const pending = pendingMilestoneIds.includes(milestone.id)
+            const milestoneError = milestoneErrors[milestone.id]
+            const errorId = `milestone-${milestone.id}-error`
+
+            return (
+              <article key={milestone.id} className="border-l border-violet-200/25 pl-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-sm font-medium text-white">{milestone.title}</h4>
+                    {milestone.description ? <p className="mt-1 text-sm leading-5 text-white/50">{milestone.description}</p> : null}
+                    {milestone.completed_at ? (
+                      <time dateTime={milestone.completed_at} className="mt-1 block text-xs text-white/40">
+                        完成于 {new Date(milestone.completed_at).toLocaleString('zh-CN')}
+                      </time>
+                    ) : null}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {pending ? <Loader2 className="h-4 w-4 animate-spin text-violet-200" aria-hidden="true" /> : null}
+                    {milestone.status === 'completed' && !pending ? <CheckCircle2 className="h-4 w-4 text-emerald-200" aria-hidden="true" /> : null}
+                    <select
+                      value={milestone.status}
+                      disabled={pending || !onUpdateMilestoneStatus}
+                      onChange={(event) => handleMilestoneStatusChange(milestone.id, event.target.value as MilestoneStatus)}
+                      aria-label={`${milestone.title}状态`}
+                      aria-describedby={milestoneError ? errorId : undefined}
+                      className="h-8 min-w-24 rounded border border-white/15 bg-black/20 px-2 text-xs text-violet-100 outline-none focus-visible:ring-2 focus-visible:ring-violet-200/70 disabled:cursor-wait disabled:opacity-60"
+                    >
+                      {MILESTONE_STATUS_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value} className="bg-slate-950 text-white">
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                {pending ? <p role="status" className="mt-2 text-xs text-white/45">正在保存里程碑...</p> : null}
+                {milestoneError ? <p id={errorId} role="alert" className="mt-2 text-sm text-rose-200">{milestoneError}</p> : null}
+              </article>
+            )
+          })}
         </div>
       </section>
     </div>

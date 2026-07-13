@@ -46,6 +46,13 @@ describe('API_ENDPOINTS', () => {
     })
   })
 
+  describe('TASK_PROCESS', () => {
+    it('应该生成里程碑状态端点', () => {
+      expect(API_ENDPOINTS.TASK_PROCESS.MILESTONE('task-123', 'milestone-456'))
+        .toBe('/api/task-processes/task-123/milestones/milestone-456')
+    })
+  })
+
   describe('DOCUMENTS', () => {
     it('应该定义正确的文档端点', () => {
       expect(API_ENDPOINTS.DOCUMENTS.BASE).toBe('/api/documents')

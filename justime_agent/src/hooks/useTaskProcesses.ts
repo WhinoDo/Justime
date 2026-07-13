@@ -68,6 +68,11 @@ interface ImmediateTaskQuery {
   pageSize: number
 }
 
+interface TaskRequestContext {
+  taskId: string
+  queue: Promise<void>
+}
+
 async function requestJson<T>(input: RequestInfo, init?: RequestInit): Promise<RequestResult<T>> {
   try {
     const res = await fetch(input, {
@@ -249,20 +254,50 @@ export function useTaskProcessDetail(taskId: string, enabled = true) {
   const [outputs, setOutputs] = useState<KnowledgeOutput[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const taskRequestContextRef = useRef<TaskRequestContext>({
+    taskId,
+    queue: Promise.resolve(),
+  })
+  if (taskRequestContextRef.current.taskId !== taskId) {
+    taskRequestContextRef.current = {
+      taskId,
+      queue: Promise.resolve(),
+    }
+  }
+  const taskRequestContext = taskRequestContextRef.current
+
+  const enqueueTaskRequest = useCallback((
+    request: () => Promise<RequestResult<{ task: TaskProcess }>>,
+  ) => {
+    const queuedRequest = taskRequestContext.queue.then(async () => {
+      const result = await request()
+      if (
+        taskRequestContextRef.current === taskRequestContext
+        && result.success
+        && result.data?.task
+      ) {
+        setTask(result.data.task)
+      }
+      return result
+    })
+
+    taskRequestContext.queue = queuedRequest.then(() => undefined, () => undefined)
+    return queuedRequest
+  }, [taskRequestContext])
 
   const refresh = useCallback(async () => {
-    if (!enabled || !taskId) return
+    if (!enabled || !taskId || taskRequestContextRef.current !== taskRequestContext) return
     setLoading(true)
     setError(null)
     const [taskResult, evidenceResult, outputsResult] = await Promise.all([
-      requestJson<{ task: TaskProcess }>(API_ENDPOINTS.TASK_PROCESS.DETAIL(taskId)),
+      enqueueTaskRequest(() => requestJson<{ task: TaskProcess }>(API_ENDPOINTS.TASK_PROCESS.DETAIL(taskId))),
       requestJson<{ items: Evidence[] }>(API_ENDPOINTS.TASK_PROCESS.EVIDENCE(taskId)),
       requestJson<{ items: KnowledgeOutput[] }>(API_ENDPOINTS.TASK_PROCESS.KNOWLEDGE_OUTPUTS(taskId)),
     ])
 
-    if (taskResult.success && taskResult.data?.task) {
-      setTask(taskResult.data.task)
-    } else {
+    if (taskRequestContextRef.current !== taskRequestContext) return
+
+    if (!taskResult.success || !taskResult.data?.task) {
       setError(taskResult.error || '获取任务详情失败')
     }
 
@@ -275,33 +310,38 @@ export function useTaskProcessDetail(taskId: string, enabled = true) {
     }
 
     setLoading(false)
-  }, [enabled, taskId])
+  }, [enabled, enqueueTaskRequest, taskId, taskRequestContext])
 
   useEffect(() => {
     refresh()
   }, [refresh])
 
-  const updateTask = useCallback(async (payload: TaskProcessUpdatePayload) => {
-    const result = await requestJson<{ task: TaskProcess }>(API_ENDPOINTS.TASK_PROCESS.DETAIL(taskId), {
+  const updateTask = useCallback((payload: TaskProcessUpdatePayload) => enqueueTaskRequest(() => (
+    requestJson<{ task: TaskProcess }>(API_ENDPOINTS.TASK_PROCESS.DETAIL(taskId), {
       method: 'PATCH',
       body: JSON.stringify(payload),
     })
-    if (result.success && result.data?.task) {
-      setTask(result.data.task)
-    }
-    return result
-  }, [taskId])
+  )), [enqueueTaskRequest, taskId])
 
-  const updatePreparationItems = useCallback(async (items: PreparationItem[]) => {
-    const result = await requestJson<{ task: TaskProcess }>(API_ENDPOINTS.TASK_PROCESS.DETAIL(taskId), {
+  const updatePreparationItems = useCallback((items: PreparationItem[]) => enqueueTaskRequest(() => (
+    requestJson<{ task: TaskProcess }>(API_ENDPOINTS.TASK_PROCESS.DETAIL(taskId), {
       method: 'PATCH',
       body: JSON.stringify({ preparation_items: items }),
     })
-    if (result.success && result.data?.task) {
-      setTask(result.data.task)
-    }
-    return result
-  }, [taskId])
+  )), [enqueueTaskRequest, taskId])
+
+  const updateMilestoneStatus = useCallback((
+    milestoneId: string,
+    status: TaskProcess['milestones'][number]['status'],
+  ) => enqueueTaskRequest(() => (
+    requestJson<{ task: TaskProcess }>(
+      API_ENDPOINTS.TASK_PROCESS.MILESTONE(taskId, milestoneId),
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      },
+    )
+  )), [enqueueTaskRequest, taskId])
 
   const createEvidence = useCallback(async (payload: EvidenceCreatePayload) => {
     const result = await requestJson<{ evidence: Evidence }>(API_ENDPOINTS.TASK_PROCESS.EVIDENCE(taskId), {
@@ -384,6 +424,7 @@ export function useTaskProcessDetail(taskId: string, enabled = true) {
     refresh,
     updateTask,
     updatePreparationItems,
+    updateMilestoneStatus,
     createEvidence,
     createTimeLog,
     generateKnowledgeOutput,
