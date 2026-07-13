@@ -5,6 +5,7 @@ import types
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
+from unittest.mock import patch
 
 
 SERVICE_PATH = (
@@ -16,26 +17,8 @@ SERVICE_PATH = (
 
 
 def load_service_module():
-    injected_modules = [
-        "fastapi",
-        "fastapi.concurrency",
-        "bson",
-        "app",
-        "app.core",
-        "app.services",
-        "app.business",
-        "app.models",
-        "app.business.task_process_business",
-        "app.models.task_process",
-        "app.models.evidence",
-        "app.core.config",
-        "app.database",
-        "app.services.document_storage_service",
-    ]
-    missing = object()
-    original_modules = {name: sys.modules.get(name, missing) for name in injected_modules}
-
     fake_fastapi = types.ModuleType("fastapi")
+    fake_fastapi.__path__ = []
 
     class HTTPException(Exception):
         def __init__(self, status_code: int, detail: str):
@@ -44,7 +27,6 @@ def load_service_module():
             self.detail = detail
 
     fake_fastapi.HTTPException = HTTPException
-    sys.modules["fastapi"] = fake_fastapi
 
     fake_fastapi_concurrency = types.ModuleType("fastapi.concurrency")
 
@@ -52,14 +34,11 @@ def load_service_module():
         return func(*args, **kwargs)
 
     fake_fastapi_concurrency.run_in_threadpool = run_in_threadpool
-    sys.modules["fastapi.concurrency"] = fake_fastapi_concurrency
 
     fake_bson = types.ModuleType("bson")
     fake_bson.__path__ = []
     fake_bson.errors = types.ModuleType("bson.errors")
     fake_bson.errors.InvalidId = type("InvalidId", (Exception,), {})
-    sys.modules["bson"] = fake_bson
-    sys.modules["bson.errors"] = fake_bson.errors
 
     class ObjectId(str):
         _counter = 0
@@ -73,45 +52,56 @@ def load_service_module():
             return str.__new__(cls, str(value))
 
     fake_bson.ObjectId = ObjectId
-    sys.modules["bson"] = fake_bson
 
-    sys.modules.setdefault("app", types.ModuleType("app"))
-    sys.modules.setdefault("app.core", types.ModuleType("app.core"))
-    sys.modules.setdefault("app.services", types.ModuleType("app.services"))
-    sys.modules.setdefault("app.business", types.ModuleType("app.business"))
-    sys.modules.setdefault("app.models", types.ModuleType("app.models"))
-    
+    fake_app = types.ModuleType("app")
+    fake_app.__path__ = []
+    fake_core = types.ModuleType("app.core")
+    fake_core.__path__ = []
+    fake_services = types.ModuleType("app.services")
+    fake_services.__path__ = []
+    fake_business_package = types.ModuleType("app.business")
+    fake_business_package.__path__ = []
+    fake_models_package = types.ModuleType("app.models")
+    fake_models_package.__path__ = []
+
     fake_business = types.ModuleType("app.business.task_process_business")
+
     class FakeTaskProcessOut:
         def __init__(self):
             self.id = "123456789012345678901234"
+
     class FakeTaskProcessBusiness:
         async def create_task_process(self, user_id, payload):
             return FakeTaskProcessOut()
+
         async def update_task_process(self, user_id, task_id, payload):
             pass
+
         async def create_evidence(self, user_id, payload):
             pass
+
     fake_business._task_process_business = FakeTaskProcessBusiness()
-    sys.modules["app.business.task_process_business"] = fake_business
 
     fake_models = types.ModuleType("app.models.task_process")
+
     class FakeTaskProcessCreate:
         def __init__(self, **kwargs):
             pass
+
     class FakeTaskProcessUpdate:
         def __init__(self, **kwargs):
             pass
+
     fake_models.TaskProcessCreate = FakeTaskProcessCreate
     fake_models.TaskProcessUpdate = FakeTaskProcessUpdate
-    sys.modules["app.models.task_process"] = fake_models
 
     fake_evidence_models = types.ModuleType("app.models.evidence")
+
     class FakeEvidenceCreate:
         def __init__(self, **kwargs):
             pass
+
     fake_evidence_models.EvidenceCreate = FakeEvidenceCreate
-    sys.modules["app.models.evidence"] = fake_evidence_models
 
     fake_config = types.ModuleType("app.core.config")
     fake_config.settings = types.SimpleNamespace(
@@ -119,26 +109,46 @@ def load_service_module():
         BOOK_ANALYSIS_SOURCE_WAIT_TIMEOUT_SECONDS=180,
         BOOK_ANALYSIS_COMMAND_TIMEOUT_SECONDS=300,
     )
-    sys.modules["app.core.config"] = fake_config
 
     fake_database = types.ModuleType("app.database")
     fake_database.db = types.SimpleNamespace(db={})
-    sys.modules["app.database"] = fake_database
 
     fake_knowledge_paths = types.ModuleType("app.services.knowledge_paths")
     fake_knowledge_paths.DOCS_DIR = Path(tempfile.mkdtemp(prefix="book-analysis-docs-"))
-    sys.modules["app.services.knowledge_paths"] = fake_knowledge_paths
 
     fake_pymongo = types.ModuleType("pymongo")
+    fake_pymongo.__path__ = []
     fake_pymongo.errors = types.ModuleType("pymongo.errors")
     fake_pymongo.errors.PyMongoError = Exception
-    sys.modules["pymongo"] = fake_pymongo
-    sys.modules["pymongo.errors"] = fake_pymongo.errors
 
-    spec = importlib.util.spec_from_file_location("book_analysis_service_under_test", SERVICE_PATH)
-    module = importlib.util.module_from_spec(spec)
-    assert spec and spec.loader
-    spec.loader.exec_module(module)
+    fake_modules = {
+        "fastapi": fake_fastapi,
+        "fastapi.concurrency": fake_fastapi_concurrency,
+        "bson": fake_bson,
+        "bson.errors": fake_bson.errors,
+        "pymongo": fake_pymongo,
+        "pymongo.errors": fake_pymongo.errors,
+        "app": fake_app,
+        "app.core": fake_core,
+        "app.services": fake_services,
+        "app.business": fake_business_package,
+        "app.models": fake_models_package,
+        "app.business.task_process_business": fake_business,
+        "app.models.task_process": fake_models,
+        "app.models.evidence": fake_evidence_models,
+        "app.core.config": fake_config,
+        "app.database": fake_database,
+        "app.services.knowledge_paths": fake_knowledge_paths,
+    }
+
+    with patch.dict(sys.modules, fake_modules):
+        spec = importlib.util.spec_from_file_location(
+            "book_analysis_service_under_test", SERVICE_PATH
+        )
+        module = importlib.util.module_from_spec(spec)
+        assert spec and spec.loader
+        spec.loader.exec_module(module)
+
     return module, HTTPException, fake_knowledge_paths.DOCS_DIR
 
 

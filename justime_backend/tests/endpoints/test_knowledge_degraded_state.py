@@ -2,6 +2,7 @@ import importlib.util
 import sys
 import types
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -121,7 +122,7 @@ def install_common_modules(rag, task_service):
     tasks = types.ModuleType("app.services.knowledge_task_service")
     tasks.knowledge_task_service = task_service
 
-    sys.modules.update({
+    return {
         "fastapi": fastapi,
         "fastapi.responses": responses,
         "pydantic": pydantic,
@@ -136,17 +137,17 @@ def install_common_modules(rag, task_service):
         "app.core.config": config,
         "app.services.rag_service": rag_module,
         "app.services.knowledge_task_service": tasks,
-    })
+    }
 
 
 def load_knowledge_module(rag, task_service):
-    install_common_modules(rag, task_service)
-    spec = importlib.util.spec_from_file_location(
-        f"knowledge_endpoint_under_test_{id(rag)}", KNOWLEDGE_ENDPOINT_PATH
-    )
-    module = importlib.util.module_from_spec(spec)
-    assert spec and spec.loader
-    spec.loader.exec_module(module)
+    with patch.dict(sys.modules, install_common_modules(rag, task_service)):
+        spec = importlib.util.spec_from_file_location(
+            f"knowledge_endpoint_under_test_{id(rag)}", KNOWLEDGE_ENDPOINT_PATH
+        )
+        module = importlib.util.module_from_spec(spec)
+        assert spec and spec.loader
+        spec.loader.exec_module(module)
     return module
 
 
@@ -285,7 +286,6 @@ async def test_in_progress_poll_preserves_mobile_lifecycle_status(task_status):
 def test_api_registers_knowledge_router_unconditionally():
     fastapi = types.ModuleType("fastapi")
     fastapi.APIRouter = FakeRouter
-    sys.modules["fastapi"] = fastapi
 
     endpoint_names = [
         "admin", "admin_apikeys", "agent", "auth", "book_analysis", "calendar",
@@ -302,18 +302,89 @@ def test_api_registers_knowledge_router_unconditionally():
     app_api.__path__ = []
     app_api_v1 = types.ModuleType("app.api.v1")
     app_api_v1.__path__ = []
-    sys.modules.update({
+    fake_modules = {
+        "fastapi": fastapi,
         "app": app,
         "app.api": app_api,
         "app.api.v1": app_api_v1,
         "app.api.v1.endpoints": endpoints,
-    })
+    }
 
-    spec = importlib.util.spec_from_file_location("api_under_test", API_PATH)
-    module = importlib.util.module_from_spec(spec)
-    assert spec and spec.loader
-    spec.loader.exec_module(module)
+    with patch.dict(sys.modules, fake_modules):
+        spec = importlib.util.spec_from_file_location("api_under_test", API_PATH)
+        module = importlib.util.module_from_spec(spec)
+        assert spec and spec.loader
+        spec.loader.exec_module(module)
 
     prefixes = [prefix for _, prefix, _ in module.api_router.includes]
     assert "/knowledge" in prefixes
     assert module.knowledge_available is True
+
+
+@pytest.fixture
+def polluters_ran_before_app():
+    from tests.endpoints.test_calendar_api import load_calendar_module
+    from tests.endpoints.test_knowledge_api import load_knowledge_module as load_api_module
+    from tests.services.test_book_analysis_service import load_service_module
+
+    before = dict(sys.modules)
+    load_service_module()
+    load_calendar_module()
+    load_api_module()
+    load_knowledge_module(
+        types.SimpleNamespace(get_availability_state=lambda: state()),
+        FakeTaskService(),
+    )
+
+    assert sys.modules == before
+    return True
+
+
+@pytest.mark.parametrize(
+    "loader_name",
+    [
+        "book-analysis",
+        "calendar",
+        "knowledge-api",
+        "knowledge-degraded",
+    ],
+)
+def test_polluters_restore_modules_when_target_import_raises(loader_name):
+    from tests.endpoints.test_calendar_api import load_calendar_module
+    from tests.endpoints.test_knowledge_api import load_knowledge_module as load_api_module
+    from tests.services.test_book_analysis_service import load_service_module
+
+    loaders = {
+        "book-analysis": load_service_module,
+        "calendar": load_calendar_module,
+        "knowledge-api": load_api_module,
+        "knowledge-degraded": lambda: load_knowledge_module(
+            types.SimpleNamespace(get_availability_state=lambda: state()),
+            FakeTaskService(),
+        ),
+    }
+    before = dict(sys.modules)
+
+    with patch.object(
+        importlib.machinery.SourceFileLoader,
+        "exec_module",
+        side_effect=RuntimeError("forced import failure"),
+    ):
+        with pytest.raises(RuntimeError, match="forced import failure"):
+            loaders[loader_name]()
+
+    assert sys.modules == before
+
+
+def test_polluters_restore_real_backend_imports_and_app_fixture(
+    polluters_ran_before_app, app
+):
+    assert polluters_ran_before_app is True
+
+    from app.core.config import settings
+    from app.database import close_mongo_connection, connect_to_mongo
+
+    assert callable(connect_to_mongo)
+    assert callable(close_mongo_connection)
+    assert hasattr(settings, "CSRF_ENABLED")
+    assert app.title == settings.PROJECT_NAME

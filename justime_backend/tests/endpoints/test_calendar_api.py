@@ -9,6 +9,7 @@ import unittest
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 
 CALENDAR_ENDPOINT_PATH = (
@@ -206,21 +207,25 @@ def load_calendar_module():
         HTTP_404_NOT_FOUND=404,
         HTTP_409_CONFLICT=409,
     )
-    sys.modules["fastapi"] = fake_fastapi
 
     fake_bson = types.ModuleType("bson")
     fake_bson.ObjectId = FakeObjectId
-    sys.modules["bson"] = fake_bson
 
     fake_pymongo = types.ModuleType("pymongo")
     fake_pymongo.ReturnDocument = SimpleNamespace(AFTER="after")
-    sys.modules["pymongo"] = fake_pymongo
 
-    sys.modules.setdefault("app", types.ModuleType("app"))
-    sys.modules.setdefault("app.api", types.ModuleType("app.api"))
-    sys.modules.setdefault("app.models", types.ModuleType("app.models"))
-    sys.modules.setdefault("app.services", types.ModuleType("app.services"))
-    sys.modules.setdefault("app.core", types.ModuleType("app.core"))
+    fake_app = types.ModuleType("app")
+    fake_app.__path__ = []
+    fake_api = types.ModuleType("app.api")
+    fake_api.__path__ = []
+    fake_models_package = types.ModuleType("app.models")
+    fake_models_package.__path__ = []
+    fake_services = types.ModuleType("app.services")
+    fake_services.__path__ = []
+    fake_core = types.ModuleType("app.core")
+    fake_core.__path__ = []
+    fake_business_package = types.ModuleType("app.business")
+    fake_business_package.__path__ = []
 
     fake_config = types.ModuleType("app.core.config")
     fake_config.settings = SimpleNamespace(
@@ -228,26 +233,22 @@ def load_calendar_module():
         FEISHU_APP_ID="",
         FEISHU_CALENDAR_ID="",
     )
-    sys.modules["app.core.config"] = fake_config
-
-    sys.modules.setdefault("app.business", types.ModuleType("app.business"))
 
     fake_feishu_business = types.ModuleType("app.business.feishu_calendar")
     fake_feishu_business.FeishuCalendarBusiness = SimpleNamespace()
-    sys.modules["app.business.feishu_calendar"] = fake_feishu_business
 
     fake_business = types.ModuleType("app.business.task_process_business")
     fake_business._task_process_business = SimpleNamespace(
         handle_calendar_event_status_change=lambda *args, **kwargs: None
     )
-    sys.modules["app.business.task_process_business"] = fake_business
 
     fake_deps = types.ModuleType("app.api.deps")
     fake_deps.parse_object_id = lambda oid, field_name="ID": FakeObjectId(oid)
+
     class FakeCurrentUser:
         pass
+
     fake_deps.CurrentUser = FakeCurrentUser
-    sys.modules["app.api.deps"] = fake_deps
 
     fake_models = types.ModuleType("app.models.calendar")
 
@@ -272,25 +273,44 @@ def load_calendar_module():
     fake_models.CalendarEventCreate = CalendarEventCreate
     fake_models.CalendarEventUpdate = CalendarEventUpdate
     fake_models.YouTubeSummaryJobCreate = YouTubeSummaryJobCreate
-    sys.modules["app.models.calendar"] = fake_models
 
     fake_security = types.ModuleType("app.services.security_service")
     fake_security.SecurityService = SimpleNamespace(get_current_user=lambda: None)
-    sys.modules["app.services.security_service"] = fake_security
 
     fake_youtube = types.ModuleType("app.services.youtube_summary_service")
     fake_youtube.youtube_summary_service = FakeYoutubeSummaryService()
-    sys.modules["app.services.youtube_summary_service"] = fake_youtube
 
     fake_db = types.ModuleType("app.database")
     fake_db_handle = FakeDBHandle()
     fake_db.db = fake_db_handle
-    sys.modules["app.database"] = fake_db
 
-    spec = importlib.util.spec_from_file_location("calendar_endpoint_under_test", CALENDAR_ENDPOINT_PATH)
-    module = importlib.util.module_from_spec(spec)
-    assert spec and spec.loader
-    spec.loader.exec_module(module)
+    fake_modules = {
+        "fastapi": fake_fastapi,
+        "bson": fake_bson,
+        "pymongo": fake_pymongo,
+        "app": fake_app,
+        "app.api": fake_api,
+        "app.models": fake_models_package,
+        "app.services": fake_services,
+        "app.core": fake_core,
+        "app.business": fake_business_package,
+        "app.core.config": fake_config,
+        "app.business.feishu_calendar": fake_feishu_business,
+        "app.business.task_process_business": fake_business,
+        "app.api.deps": fake_deps,
+        "app.models.calendar": fake_models,
+        "app.services.security_service": fake_security,
+        "app.services.youtube_summary_service": fake_youtube,
+        "app.database": fake_db,
+    }
+
+    with patch.dict(sys.modules, fake_modules):
+        spec = importlib.util.spec_from_file_location(
+            "calendar_endpoint_under_test", CALENDAR_ENDPOINT_PATH
+        )
+        module = importlib.util.module_from_spec(spec)
+        assert spec and spec.loader
+        spec.loader.exec_module(module)
 
     return module, fake_db_handle, fake_youtube.youtube_summary_service
 

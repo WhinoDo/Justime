@@ -6,7 +6,6 @@ import sys
 import types
 import unittest
 import tempfile
-import os
 from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
@@ -127,10 +126,7 @@ def load_knowledge_module():
 
     fake_fastapi_responses = types.ModuleType("fastapi.responses")
     fake_fastapi_responses.FileResponse = FileResponse
-    sys.modules["fastapi.responses"] = fake_fastapi_responses
     fake_fastapi.responses = fake_fastapi_responses
-
-    sys.modules["fastapi"] = fake_fastapi
 
     fake_fastapi_concurrency = types.ModuleType("fastapi.concurrency")
 
@@ -138,33 +134,31 @@ def load_knowledge_module():
         return func(*args, **kwargs)
 
     fake_fastapi_concurrency.run_in_threadpool = run_in_threadpool
-    sys.modules["fastapi.concurrency"] = fake_fastapi_concurrency
 
     fake_pydantic = types.ModuleType("pydantic")
-    
+
     class BaseModel:
         def __init__(self, **data):
             for key, value in data.items():
                 setattr(self, key, value)
-        
+
         def model_dump(self):
-            return {k: v for k, v in self.__dict__.items() if not k.startswith('_')}
-    
+            return {k: v for k, v in self.__dict__.items() if not k.startswith("_")}
+
     def Field(*args, **kwargs):
         return None
-    
+
     fake_pydantic.BaseModel = BaseModel
     fake_pydantic.Field = Field
-    sys.modules["pydantic"] = fake_pydantic
 
-    sys.modules.setdefault("app", types.ModuleType("app"))
-    sys.modules["app"].__path__ = []  # Make app a namespace package
-    sys.modules.setdefault("app.services", types.ModuleType("app.services"))
-    sys.modules.setdefault("app.core", types.ModuleType("app.core"))
-    sys.modules.setdefault("app.api", types.ModuleType("app.api"))
-    sys.modules["app.api"].__path__ = []  # Make app.api a namespace package
-    sys.modules.setdefault("app.api.deps", types.ModuleType("app.api.deps"))
-    sys.modules["app.api.deps"].CurrentUser = None
+    fake_app = types.ModuleType("app")
+    fake_app.__path__ = []
+    fake_services = types.ModuleType("app.services")
+    fake_services.__path__ = []
+    fake_core = types.ModuleType("app.core")
+    fake_core.__path__ = []
+    fake_api = types.ModuleType("app.api")
+    fake_api.__path__ = []
 
     temp_docs_dir = Path(tempfile.mkdtemp(prefix="knowledge-test-docs-"))
 
@@ -177,14 +171,14 @@ def load_knowledge_module():
         return user_dir
 
     fake_knowledge_paths.get_user_docs_dir = get_user_docs_dir
-    sys.modules["app.services.knowledge_paths"] = fake_knowledge_paths
 
     fake_deps = types.ModuleType("app.api.deps")
     fake_deps.parse_object_id = lambda oid, field_name="ID": FakeObjectId(oid)
+
     class FakeCurrentUser:
         pass
+
     fake_deps.CurrentUser = FakeCurrentUser
-    sys.modules["app.api.deps"] = fake_deps
 
     fake_config = types.ModuleType("app.core.config")
     fake_config.settings = SimpleNamespace(
@@ -192,30 +186,25 @@ def load_knowledge_module():
         CHUNKED_UPLOAD_THRESHOLD=10 * 1024 * 1024,
         CHUNK_SIZE=1024 * 1024,
     )
-    sys.modules["app.core.config"] = fake_config
 
     fake_validators = types.ModuleType("app.core.validators")
     fake_validators.InputValidator = FakeValidator
-    sys.modules["app.core.validators"] = fake_validators
 
     fake_security = types.ModuleType("app.services.security_service")
     fake_security.SecurityService = SimpleNamespace(get_current_user=lambda: None)
-    sys.modules["app.services.security_service"] = fake_security
 
     fake_rag = types.ModuleType("app.services.rag_service")
     fake_rag.rag_service = SimpleNamespace()
-    sys.modules["app.services.rag_service"] = fake_rag
 
     fake_task_service = types.ModuleType("app.services.knowledge_task_service")
     fake_task_service.knowledge_task_service = FakeKnowledgeTaskService()
-    sys.modules["app.services.knowledge_task_service"] = fake_task_service
 
     fake_upload_service = types.ModuleType("app.services.upload_service")
-    
+
     class FakeChunkedUploadManager:
         def __init__(self):
             self._uploads = {}
-        
+
         async def init_upload(self, upload_id, filename, total_size, chunk_size, user_id):
             total_chunks = (total_size + chunk_size - 1) // chunk_size
             self._uploads[upload_id] = {
@@ -229,7 +218,7 @@ def load_knowledge_module():
                 "status": "pending",
             }
             return self._uploads[upload_id]
-        
+
         async def upload_chunk(self, upload_id, chunk_index, chunk_data):
             if upload_id not in self._uploads:
                 raise HTTPException(status_code=404, detail="Upload session not found")
@@ -244,7 +233,7 @@ def load_knowledge_module():
                 "total_chunks": upload_info["total_chunks"],
                 "progress": progress,
             }
-        
+
         async def complete_upload(self, upload_id, target_dir):
             if upload_id not in self._uploads:
                 raise HTTPException(status_code=404, detail="Upload session not found")
@@ -257,26 +246,47 @@ def load_knowledge_module():
                 "size": upload_info["total_size"],
                 "path": str(target_path),
             }
-        
+
         async def get_upload_status(self, upload_id):
             return self._uploads.get(upload_id)
-        
+
         async def cancel_upload(self, upload_id):
             if upload_id in self._uploads:
                 del self._uploads[upload_id]
             return True
-    
+
     def generate_upload_id(user_id, filename):
         return f"upload-{user_id}-{filename}"
-    
+
     fake_upload_service.chunked_upload_manager = FakeChunkedUploadManager()
     fake_upload_service.generate_upload_id = generate_upload_id
-    sys.modules["app.services.upload_service"] = fake_upload_service
 
-    spec = importlib.util.spec_from_file_location("knowledge_endpoint_under_test", KNOWLEDGE_ENDPOINT_PATH)
-    module = importlib.util.module_from_spec(spec)
-    assert spec and spec.loader
-    spec.loader.exec_module(module)
+    fake_modules = {
+        "fastapi": fake_fastapi,
+        "fastapi.responses": fake_fastapi_responses,
+        "fastapi.concurrency": fake_fastapi_concurrency,
+        "pydantic": fake_pydantic,
+        "app": fake_app,
+        "app.services": fake_services,
+        "app.core": fake_core,
+        "app.api": fake_api,
+        "app.services.knowledge_paths": fake_knowledge_paths,
+        "app.api.deps": fake_deps,
+        "app.core.config": fake_config,
+        "app.core.validators": fake_validators,
+        "app.services.security_service": fake_security,
+        "app.services.rag_service": fake_rag,
+        "app.services.knowledge_task_service": fake_task_service,
+        "app.services.upload_service": fake_upload_service,
+    }
+
+    with patch.dict(sys.modules, fake_modules):
+        spec = importlib.util.spec_from_file_location(
+            "knowledge_endpoint_under_test", KNOWLEDGE_ENDPOINT_PATH
+        )
+        module = importlib.util.module_from_spec(spec)
+        assert spec and spec.loader
+        spec.loader.exec_module(module)
 
     return module, temp_docs_dir, None
 
@@ -453,19 +463,20 @@ class KnowledgeAPITest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(ctx.exception.status_code, 400)
 
-    async def test_rebuild_index_returns_removed_compat_response(self):
+    async def test_rebuild_index_returns_unconfigured_provider_state(self):
         user_id = "user-001"
 
         result = await self.module.rebuild_index(
             current_user={"_id": user_id},
         )
 
-        self.assertTrue(result["success"])
+        self.assertFalse(result["success"])
         self.assertIsNone(result["task_id"])
-        self.assertEqual(result["status"], "removed")
-        self.assertIn("索引功能已移除", result["message"])
+        self.assertEqual(result["status"], "unavailable")
+        self.assertEqual(result["provider_status"], "degraded")
+        self.assertEqual(result["error_code"], "PROVIDER_NOT_CONFIGURED")
 
-    async def test_rebuild_status_returns_removed_compat_response(self):
+    async def test_rebuild_status_returns_not_found_provider_state(self):
         user_id = "user-001"
         task_id = "legacy-task-id"
 
@@ -474,9 +485,11 @@ class KnowledgeAPITest(unittest.IsolatedAsyncioTestCase):
             current_user={"_id": user_id},
         )
 
-        self.assertTrue(result["success"])
+        self.assertFalse(result["success"])
         self.assertEqual(result["task_id"], task_id)
-        self.assertEqual(result["status"], "removed")
+        self.assertEqual(result["status"], "not_found")
+        self.assertEqual(result["provider_status"], "degraded")
+        self.assertEqual(result["error_code"], "PROVIDER_NOT_CONFIGURED")
 
     async def test_chunked_upload_init_creates_session(self):
         user_id = "user-001"
