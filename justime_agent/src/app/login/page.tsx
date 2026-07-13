@@ -50,7 +50,7 @@ function LoginContent() {
 
   return (
     <AuthPageShell
-      title="登录到矩时"
+      title="登录到Justime"
       subtitle="智能对话 · 情绪分析 · 任务规划"
       footer={(
         <div className={cn("mt-4 text-center text-xs", isDesktop ? "text-[#8b7aa8]" : "text-gray-200 drop-shadow")}>

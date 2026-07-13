@@ -80,7 +80,7 @@ function AuthContent() {
 
   return (
     <AuthPageShell
-      title={mode === 'login' ? '登录到矩时' : '加入矩时'}
+      title={mode === 'login' ? '登录到Justime' : '加入Justime'}
       subtitle="智能对话 · 情绪分析 · 任务规划"
       footer={(
         <>
@@ -95,7 +95,7 @@ function AuthContent() {
           </div>
 
           <div className={cn("mt-4 text-center text-xs", isDesktop ? "text-[#8b7aa8]" : "text-gray-200 drop-shadow")}>
-            <p>© 2024 矩时AI助手. 保留所有权利.</p>
+            <p>© 2024 Justime AI 助手. 保留所有权利.</p>
           </div>
         </>
       )}

@@ -154,7 +154,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, redirectTo }: Registe
           创建账户
         </CardTitle>
         <p className={cn("text-center text-xs mt-1", isDesktop ? "text-[#6d6680]" : "text-white/75")}>
-          注册新账户，开始使用矩时AI助手
+          注册新账户，开始使用Justime AI 助手
         </p>
       </CardHeader>
 
