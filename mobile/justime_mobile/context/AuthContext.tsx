@@ -2,14 +2,9 @@ import React, { createContext, useContext, useEffect, useMemo, useState, useRef,
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getConfiguredApiBaseUrl, isManualApiBaseUrlEnabled, getApiBaseUrl } from '@/constants/app-config';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
+import { hydrateAuthStorage, STORAGE_KEYS } from '@/context/auth-storage';
 
 const TOKEN_VALIDATE_INTERVAL = 5 * 60 * 1000;
-
-const STORAGE_KEYS = {
-  token: '@jushi/token',
-  user: '@jushi/user',
-  baseUrl: '@jushi/base_url',
-};
 
 export type AuthUser = {
   id: string;
@@ -112,11 +107,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const hydrate = async () => {
       try {
-        const [savedToken, savedUser, savedBaseUrl] = await Promise.all([
-          AsyncStorage.getItem(STORAGE_KEYS.token),
-          AsyncStorage.getItem(STORAGE_KEYS.user),
-          AsyncStorage.getItem(STORAGE_KEYS.baseUrl),
-        ]);
+        const {
+          token: savedToken,
+          user: savedUser,
+          baseUrl: savedBaseUrl,
+        } = await hydrateAuthStorage();
 
         let currentBaseUrl = DEFAULT_BASE_URL;
         if (MANUAL_API_BASE_URL_ENABLED && savedBaseUrl) {

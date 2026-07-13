@@ -11,7 +11,7 @@ export default function ModalScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]}>
       <View style={styles.content}>
-        <ThemedText type="title">聚时</ThemedText>
+        <ThemedText type="title">Justime</ThemedText>
         <ThemedText type="subtitle" style={styles.subtitle}>你的智能时间管家</ThemedText>
       </View>
     </SafeAreaView>

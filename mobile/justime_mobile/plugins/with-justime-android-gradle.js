@@ -5,7 +5,7 @@ const {
   withAppBuildGradle,
 } = require('@expo/config-plugins');
 
-const PLUGIN_NAME = 'with-jushi-android-gradle';
+const PLUGIN_NAME = 'with-justime-android-gradle';
 const PLUGIN_VERSION = '1.0.0';
 
 function setGradleProperty(modResults, key, value) {
@@ -50,7 +50,7 @@ function insertRepositoryIntoAllProjects(contents, repoUrl) {
   return `${contents.slice(0, repoBlockClose)}${insertLine}${contents.slice(repoBlockClose)}`;
 }
 
-function withJushiAndroidGradle(config, options = {}) {
+function withJustimeAndroidGradle(config, options = {}) {
   const {
     gradleJvmArgs = '-Xmx2048m -XX:MaxMetaspaceSize=512m --add-opens=java.base/java.lang=ALL-UNNAMED',
     gradleParallel = true,
@@ -119,5 +119,4 @@ function withJushiAndroidGradle(config, options = {}) {
   return config;
 }
 
-module.exports = createRunOncePlugin(withJushiAndroidGradle, PLUGIN_NAME, PLUGIN_VERSION);
-
+module.exports = createRunOncePlugin(withJustimeAndroidGradle, PLUGIN_NAME, PLUGIN_VERSION);

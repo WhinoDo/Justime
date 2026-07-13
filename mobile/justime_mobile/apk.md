@@ -1,7 +1,7 @@
 
   1. 进入项目
 
-  cd /Users/zhuyuxuan/Desktop/Code/jushi/mobile/jushi_mobile
+  cd mobile/justime_mobile
 
   2. 设置后端地址（根据你的环境配置）
 
@@ -22,7 +22,7 @@
 
   5. APK 位置
 
-  /Users/zhuyuxuan/Desktop/Code/jushi/mobile/jushi_mobile/android/app/build/outputs/apk/debug/app-debug.apk
+  android/app/build/outputs/apk/debug/app-debug.apk
 
   6. 安装到手机（可选）
 

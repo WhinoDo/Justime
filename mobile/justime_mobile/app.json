@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "聚时",
-    "slug": "jushi_mobile",
+    "name": "Justime",
+    "slug": "justime_mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "jushimobile",
-    "host": "jushi.app",
+    "scheme": "justimemobile",
+    "host": "justime.app",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
@@ -22,7 +22,7 @@
       },
       "edgeToEdgeEnabled": false,
       "predictiveBackGestureEnabled": false,
-      "package": "com.jushi.mobile"
+      "package": "com.anonymous.justime_mobile"
     },
     "web": {
       "output": "static",
@@ -30,7 +30,7 @@
     },
     "plugins": [
       [
-        "./plugins/with-jushi-android-gradle",
+        "./plugins/with-justime-android-gradle",
         {
           "gradleJvmArgs": "-Xmx2048m -XX:MaxMetaspaceSize=512m --add-opens=java.base/java.lang=ALL-UNNAMED",
           "gradleParallel": true,

@@ -1,6 +1,6 @@
-# 聚时移动端 (Jushi Mobile)
+# Justime Mobile
 
-聚时项目的移动端应用，基于 Expo (React Native) 构建，支持 iOS 和 Android 平台。
+Justime 的移动端应用，基于 Expo (React Native) 构建，支持 iOS 和 Android 平台。
 
 ## 功能特性
 
@@ -24,7 +24,7 @@
 ### 1. 安装依赖
 
 ```bash
-cd mobile/jushi_mobile
+cd mobile/justime_mobile
 npm install
 ```
 
@@ -45,7 +45,7 @@ EXPO_PUBLIC_ENV=development
 EXPO_PUBLIC_DEBUG=true
 
 # 生产环境
-EXPO_PUBLIC_API_BASE_URL=https://api.jushi.app
+EXPO_PUBLIC_API_BASE_URL=https://api.justime.app
 EXPO_PUBLIC_ENV=production
 EXPO_PUBLIC_DEBUG=false
 EXPO_PUBLIC_ALLOW_MANUAL_API_BASE_URL=false
@@ -75,7 +75,7 @@ npm run start:all
 ## 项目结构
 
 ```
-mobile/jushi_mobile/
+mobile/justime_mobile/
 ├── app/                    # 页面路由（Expo Router）
 │   ├── (tabs)/            # Tab 导航页面
 │   │   ├── index.tsx      # 聊天页面（主页）
@@ -133,7 +133,7 @@ mobile/jushi_mobile/
 
 ```bash
 # 1. 设置环境变量
-export EXPO_PUBLIC_API_BASE_URL="https://api.jushi.app"
+export EXPO_PUBLIC_API_BASE_URL="https://api.justime.app"
 export EXPO_PUBLIC_ENV="production"
 
 # 2. 生成 Android 原生工程
@@ -156,7 +156,7 @@ cd android
 npx expo prebuild -p ios
 
 # 2. 使用 Xcode 打开项目
-open ios/jushi_mobile.xcworkspace
+open ios/justime_mobile.xcworkspace
 
 # 3. 在 Xcode 中配置签名并打包
 ```
