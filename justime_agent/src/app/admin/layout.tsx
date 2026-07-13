@@ -91,7 +91,7 @@ export default function AdminLayout({
                         {/* Logo */}
                         <div className="h-16 flex items-center px-6 border-b border-violet-200/40">
                             <span className="text-xl font-semibold text-[#171421]">
-                                矩时管理后台
+                                Justime 管理后台
                             </span>
                             <button
                                 className="ml-auto lg:hidden text-[#6d6680] hover:text-[#171421] transition-colors"
@@ -192,7 +192,7 @@ export default function AdminLayout({
                     {/* Logo */}
                     <div className="h-16 flex items-center px-6 border-b border-border">
                         <span className="text-xl font-bold text-foreground drop-shadow-md">
-                            矩时管理后台
+                            Justime 管理后台
                         </span>
                         <button
                             className="ml-auto lg:hidden text-muted-foreground hover:text-foreground transition-colors"

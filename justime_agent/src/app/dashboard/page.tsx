@@ -101,7 +101,7 @@ export default function DashboardPage() {
   const cards = [
     {
       title: "AI 助手对话",
-      description: "与矩时 AI 畅聊，获取即时帮助与情感支持",
+      description: "与 Justime AI 畅聊，获取即时帮助与情感支持",
       icon: MessageSquare,
       href: "/chat",
     },
