@@ -218,7 +218,7 @@ open *.xcworkspace  # 使用 Xcode 打包
 
 ```env
 # 应用配置
-NEXT_PUBLIC_APP_NAME=矩时智能助手
+NEXT_PUBLIC_APP_NAME=Justime 智能助手
 NEXT_PUBLIC_APP_VERSION=1.0.0
 NEXT_PUBLIC_BACKEND_URL=/backend
 
