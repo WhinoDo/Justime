@@ -3,9 +3,10 @@ import { proxyWithAuth } from '@/lib/api/proxy'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string; jobId: string } }
+  { params }: { params: Promise<{ id: string; jobId: string }> }
 ) {
-  return proxyWithAuth(request, `/calendar/events/${params.id}/youtube-summary/jobs/${params.jobId}`, {
+  const { id, jobId } = await params
+  return proxyWithAuth(request, `/calendar/events/${id}/youtube-summary/jobs/${jobId}`, {
     method: 'GET',
     successMessage: '查询 YouTube 解析任务成功',
     errorMessage: '查询 YouTube 解析任务失败',

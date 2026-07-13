@@ -3,10 +3,11 @@ import { proxyWithAuth } from '@/lib/api/proxy'
 
 export async function PUT(
     request: NextRequest,
-    { params }: { params: { keyId: string } }
+    { params }: { params: Promise<{ keyId: string }> }
 ) {
+    const { keyId } = await params
     const body = await request.json()
-    return proxyWithAuth(request, `/admin/apikeys/${params.keyId}`, {
+    return proxyWithAuth(request, `/admin/apikeys/${keyId}`, {
         method: 'PUT',
         body,
         successMessage: '更新 API Key 成功',
@@ -17,9 +18,10 @@ export async function PUT(
 
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { keyId: string } }
+    { params }: { params: Promise<{ keyId: string }> }
 ) {
-    return proxyWithAuth(request, `/admin/apikeys/${params.keyId}`, {
+    const { keyId } = await params
+    return proxyWithAuth(request, `/admin/apikeys/${keyId}`, {
         method: 'DELETE',
         successMessage: '删除 API Key 成功',
         errorMessage: '删除 API Key 失败',

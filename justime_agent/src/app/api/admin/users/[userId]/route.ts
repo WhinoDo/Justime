@@ -3,9 +3,10 @@ import { proxyWithAuth } from '@/lib/api/proxy'
 
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { userId: string } }
+    { params }: { params: Promise<{ userId: string }> }
 ) {
-    return proxyWithAuth(request, `/admin/users/${params.userId}`, {
+    const { userId } = await params
+    return proxyWithAuth(request, `/admin/users/${userId}`, {
         method: 'DELETE',
         successMessage: '删除用户成功',
         errorMessage: '删除用户失败',

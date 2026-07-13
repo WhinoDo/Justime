@@ -33,9 +33,10 @@ function buildAuthHeaders(request: NextRequest): Record<string, string> {
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: { path: string[] } }
+    { params }: { params: Promise<{ path: string[] }> }
 ) {
-    const path = params.path.join('/');
+    const { path: pathSegments } = await params;
+    const path = pathSegments.join('/');
 
     // raw 文件流接口不能经过 JSON 代理，否则二进制内容会损坏。
     if (path === 'raw') {
@@ -84,17 +85,19 @@ export async function GET(
 
 export async function POST(
     request: NextRequest,
-    { params }: { params: { path: string[] } }
+    { params }: { params: Promise<{ path: string[] }> }
 ) {
-    const path = params.path.join('/');
+    const { path: pathSegments } = await params;
+    const path = pathSegments.join('/');
     // 对于文件上传，proxyToBackend 应该能处理 multipart/form-data
     return proxyToBackend(request, `/knowledge/${path}`);
 }
 
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { path: string[] } }
+    { params }: { params: Promise<{ path: string[] }> }
 ) {
-    const path = params.path.join('/');
+    const { path: pathSegments } = await params;
+    const path = pathSegments.join('/');
     return proxyToBackend(request, `/knowledge/${path}`);
 }

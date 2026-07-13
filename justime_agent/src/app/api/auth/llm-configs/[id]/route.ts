@@ -7,10 +7,11 @@ import { proxyWithAuth } from '@/lib/api/proxy'
  */
 export async function PUT(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
     const body = await request.json()
-    return proxyWithAuth(request, `/auth/llm-configs/${params.id}`, {
+    return proxyWithAuth(request, `/auth/llm-configs/${id}`, {
         method: 'PUT',
         body,
         successMessage: '更新配置成功',
@@ -25,9 +26,10 @@ export async function PUT(
  */
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
-    return proxyWithAuth(request, `/auth/llm-configs/${params.id}`, {
+    const { id } = await params
+    return proxyWithAuth(request, `/auth/llm-configs/${id}`, {
         method: 'DELETE',
         successMessage: '删除配置成功',
         errorMessage: '删除配置失败',
