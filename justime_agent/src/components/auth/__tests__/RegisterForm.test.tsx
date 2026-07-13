@@ -27,6 +27,7 @@ describe('RegisterForm', () => {
     render(<RegisterForm />)
 
     expect(screen.getByText('创建账户')).toBeInTheDocument()
+    expect(screen.getByText('注册新账户，开始使用Justime AI 助手')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('请输入邮箱地址')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('请输入密码（至少6个字符）')).toBeInTheDocument()
   })
