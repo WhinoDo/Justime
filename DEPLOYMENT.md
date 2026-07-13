@@ -132,9 +132,12 @@ docker compose up -d
 # 停止服务
 docker compose down
 
-# 数据备份
-docker compose exec mongodb mongodump --archive=/data/backup.archive
-docker cp justime-mongodb:/data/backup.archive ./backup-$(date +%Y%m%d).archive
+# 数据备份与数据库名迁移
+# Homelab 使用 deployment/homelab/scripts/backup-mongodb.sh；其他部署可使用
+# scripts/cron/backup_db.py。每个部署只选择一个入口，并遵循统一运行手册。
+# 生产备份必须在加密静态存储上创建并保持 owner-only 权限；迁移生产副本
+# 必须在所有写入进程停机且停写证据稳定后创建，禁止使用停写前归档。
+# 详见 docs/runbooks/mongodb-database-name-migration.md
 ```
 
 ## 手动部署
@@ -222,7 +225,7 @@ NEXT_PUBLIC_APP_NAME=Justime 智能助手
 NEXT_PUBLIC_APP_VERSION=1.0.0
 NEXT_PUBLIC_BACKEND_URL=/backend
 
-# 数据库 (认证模式)
+# 数据库 (现有部署在受控迁移前必须显式保留 legacy 配置)
 MONGODB_URI=mongodb://justime_app:<MONGO_APP_PASSWORD>@mongodb:27017/justime-agent?authSource=justime-agent
 
 # 安全
@@ -240,7 +243,7 @@ HOST=0.0.0.0
 PORT=8080
 DEBUG=false
 
-# 数据库 (认证模式)
+# 数据库 (现有部署在受控迁移前必须显式保留 legacy 配置)
 MONGODB_URI=mongodb://justime_app:<MONGO_APP_PASSWORD>@mongodb:27017/justime-agent?authSource=justime-agent
 MONGODB_DB_NAME=justime-agent
 REDIS_URL=redis://redis:6379/0
@@ -342,19 +345,22 @@ docker compose exec redis redis-cli info
 
 ### 数据备份
 
-```bash
-# MongoDB 备份 (认证模式)
-docker compose exec mongodb mongodump \
-  --uri="mongodb://justime_app:${MONGO_APP_PASSWORD}@localhost:27017/justime-agent?authSource=justime-agent" \
-  --archive=/data/backup.archive
-docker cp justime-mongodb:/data/backup.archive ./backup.archive
+MongoDB 备份、恢复演练、数据库名发现和迁移统一遵循
+[MongoDB Database Name Migration Runbook](./docs/runbooks/mongodb-database-name-migration.md)。
+禁止把含凭据的 URI、username 或 password 放入 `mongodump` / `mongorestore`
+命令行。
 
-# MongoDB 恢复
-docker cp ./backup.archive justime-mongodb:/data/backup.archive
-docker compose exec mongodb mongorestore \
-  --uri="mongodb://justime_app:${MONGO_APP_PASSWORD}@localhost:27017/justime-agent?authSource=justime-agent" \
-  --archive=/data/backup.archive
-```
+- Homelab 部署使用现有 `deployment/homelab/scripts/backup-mongodb.sh`，并遵循
+  `deployment/homelab/MONGODB_BACKUP.md`。
+- 其他部署可使用通用脚本 `scripts/cron/backup_db.py`。运行前必须显式设置
+  非空 `MONGODB_DB_NAME`，并让 `MONGODB_TOOLS_CONFIG` 指向权限受限、非
+  symlink 的 MongoDB Database Tools config regular file。
+- 同一部署只选择一个受支持的定时备份入口，禁止重复调度两套流程。
+- 受控迁移完成前，现有部署继续显式设置
+  `MONGODB_DB_NAME=justime-agent`；完整迁移验证后才显式切换为
+  `MONGODB_DB_NAME=justime`。不得依赖缺省值、URI path 或连接失败猜测。
+- restore、namespace copy、`--drop`、用户/角色变更和数据库退役都是需审批的
+  运维操作，不由部署或备份脚本自动执行。
 
 ## 常见问题
 
@@ -392,6 +398,7 @@ docker compose exec mongodb mongorestore \
 ## 相关文档
 
 - [部署架构说明](./docs/deployment-overview.md)
+- [MongoDB 数据库名迁移运行手册](./docs/runbooks/mongodb-database-name-migration.md)
 - [手动部署指南](./justime_agent/deployment-guide.md)
 - [移动端部署指南](./docs/mobile-deployment-guide.md)
 - [CI/CD 配置](./docs/ci-cd-setup.md)
