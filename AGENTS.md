@@ -97,7 +97,7 @@ justime/
 │   │   ├── database.py       # MongoDB 连接管理
 │   │   └── main.py           # FastAPI 应用入口
 │   ├── tests/                # Pytest 测试
-│   └── requirements.txt      # Python 依赖
+│   └── requirements.lock     # Python 生产依赖锁
 │
 ├── deployment/homelab/       # Docker Compose 部署
 │   ├── docker-compose.yml
@@ -213,7 +213,7 @@ TaskProcess 是 Justime 的核心数据实体，代表一个用户正在进行�
 cd justime_backend
 python -m venv venv
 source venv/bin/activate    # Windows: venv\Scripts\activate
-pip install -r requirements.txt
+pip install -r requirements.lock
 # 复制并配置 .env (参考 .env.example)
 cp .env.example .env
 python start.py

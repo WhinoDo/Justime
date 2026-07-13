@@ -38,7 +38,7 @@ echo "[*] 正在安装/升级后端依赖库 (pip install)..."
 .venv_docker/bin/pip install --upgrade pip -q
 echo "[*] 正在极速预装 CPU-only 版 PyTorch (以隔绝并削减 >1.7GB 无用 CUDA 驱动，实现秒级依赖同步)..."
 .venv_docker/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu --no-cache-dir -q
-if .venv_docker/bin/pip install -r requirements.txt; then
+if .venv_docker/bin/pip install -r requirements.lock; then
     echo "[✓] 后端 Python 依赖库同步成功！"
 else
     echo "[!] 【错误】后端依赖库安装失败。请检查依赖包网络及版本兼容情况。"

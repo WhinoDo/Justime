@@ -26,7 +26,7 @@ feishu-backend/
 │       ├── __init__.py
 │       ├── feishu_service.py  # 飞书服务
 │       └── auth_service.py    # 认证服务
-├── requirements.txt       # 依赖包
+├── requirements.lock      # 生产依赖锁
 └── README.md             # 项目说明
 ```
 
@@ -35,7 +35,7 @@ feishu-backend/
 ### 1. 安装依赖
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.lock
 ```
 
 ### 2. 配置环境变量
@@ -124,8 +124,8 @@ uvicorn app.main:app --host 0.0.0.0 --port 8080 --workers 4
 FROM python:3.9-slim
 
 WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
+COPY requirements.lock .
+RUN pip install -r requirements.lock
 
 COPY . .
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]

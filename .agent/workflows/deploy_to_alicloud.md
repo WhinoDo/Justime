@@ -96,7 +96,7 @@ python3 -m venv venv
 source venv/bin/activate
 
 # 3. 安装项目运行所需的 Python 依赖包
-pip install -r requirements.txt
+pip install -r requirements.lock
 
 # 4. 使用 PM2 启动后端服务
 # 使用虚拟环境中的 python解释器运行 start.py，并命名进程为 "backend"

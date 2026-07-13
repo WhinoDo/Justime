@@ -33,7 +33,7 @@ Claude Code should target commands to their respective subdirectories. Do not ex
 
 ### 🐍 FastAPI Backend (`justime_backend/`)
 - **Setup Virtual Env**: `python -m venv .venv && source .venv/bin/activate` (run in `justime_backend/`)
-- **Install Dependencies**: `pip install -r requirements.txt` (run in `justime_backend/`)
+- **Install Dependencies**: `pip install -r requirements.lock` (run in `justime_backend/`)
 - **Development Server**: `python start.py` (runs on port 8080)
 - **Run Tests**: `pytest tests/ -v --tb=short`
 
