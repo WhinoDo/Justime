@@ -5,6 +5,15 @@
 **Base SHA**: `0ac47eecfe8859bea0e184f1be05cc81471ac1b8` (origin/dev)
 **Architect Decision**: `apps/macos-native` (Swift/SwiftUI) confirmed as primary desktop container standard (per architect comment on JUS-496, 2026-06-29T09:06:48Z)
 
+## Historical / Superseded Notice
+
+This file is a historical verification snapshot from 2026-06-29 for JUS-496 at Base SHA `0ac47eecfe8859bea0e184f1be05cc81471ac1b8`. It is not a current runbook or a record of verification against the current `dev` branch.
+
+- The names `JushiPageShell` and `JushiPageShell.test.tsx` in the historical body are superseded. The current component is `JustimePageShell`, implemented at `justime_agent/src/components/layout/JustimePageShell.tsx`, and its current test is `justime_agent/src/components/layout/__tests__/JustimePageShell.test.tsx` (from within `justime_agent/`: `src/components/layout/__tests__/JustimePageShell.test.tsx`).
+- The historical selector `.jushi-app` is superseded. The current selector is `.justime-app`, defined in `justime_agent/src/app/globals.css` (from within `justime_agent/`: `src/app/globals.css`).
+- The statement that no macOS native source existed applies only to the report's 2026-06-29 baseline. The current canonical native client is at the repository-root path `apps/macos-native/`.
+- For current verification, inspect and run the current code and tests. Do not copy the historical commands below, treat their old selectors as current, or extrapolate their PASS results or no-native-source conclusion to the current `dev` branch.
+
 ---
 
 ## 1. Verification Commands
