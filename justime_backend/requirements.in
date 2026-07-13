@@ -28,6 +28,7 @@ pymongo>=4.6.0
 motor>=3.3.0
 
 # Authentication
+bcrypt<5
 passlib[bcrypt]>=1.7.4
 PyJWT==2.13.0
 
