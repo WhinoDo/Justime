@@ -1,5 +1,5 @@
 services:
-  # 矩时 (Justime) 究极 All-in-One 单容器服务
+  # Justime 究极 All-in-One 单容器服务
   # 前端 UI (3000)、后端 API (8080)、MongoDB 数据库 (27017) 以及 Redis 缓存 (6379) 全内聚于此容器！
   # 宿主机上仅需启动此一个容器服务，即可随时进行一键整套启动与停止，极其方便！
   justime-app:
