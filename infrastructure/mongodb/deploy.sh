@@ -66,14 +66,14 @@ ssh $REMOTE_HOST "cd /root/justime-mongodb"
 # 尝试多种方式拉取镜像
 echo "⬇️ 尝试拉取镜像..."
 ssh $REMOTE_HOST "
-if docker pull mongo:latest; then
+if docker pull mongo:7.0; then
     echo '✅ 官方源拉取成功'
-elif docker pull m.daocloud.io/docker.io/library/mongo:latest; then
+elif docker pull m.daocloud.io/docker.io/library/mongo:7.0; then
     echo '✅ DaoCloud 代理拉取成功'
-    docker tag m.daocloud.io/docker.io/library/mongo:latest mongo:latest
-elif docker pull docker.1panel.live/library/mongo:latest; then
+    docker tag m.daocloud.io/docker.io/library/mongo:7.0 mongo:7.0
+elif docker pull docker.1panel.live/library/mongo:7.0; then
     echo '✅ 1Panel 代理拉取成功'
-    docker tag docker.1panel.live/library/mongo:latest mongo:latest
+    docker tag docker.1panel.live/library/mongo:7.0 mongo:7.0
 else
     echo '❌ 所有镜像源均尝试失败，请检查服务器网络或稍后再试。'
     exit 1

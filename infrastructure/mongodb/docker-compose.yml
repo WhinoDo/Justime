@@ -1,7 +1,7 @@
 
 services:
   mongodb:
-    image: mongo:latest
+    image: mongo:7.0
     container_name: mongodb
     restart: unless-stopped
     ports:
@@ -10,7 +10,7 @@ services:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
     volumes:
-      - /Users/zhuyx/docker-data/mongodb:/data/db
+      - mongodb_data:/data/db
     shm_size: 256m
     init: true
     deploy:
@@ -26,3 +26,6 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+volumes:
+  mongodb_data:
