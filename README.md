@@ -1,4 +1,4 @@
-# Justime (矩时)
+# Justime
 
 [![Task Process OS](https://img.shields.io/badge/Concept-Task%20Process%20OS-blueviolet)](https://github.com)
 [![AI Powered](https://img.shields.io/badge/AI-DeepSeek%20%7C%20OpenAI-brightgreen)](https://github.com)
@@ -9,7 +9,7 @@
 >
 > *AI Task Process OS for Personal Knowledge Work*
 
-**Justime (矩时)** 是一个 AI 驱动的个人任务进程管理器。它以任务为中心，持续追踪任务的 Before / During / After 三阶段状态，借助 AI Agent 协助任务推进，并在任务完成后将过程成果自动转化为结构化 Markdown 知识库——最终形成从「任务创建」到「知识沉淀」的完整闭环。
+**Justime** 是一个 AI 驱动的个人任务进程管理器。它以任务为中心，持续追踪任务的 Before / During / After 三阶段状态，借助 AI Agent 协助任务推进，并在任务完成后将过程成果自动转化为结构化 Markdown 知识库——最终形成从「任务创建」到「知识沉淀」的完整闭环。
 
 ---
 
@@ -23,7 +23,7 @@ justime/
 ├── infrastructure/         # 基础设施配置 (MongoDB, Redis 优化配置)
 ├── apps/macos-native/      # 主 macOS 原生壳 (SwiftUI/AppKit + WKWebView)
 ├── apps/desktop/           # Electron 31 生产 fallback
-├── mobile/jushi_mobile/    # 活跃移动客户端 (Expo)
+├── mobile/justime_mobile/  # 活跃移动客户端 (Expo / React Native)
 ├── scripts/                # 自动化运维工具箱 (健康检查、备份、定时优化)
 └── docs/                   # 统一的项目文档库 (产品愿景、架构设计、开发计划)
 ```
