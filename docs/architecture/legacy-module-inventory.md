@@ -1,10 +1,10 @@
 # ADR: Legacy Module Inventory — Compatibility / Deprecation Decisions
 
-> **Date:** 2026-07-12
+> **Date:** 2026-07-13
 > **Status:** Proposed
 > **Decision Makers:** 文档与配置管家 (agent 4d97c6a7)
-> **Scope:** Read-only scan; no code changes
-> **Base SHA:** 4bd7d628b529bb342c8bbe3cf2a43464093f1190 (origin/dev)
+> **Scope:** Repository inventory and lifecycle/security ownership decisions; no application or scanner changes
+> **Base SHA:** 5410ddc4452c2f690cdaabd860d626bb879baacd (origin/dev)
 
 ---
 
@@ -20,7 +20,7 @@ This ADR inventories six legacy module groups — **Study**, **Task Timing**, **
 | Book Analysis | Partially integrated with TaskProcess; active, user-visible mobile workflow plus historical Web UI formerly stored in the removed `jushi_agent/` tree | **保留并迁移** to TaskProcess reading while preserving mobile parity | High | NEW ISSUE: Complete BookAnalysis integration |
 | Review Schedule | Read-only on `review_schedules` collection; no write path found | **废弃待清理** | Low | NEW ISSUE: Remove review_schedules read path |
 | `jushi_agent/` root directory | Removed from `dev` by JUS-516; it previously held 3 legacy source files with pre-rename branding | **已删除**; non-canonical and non-runnable; page parity is not a removal blocker | Low | JUS-516 / JUS-517 |
-| `justime_agent_vue` | Vue 3/Vite auth, dashboard, and admin application; recent source activity; current production build fails; repository CI/deployment integration not found | **保留并隔离** until parity and usage/deployment evidence are established | Medium | NEW ISSUE: Inventory/decommission legacy Vue deployment |
+| `justime_agent_vue` | Preserved legacy/non-primary Vue application; current production build fails; no repository-managed release path found; repository-wide Trivy reports one blocking High finding | **保留并逻辑隔离** while the frontend/dependency-security maintenance lane owns compatibility and remediation; keep it in repository-wide scanning | High | NEW ISSUE: Repair Vue `form-data`; inventory deployment before decommissioning |
 | `apps/desktop` (Electron) | Active production fallback | **保留** | Low | — |
 | `apps/macos-native` (SwiftUI) | Phase 1 merged; Phase 2 pending | **保留** | Low | — |
 | `mobile/jushi_mobile` | Active development; full Expo app; primary mobile codebase | **保留并迁移** to justime_mobile | Medium | NEW ISSUE: Migrate jushi_mobile → justime_mobile |
@@ -30,7 +30,7 @@ This ADR inventories six legacy module groups — **Study**, **Task Timing**, **
 
 ## 2. Methodology
 
-Read-only scans executed on a fresh checkout from `origin/dev` at SHA `4bd7d628b529bb342c8bbe3cf2a43464093f1190`:
+Read-only scans executed on fresh checkouts from `origin/dev`. The inventory was refreshed for the Vue ownership decision at SHA `5410ddc4452c2f690cdaabd860d626bb879baacd`:
 
 ```bash
 # Backend module scan
@@ -64,6 +64,12 @@ rg -n "book-analysis|bookAnalysisService|BOOK_ANALYSIS" mobile/jushi_mobile
 find justime_agent_vue/src -type f | sort
 rg -n "API_ENDPOINTS|createRouter|createApp" justime_agent_vue/src
 rg -n "justime_agent_vue" .github deployment infrastructure apps docs
+npm ls form-data --all --package-lock-only --prefix justime_agent_vue
+
+# Repository security-scan scope and exact baseline finding
+rg -n "scan-type|scan-ref|exit-code|severity" .github/workflows/ci.yml
+gh run view 29218520965 --repo WhinoDo/Justime \
+  --job 86719205007 --log-failed
 ```
 
 **Limitations:** This scan is based on repository code-reference, import, route, CI, deployment, and commit-history analysis. It does not include runtime telemetry, external API caller logs, app-distribution data, or infrastructure outside this repository. Where the ADR notes "no callers found in the codebase" or "repository integration not found," external callers, deployments, third-party integrations, and direct URL/bookmark usage may still exist.
@@ -252,22 +258,31 @@ The study endpoint file header explicitly states: *"The old study-specific model
 **CI, deployment, and activity evidence:**
 - Commit `3392781` recently changed Vue package metadata, knowledge endpoint constants, admin components, and degraded-state types. The application therefore has recent source activity and must not be classified as dead solely from its legacy stack.
 - `.github/workflows/ci.yml:59-113` installs, lints, type-checks, tests, and builds `justime_agent`; it does not run a `justime_agent_vue` job.
+- `.github/workflows/ci.yml:174-204` runs Trivy as a filesystem scan with `scan-ref: '.'`, `exit-code: '1'`, and `CRITICAL,HIGH` severity. Unlike the Web build jobs, this security gate covers tracked dependency locks across the checkout, including `justime_agent_vue/package-lock.json`.
 - `.github/workflows/deploy.yml:66-83` builds images from `justime_agent` and `justime_backend` only.
 - `deployment/homelab/docker-compose.yml:48-60` builds the production frontend from `justime_agent`.
-- No `justime_agent_vue` reference was found under `.github`, `deployment`, `infrastructure`, `apps`, or `docs`. This proves only that repository-managed CI/deployment integration was not found; external deployment and runtime usage remain unknown.
+- Outside this inventory, no `justime_agent_vue` build, deployment, or runtime integration reference was found under `.github`, `deployment`, `infrastructure`, `apps`, or `docs`. This proves only that repository-managed integration was not found; external deployment and runtime usage remain unknown.
 
-**Observed status:** A Vue 3/Vite application with concrete auth, dashboard, and admin routes exists and has recent commits, but its current production build fails type checking. It is isolated from the repository's current CI/deployment paths; runtime telemetry and external hosting are unknown.
+**Security finding evidence:** GitHub Actions run [`29218520965`](https://github.com/WhinoDo/Justime/actions/runs/29218520965), Security Scan job `86719205007`, scanned baseline `5410ddc4452c2f690cdaabd860d626bb879baacd`. Trivy attributed exactly one finding to `justime_agent_vue/package-lock.json`: `form-data` `CVE-2026-12143`, severity High, installed version `4.0.5`, with fixed versions `2.5.6`, `3.0.5`, and `4.0.6`. The lockfile resolves `axios@1.16.1 -> form-data@4.0.5`, which is also confirmed by `npm ls form-data --all --package-lock-only`. This Trivy result is the repository security-gate evidence; the separate `npm ci` audit totals are not used to classify this finding.
 
-**Proposed Decision:** **保留并隔离** — Do not delete or silently archive the Vue application yet. Freeze new feature work except compatibility/security maintenance, identify any external deployment and traffic, compare its routed auth/dashboard/admin capabilities with `justime_agent`, and migrate any missing behavior before archival.
+**Observed status:** A Vue 3/Vite application with concrete auth, dashboard, and admin routes exists and has recent commits, but its current production build fails type checking. It has no proven repository-managed release/deployment path and is therefore a **preserved legacy, non-primary surface**, not an established active release surface. Runtime telemetry and external hosting remain unknown. Its tracked lockfile is still inside the repository security boundary.
+
+**Accountable ownership:** While `justime_agent_vue` remains tracked, the **Justime frontend/dependency-security maintenance lane** owns Vue compatibility, lockfile hygiene, vulnerability triage, and remediation. Repository CI/security maintainers own continued enforcement of the whole-tree Trivy gate. Architecture/docs maintainers own this lifecycle decision and its evidence, but do not own package repair. Absence from the primary Web build/deploy jobs does not remove maintenance accountability.
+
+**Decision:** **保留并逻辑隔离 (preserve and logically isolate).** Freeze new feature work except compatibility and security maintenance, identify any external deployment and traffic, compare routed auth/dashboard/admin capabilities with `justime_agent`, and migrate any missing behavior before archival. **Logical lifecycle isolation does not mean security scan exclusion.** The repository-wide Trivy scan remains responsible for every tracked Vue dependency lock until an approved removal or security-responsibility transfer satisfies the gates below.
+
+**Current vulnerability disposition:** `CVE-2026-12143` remains visible and CI-blocking; this ADR grants no ignore, severity downgrade, scanner exclusion, or risk acceptance. A separate implementation issue must update only `justime_agent_vue/package.json` if dependency resolution requires it and `justime_agent_vue/package-lock.json`, then verify that the resolved dependency path uses `form-data >= 4.0.6`, report install and production-build status, and run targeted plus repository-wide Trivy checks. Existing unrelated build failures must be reported accurately and must not be concealed by the dependency repair.
 
 **Removal gates:**
-1. Confirm ownership and all deployed Vue URLs/environments, or document evidence that no deployment exists.
-2. Collect traffic/usage telemetry for the agreed observation period and notify remaining users before shutdown.
-3. Verify `justime_agent` parity for every routed Vue surface and required auth/admin API flow.
-4. Add regression coverage for migrated behavior in the maintained frontend.
-5. Archive `justime_agent_vue` with history, deployment findings, and rollback instructions in a dedicated cleanup issue.
+1. Inventory the accountable owner and every deployed Vue URL/environment, or document independently reviewable evidence that no deployment exists.
+2. Collect traffic/usage telemetry for an approved observation period; migrate and notify any remaining users before shutdown.
+3. Verify `justime_agent` parity for every routed Vue surface and required auth/admin API flow, with regression coverage for migrated behavior.
+4. Define an archive/removal and rollback plan that preserves history, deployment findings, and recovery instructions.
+5. Obtain approval and execute deletion only through a dedicated implementation issue with explicit file scope and verification.
 
-**Risk:** Medium. Immediate deletion could remove an externally deployed admin/auth surface that repository-only analysis cannot see. Indefinite retention without CI permits dependency and API drift; the current type-check failure and `npm ci` audit result (two moderate and two high vulnerabilities) demonstrate that maintenance risk.
+**Future scan-isolation gates:** Scan isolation is stricter than lifecycle isolation. Repository-wide scanning must continue unless either (a) the Vue tree is removed through the approved deletion path above, or (b) it is moved to a separately governed repository/archive with a named owner and its own blocking dependency scanner. Before responsibility can transfer, evidence must show that no Justime release or deployment artifact consumes the moved tree, the destination scanner and owner must be documented, and the transfer must be independently verified. Merely labeling the tree legacy, non-primary, frozen, or logically isolated is insufficient.
+
+**Risk:** High while the fixed High vulnerability remains in the tracked lockfile and blocks the repository security gate. Immediate deletion could also remove an externally deployed admin/auth surface that repository-only analysis cannot see. After remediation, indefinite retention without a Vue build gate still permits compatibility and API drift, so ownership and removal evidence remain required.
 
 ---
 
@@ -335,7 +350,7 @@ The study endpoint file header explicitly states: *"The old study-specific model
 | Book Analysis | Backend service; historical Web page from the removed legacy tree; active `mobile/jushi_mobile` routes, screens, and service | Partially (creates TaskProcess) | Mobile profile/list/detail workflow; historical Web UI was not retained | 保留并迁移; preserve mobile parity |
 | Review Schedule | `scheduler_service.py` (read-only; no write path found; runtime collection contents unknown) | Yes (planned SM-2 under KO) | None observed | 废弃待清理 (verify collection state) |
 | `jushi_agent/` root directory | Removed from `dev`; historically contained home, book-analysis, and auth source fragments | N/A | Historical legacy Web UI only; no runnable surface remains | 已删除; non-canonical and non-runnable; no parity blocker |
-| `justime_agent_vue` | Vue router, auth store, admin store; current build fails; no repository CI/deployment caller found | Functionality overlaps current Web app; parity not yet proven | Home/auth/dashboard/admin routes; external usage unknown | 保留并隔离 pending parity + telemetry |
+| `justime_agent_vue` | Vue router, auth store, admin store; current build fails; no repository-managed release caller found; whole-tree Trivy scans its lockfile | Functionality overlaps current Web app; parity not yet proven | Home/auth/dashboard/admin routes; external usage unknown | 保留并逻辑隔离; frontend/dependency-security lane owns maintenance; keep repository-wide scanning |
 | `apps/desktop` (Electron) | Production fallback | No (complementary) | Desktop app | 保留 |
 | `apps/macos-native` (SwiftUI) | Target platform | No (complementary) | Desktop app | 保留 |
 | `mobile/jushi_mobile` | Active mobile users | Being replaced by justime_mobile (in progress) | Mobile app | 保留并迁移 (with exit criteria) |
@@ -355,7 +370,8 @@ Each proposed action requires a dedicated issue to avoid a single monolithic cle
 | NEW ISSUE | [Migration] Complete BookAnalysis → TaskProcess reading integration while preserving mobile parity | High | Backend service, mobile contract |
 | NEW ISSUE | [Cleanup] Remove orphaned review_schedules read path from scheduler_service | Low | Backend service |
 | JUS-515 / JUS-516 / JUS-517 | [Cleanup] Remove `jushi_agent/` and finalize its historical references | High | Completed code removal plus documentation finalization |
-| NEW ISSUE | [Inventory] Inventory/decommission legacy Vue deployment after parity and telemetry verification | Medium | Vue app, deployment inventory, maintained Web parity |
+| NEW ISSUE | [Security] Repair legacy Vue `form-data` High finding | High | Only `justime_agent_vue/package.json` if needed and `justime_agent_vue/package-lock.json`; verify `form-data >= 4.0.6`, dependency path, install/build status, and targeted/full Trivy |
+| NEW ISSUE | [Inventory] Inventory/decommission legacy Vue deployment after parity and telemetry verification | Medium | Ownership/deployment evidence, maintained Web parity, user migration, archive/rollback plan; no deletion without approved implementation scope |
 | NEW ISSUE | [Migration] Consolidate jushi_mobile → justime_mobile with feature parity exit criteria | High | Mobile codebase |
 
 ---
@@ -423,9 +439,13 @@ Each proposed action requires a dedicated issue to avoid a single monolithic cle
 - `justime_agent_vue/src/stores/auth.ts:22-99` — auth API callers
 - `justime_agent_vue/src/stores/admin.ts:45-285` — admin API callers
 - `.github/workflows/ci.yml:59-113` — current Web CI targets `justime_agent`
+- `.github/workflows/ci.yml:174-204` — blocking Trivy filesystem scan covers `.` for Critical/High library findings
 - `.github/workflows/deploy.yml:66-83` — image builds target `justime_agent` and `justime_backend`
 - `deployment/homelab/docker-compose.yml:48-60` — deployed frontend build context is `justime_agent`
-- `npm ci` — passed; audit reported two moderate and two high vulnerabilities
+- `justime_agent_vue/package-lock.json:1744-1753,2775-2789` — `axios@1.16.1` resolves `form-data@4.0.5`
+- GitHub Actions run `29218520965`, job `86719205007` — Trivy reports `CVE-2026-12143` High for `form-data@4.0.5`, fixed in `4.0.6` on the 4.x line
+- `npm ls form-data --all --package-lock-only` — confirms `axios@1.16.1 -> form-data@4.0.5`
+- `npm ci` — passed; its audit output is separate from the exact Trivy gate evidence above
 - `npm run build` — failed in `vue-tsc` on eight unused-symbol errors
 
 ### 6.4 MongoDB Collections Affected
