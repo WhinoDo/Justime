@@ -5,13 +5,13 @@ on:
     branches: [dev]
     paths:
       - 'apps/desktop/**'
-      - 'mobile/jushi_mobile/**'
+      - 'mobile/justime_mobile/**'
       - '.github/workflows/active-clients.yml'
   pull_request:
     branches: [dev]
     paths:
       - 'apps/desktop/**'
-      - 'mobile/jushi_mobile/**'
+      - 'mobile/justime_mobile/**'
       - '.github/workflows/active-clients.yml'
 
 permissions:
@@ -62,7 +62,7 @@ jobs:
     timeout-minutes: 20
     defaults:
       run:
-        working-directory: mobile/jushi_mobile
+        working-directory: mobile/justime_mobile
 
     steps:
       - name: Checkout code
@@ -73,7 +73,7 @@ jobs:
         with:
           node-version: '20'
           cache: npm
-          cache-dependency-path: mobile/jushi_mobile/package-lock.json
+          cache-dependency-path: mobile/justime_mobile/package-lock.json
 
       - name: Install dependencies
         run: npm ci
