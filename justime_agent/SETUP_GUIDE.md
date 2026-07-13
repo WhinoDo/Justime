@@ -19,7 +19,7 @@ cp .env.example .env.local
 NEXT_PUBLIC_BACKEND_URL=http://127.0.0.1:8080
 
 # 应用配置
-NEXT_PUBLIC_APP_NAME=矩时智能助手
+NEXT_PUBLIC_APP_NAME=Justime 智能助手
 NEXT_PUBLIC_APP_VERSION=1.0.0
 
 # MongoDB 数据库配置
