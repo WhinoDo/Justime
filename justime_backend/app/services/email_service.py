@@ -44,7 +44,7 @@ class EmailService:
         """
         reset_url = f"{self.frontend_url}/auth/reset-password?token={token}"
 
-        subject = "【聚势】密码重置"
+        subject = "【Justime】密码重置"
         html_content = f"""
         <!DOCTYPE html>
         <html>
@@ -62,7 +62,7 @@ class EmailService:
         <body>
             <div class="container">
                 <div class="header">
-                    <h1>聚势 Justime</h1>
+                    <h1>Justime</h1>
                 </div>
                 <div class="content">
                     <p>您好，{user_name}！</p>
@@ -76,7 +76,7 @@ class EmailService:
                     <p>如果您没有请求重置密码，请忽略此邮件。</p>
                     <div class="footer">
                         <p>此邮件由系统自动发送，请勿直接回复。</p>
-                        <p>© 聚势 Justime - 您的智能助手</p>
+                        <p>© Justime - 您的智能助手</p>
                     </div>
                 </div>
             </div>

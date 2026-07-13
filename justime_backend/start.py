@@ -20,7 +20,7 @@ from app.core.config import settings
 
 def main():
     """主启动函数"""
-    logger.info("启动飞书集成后端服务")
+    logger.info("启动 Justime 后端服务")
     logger.info("地址: http://%s:%s", settings.HOST, settings.PORT)
     logger.info("调试模式: %s", settings.DEBUG)
     logger.info("允许的源: %s", settings.ALLOWED_ORIGINS)

@@ -1,6 +1,6 @@
 """
-飞书后端服务主应用
-FastAPI应用入口点
+Justime 后端 API 主应用
+FastAPI 应用入口点
 """
 
 import logging
@@ -28,7 +28,7 @@ def create_app() -> FastAPI:
 
     app = FastAPI(
         title=settings.PROJECT_NAME,
-        description="飞书集成后端服务",
+        description="Justime 后端 API 服务",
         version=settings.VERSION,
         openapi_url=f"{settings.API_V1_STR}/openapi.json"
     )
