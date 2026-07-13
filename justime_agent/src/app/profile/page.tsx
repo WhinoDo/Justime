@@ -391,7 +391,7 @@ export default function ProfilePage() {
                                         <div className="text-xs text-[#6d6680] space-y-2 bg-violet-50/50 p-4 rounded-xl border border-violet-100 leading-relaxed">
                                             <p className="font-semibold text-[#171421]">👉 快速绑定流程：</p>
                                             <ol className="list-decimal pl-4 space-y-1">
-                                                <li>在飞书客户端搜索并添加机器人客户 <b>“矩时日程助手”</b> (由系统管理员创建)；</li>
+                                                <li>在飞书客户端搜索并添加机器人客户 <b>“Justime 日程助手”</b> (由系统管理员创建)；</li>
                                                 <li>给机器人发送任意文字（如 <code>绑定</code>），机器人将回复您的 <b>OpenID</b>；</li>
                                                 <li>将该 OpenID 复制并粘贴到下方输入框，点击绑定即可。</li>
                                             </ol>
@@ -775,7 +775,7 @@ export default function ProfilePage() {
                                     <div className="text-xs text-white/60 space-y-2 bg-white/5 p-4 rounded-xl border border-white/5 leading-relaxed">
                                         <p className="font-semibold text-white/90">👉 快速绑定流程：</p>
                                         <ol className="list-decimal pl-4 space-y-1">
-                                            <li>在飞书客户端搜索并添加机器人客户 <b>“矩时日程助手”</b> (由系统管理员创建)；</li>
+                                            <li>在飞书客户端搜索并添加机器人客户 <b>“Justime 日程助手”</b> (由系统管理员创建)；</li>
                                             <li>给机器人发送任意文字（如 <code>绑定</code>），机器人将回复您的 <b>OpenID</b>；</li>
                                             <li>将该 OpenID 复制并粘贴到下方输入框，点击绑定即可。</li>
                                         </ol>
