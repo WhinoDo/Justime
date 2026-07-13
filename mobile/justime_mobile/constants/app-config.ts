@@ -25,12 +25,12 @@ const getDefaultBaseUrlForEnv = (env: Environment): string => {
       throw new Error(
         '[CONFIG ERROR] Production build requires EXPO_PUBLIC_API_BASE_URL to be set.\n' +
         'Solutions:\n' +
-        '  1. Set environment variable: EXPO_PUBLIC_API_BASE_URL=https://api.jushi.app\n' +
-        '  2. Configure in app.json: extra.apiBaseUrl = "https://api.jushi.app"\n' +
+        '  1. Set environment variable: EXPO_PUBLIC_API_BASE_URL=https://api.justime.app\n' +
+        '  2. Configure in app.json: extra.apiBaseUrl = "https://api.justime.app"\n' +
         '  3. Use EAS Build/Update with proper environment configuration'
       );
     case 'staging':
-      return 'https://staging-api.jushi.app';
+      return 'https://staging-api.justime.app';
     case 'development':
     default:
       return 'http://127.0.0.1:8080';
@@ -109,8 +109,8 @@ export const validateProductionConfig = (): void => {
       throw new Error(
         '[CONFIG ERROR] Production build requires EXPO_PUBLIC_API_BASE_URL to be set.\n' +
         'Solutions:\n' +
-        '  1. Set environment variable: EXPO_PUBLIC_API_BASE_URL=https://api.jushi.app\n' +
-        '  2. Configure in app.json: extra.apiBaseUrl = "https://api.jushi.app"\n' +
+        '  1. Set environment variable: EXPO_PUBLIC_API_BASE_URL=https://api.justime.app\n' +
+        '  2. Configure in app.json: extra.apiBaseUrl = "https://api.justime.app"\n' +
         '  3. Use EAS Update with proper environment configuration'
       );
     }
@@ -125,4 +125,3 @@ export const getApiBaseUrlSafe = (): string => {
   validateProductionConfig();
   return getApiBaseUrl();
 };
-

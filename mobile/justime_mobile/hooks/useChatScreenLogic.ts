@@ -202,7 +202,7 @@ export function useChatScreenLogic() {
   const isLoggedIn = !!token;
 
   const headerTitle = useMemo(() => {
-    if (!user) return '聚时智能助手';
+    if (!user) return 'Justime 智能助手';
     return `你好，${user.displayName || user.email?.split('@')[0]}`;
   }, [user]);
 

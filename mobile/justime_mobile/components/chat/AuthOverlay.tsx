@@ -61,7 +61,7 @@ export default function AuthOverlay({
     <SafeAreaView style={[styles.container, { backgroundColor }]}>
       <View style={styles.authContainer}>
         <ThemedText type="title" style={styles.title}>
-          聚时
+          Justime
         </ThemedText>
         <ThemedText type="subtitle" style={styles.subtitle}>
           你的智能时间管家

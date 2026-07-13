@@ -200,7 +200,7 @@ export interface TestResult {
 export class NetworkSimulator extends EventEmitter {
   private currentCondition: NetworkCondition = NETWORK_PRESETS['wifi-good'];
   private isSimulating = false;
-  private scenarioTimeout: NodeJS.Timeout | null = null;
+  private scenarioTimeout: ReturnType<typeof setTimeout> | null = null;
   private stepIndex = 0;
   private currentScenario: TestScenario | null = null;
 
