@@ -13,10 +13,65 @@ import argparse
 import asyncio
 import json
 import time
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
+from typing import AsyncIterable, AsyncIterator, Optional
 
 import httpx
+
+
+@dataclass(frozen=True)
+class SSERecord:
+    """One parsed SSE event or comment from the response stream."""
+
+    event: Optional[str] = None
+    event_id: Optional[str] = None
+    data: Optional[str] = None
+    comment: Optional[str] = None
+
+
+async def iter_sse_records(lines: AsyncIterable[str]) -> AsyncIterator[SSERecord]:
+    """Parse an async line stream into complete SSE event blocks."""
+    event_type: Optional[str] = None
+    event_id: Optional[str] = None
+    data_lines = []
+
+    async for raw_line in lines:
+        line = raw_line.rstrip("\r\n")
+
+        if not line:
+            if data_lines:
+                yield SSERecord(
+                    event=event_type or "message",
+                    event_id=event_id,
+                    data="\n".join(data_lines),
+                )
+            event_type = None
+            event_id = None
+            data_lines = []
+            continue
+
+        if line.startswith(":"):
+            yield SSERecord(comment=line[1:].lstrip())
+            continue
+
+        field, separator, value = line.partition(":")
+        if separator and value.startswith(" "):
+            value = value[1:]
+
+        if field == "event":
+            event_type = value
+        elif field == "id" and "\x00" not in value:
+            event_id = value
+        elif field == "data":
+            data_lines.append(value)
+
+    if data_lines:
+        yield SSERecord(
+            event=event_type or "message",
+            event_id=event_id,
+            data="\n".join(data_lines),
+        )
 
 
 class JustimeSSEProbe:
@@ -30,6 +85,188 @@ class JustimeSSEProbe:
         self.token_count = 0
         self.last_event_id: Optional[str] = None
         self.events_received = []
+
+    @staticmethod
+    def _stream_headers(
+        token: Optional[str] = None,
+        last_event_id: Optional[str] = None,
+    ) -> dict:
+        headers = {
+            "Accept": "text/event-stream",
+            "Cache-Control": "no-cache",
+        }
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        if last_event_id:
+            headers["Last-Event-ID"] = last_event_id
+        return headers
+
+    @staticmethod
+    def _stream_results() -> dict:
+        return {
+            "tokens_received": 0,
+            "heartbeats_received": 0,
+            "metadata_events": 0,
+            "usage_events": 0,
+            "errors": [],
+            "duration_ms": 0,
+            "last_event_id": None,
+            "session_id": None,
+            "full_content": "",
+        }
+
+    @staticmethod
+    def _decode_record(record: SSERecord, errors: list) -> Optional[dict]:
+        try:
+            payload = json.loads(record.data or "")
+        except json.JSONDecodeError as exc:
+            errors.append(
+                f"JSON parse error for {record.event or 'message'}"
+                f" ({record.event_id or 'no id'}): {exc}"
+            )
+            return None
+
+        if not isinstance(payload, dict):
+            errors.append(
+                f"Unexpected non-object payload for {record.event or 'message'}"
+                f" ({record.event_id or 'no id'})"
+            )
+            return None
+        return payload
+
+    async def _consume_stream(
+        self,
+        lines: AsyncIterable[str],
+        results: dict,
+        *,
+        quiet: bool = False,
+    ) -> None:
+        async for record in iter_sse_records(lines):
+            if record.comment is not None:
+                if "heartbeat" in record.comment:
+                    results["heartbeats_received"] += 1
+                    heartbeat_ts = time.time()
+                    interval = heartbeat_ts - self.last_heartbeat if self.last_heartbeat else 0
+                    self.last_heartbeat = heartbeat_ts
+                    if not quiet:
+                        print(
+                            f"   💓 [Heartbeat] : {record.comment}"
+                            f" (interval: {interval:.1f}s)"
+                        )
+                continue
+
+            payload = self._decode_record(record, results["errors"])
+            if payload is None:
+                if not quiet:
+                    print(
+                        f"   ⚠️  [Parse Error] {record.event or 'message'}"
+                        f" ({record.event_id or 'no id'})"
+                    )
+                continue
+
+            event_type = record.event or "message"
+            if record.event_id:
+                self.last_event_id = record.event_id
+                results["last_event_id"] = record.event_id
+
+            if event_type == "token":
+                results["tokens_received"] += 1
+                self.token_count += 1
+                token_content = payload.get("content", "")
+                results["full_content"] += token_content
+                if not quiet:
+                    print(
+                        f"   📝 [Token #{results['tokens_received']}]"
+                        f" {token_content} ({record.event_id or 'no id'})"
+                    )
+
+            elif event_type == "metadata":
+                results["metadata_events"] += 1
+                results["session_id"] = payload.get("sessionId") or results["session_id"]
+                if not quiet:
+                    print(
+                        f"   📋 [Metadata]"
+                        f" {json.dumps(payload, ensure_ascii=False)[:100]}..."
+                    )
+
+            elif event_type == "usage":
+                results["usage_events"] += 1
+                if not quiet:
+                    print(
+                        "   📊 [Usage]"
+                        f" prompt={payload.get('promptTokens', 0)},"
+                        f" completion={payload.get('completionTokens', 0)}"
+                    )
+
+            elif event_type == "done":
+                if not quiet:
+                    print(f"   ✅ [Done] Stream completed ({record.event_id or 'no id'})")
+
+            elif event_type == "error":
+                error_msg = payload.get("message", "Unknown error")
+                results["errors"].append(error_msg)
+                if not quiet:
+                    print(f"   ❌ [Error] {error_msg}")
+
+            elif event_type == "stream_completed":
+                if not quiet:
+                    print(f"   🏁 [Stream Completed] {record.event_id or 'no id'}")
+
+            elif not quiet:
+                print(
+                    f"   ❓ [Unknown: {event_type}]"
+                    f" {(record.data or '')[:50]}..."
+                )
+
+            self.events_received.append(
+                {
+                    "event": event_type,
+                    "id": record.event_id,
+                    "data": payload,
+                }
+            )
+
+    async def _read_resume_checkpoint(
+        self,
+        lines: AsyncIterable[str],
+        results: dict,
+        interrupt_after_tokens: int,
+        *,
+        quiet: bool = False,
+    ) -> tuple[Optional[str], Optional[str]]:
+        session_id = None
+        last_event_id = None
+
+        async for record in iter_sse_records(lines):
+            if record.comment is not None:
+                continue
+
+            payload = self._decode_record(record, results["errors"])
+            if payload is None:
+                continue
+
+            if record.event == "metadata":
+                session_id = payload.get("sessionId") or session_id
+            elif record.event == "token":
+                results["first_stream_tokens"] += 1
+                results["first_stream_content"] += payload.get("content", "")
+                if record.event_id:
+                    last_event_id = record.event_id
+                    self.last_event_id = record.event_id
+                else:
+                    results["errors"].append("Token event did not include an SSE id cursor")
+
+                if results["first_stream_tokens"] >= interrupt_after_tokens:
+                    if not quiet:
+                        print(f"   ⏸️ Interrupting at token #{interrupt_after_tokens}")
+                    break
+            elif record.event == "error":
+                results["errors"].append(payload.get("message", "Unknown error"))
+                break
+            elif record.event == "done":
+                break
+
+        return session_id, last_event_id
 
     async def check_health(self) -> bool:
         """Check the dependency-free backend liveness endpoint."""
@@ -70,30 +307,12 @@ class JustimeSSEProbe:
         if last_event_id:
             print(f"   Resume from: {last_event_id}")
 
-        results = {
-            "tokens_received": 0,
-            "heartbeats_received": 0,
-            "metadata_events": 0,
-            "usage_events": 0,
-            "errors": [],
-            "duration_ms": 0,
-            "last_event_id": None,
-            "full_content": "",
-        }
+        results = self._stream_results()
 
         start_time = time.time()
         self.last_heartbeat = time.time()
 
-        headers = {
-            "Accept": "text/event-stream",
-            "Cache-Control": "no-cache",
-        }
-
-        if token:
-            headers["Authorization"] = f"Bearer {token}"
-
-        if last_event_id:
-            headers["Last-Event-ID"] = last_event_id
+        headers = self._stream_headers(token=token, last_event_id=last_event_id)
 
         request_body = {
             "message": message,
@@ -118,69 +337,7 @@ class JustimeSSEProbe:
                     print("✅ Stream connection established")
                     print("\n📥 Receiving events:\n")
 
-                    async for line in response.aiter_lines():
-                        line = line.strip()
-
-                        if not line:
-                            continue
-
-                        # Handle SSE comments (heartbeats)
-                        if line.startswith(":"):
-                            if "heartbeat" in line:
-                                results["heartbeats_received"] += 1
-                                heartbeat_ts = time.time()
-                                interval = heartbeat_ts - self.last_heartbeat if self.last_heartbeat else 0
-                                self.last_heartbeat = heartbeat_ts
-                                ts_str = line.split()[-1] if len(line.split()) > 1 else ""
-                                print(f"   💓 [Heartbeat] {line} (interval: {interval:.1f}s)")
-                            continue
-
-                        # Handle SSE data lines
-                        if line.startswith("data:"):
-                            data_str = line[5:].strip()
-                            if not data_str:
-                                continue
-
-                            try:
-                                event = json.loads(data_str)
-                                event_type = event.get("type", "unknown")
-
-                                if event_type == "token":
-                                    results["tokens_received"] += 1
-                                    token_content = event.get("content", "")
-                                    results["full_content"] += token_content
-                                    print(f"   📝 [Token #{results['tokens_received']}] {token_content}")
-
-                                elif event_type == "metadata":
-                                    results["metadata_events"] += 1
-                                    print(f"   📋 [Metadata] {json.dumps(event.get('data', {}), ensure_ascii=False)[:100]}...")
-
-                                elif event_type == "usage":
-                                    results["usage_events"] += 1
-                                    usage = event.get("data", {})
-                                    print(f"   📊 [Usage] prompt={usage.get('promptTokens', 0)}, completion={usage.get('completionTokens', 0)}")
-
-                                elif event_type == "done":
-                                    results["last_event_id"] = event.get("eventId")
-                                    print(f"   ✅ [Done] Stream completed")
-
-                                elif event_type == "error":
-                                    error_msg = event.get("message", "Unknown error")
-                                    results["errors"].append(error_msg)
-                                    print(f"   ❌ [Error] {error_msg}")
-
-                                elif event_type == "stream_completed":
-                                    # Custom event type for stream completion marker
-                                    print(f"   🏁 [Stream Completed] {line}")
-
-                                else:
-                                    print(f"   ❓ [Unknown: {event_type}] {data_str[:50]}...")
-
-                                self.events_received.append(event)
-
-                            except json.JSONDecodeError as e:
-                                results["errors"].append(f"JSON parse error: {e}")
-                                print(f"   ⚠️  [Parse Error] {data_str[:50]}...")
+                    await self._consume_stream(response.aiter_lines(), results)
 
         except httpx.TimeoutException:
             results["errors"].append("Connection timeout")
@@ -199,7 +356,11 @@ class JustimeSSEProbe:
 
         return results
 
-    async def probe_heartbeat_reliability(self, duration_seconds: int = 60) -> dict:
+    async def probe_heartbeat_reliability(
+        self,
+        duration_seconds: int = 60,
+        token: Optional[str] = None,
+    ) -> dict:
         """
         Probe heartbeat reliability over an extended period.
 
@@ -230,7 +391,7 @@ class JustimeSSEProbe:
                     "POST",
                     f"{self.base_url}/api/v1/chat/stream",
                     json={"message": message},
-                    headers={"Accept": "text/event-stream"},
+                    headers=self._stream_headers(token=token),
                 ) as response:
                     if response.status_code != 200:
                         results["errors"].append(f"HTTP {response.status_code}")
@@ -267,6 +428,7 @@ class JustimeSSEProbe:
         self,
         message: str = "请写一个关于人工智能的长篇文章",
         interrupt_after_tokens: int = 50,
+        token: Optional[str] = None,
     ) -> dict:
         """
         Probe Last-Event-ID resume functionality.
@@ -286,12 +448,11 @@ class JustimeSSEProbe:
             "resume_stream_tokens": 0,
             "resume_stream_content": "",
             "content_gaps": [],
+            "session_id": None,
+            "last_event_id": None,
             "success": False,
             "errors": [],
         }
-
-        session_id = None
-        last_event_id = None
 
         # First stream - partial
         print("\n📡 First stream (partial)...")
@@ -301,49 +462,42 @@ class JustimeSSEProbe:
                     "POST",
                     f"{self.base_url}/api/v1/chat/stream",
                     json={"message": message},
-                    headers={"Accept": "text/event-stream"},
+                    headers=self._stream_headers(token=token),
                 ) as response:
                     if response.status_code != 200:
                         results["errors"].append(f"First stream failed: {response.status_code}")
                         return results
 
-                    async for line in response.aiter_lines():
-                        line = line.strip()
-
-                        if line.startswith("data:"):
-                            data_str = line[5:].strip()
-                            try:
-                                event = json.loads(data_str)
-                                if event.get("type") == "token":
-                                    results["first_stream_tokens"] += 1
-                                    results["first_stream_content"] += event.get("content", "")
-
-                                    # Capture session_id from first token event
-                                    if not session_id:
-                                        session_id = event.get("sessionId")
-
-                                    # Simulate interrupt
-                                    if results["first_stream_tokens"] >= interrupt_after_tokens:
-                                        last_event_id = event.get("eventId") or f"token-{results['first_stream_tokens']}"
-                                        print(f"   ⏸️ Interrupting at token #{interrupt_after_tokens}")
-                                        break
-                            except json.JSONDecodeError:
-                                pass
+                    session_id, last_event_id = await self._read_resume_checkpoint(
+                        response.aiter_lines(),
+                        results,
+                        interrupt_after_tokens,
+                    )
+                    results["session_id"] = session_id
+                    results["last_event_id"] = last_event_id
 
         except Exception as e:
             results["errors"].append(f"First stream error: {e}")
             return results
 
+        if not session_id:
+            results["errors"].append("No sessionId from metadata event in first stream")
+            return results
+        if not last_event_id:
+            results["errors"].append("No SSE id cursor from first stream token event")
+            return results
+        if results["first_stream_tokens"] < interrupt_after_tokens:
+            results["errors"].append("First stream completed before the interrupt threshold")
+            return results
+
         # Wait a moment before resume
         print("   ⏳ Waiting 2 seconds before resume...")
+        print(f"   Session ID: {session_id}")
+        print(f"   Last-Event-ID: {last_event_id}")
         await asyncio.sleep(2)
 
         # Second stream - resume
         print("\n📡 Second stream (resume)...")
-        if not session_id:
-            results["errors"].append("No session_id from first stream")
-            return results
-
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 async with client.stream(
@@ -353,29 +507,29 @@ class JustimeSSEProbe:
                         "message": message,
                         "sessionId": session_id,
                     },
-                    headers={
-                        "Accept": "text/event-stream",
-                        "Last-Event-ID": last_event_id,
-                    },
+                    headers=self._stream_headers(
+                        token=token,
+                        last_event_id=last_event_id,
+                    ),
                 ) as response:
                     if response.status_code != 200:
                         results["errors"].append(f"Resume stream failed: {response.status_code}")
                         return results
 
-                    async for line in response.aiter_lines():
-                        line = line.strip()
-
-                        if line.startswith("data:"):
-                            data_str = line[5:].strip()
-                            try:
-                                event = json.loads(data_str)
-                                if event.get("type") == "token":
-                                    results["resume_stream_tokens"] += 1
-                                    results["resume_stream_content"] += event.get("content", "")
-                                elif event.get("type") == "done":
-                                    break
-                            except json.JSONDecodeError:
-                                pass
+                    async for record in iter_sse_records(response.aiter_lines()):
+                        if record.comment is not None:
+                            continue
+                        payload = self._decode_record(record, results["errors"])
+                        if payload is None:
+                            continue
+                        if record.event == "token":
+                            results["resume_stream_tokens"] += 1
+                            results["resume_stream_content"] += payload.get("content", "")
+                        elif record.event == "error":
+                            results["errors"].append(payload.get("message", "Unknown error"))
+                            break
+                        elif record.event == "done":
+                            break
 
         except Exception as e:
             results["errors"].append(f"Resume stream error: {e}")
@@ -386,6 +540,7 @@ class JustimeSSEProbe:
         print(f"\n📊 Results:")
         print(f"   First stream: {results['first_stream_tokens']} tokens")
         print(f"   Resume stream: {results['resume_stream_tokens']} tokens")
+        print(f"   Resume cursor: {results['last_event_id']}")
         print(f"   Total content length: {len(total_content)} chars")
 
         # Check for obvious gaps (simplified check)
@@ -397,6 +552,86 @@ class JustimeSSEProbe:
             print("   ❌ Resume diagnostic failed!")
 
         return results
+
+
+async def _fixture_lines(raw_sse: str) -> AsyncIterator[str]:
+    for line in raw_sse.splitlines():
+        yield line
+
+
+async def run_parser_self_test() -> None:
+    """Replay current backend frames without credentials or network access."""
+    stream_id = "507f1f77bcf86cd799439011"
+    session_id = "507f1f77bcf86cd799439012"
+    current_frames = f"""event: metadata
+id: {stream_id}:1
+data: {{"sessionId":"{session_id}","messageId":"{stream_id}","model":"model-1","resumed":false,"resumedTokenIndex":0}}
+
+: heartbeat
+
+event: token
+id: {stream_id}:2
+data: {{"content":"Hel"}}
+
+event: token
+id: {stream_id}:3
+data: {{"content":"lo"}}
+
+event: usage
+id: {stream_id}:4
+data: {{"promptTokens":2,"completionTokens":2,"totalTokens":4}}
+
+event: done
+id: {stream_id}:5
+data: {{"messageId":"assistant-message","totalMs":25,"totalTokens":2}}
+
+"""
+
+    probe = JustimeSSEProbe()
+    probe.last_heartbeat = time.time()
+    basic_results = probe._stream_results()
+    await probe._consume_stream(
+        _fixture_lines(current_frames),
+        basic_results,
+        quiet=True,
+    )
+
+    assert basic_results["metadata_events"] == 1
+    assert basic_results["tokens_received"] == 2
+    assert basic_results["usage_events"] == 1
+    assert basic_results["heartbeats_received"] == 1
+    assert basic_results["session_id"] == session_id
+    assert basic_results["full_content"] == "Hello"
+    assert basic_results["last_event_id"] == f"{stream_id}:5"
+    assert basic_results["errors"] == []
+
+    resume_results = {
+        "first_stream_tokens": 0,
+        "first_stream_content": "",
+        "errors": [],
+    }
+    captured_session_id, resume_cursor = await probe._read_resume_checkpoint(
+        _fixture_lines(current_frames),
+        resume_results,
+        interrupt_after_tokens=2,
+        quiet=True,
+    )
+    resume_headers = probe._stream_headers(last_event_id=resume_cursor)
+
+    assert captured_session_id == session_id
+    assert resume_results["first_stream_tokens"] == 2
+    assert resume_results["first_stream_content"] == "Hello"
+    assert resume_cursor == f"{stream_id}:3"
+    assert resume_headers["Last-Event-ID"] == f"{stream_id}:3"
+    assert resume_results["errors"] == []
+
+    print(
+        "SSE parser self-test passed:"
+        f" tokens={basic_results['tokens_received']},"
+        f" content={basic_results['full_content']!r},"
+        f" sessionId={captured_session_id},"
+        f" Last-Event-ID={resume_headers['Last-Event-ID']}"
+    )
 
 
 def print_probe_summary(results: dict):
@@ -453,8 +688,17 @@ async def main():
         "--token",
         help="Authorization token (optional)",
     )
+    parser.add_argument(
+        "--self-test",
+        action="store_true",
+        help="Replay current backend SSE frames without network access",
+    )
 
     args = parser.parse_args()
+
+    if args.self_test:
+        await run_parser_self_test()
+        return
 
     probe = JustimeSSEProbe(base_url=args.url)
 
@@ -480,6 +724,7 @@ async def main():
     elif args.test == "heartbeat":
         results = await probe.probe_heartbeat_reliability(
             duration_seconds=args.duration,
+            token=args.token,
         )
         print("\n" + "=" * 60)
         print("💓 HEARTBEAT DIAGNOSTIC SUMMARY")
@@ -504,6 +749,7 @@ async def main():
         results = await probe.probe_resume_logic(
             message=args.message,
             interrupt_after_tokens=30,
+            token=args.token,
         )
         print("\n" + "=" * 60)
         print("🔄 RESUME DIAGNOSTIC SUMMARY")
@@ -534,6 +780,7 @@ async def main():
         print("\n2️⃣ Heartbeat Reliability Diagnostic")
         heartbeat_results = await probe.probe_heartbeat_reliability(
             duration_seconds=min(args.duration, 30),  # Limit to 30s for all mode
+            token=args.token,
         )
 
         # Resume diagnostic
@@ -541,6 +788,7 @@ async def main():
         resume_results = await probe.probe_resume_logic(
             message=args.message,
             interrupt_after_tokens=20,
+            token=args.token,
         )
 
         # Overall summary

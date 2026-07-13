@@ -17,6 +17,7 @@ Run these commands inside the `justime_backend/` directory:
 - **Run SSE Stream Service Tests**: `pytest tests/services/test_sse_stream_service.py -v --tb=short`
 - **Run SSE Resume Business Tests**: `pytest tests/business/test_sse_exact_resume.py -v --tb=short`
 - **Run Manual SSE Diagnostic** (from the repository root): `python scripts/diagnostics/justime_sse_probe.py --test all --url http://127.0.0.1:8080`
+- **Verify SSE Diagnostic Parser** (from the repository root, no backend required): `python scripts/diagnostics/justime_sse_probe.py --self-test`
 - **Lint Code**: `ruff check .`
 - **Lint with Auto-fix**: `ruff check --fix .`
 - **Format Code**: `ruff format .`
