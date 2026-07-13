@@ -7,7 +7,7 @@ interface MacTitleBarProps {
   className?: string
 }
 
-export function MacTitleBar({ title = '聚时', className }: MacTitleBarProps) {
+export function MacTitleBar({ title = 'Justime', className }: MacTitleBarProps) {
   return (
     <div
       className={cn(

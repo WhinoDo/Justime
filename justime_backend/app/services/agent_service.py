@@ -370,7 +370,7 @@ class AgentService:
     
     def _get_default_system_prompt(self) -> str:
         """获取默认系统提示词 - 简洁确认式响应"""
-        return """你是「矩时」智能日程助手。回复要简洁。
+        return """你是「Justime」智能日程助手。回复要简洁。
 
 ## 语言规则
 - **默认使用中文回复用户。**

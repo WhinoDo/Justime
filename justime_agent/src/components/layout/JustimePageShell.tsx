@@ -26,7 +26,7 @@ export function JustimePageShell({
     <div
       className={cn(
         'relative',
-        fullHeight ? 'jushi-app' : 'min-h-screen overflow-hidden',
+        fullHeight ? 'justime-app' : 'min-h-screen overflow-hidden',
         variant === 'desktop' && 'bg-[#fbfaff] text-[#171421]',
         className
       )}

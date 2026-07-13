@@ -42,7 +42,7 @@ export default function HomePage() {
             {/* Header */}
             <div className="space-y-4">
               <h1 className="text-5xl font-bold text-purple-900 tracking-tight">
-                聚时
+                Justime
               </h1>
               <p className="text-xl text-purple-700 font-medium tracking-wide">
                 智能情绪评估与任务规划助手
