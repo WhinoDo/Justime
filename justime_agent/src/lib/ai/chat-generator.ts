@@ -84,7 +84,7 @@ export class ChatGenerator {
     const toneStyle = this.getToneStyle(emotionScore)
     const hasTask = taskExtraction?.hasTask || false
 
-    return `你是「矩时」，一个温暖贴心的AI学习伙伴，专门陪伴大学生度过学习和生活中的挑战。
+    return `你是「Justime」，一个温暖贴心的AI学习伙伴，专门陪伴大学生度过学习和生活中的挑战。
 
 ## 你的性格特质
 - 🌟 **温暖亲和**：像知心朋友一样理解和支持
@@ -287,4 +287,4 @@ ${hasTask && emotionScore <= 6 ? `
     ]
     return taskKeywords.some(keyword => message.includes(keyword))
   }
-} 
+}
