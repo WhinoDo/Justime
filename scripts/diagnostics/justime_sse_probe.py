@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-"""
-SSE Endpoint Test Script
+"""Justime SSE diagnostic probe.
 
-Tests the SSE streaming endpoint for:
+Manually probes the SSE streaming endpoint for:
 1. Connection establishment
 2. Token streaming
 3. Heartbeat detection
@@ -10,19 +9,20 @@ Tests the SSE streaming endpoint for:
 5. Last-Event-ID resume support
 """
 
+import argparse
 import asyncio
 import json
 import time
-import argparse
 from datetime import datetime
 from typing import Optional
+
 import httpx
 
 
-class SSETestClient:
-    """SSE test client for validating streaming endpoint."""
+class JustimeSSEProbe:
+    """Manual diagnostic client for the Justime SSE streaming endpoint."""
 
-    def __init__(self, base_url: str = "http://localhost:8000"):
+    def __init__(self, base_url: str = "http://127.0.0.1:8080"):
         self.base_url = base_url.rstrip("/")
         self.timeout = 300.0  # 5 minutes for streaming
         self.heartbeat_interval = 15.0  # Expected heartbeat interval
@@ -31,12 +31,12 @@ class SSETestClient:
         self.last_event_id: Optional[str] = None
         self.events_received = []
 
-    async def test_health(self) -> bool:
-        """Test basic health endpoint."""
-        print("\n🔍 Testing health endpoint...")
+    async def check_health(self) -> bool:
+        """Check the dependency-free backend liveness endpoint."""
+        print("\n🔍 Probing health endpoint...")
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
-                resp = await client.get(f"{self.base_url}/api/v1/health")
+                resp = await client.get(f"{self.base_url}/api/v1/health/live")
                 if resp.status_code == 200:
                     print("✅ Health check passed")
                     return True
@@ -46,7 +46,7 @@ class SSETestClient:
             print(f"❌ Health check error: {e}")
             return False
 
-    async def test_sse_stream(
+    async def probe_sse_stream(
         self,
         message: str = "你好，请介绍一下自己",
         session_id: Optional[str] = None,
@@ -54,17 +54,17 @@ class SSETestClient:
         token: Optional[str] = None,
     ) -> dict:
         """
-        Test SSE streaming endpoint.
+        Probe the SSE streaming endpoint.
 
         Returns:
-            dict with test results including:
+            dict with diagnostic results including:
             - tokens_received: int
             - heartbeats_received: int
             - errors: list
             - duration_ms: int
             - last_event_id: str
         """
-        print(f"\n🚀 Starting SSE stream test...")
+        print("\n🚀 Starting SSE stream diagnostic...")
         print(f"   Message: {message[:50]}...")
         print(f"   Session ID: {session_id or 'auto-create'}")
         if last_event_id:
@@ -199,14 +199,14 @@ class SSETestClient:
 
         return results
 
-    async def test_heartbeat_reliability(self, duration_seconds: int = 60) -> dict:
+    async def probe_heartbeat_reliability(self, duration_seconds: int = 60) -> dict:
         """
-        Test heartbeat reliability over extended period.
+        Probe heartbeat reliability over an extended period.
 
-        This test validates that heartbeats are sent at expected intervals
+        This diagnostic validates that heartbeats are sent at expected intervals
         and helps identify connection stability issues.
         """
-        print(f"\n💓 Testing heartbeat reliability for {duration_seconds}s...")
+        print(f"\n💓 Probing heartbeat reliability for {duration_seconds}s...")
 
         results = {
             "test_duration_seconds": duration_seconds,
@@ -263,13 +263,13 @@ class SSETestClient:
 
         return results
 
-    async def test_resume_logic(
+    async def probe_resume_logic(
         self,
         message: str = "请写一个关于人工智能的长篇文章",
         interrupt_after_tokens: int = 50,
     ) -> dict:
         """
-        Test Last-Event-ID resume functionality.
+        Probe Last-Event-ID resume functionality.
 
         This simulates:
         1. Starting a stream
@@ -277,7 +277,7 @@ class SSETestClient:
         3. Reconnecting with Last-Event-ID
         4. Verifying content continuity
         """
-        print(f"\n🔄 Testing resume logic...")
+        print("\n🔄 Probing resume logic...")
         print(f"   Will interrupt after {interrupt_after_tokens} tokens")
 
         results = {
@@ -391,18 +391,18 @@ class SSETestClient:
         # Check for obvious gaps (simplified check)
         if len(results["resume_stream_content"]) > 0:
             results["success"] = True
-            print("   ✅ Resume test passed!")
+            print("   ✅ Resume diagnostic passed!")
         else:
             results["errors"].append("No content received after resume")
-            print("   ❌ Resume test failed!")
+            print("   ❌ Resume diagnostic failed!")
 
         return results
 
 
-def print_summary(results: dict):
-    """Print test summary."""
+def print_probe_summary(results: dict):
+    """Print a diagnostic summary."""
     print("\n" + "=" * 60)
-    print("📊 TEST SUMMARY")
+    print("📊 DIAGNOSTIC SUMMARY")
     print("=" * 60)
     print(f"  Tokens received:    {results.get('tokens_received', 0)}")
     print(f"  Heartbeats:         {results.get('heartbeats_received', 0)}")
@@ -426,11 +426,11 @@ def print_summary(results: dict):
 
 
 async def main():
-    parser = argparse.ArgumentParser(description="SSE Endpoint Test Script")
+    parser = argparse.ArgumentParser(description="Justime SSE diagnostic probe")
     parser.add_argument(
         "--url",
-        default="http://localhost:8000",
-        help="Base URL for API (default: http://localhost:8000)",
+        default="http://127.0.0.1:8080",
+        help="Base URL for API (default: http://127.0.0.1:8080)",
     )
     parser.add_argument(
         "--message",
@@ -441,13 +441,13 @@ async def main():
         "--test",
         choices=["basic", "heartbeat", "resume", "all"],
         default="basic",
-        help="Test type: basic, heartbeat, resume, all (default: basic)",
+        help="Diagnostic mode: basic, heartbeat, resume, all (default: basic)",
     )
     parser.add_argument(
         "--duration",
         type=int,
         default=60,
-        help="Duration for heartbeat test in seconds (default: 60)",
+        help="Duration for heartbeat diagnostic in seconds (default: 60)",
     )
     parser.add_argument(
         "--token",
@@ -456,33 +456,33 @@ async def main():
 
     args = parser.parse_args()
 
-    client = SSETestClient(base_url=args.url)
+    probe = JustimeSSEProbe(base_url=args.url)
 
     print("=" * 60)
-    print("🧪 SSE ENDPOINT TEST SUITE")
+    print("🧪 JUSTIME SSE DIAGNOSTIC PROBE")
     print("=" * 60)
     print(f"Target: {args.url}")
-    print(f"Test: {args.test}")
+    print(f"Mode: {args.test}")
     print(f"Time: {datetime.now().isoformat()}")
 
     # Health check first
-    if not await client.test_health():
+    if not await probe.check_health():
         print("\n⚠️ Server not responding. Make sure backend is running.")
         return
 
     if args.test == "basic":
-        results = await client.test_sse_stream(
+        results = await probe.probe_sse_stream(
             message=args.message,
             token=args.token,
         )
-        print_summary(results)
+        print_probe_summary(results)
 
     elif args.test == "heartbeat":
-        results = await client.test_heartbeat_reliability(
+        results = await probe.probe_heartbeat_reliability(
             duration_seconds=args.duration,
         )
         print("\n" + "=" * 60)
-        print("💓 HEARTBEAT TEST SUMMARY")
+        print("💓 HEARTBEAT DIAGNOSTIC SUMMARY")
         print("=" * 60)
         print(f"  Duration: {results['test_duration_seconds']}s")
         print(f"  Heartbeats expected: {results['heartbeats_expected']}")
@@ -501,12 +501,12 @@ async def main():
         print("=" * 60)
 
     elif args.test == "resume":
-        results = await client.test_resume_logic(
+        results = await probe.probe_resume_logic(
             message=args.message,
             interrupt_after_tokens=30,
         )
         print("\n" + "=" * 60)
-        print("🔄 RESUME TEST SUMMARY")
+        print("🔄 RESUME DIAGNOSTIC SUMMARY")
         print("=" * 60)
         print(f"  First stream tokens: {results['first_stream_tokens']}")
         print(f"  Resume stream tokens: {results['resume_stream_tokens']}")
@@ -520,32 +520,32 @@ async def main():
 
     elif args.test == "all":
         print("\n" + "-" * 40)
-        print("Running all tests...\n")
+        print("Running all diagnostics...\n")
 
-        # Basic test
-        print("1️⃣ Basic Stream Test")
-        basic_results = await client.test_sse_stream(
+        # Basic stream diagnostic
+        print("1️⃣ Basic Stream Diagnostic")
+        basic_results = await probe.probe_sse_stream(
             message=args.message,
             token=args.token,
         )
-        print_summary(basic_results)
+        print_probe_summary(basic_results)
 
-        # Heartbeat test
-        print("\n2️⃣ Heartbeat Reliability Test")
-        heartbeat_results = await client.test_heartbeat_reliability(
-            duration_seconds=min(args.duration, 30),  # Limit to 30s for all test
+        # Heartbeat diagnostic
+        print("\n2️⃣ Heartbeat Reliability Diagnostic")
+        heartbeat_results = await probe.probe_heartbeat_reliability(
+            duration_seconds=min(args.duration, 30),  # Limit to 30s for all mode
         )
 
-        # Resume test
-        print("\n3️⃣ Resume Logic Test")
-        resume_results = await client.test_resume_logic(
+        # Resume diagnostic
+        print("\n3️⃣ Resume Logic Diagnostic")
+        resume_results = await probe.probe_resume_logic(
             message=args.message,
             interrupt_after_tokens=20,
         )
 
         # Overall summary
         print("\n" + "=" * 60)
-        print("📊 OVERALL TEST SUMMARY")
+        print("📊 OVERALL DIAGNOSTIC SUMMARY")
         print("=" * 60)
         basic_ok = len(basic_results.get("errors", [])) == 0 and basic_results.get("tokens_received", 0) > 0
         heartbeat_ok = heartbeat_results.get("heartbeats_received", 0) > 0

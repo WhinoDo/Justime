@@ -347,15 +347,17 @@ function ChatScreen() {
 
 ### 测试脚本
 
+以下命令均从仓库根目录运行：
+
 ```bash
-# 运行 SSE 测试
-python test_sse.py --test all --url http://localhost:8000
+# 运行 SSE 诊断
+python scripts/diagnostics/justime_sse_probe.py --test all --url http://127.0.0.1:8080
 
 # 测试心跳可靠性
-python test_sse.py --test heartbeat --duration 120
+python scripts/diagnostics/justime_sse_probe.py --test heartbeat --duration 120 --url http://127.0.0.1:8080
 
 # 测试断点续传
-python test_sse.py --test resume --message "写一篇长文"
+python scripts/diagnostics/justime_sse_probe.py --test resume --message "写一篇长文" --url http://127.0.0.1:8080
 ```
 
 ## 性能指标
