@@ -35,7 +35,7 @@ describe('ChatInterface', () => {
     render(<ChatInterface />)
 
     await waitFor(() => {
-      expect(screen.getByText('矩时智能助手')).toBeInTheDocument()
+      expect(screen.getByText('Justime 智能助手')).toBeInTheDocument()
     })
     expect(screen.getByPlaceholderText('输入 "@" 唤起常用语，或粘贴代码快速提问')).toBeInTheDocument()
   })
@@ -202,7 +202,7 @@ describe('ChatInterface', () => {
     const { container } = render(<ChatInterface />)
 
     await waitFor(() => {
-      expect(screen.getByText('矩时智能助手')).toBeInTheDocument()
+      expect(screen.getByText('Justime 智能助手')).toBeInTheDocument()
     })
 
     const outerDiv = container.firstElementChild as HTMLElement

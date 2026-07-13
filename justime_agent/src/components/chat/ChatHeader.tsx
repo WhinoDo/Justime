@@ -104,7 +104,7 @@ export const ChatHeader = memo(function ChatHeader({
           </div>
           <div>
             <h2 className="text-base font-semibold text-foreground">
-              {isDesktop ? 'Agent Console' : '矩时智能助手'}
+              {isDesktop ? 'Agent Console' : 'Justime 智能助手'}
             </h2>
             <p className="text-xs text-muted-foreground">
               情绪感知 · 任务拆解 · 智能陪伴
