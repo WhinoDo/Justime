@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import AdminSidebar from '@/components/admin/AdminSidebar.vue'
 import {
   ShieldAlert
 } from 'lucide-vue-next'
 
-const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
