@@ -55,6 +55,7 @@ export const API_ENDPOINTS = {
     BASE: '/api/task-processes',
     LIST: (query: string) => `/api/task-processes${query ? `?${query}` : ''}`,
     DETAIL: (taskId: string) => `/api/task-processes/${taskId}`,
+    MILESTONE: (taskId: string, milestoneId: string) => `/api/task-processes/${taskId}/milestones/${milestoneId}`,
     AGENT: (taskId: string) => `/api/task-processes/${taskId}/agent`,
     EVIDENCE: (taskId: string) => `/api/task-processes/${taskId}/evidence`,
     TIME_LOG: (taskId: string) => `/api/task-processes/${taskId}/evidence/time-log`,

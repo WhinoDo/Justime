@@ -14,6 +14,7 @@ import type { KnowledgeOutput } from '@/types/taskProcess'
 import { useDesktopRuntime } from '@/hooks/useDesktopRuntime'
 import { DesktopAppFrame } from '@/components/layout/DesktopAppFrame'
 import { TaskDetailWorkbench } from '@/components/tasks/TaskDetailWorkbench'
+import { BeforeWorkspaceMilestoneProvider } from '@/components/tasks/BeforeWorkspace'
 
 export default function TaskDetailPage() {
   const params = useParams<{ id: string }>()
@@ -29,6 +30,7 @@ export default function TaskDetailPage() {
     loading,
     updateTask,
     updatePreparationItems,
+    updateMilestoneStatus,
     createEvidence,
     createTimeLog,
     generateKnowledgeOutput,
@@ -103,48 +105,60 @@ export default function TaskDetailPage() {
               </DesktopAppFrame>
             ) : (
               <>
-                <TaskPhaseDetail
-                  task={task}
-                  evidence={evidence}
-                  outputs={outputs}
-                  onEditTask={() => setEditOpen(true)}
-                  onUpdatePreparationItems={async (items) => {
-                    const result = await updatePreparationItems(items)
+                <BeforeWorkspaceMilestoneProvider
+                  onUpdateMilestoneStatus={async (milestoneId, status) => {
+                    const result = await updateMilestoneStatus(milestoneId, status)
                     toast({
-                      title: result.success ? '准备清单已更新' : '准备清单更新失败',
-                      description: result.success ? 'Before 准备状态已保存。' : (result.error || '请稍后重试'),
+                      title: result.success ? '里程碑已更新' : '里程碑更新失败',
+                      description: result.success ? 'Before 里程碑状态已保存。' : (result.error || '请稍后重试'),
                       ...(result.success ? {} : { variant: 'destructive' as const }),
                     })
                     return { success: result.success, error: result.error }
                   }}
-                  onCreateEvidence={async (payload) => {
-                    const result = await createEvidence(payload)
-                    toast({
-                      title: result.success ? 'Evidence 已补写' : 'Evidence 写入失败',
-                      description: result.success ? '任务证据已更新。' : (result.error || '请稍后重试'),
-                      ...(result.success ? {} : { variant: 'destructive' as const }),
-                    })
-                    return { success: result.success, error: result.error }
-                  }}
-                  onCreateTimeLog={async (payload) => {
-                    const result = await createTimeLog(payload)
-                    toast({
-                      title: result.success ? '时间日志已记录' : '记录时间失败',
-                      description: result.success ? '任务投入时长已更新。' : (result.error || '请稍后重试'),
-                      ...(result.success ? {} : { variant: 'destructive' as const }),
-                    })
-                    return { success: result.success, error: result.error }
-                  }}
-                  onGenerateKnowledge={async (payload) => {
-                    const result = await generateKnowledgeOutput(payload)
-                    toast({
-                      title: result.success ? 'KnowledgeOutput 已生成' : '生成 KnowledgeOutput 失败',
-                      description: result.success ? '可以继续编辑并发布到 Vault。' : (result.error || '请稍后重试'),
-                      ...(result.success ? {} : { variant: 'destructive' as const }),
-                    })
-                    return { success: result.success, error: result.error }
-                  }}
-                />
+                >
+                  <TaskPhaseDetail
+                    task={task}
+                    evidence={evidence}
+                    outputs={outputs}
+                    onEditTask={() => setEditOpen(true)}
+                    onUpdatePreparationItems={async (items) => {
+                      const result = await updatePreparationItems(items)
+                      toast({
+                        title: result.success ? '准备清单已更新' : '准备清单更新失败',
+                        description: result.success ? 'Before 准备状态已保存。' : (result.error || '请稍后重试'),
+                        ...(result.success ? {} : { variant: 'destructive' as const }),
+                      })
+                      return { success: result.success, error: result.error }
+                    }}
+                    onCreateEvidence={async (payload) => {
+                      const result = await createEvidence(payload)
+                      toast({
+                        title: result.success ? 'Evidence 已补写' : 'Evidence 写入失败',
+                        description: result.success ? '任务证据已更新。' : (result.error || '请稍后重试'),
+                        ...(result.success ? {} : { variant: 'destructive' as const }),
+                      })
+                      return { success: result.success, error: result.error }
+                    }}
+                    onCreateTimeLog={async (payload) => {
+                      const result = await createTimeLog(payload)
+                      toast({
+                        title: result.success ? '时间日志已记录' : '记录时间失败',
+                        description: result.success ? '任务投入时长已更新。' : (result.error || '请稍后重试'),
+                        ...(result.success ? {} : { variant: 'destructive' as const }),
+                      })
+                      return { success: result.success, error: result.error }
+                    }}
+                    onGenerateKnowledge={async (payload) => {
+                      const result = await generateKnowledgeOutput(payload)
+                      toast({
+                        title: result.success ? 'KnowledgeOutput 已生成' : '生成 KnowledgeOutput 失败',
+                        description: result.success ? '可以继续编辑并发布到 Vault。' : (result.error || '请稍后重试'),
+                        ...(result.success ? {} : { variant: 'destructive' as const }),
+                      })
+                      return { success: result.success, error: result.error }
+                    }}
+                  />
+                </BeforeWorkspaceMilestoneProvider>
                 <KnowledgeOutputPanel
                   outputs={outputs}
                   onEditOutput={setEditingOutput}

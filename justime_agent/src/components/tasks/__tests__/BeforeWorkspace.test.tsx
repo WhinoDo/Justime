@@ -1,5 +1,5 @@
 import React from 'react'
-import { act, render, renderHook, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BeforeWorkspace } from '../BeforeWorkspace'
 import { useTaskProcessDetail } from '@/hooks/useTaskProcesses'
@@ -33,6 +33,7 @@ const task: TaskProcess = {
   ],
   milestones: [
     { id: 'mile-1', title: '候选版本完成', description: '生成可验证构建', order: 1, status: 'active' },
+    { id: 'mile-2', title: '发布窗口确认', description: '确认发布时间', order: 2, status: 'pending' },
   ],
   blockers: [],
   ai_suggestions: [],
@@ -44,7 +45,7 @@ const task: TaskProcess = {
 }
 
 describe('BeforeWorkspace', () => {
-  it('renders plan, materials, ordered preparation items, and read-only milestones', () => {
+  it('renders plan, materials, ordered preparation items, and milestone status controls', () => {
     render(<BeforeWorkspace task={task} onUpdatePreparationItems={jest.fn()} />)
 
     expect(screen.getByText('先核对资料和准备项，再生成候选版本。')).toBeInTheDocument()
@@ -52,8 +53,8 @@ describe('BeforeWorkspace', () => {
     expect(screen.getByText('核对构建、签名和回滚步骤。')).toBeInTheDocument()
     expect(screen.getByText('官方文档')).toBeInTheDocument()
     expect(screen.getByText('候选版本完成')).toBeInTheDocument()
-    expect(screen.getByText('active')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /里程碑/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: '候选版本完成状态' })).toHaveValue('active')
+    expect(screen.getByRole('combobox', { name: '发布窗口确认状态' })).toHaveValue('pending')
 
     const checkboxes = screen.getAllByRole('checkbox')
     expect(checkboxes[0]).toHaveAccessibleName('确认测试通过')
@@ -160,6 +161,54 @@ describe('BeforeWorkspace', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('网络暂时不可用')
     expect(checkbox).not.toBeChecked()
   })
+
+  it('requests active to completed once and disables only the pending milestone', async () => {
+    let resolveUpdate: ((value: { success: boolean }) => void) | undefined
+    const onUpdateMilestoneStatus = jest.fn().mockImplementation(() => new Promise((resolve) => {
+      resolveUpdate = resolve
+    }))
+    render(
+      <BeforeWorkspace
+        task={task}
+        onUpdatePreparationItems={jest.fn()}
+        onUpdateMilestoneStatus={onUpdateMilestoneStatus}
+      />,
+    )
+
+    const activeSelect = screen.getByRole('combobox', { name: '候选版本完成状态' })
+    const pendingSelect = screen.getByRole('combobox', { name: '发布窗口确认状态' })
+    fireEvent.change(activeSelect, { target: { value: 'completed' } })
+    fireEvent.change(activeSelect, { target: { value: 'completed' } })
+
+    expect(onUpdateMilestoneStatus).toHaveBeenCalledTimes(1)
+    expect(onUpdateMilestoneStatus).toHaveBeenCalledWith('mile-1', 'completed')
+    expect(activeSelect).toBeDisabled()
+    expect(activeSelect).toHaveValue('active')
+    expect(pendingSelect).toBeEnabled()
+    expect(screen.getByRole('status')).toHaveTextContent('正在保存里程碑')
+
+    await act(async () => {
+      resolveUpdate?.({ success: true })
+    })
+  })
+
+  it('keeps the confirmed milestone state and shows an accessible error after failure', async () => {
+    const user = userEvent.setup()
+    const onUpdateMilestoneStatus = jest.fn().mockResolvedValue({ success: false, error: '里程碑服务不可用' })
+    render(
+      <BeforeWorkspace
+        task={task}
+        onUpdatePreparationItems={jest.fn()}
+        onUpdateMilestoneStatus={onUpdateMilestoneStatus}
+      />,
+    )
+
+    const select = screen.getByRole('combobox', { name: '候选版本完成状态' })
+    await user.selectOptions(select, 'completed')
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('里程碑服务不可用')
+    expect(select).toHaveValue('active')
+  })
 })
 
 describe('useTaskProcessDetail preparation updates', () => {
@@ -197,5 +246,95 @@ describe('useTaskProcessDetail preparation updates', () => {
       method: 'PATCH',
       body: JSON.stringify({ preparation_items: task.preparation_items || [] }),
     }))
+  })
+
+  it('patches the dedicated milestone endpoint and replaces task with the server response', async () => {
+    const completedAt = '2026-07-13T08:30:00Z'
+    const updatedTask: TaskProcess = {
+      ...task,
+      milestones: task.milestones.map((milestone) => (
+        milestone.id === 'mile-1'
+          ? { ...milestone, status: 'completed', completed_at: completedAt }
+          : milestone
+      )),
+    }
+    fetchMock.mockImplementation((input: RequestInfo, init?: RequestInit) => {
+      if (String(input) === '/api/task-processes/task-1/milestones/mile-1' && init?.method === 'PATCH') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ success: true, data: { task: updatedTask } }),
+        })
+      }
+      if (String(input).includes('/evidence')) {
+        return Promise.resolve({ ok: true, json: async () => ({ success: true, data: { items: [] } }) })
+      }
+      if (String(input).includes('/knowledge-outputs')) {
+        return Promise.resolve({ ok: true, json: async () => ({ success: true, data: { items: [] } }) })
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ success: true, data: { task } }) })
+    })
+
+    const { result } = renderHook(() => useTaskProcessDetail('task-1'))
+    await waitFor(() => expect(result.current.task).toEqual(task))
+
+    await act(async () => {
+      await result.current.updateMilestoneStatus('mile-1', 'completed')
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/task-processes/task-1/milestones/mile-1', expect.objectContaining({
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'completed' }),
+    }))
+    expect(result.current.task?.milestones[0]).toEqual(expect.objectContaining({
+      status: 'completed',
+      completed_at: completedAt,
+    }))
+  })
+
+  it('renders the status and completed_at returned by the milestone PATCH', async () => {
+    const user = userEvent.setup()
+    const completedAt = '2026-07-13T08:30:00Z'
+    const updatedTask: TaskProcess = {
+      ...task,
+      milestones: task.milestones.map((milestone) => (
+        milestone.id === 'mile-1'
+          ? { ...milestone, status: 'completed', completed_at: completedAt }
+          : milestone
+      )),
+    }
+    fetchMock.mockImplementation((input: RequestInfo, init?: RequestInit) => {
+      if (String(input) === '/api/task-processes/task-1/milestones/mile-1' && init?.method === 'PATCH') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ success: true, data: { task: updatedTask } }),
+        })
+      }
+      if (String(input).includes('/evidence')) {
+        return Promise.resolve({ ok: true, json: async () => ({ success: true, data: { items: [] } }) })
+      }
+      if (String(input).includes('/knowledge-outputs')) {
+        return Promise.resolve({ ok: true, json: async () => ({ success: true, data: { items: [] } }) })
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ success: true, data: { task } }) })
+    })
+
+    function MilestoneHarness() {
+      const detail = useTaskProcessDetail('task-1')
+      if (!detail.task) return null
+      return (
+        <BeforeWorkspace
+          task={detail.task}
+          onUpdatePreparationItems={detail.updatePreparationItems}
+          onUpdateMilestoneStatus={detail.updateMilestoneStatus}
+        />
+      )
+    }
+
+    render(<MilestoneHarness />)
+    const select = await screen.findByRole('combobox', { name: '候选版本完成状态' })
+    await user.selectOptions(select, 'completed')
+
+    await waitFor(() => expect(select).toHaveValue('completed'))
+    expect(screen.getByText(/完成于/)).toHaveAttribute('datetime', completedAt)
   })
 })
