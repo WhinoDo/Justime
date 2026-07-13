@@ -363,6 +363,136 @@ describe('useTaskProcessDetail preparation updates', () => {
     ]))
   })
 
+  it('serializes milestone and preparation updates so their full-task snapshots stay ordered', async () => {
+    const milestoneUpdatedTask: TaskProcess = {
+      ...task,
+      milestones: task.milestones.map((milestone) => (
+        milestone.id === 'mile-1' ? { ...milestone, status: 'completed' } : milestone
+      )),
+    }
+    const bothUpdatedTask: TaskProcess = {
+      ...milestoneUpdatedTask,
+      preparation_items: milestoneUpdatedTask.preparation_items?.map((item) => (
+        item.id === 'prep-2' ? { ...item, done: true } : item
+      )),
+    }
+    const updatedPreparationItems = bothUpdatedTask.preparation_items || []
+    let resolveMilestoneUpdate: ((response: Response) => void) | undefined
+
+    fetchMock.mockImplementation((input: RequestInfo, init?: RequestInit) => {
+      if (String(input) === '/api/task-processes/task-1/milestones/mile-1' && init?.method === 'PATCH') {
+        return new Promise<Response>((resolve) => {
+          resolveMilestoneUpdate = resolve
+        })
+      }
+      if (String(input) === '/api/task-processes/task-1' && init?.method === 'PATCH') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ success: true, data: { task: bothUpdatedTask } }),
+        })
+      }
+      if (String(input).includes('/evidence')) {
+        return Promise.resolve({ ok: true, json: async () => ({ success: true, data: { items: [] } }) })
+      }
+      if (String(input).includes('/knowledge-outputs')) {
+        return Promise.resolve({ ok: true, json: async () => ({ success: true, data: { items: [] } }) })
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ success: true, data: { task } }) })
+    })
+
+    const { result } = renderHook(() => useTaskProcessDetail('task-1'))
+    await waitFor(() => expect(result.current.task).toEqual(task))
+
+    let milestoneUpdate!: ReturnType<typeof result.current.updateMilestoneStatus>
+    let preparationUpdate!: ReturnType<typeof result.current.updatePreparationItems>
+    act(() => {
+      milestoneUpdate = result.current.updateMilestoneStatus('mile-1', 'completed')
+      preparationUpdate = result.current.updatePreparationItems(updatedPreparationItems)
+    })
+
+    await waitFor(() => expect(resolveMilestoneUpdate).toBeDefined())
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      '/api/task-processes/task-1',
+      expect.objectContaining({ method: 'PATCH' }),
+    )
+
+    await act(async () => {
+      resolveMilestoneUpdate?.({
+        ok: true,
+        json: async () => ({ success: true, data: { task: milestoneUpdatedTask } }),
+      } as Response)
+      await milestoneUpdate
+      await preparationUpdate
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/task-processes/task-1', expect.objectContaining({
+      method: 'PATCH',
+      body: JSON.stringify({ preparation_items: updatedPreparationItems }),
+    }))
+    expect(result.current.task?.milestones[0]).toEqual(expect.objectContaining({ status: 'completed' }))
+    expect(result.current.task?.preparation_items).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'prep-2', done: true }),
+    ]))
+  })
+
+  it('ignores a delayed mutation response after the detail hook moves to another task', async () => {
+    const nextTask: TaskProcess = {
+      ...task,
+      id: 'task-2',
+      title: '第二个任务',
+    }
+    const updatedFirstTask: TaskProcess = {
+      ...task,
+      milestones: task.milestones.map((milestone) => (
+        milestone.id === 'mile-1' ? { ...milestone, status: 'completed' } : milestone
+      )),
+    }
+    let resolveFirstTaskMutation: ((response: Response) => void) | undefined
+
+    fetchMock.mockImplementation((input: RequestInfo, init?: RequestInit) => {
+      if (String(input) === '/api/task-processes/task-1/milestones/mile-1' && init?.method === 'PATCH') {
+        return new Promise<Response>((resolve) => {
+          resolveFirstTaskMutation = resolve
+        })
+      }
+      if (String(input) === '/api/task-processes/task-2') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ success: true, data: { task: nextTask } }),
+        })
+      }
+      if (String(input).includes('/evidence') || String(input).includes('/knowledge-outputs')) {
+        return Promise.resolve({ ok: true, json: async () => ({ success: true, data: { items: [] } }) })
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ success: true, data: { task } }) })
+    })
+
+    const { result, rerender } = renderHook(
+      ({ currentTaskId }) => useTaskProcessDetail(currentTaskId),
+      { initialProps: { currentTaskId: 'task-1' } },
+    )
+    await waitFor(() => expect(result.current.task).toEqual(task))
+
+    let firstTaskMutation!: ReturnType<typeof result.current.updateMilestoneStatus>
+    act(() => {
+      firstTaskMutation = result.current.updateMilestoneStatus('mile-1', 'completed')
+    })
+    await waitFor(() => expect(resolveFirstTaskMutation).toBeDefined())
+
+    rerender({ currentTaskId: 'task-2' })
+    await waitFor(() => expect(result.current.task).toEqual(nextTask))
+
+    await act(async () => {
+      resolveFirstTaskMutation?.({
+        ok: true,
+        json: async () => ({ success: true, data: { task: updatedFirstTask } }),
+      } as Response)
+      await firstTaskMutation
+    })
+
+    expect(result.current.task).toEqual(nextTask)
+  })
+
   it('renders the status and completed_at returned by the milestone PATCH', async () => {
     const user = userEvent.setup()
     const completedAt = '2026-07-13T08:30:00Z'
