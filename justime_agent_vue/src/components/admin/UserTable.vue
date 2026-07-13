@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { User, AdminModel } from '@/types/admin'
+import type { User } from '@/types/admin'
 import {
   Search,
   Trash2,
-  MoreHorizontal,
   Shield,
   ShieldCheck,
   User as UserIcon,
